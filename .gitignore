@@ -1,0 +1,32 @@
+# Build products and local tooling
+/build/
+/out/
+/.vs/
+/.idea/
+/.vscode/
+*.user
+*.suo
+
+# Generated evidence and captures (keep the README files that describe them)
+/captures/**/*.png
+/captures/**/*.jpg
+/captures/**/*.jpeg
+/captures/**/*.exr
+/captures/**/*.dds
+/captures/**/*.rdc
+/captures/**/*.zip
+/captures/**/*.log
+/captures/**/*.json
+/captures/**/*.bin
+
+# Graphify stages and generated knowledge graph
+/graphify/corpus/*
+!/graphify/corpus/README.md
+/graphify/graphify-out/
+/graphify/*.log
+
+# Local configuration and secrets
+/.env
+/.env.*
+!/env.example
+/config/local/

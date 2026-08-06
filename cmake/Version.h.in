@@ -1,0 +1,3 @@
+#pragma once
+
+#define PREYVR_VERSION "@PREYVR_BUILD_VERSION@"

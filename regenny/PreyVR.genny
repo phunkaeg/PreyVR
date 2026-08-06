@@ -1,0 +1,127 @@
+// ============================================================================
+// OFFSET SYNTAX WARNING -- read before editing.
+//
+// In this ReGenny build, "+N" places a field N bytes AFTER THE PREVIOUS FIELD'S
+// END. It is NOT an absolute struct offset, despite what ReGenny's own AGENT.md
+// example implies. Verified 2026-08-01 against live memory: a struct written
+// with absolute offsets read pure garbage through the overlay, while direct
+// address arithmetic at the same offsets read correct values.
+//
+// Consequence: every "+N" below is a DELTA. The absolute offset each field is
+// meant to land on is written in the comment beside it. When you add a field,
+// you must (a) keep fields in ascending absolute order and (b) recompute the
+// delta as  absolute - previous_field_end.
+//
+// After ANY edit, re-verify with an overlay read against direct arithmetic:
+//   local ov = sdkgenny.StructOverlay(addr, ns:find_struct("PreyRendererView"))
+//   assert(ov.near_plane == p:read_float(addr + 0x280))
+//
+// This bug silently corrupted the original PreyRendererGraphics definition
+// (swapchain resolved to +0xAE90, device to +0x15DC0, swapchain_mirror to
+// +0x36C58). It was never noticed because prior evidence came from x64dbg and
+// Cheat Engine rather than through these overlays.
+// ============================================================================
+
+type bool 1 [[bool]]
+type byte 1 [[u8]]
+type char 1 [[utf8]]
+type wchar_t 2 [[utf16]]
+type short 2 [[i16]]
+type ushort 2 [[u16]]
+type int 4 [[i32]]
+type uint 4 [[u32]]
+type float 4 [[f32]]
+type double 8 [[f64]]
+type int64_t 8 [[i64]]
+type uint64_t 8 [[u64]]
+type uintptr_t 8 [[u64]]
+
+// Neutral overlay for first-pass RTTI and pointer-field discovery. Do not
+// promote this shape into engine headers; replace it with evidenced types.
+struct UnknownObject 0x100 {
+    uintptr_t vtable +0x0
+}
+
+// Opaque COM interface views. Only the vtable pointer is modeled; call these
+// through the real Windows SDK interfaces in injected code.
+struct IDXGISwapChain 0x8 {
+    uintptr_t vtable +0x0
+}
+
+struct ID3D11Device 0x8 {
+    uintptr_t vtable +0x0
+}
+
+// Build 7D6E322F...B05311A7. This deliberately models only live-proven
+// graphics ownership fields on the module-resident renderer singleton.
+//
+// Select at: PreyDll.dll+0x2B3E8E0->0x0
+struct PreyRendererGraphics 0xB200 {
+    uintptr_t vtable +0x0                          // abs 0x0000
+    IDXGISwapChain* swapchain +0xAE80              // abs 0xAE88
+    ID3D11Device* device +0x98                     // abs 0xAF28
+    uintptr_t context_related_interface +0x10      // abs 0xAF40
+    ID3D11Device* device_mirror +0x50              // abs 0xAF98
+    IDXGISwapChain* swapchain_mirror +0x8          // abs 0xAFA8
+}
+
+// Per-frame render view block. Registry ID R-026. Validated live 2026-08-01:
+// position tracked player movement 0.67244 units over 100 frames with head bob
+// visible in Z, and the rotation was verified orthonormal (all row norms and
+// pairwise dot products within 1e-3).
+//
+// Two of these live in the renderer at absolute +0x4A08 with stride 0x328,
+// selected by the frame-slot index at renderer+0x499C. They are frame
+// double-buffers, NOT eyes: while the player is stationary both slots are
+// byte-identical. Exactly one camera exists per slot, which is what closed
+// H-001 negative.
+//
+// Select at: PreyDll.dll+0x2B3E8E0->0x4A08   (slot 0)
+//            PreyDll.dll+0x2B3E8E0->0x4D30   (slot 1)
+//
+// Frustum note: the four edges are stored independently rather than as a single
+// FOV scalar, so OpenXR's required asymmetric per-eye projection (L != -R) is
+// directly representable here. Read-only so far; nothing has been written.
+struct PreyRendererView 0x328 {
+    float aspect +0x40                             // abs 0x040
+    float position_copy[3] +0x1EC                  // abs 0x230, duplicate of position
+    float rotation[9] +0x4                         // abs 0x240, Matrix33 row-major, row1 = up (Z)
+    float position[3]                              // abs 0x264, sequential
+    float frustum_left                             // abs 0x270, sequential
+    float frustum_right                            // abs 0x274
+    float frustum_bottom                           // abs 0x278
+    float frustum_top                              // abs 0x27C
+    float near_plane                               // abs 0x280
+    float far_plane                                // abs 0x284
+    float rotation_4x4[16] +0x60                   // abs 0x2E8, rotation restated, no translation
+}
+
+// Renderer-level frame/present overlay. The graphics group is live-proven; the
+// remaining fields were derived by decompiling EndRendererScene and were
+// confirmed live on 2026-08-01 (present_vsync_selector = 1 and present_flags = 0
+// matched the earlier Cheat Engine capture of SyncInterval=1, flags=0).
+//
+// command_ring is R-027: two ID3D11Query-shaped D3D11 COM objects alternated by
+// frame parity, i.e. double-buffered GPU timing queries. It was the leading
+// CRenderView candidate and is NOT one. Do not re-investigate it as a view.
+//
+// Select at: PreyDll.dll+0x2B3E8E0->0x0
+//
+// Read-only. Nothing in this struct is authorised as a write target.
+struct PreyRendererFrameProbe 0xB200 {
+    uintptr_t vtable +0x0                          // abs 0x0000
+    uint frame_slot +0x4994                        // abs 0x499C, strides view blocks by 0x328
+    uint command_ring_count +0x6288                // abs 0xAC28, active entry = count & 1
+    uint command_ring_prev                         // abs 0xAC2C
+    uintptr_t command_ring[2]                      // abs 0xAC30, R-027 timing queries
+    IDXGISwapChain* swapchain +0x248               // abs 0xAE88
+    int scene_nesting +0x68                        // abs 0xAEF8, guards EndScene-without-BeginScene
+    ID3D11Device* device +0x2C                     // abs 0xAF28
+    uintptr_t context_related_interface +0x10      // abs 0xAF40
+    ID3D11Device* device_mirror +0x50              // abs 0xAF98
+    IDXGISwapChain* swapchain_mirror +0x8          // abs 0xAFA8
+    uint present_sync_param_a +0x210               // abs 0xB1C0
+    uint present_sync_param_b                      // abs 0xB1C4
+    int present_vsync_selector +0x24               // abs 0xB1EC
+    uint present_flags                             // abs 0xB1F0
+}
