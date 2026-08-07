@@ -106,8 +106,21 @@ was stationary the two slots were **byte-identical**, separation `0.00000`. Left
 must differ by a constant lateral IPD offset at all times, including when stationary. Identical
 slots cannot be an eye pair.
 
-**H-001's multi-view half resolves negative.** Combined with the already-confirmed stereo negative,
-H-001 closes fully negative: the per-eye route must be mod-owned.
+**H-001's multi-view half resolves negative for the probed resident structure.** Combined with the
+confirmed stereo negative, this justifies committing to a mod-owned per-eye route.
+
+**Scope correction (2026-08-07).** This capture originally concluded "H-001 closes fully negative".
+That overstated what the session showed. The observations above are unchanged and correct: the
+resident R-026 frame slots carry one camera each, and identical slots cannot be an eye pair. But a
+census of resident per-frame state cannot prove the absence of an internally constructed or
+dynamically created multi-view route. The narrower claim — no exposed stock stereo/HMD control
+surface, and no resident eye pair — is what the evidence supports, and is what
+[`../../docs/HYPOTHESES.md`](../../docs/HYPOTHESES.md) and
+[`../../docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) now record.
+
+The `e_ArkLookingGlass` second-scene finding, recorded later in
+[`../../docs/VR_MECHANICS_RISK.md`](../../docs/VR_MECHANICS_RISK.md), is a concrete candidate for
+exactly the kind of route this correction leaves open. It is tracked as H-007.
 
 ## Unplanned positive finding
 

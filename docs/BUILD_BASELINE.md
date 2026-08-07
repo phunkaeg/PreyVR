@@ -30,3 +30,34 @@ All static findings must name the exact module and use an RVA in addition to the
 The EGS image was reconstructed in the user's temporary directory from the unmodified installed Steam DLL and Chairloader's official diff. Both input and output hashes were verified before import. The installed game was not changed.
 
 Chairloader/PDB RVAs are **reference-build-only**. Never copy one into a Steam hook table. A reference function must be translated by an invariant byte/control-flow signature, checked against the exact Steam hash, decompiled on both sides, and preferably validated live before promotion to [`ADDRESS_REGISTRY.md`](ADDRESS_REGISTRY.md).
+
+### Leading REX prefixes are not invariant
+
+A prologue is a weak anchor for cross-build translation because x86-64 REX prefixes (`0x40`–`0x4F`)
+are partly a codegen choice rather than a semantic requirement. Two builds of the same function can
+differ by exactly one leading byte while everything after it still disassembles as plausible code,
+so the failure is silent rather than a crash. This was contributed to the cross-engine playbook from
+SOMAVR, where it broke two hooks at once in a way that presented as two unrelated faults.
+
+An audit of the current 22-signature table on 2026-08-07 found:
+
+| Leading byte | Count | Notes |
+| --- | ---: | --- |
+| Bare `0x40` REX | 5 | `renderer.end`, `aim.update_cached_ray`, `movement.get_state`, `interaction.select_candidates`, `interaction.interact` |
+| Other REX `0x41`–`0x4F` | 16 | mostly `0x48` (`REX.W`) |
+| No REX prefix | 1 | `aim.get_cached_ray` only |
+
+The bare-`0x40` cases are the most fragile: `40 55` and `55` are the same `push rbp`, so the prefix
+carries no meaning. `aim.update_cached_ray` begins `40 55 57` — the first push takes a REX prefix and
+the immediately following one does not, which marks the prefix as MSVC frame/unwind convention
+rather than necessity.
+
+**This is not a runtime risk in the current design.** Signatures are applied only after the exact
+`PreyDll.dll` SHA-256 is confirmed, so a different build fails on the hash before any signature is
+read. The exposure is in the translation step above, where a prologue-anchored search across two
+builds can silently miss or mismatch.
+
+**Rule.** When translating a reference function, prefer a unique *interior* anchor past the prologue,
+or ignore leading bytes in the REX range when searching. R-024 already does this — its registry entry
+records that its "unique interior begins at `+0x27`" because its prologue was not distinctive enough.
+Treat that as the normal method for cross-build work, not an exception.
