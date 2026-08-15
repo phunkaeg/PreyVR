@@ -275,3 +275,45 @@ Three static findings, no game running and no input required.
   SThreadInfo&, void(*)())` is the obvious next thread.
 - **Next question:** Resolve the two vtables at `0x181DD2FA0`/`0x181DD7CB0` to identify their owning
   classes, then find the call sites that pass `bRecursive = true`.
+
+## 2026-08-15 - The recursive pass takes an arbitrary camera
+
+- **The decisive find.** `Cry3DEngine/I3DEngine.h` defines
+  `SRenderingPassInfo::CreateRecursivePassRenderingInfo(const CCamera& rCamera, uint32 nRenderingFlags)`.
+  It sets `m_nRenderStackLevel = 1`, calls `passInfo.SetCamera(rCamera)`, acquires the recursive view
+  through `GetRenderViewForThread(passInfo.ThreadID(), true)` (R-032), and tags render items with
+  `SRendItemSorter::eRecursivePassMask`. The sibling construction at line 3007 is identical but passes
+  `false`, for the normal pass.
+- **Why this matters.** Every prior entry carried the caveat that Looking Glass renders a *different
+  environment* rather than the main world from a second camera, and that stereo needs the latter. This
+  function takes **any** `CCamera` as its first parameter. The engine's own recursive-pass entry point
+  is parameterised on the camera, so rendering the world again from a supplied camera is a native,
+  first-class operation rather than something to be improvised.
+- **Why R-028 was structurally doomed.** R-036 `CRenderView::Job_PostWrite` is the sole caller of R-034
+  `CollectLookingGlassInformation`. Looking Glass data is gathered in a **post-write job on the render
+  view**, so it never nests `BeginRendererScene`/`EndRendererScene`. This is the same
+  `JobRenderViewPostWrite` string found at `0x181DCAF7B` during the very first stereo reconnaissance,
+  where it was noted as revealing nothing about view count. It was the thread to pull.
+- **Three more translations**, each a unique byte match with a documented signature cut point:
+  `CollectLookingGlassInformation` EGS `0xEB7FB0` to Steam `0xEE44D0` (R-034), `EnableLookingGlass`
+  EGS `0xEB85E0` to Steam `0xEE4B00` (R-035), and `Job_PostWrite` EGS `0xEB9EA0` to Steam `0xEE63C0`
+  (R-036). All three deltas are `0x2C520`, matching R-030 - expected, since all four occupy the same
+  contiguous stretch of `CRenderView` code, and not evidence of a global delta.
+- **Reverse translation works.** R-036 was identified by reading its Steam bytes, matching them in the
+  EGS image, then looking that EGS RVA up in the header table: Steam address to name, mechanically.
+  The 14,622-entry table is usable in both directions.
+- **Free layout fact:** `CRenderView::m_bLookingGlassEnabled` sits at `+0xFC0`, from R-035's single
+  instruction.
+- **Not resolved.** The two renderer vtables at `0x181DD2FA0` and `0x181DD7CB0` were **not** identified.
+  Locating their bases requires a backward scan for the RTTI pointer, and that was abandoned as poor
+  value once the headers answered the question directly. `CRenderView`'s vtable was located
+  incidentally at `0x181DCAEB8`.
+- **Limits.** `CreateRecursivePassRenderingInfo` is `inline`, so it likely has **no standalone address
+  to hook** - it compiles into each caller, and the practical seam is those call sites, which have not
+  been enumerated. Everything here is static and nothing has been observed executing. Separately,
+  `e_RecursionViewDistRatio` divides the zoom factor in recursive passes, so a recursive view renders
+  at reduced view distance by design, which is a quality consideration if this route is ever used for
+  an eye.
+- **Next question:** Enumerate the call sites of `CreateRecursivePassRenderingInfo` in the Steam binary
+  by locating the inlined `GetRenderViewForThread(..., true)` pattern, and determine what submits a
+  recursive view for rendering.
