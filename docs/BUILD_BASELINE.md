@@ -31,6 +31,26 @@ The EGS image was reconstructed in the user's temporary directory from the unmod
 
 Chairloader/PDB RVAs are **reference-build-only**. Never copy one into a Steam hook table. A reference function must be translated by an invariant byte/control-flow signature, checked against the exact Steam hash, decompiled on both sides, and preferably validated live before promotion to [`ADDRESS_REGISTRY.md`](ADDRESS_REGISTRY.md).
 
+### There is no global EGS-to-Steam RVA delta
+
+Measured on 2026-08-15 across seven functions whose Steam and EGS addresses are both known:
+
+| Function | Steam | EGS | delta |
+| --- | ---: | ---: | ---: |
+| `CRenderView::SetCamera` | `0xEE7E80` | `0xEBB960` | `0x2C520` |
+| `GetArkPlayerInstance` | `0x157C990` | `0x154FA60` | `0x2CF30` |
+| `IArkPlayer::GetReticleViewPositionAndDir` | `0x157CBB0` | `0x154FC80` | `0x2CF30` |
+| `ArkPlayerCamera::SetCustomViewFunction` | `0x1456460` | `0x14298B0` | `0x2CBB0` |
+| `CArkWeapon::FindIronsightsTarget` | `0x16930A0` | `0x16655F0` | `0x2DAB0` |
+| `CArkWeapon::GetReticleInfoForFiring` | `0x1694890` | `0x1666DE0` | `0x2DAB0` |
+| `ArkPlayerMovementController::GetMovementState` | `0x159AF10` | `0x156E050` | `0x2CEC0` |
+
+Five distinct deltas across seven pairs, spanning `0x1590` (5,520 bytes). Code was inserted and
+removed unevenly between the builds, so **no arithmetic shortcut exists**. This matters now that
+the Chairloader headers supply 14,622 EGS function RVAs: each one must be translated by its own
+byte signature. Applying any observed delta to a second function is unsound even when it happens
+to work, and two of the pairs above sharing `0x2CF30` shows how easily that could look convincing.
+
 ### Leading REX prefixes are not invariant
 
 A prologue is a weak anchor for cross-build translation because x86-64 REX prefixes (`0x40`–`0x4F`)
