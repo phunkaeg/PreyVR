@@ -352,3 +352,37 @@ Three static findings, no game running and no input required.
   `reproduced`. Neither vtable was verified against a live object this session, since Prey was closed.
 - **Next question:** Recover the real PDB names for R-002 and R-003 by reverse translation, and rename
   them throughout the registry and the engine map.
+
+## 2026-08-15 - R-002 and R-003 had invented names; both corrected
+
+- **The correction.** R-002 and R-003 are `CD3D9Renderer::RT_BeginFrame` and `CD3D9Renderer::RT_EndFrame`,
+  declared adjacently at `RenderDll/XRenderD3D9/DriverD3D.h:1049-1050`. They have been called
+  `BeginRendererScene` and `EndRendererScene` since 2026-07-31. Those names were never PDB symbols;
+  they return zero matches across all 633 generated headers.
+- **How the wrong names arose.** `RT_EndFrame` was named after the diagnostic string it references,
+  `EndScene without BeginScene`. That is precisely the string-only association
+  [`GHIDRA_SYNC.md`](GHIDRA_SYNC.md)'s annotation policy rule 3 forbids: *"Do not rename an unknown
+  function after a string-only association."* The project wrote that rule and then broke it in its
+  first annotation batch. The diagnostic's wording is legacy CryEngine vocabulary and describes the
+  *check*, not the function.
+- **Method.** Reverse translation, the technique that identified R-036. Steam bytes matched in the EGS
+  reference gave `0xF52150` for R-003, unique, which the header table names `FRT_EndFrame`.
+- **R-002 needed disambiguation.** Its prologue `48 8B C4 55 53 48 8D 68 A1 48 81 EC B8 00 00 00` is a
+  generic MSVC frame setup carrying no member offsets, and it matches **twice** in EGS, at `0xF51650`
+  and `0x141CAD0`. The correct match was selected by spacing: `RT_EndFrame` sits exactly `0xB00` after
+  `RT_BeginFrame` in both builds (Steam `0xF7D710`/`0xF7E210`, EGS `0xF51650`/`0xF52150`). The rejected
+  candidate is `ArkCystoid::ProcessNearbyCystoids`, which confirms the choice. Both deltas are
+  `0x2C0C0`.
+- **Free ABI confirmation.** The PDB signature is `void RT_EndFrame(CD3D9Renderer* _this)`. PreyVR's
+  frame observer assumed `void(__fastcall*)(void* renderer)` from Ghidra decompilation alone; the PDB
+  now confirms it independently.
+- **Lesson worth keeping.** Naming a function after a string it references buys the *string's*
+  vocabulary, not the function's identity. R-002 also shows the second half: a prologue with no member
+  offsets is a weak cross-build anchor, and here it was genuinely ambiguous. Prefer interior anchors,
+  as `BUILD_BASELINE.md` already advises for the REX and RIP-relative hazards.
+- **Scope of the change.** Registry, Ghidra names and plate comments updated; the program was saved.
+  **The compiled engine map still uses the old description strings.** Changing them alters the DLL
+  hash, and the 22-landmark artifact has never been live-loaded, so that rename is deliberately left
+  as a separate decision rather than compounding an unverified build.
+- **Next question:** Decide whether to rename the descriptions in `src/common/EngineMap.cpp` and the
+  build doctor, accepting a new artifact hash, or defer until after the pending supported-host load.

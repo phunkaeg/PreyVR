@@ -20,6 +20,8 @@ This file records the reproducible state of the shared analysis database; it is 
 
 | 2026-08-15 | `/Prey/reference/PreyVR-PreyDll-EGS-0485c85b.dll` | EGS `0485C85B…99F0A63` | Imported PDB-derived types from Chairloader headers | Parsed `Vec3`, `Vec2`, `Quat` and `CRenderCamera` into the EGS reference program's type manager via Ghidra's CParser; 4 types added, 1,118 total. `CRenderCamera` resolves to 72 bytes with `vOrigin` at `+0x24`, `fWL` at `+0x30`, `fNear` at `+0x40`, matching R-026's measured offsets exactly. Source: `tools/Chairloader-src/Common/Prey/CryRenderer/IRenderer.h`. The Steam program was not modified. |
 
+| 2026-08-15 | `/Prey/PreyDll.dll` | Same | Corrected the renderer frame-boundary names | Renamed `0x180F7D710` to `CD3D9Renderer_RT_BeginFrame` and `0x180F7E210` to `CD3D9Renderer_RT_EndFrame`, replacing the invented `BeginRendererScene`/`EndRendererScene`. Real names recovered by reverse translation against the EGS reference and `DriverD3D.h:1049-1050`. Both plate comments rewritten to record the correction, the ABI confirmation, and the two-match disambiguation for R-002. Program saved. |
+
 ## What a full re-analysis pass actually destroys
 
 Tested directly on 2026-08-07 against the surviving database, because the first characterisation of
