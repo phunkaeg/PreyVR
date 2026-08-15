@@ -317,3 +317,38 @@ Three static findings, no game running and no input required.
 - **Next question:** Enumerate the call sites of `CreateRecursivePassRenderingInfo` in the Steam binary
   by locating the inlined `GetRenderViewForThread(..., true)` pattern, and determine what submits a
   recursive view for rendering.
+
+## 2026-08-15 - Both renderer vtables resolved
+
+- **Method, since RTTI is unavailable.** The renderer has no RTTI, so there is no Complete Object
+  Locator at `base-8` and no class name to read - `0x181DD2E00` holds an ordinary text pointer. The
+  bases were instead recovered by arithmetic from a live-verified slot. R-004 captured, in a running
+  process, that the renderer singleton's vtable is called at `+0x8D0` and resolves to R-003. The
+  pointer to R-003 occurs **exactly once** in the whole image, at `0x181DD36D8`, so the base is
+  `0x181DD36D8 - 0x8D0 = 0x181DD2E08`. R-002's pointer at `0x181DD36D0` gives the same base via
+  `- 0x8C8`, independently.
+- **R-037, `CD3D9Renderer` vtable at `0x1DD2E08`.** This is the vtable of the live renderer object,
+  not an inference - R-004's dispatch was observed executing. `GetRenderViewForThread` (R-032) sits at
+  `+0x198`, slot index 51.
+- **R-038, `CRenderer` vtable at `0x1DD7B18`.** The second vtable holding R-032. Assuming the same
+  slot index gives that base, and at `+0x8C8` and `+0x8D0` it holds `0x181B9AE62` **twice**. That
+  address disassembles as `FF 25 90 8E 0D 00`, a `jmp qword ptr [rip+...]` IAT import thunk, i.e.
+  `_purecall`. Two adjacent pure-virtual slots exactly where the concrete vtable has R-002 and R-003
+  identifies this as the abstract base class. `GetRenderViewForThread` is implemented in `CRenderer`
+  itself, which is why it appears in both vtables.
+- **A cross-check that failed, and why it does not matter.** The obvious confirmation - that the slot
+  following `GetRenderViewForThread` should match the next virtual declared after it in `Renderer.h` -
+  does **not** hold. The vtable belongs to `IRenderer`, so slot order follows the interface's
+  declaration order, not `CRenderer`'s. The identification rests on the `_purecall` pair and on
+  R-004's live capture, both of which are sound without it.
+- **Naming discovery.** `BeginRendererScene` and `EndRendererScene` return **zero** matches across all
+  633 PDB-derived headers. Those are names this project invented during the first renderer
+  reconnaissance, not PDB symbols. Their real names are recoverable by reverse translation, the same
+  technique that identified R-036: read the Steam bytes, match them in the EGS image, look that RVA up
+  in the header table. Worth doing, since R-002 and R-003 are the most-referenced entries in the
+  registry and currently carry invented names.
+- **Limits.** R-038's base assumes the shared slot index, which is sound for a single-inheritance
+  vtable prefix but was not independently measured, so it is recorded as `observed` rather than
+  `reproduced`. Neither vtable was verified against a live object this session, since Prey was closed.
+- **Next question:** Recover the real PDB names for R-002 and R-003 by reverse translation, and rename
+  them throughout the registry and the engine map.
