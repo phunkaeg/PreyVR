@@ -65,7 +65,9 @@ struct PreyRendererGraphics 0xB200 {
     IDXGISwapChain* swapchain_mirror +0x8          // abs 0xAFA8
 }
 
-// Per-frame render view block. Registry ID R-026. Validated live 2026-08-01:
+// Per-frame render view block. Registry ID R-026. The camera group at
+// abs +0x240 is a CRenderCamera (72 bytes) -- confirmed 2026-08-15 against
+// Chairloader's PDB-derived CryRenderer/IRenderer.h. Validated live 2026-08-01:
 // position tracked player movement 0.67244 units over 100 frames with head bob
 // visible in Z, and the rotation was verified orthonormal (all row norms and
 // pairwise dot products within 1e-3).
@@ -85,8 +87,10 @@ struct PreyRendererGraphics 0xB200 {
 struct PreyRendererView 0x328 {
     float aspect +0x40                             // abs 0x040
     float position_copy[3] +0x1EC                  // abs 0x230, duplicate of position
-    float rotation[9] +0x4                         // abs 0x240, Matrix33 row-major, row1 = up (Z)
-    float position[3]                              // abs 0x264, sequential
+    // CRenderCamera::vX, vY, vZ -- the camera basis (right / up / back).
+    // vY is the camera's up vector; it reads near world Z only while level.
+    float rotation[9] +0x4                         // abs 0x240, CRenderCamera::vX,vY,vZ
+    float position[3]                              // abs 0x264, CRenderCamera::vOrigin
     float frustum_left                             // abs 0x270, sequential
     float frustum_right                            // abs 0x274
     float frustum_bottom                           // abs 0x278

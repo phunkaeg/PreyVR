@@ -37,3 +37,25 @@ Record failed experiments with enough detail that a later session does not casua
 - **Rule:** Do not re-run apitrace `--mhook` against Prey without first establishing why `ntdll` faults. `--method=iat` is materially safer — it rewrites import pointers rather than patching instructions in place — and is the only apitrace variant worth retrying, accepting that dynamic loading may leave it with nothing to hook. For D3D11 frame structure questions, prefer RenderDoc, which is mature on this API and already the project's sanctioned capture route.
 - **Note:** `install_wrapper` cannot serve as a fallback here. The MCP rejects it outright: *"D3D10/D3D11 tracing requires trace_launch(api='dxgi'); a manual DXGI wrapper install is not supported."*
 - **Recovery:** No game files were modified; the release directory still holds exactly its original seven files. Clear the Steam launch options before playing normally, or every launch retries the crash.
+
+## F-004 — RenderDoc blocks vendor extensions; Prey null-derefs at NVAPI init
+
+- **Date:** 2026-08-15
+- **Target:** `Prey.exe` 1.0.1.0 / `PreyDll.dll` SHA-256 `7D6E322F61B28331095A400F0BA5F09BD9A39C57BF993602285DD6ACB05311A7`
+- **Intent:** Capture two frames with `e_ArkLookingGlass` toggled, to decide H-007 without apitrace after F-003.
+- **Mechanism:** RenderDoc 1.45 Launch Application. Executable `…\x64\Release\Prey.exe`, working directory the game root, environment `SteamAppId=480490`, default capture options.
+- **What worked:** The `SteamAppId` variable defeated `SteamAPI_RestartAppIfNecessary`, which had silently killed every earlier direct launch. `Game.log` confirms the game reached `Renderer initialization`, created its window at 2560x1440, and initialised its own crash handler.
+- **Result:** `EXCEPTION_ACCESS_VIOLATION` reading address `0x0`, at `0x00007FFFB689024A`, exception module `<Unknown>`. CryEngine wrote `error.dmp` (50 MB), `error.log`, and `Game.log` to the game root. The last successful log line is decisive:
+
+```text
+Direct3D driver is creating...
+Creating window called 'Prey' (2560x1440)
+NVAPI: DepthBoundsTesting supported     <- last success
+Begin handle Exception                  <- crash
+```
+
+- **Interpretation:** The crash lands immediately after Prey's NVIDIA vendor-extension query during D3D11 device creation. RenderDoc carries a capture option named `AllowUnsupportedVendorExtensions` in `replay\capture_options.cpp`, together with `!!! Vendor Extension enabled: %s`, so it refuses vendor extensions by default. That the crash lands exactly at the vendor-extension step is strong circumstantial evidence, but the dump was not symbolised and `<Unknown>` module was not resolved, so the causal link is inferred rather than proven.
+- **Blocked fix:** `AllowUnsupportedVendorExtensions` is **not** among the twelve capture options this RenderDoc UI serialises into `most_recent.cap`, so there is no confirmed way to enable it from the GUI. Do not guess at one. RenderDoc also warns `Capture requires vendor extensions by %s to replay, but no support for that is available.`, so even a forced capture might not replay.
+- **Runtime evidence gained:** `NVAPI: DepthBoundsTesting supported` is the first **runtime** confirmation that R-025's vendor-extension branch actually executes, and that the NVIDIA path is the one taken on this machine. The device-creation capture had explicitly left this open. The AMD twin string `AGS: DepthBoundsTesting supported` sits adjacent at `0x181DD1758`.
+- **Rule:** Prey takes a vendor-extension device-creation path before plain `D3D11CreateDevice`. Any capture, injection, or wrapping layer must tolerate that path or it will fault during device creation. Check this before reaching for a new graphics tool, not after.
+- **Recovery:** No project files were modified. The `Release` directory still holds exactly its original seven files; the crash artefacts are the game's own and sit in the game root. Delete the 50 MB `error.dmp` when finished with it.

@@ -30,3 +30,9 @@
 /.env.*
 !/env.example
 /config/local/
+
+# Third-party tooling vendored under tools/ (binaries and source checkouts).
+# Chairloader is the PDB-derived reference for the canonical EGS build; its
+# release binaries and source clone are large and are not project artifacts.
+/tools/Chairloader-*/
+/tools/Chairloader-*.zip
