@@ -118,8 +118,8 @@ struct PreyRendererFrameProbe 0xB200 {
     uint command_ring_count +0x6288                // abs 0xAC28, active entry = count & 1
     uint command_ring_prev                         // abs 0xAC2C
     uintptr_t command_ring[2]                      // abs 0xAC30, R-027 timing queries
-    IDXGISwapChain* swapchain +0x248               // abs 0xAE88
-    int scene_nesting +0x68                        // abs 0xAEF8, guards EndScene-without-BeginScene
+    IDXGISwapChain* swapchain +0x248               // abs 0xAE88, CD3D9Renderer::m_pSwapChain
+    int scene_nesting +0x68                        // abs 0xAEF8, CD3D9Renderer::m_SceneRecurseCount
     ID3D11Device* device +0x2C                     // abs 0xAF28
     uintptr_t context_related_interface +0x10      // abs 0xAF40
     ID3D11Device* device_mirror +0x50              // abs 0xAF98
