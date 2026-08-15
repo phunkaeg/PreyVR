@@ -51,6 +51,31 @@ the Chairloader headers supply 14,622 EGS function RVAs: each one must be transl
 byte signature. Applying any observed delta to a second function is unsound even when it happens
 to work, and two of the pairs above sharing `0x2CF30` shows how easily that could look convincing.
 
+### RIP-relative displacements are build-specific
+
+A signature that embeds a `[RIP+disp32]` operand encodes the *distance* to a global, which moves
+whenever anything between the instruction and its target changes size. Such a signature is exact for
+one build and worthless for translation.
+
+An audit of the 22 promoted signatures on 2026-08-15 found **three** affected:
+
+| Landmark | RVA | Embedded instruction | disp32 |
+| --- | ---: | --- | ---: |
+| `renderer.dispatch` (R-004) | `0xFE9D14` | `4C 8B 15 …` `mov r10,[rip+d]` | `0x1B54BC5` |
+| `player.get_instance` (R-008) | `0x157C990` | `48 8B 0D …` `mov rcx,[rip+d]` | `0xCD108D` |
+| `movement.get_state` (R-016) | `0x159AF10` | `48 8B 0D …` `mov rcx,[rip+d]` | `0xCB2B43` |
+
+The decode was verified: `renderer.dispatch`'s instruction ends at RVA `0xFE9D1B`, and
+`0xFE9D1B + 0x1B54BC5 = 0x2B3E8E0` — exactly R-005, the renderer singleton pointer.
+
+**No runtime risk.** Signatures are applied only after the exact `PreyDll.dll` SHA-256 matches, so
+the displacement is correct by construction. The exposure is translation: these three cannot be used
+to locate their functions in the EGS build or in any future Steam patch.
+
+**Rule.** When translating, either mask the four displacement bytes or anchor on a stretch without
+one. This is why R-031's signature stops at 39 bytes — the next instruction is a `LEA RAX,[RIP+…]`
+vtable load, and including it would have guaranteed a miss.
+
 ### Leading REX prefixes are not invariant
 
 A prologue is a weak anchor for cross-build translation because x86-64 REX prefixes (`0x40`–`0x4F`)

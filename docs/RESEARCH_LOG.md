@@ -242,3 +242,36 @@
 - **What this means for the per-eye route.** The path is short and entirely native: `GetRenderViewForThread(threadID, true)` returns the recursive view, `SetCamera` re-aims it. No construction, no allocation, no lifetime management.
 - **Limits.** Everything here is static; none of these functions has been observed executing. R-033 has never been read live. Above all, **obtaining a recursive view is not the same as getting it rendered** — the pool existing says nothing about whether a mod can cause the engine to submit that view, populate its render items, or composite its output. That is the next real question, and it is larger than anything answered today.
 - **Next question:** Read R-033 live and confirm four non-null pointers with `[t][1]` distinct from `[t][0]`; then find what actually consumes the recursive view during a frame.
+
+## 2026-08-15 — Unattended static pass: signature audit, `CCamera`, view-pool encapsulation
+
+Three static findings, no game running and no input required.
+
+- **Signature audit.** Three of the 22 promoted signatures embed a `[RIP+disp32]` operand and are
+  therefore build-specific: `renderer.dispatch` (R-004), `player.get_instance` (R-008) and
+  `movement.get_state` (R-016). Decode verified — R-004's displacement resolves to exactly
+  `0x2B3E8E0`, the R-005 renderer singleton. **No runtime risk**, because signatures are only applied
+  after the exact module hash matches; the exposure is cross-build translation, where all three would
+  fail. Recorded in [`BUILD_BASELINE.md`](BUILD_BASELINE.md) alongside the REX hazard.
+- **`CCamera` carries first-class asymmetric-frustum support.** `CryMath/Cry_Camera.h` declares
+  `SetAsymmetry(float l, float r, float b, float t)` backed by `m_asymL/R/B/T`. This is precisely the
+  `L != -R` projection OpenXR requires per eye, already present as a purpose-built setter.
+  **Critical caveat, from the engine's own comment: "not used for culling atm."** Asymmetry shifts
+  projection but may not propagate to the culling frustum, which collides directly with
+  [`ARCHITECTURE.md`](ARCHITECTURE.md)'s non-negotiable that the engine must own culling for
+  translation to reveal new geometry. Treat asymmetric projection as available but culling-unsafe
+  until tested.
+- **Usable `CCamera` surface for a per-eye route:** `SetMatrix(const Matrix34&)` (asserts
+  orthonormal), `SetPosition(const Vec3&)`, `SetFrustum(w, h, fov, near, far, pixelAspect)`,
+  `SetZRange(min, max)`, `SetAsymmetry(l, r, b, t)`. `m_fov` is vertical FOV in radians.
+- **The view pool is fully encapsulated.** The `+0x6F38` displacement appears **exactly once** in the
+  entire image, at `0x180FE562B` inside R-032 itself. No other code reaches `m_pRenderViews`
+  directly, so `GetRenderViewForThread` is the single point of control for view acquisition — useful
+  if the mod ever needs to intercept it.
+- **Not done, and why.** Tracing what *consumes* the recursive view stalled: `GetRenderViewForThread`
+  is virtual and its only two xrefs are vtable slots at `0x181DD2FA0` and `0x181DD7CB0`. Consumers
+  dispatch through those, so finding them needs vtable analysis rather than xrefs. That is a larger
+  job and was left rather than half-done. `CD3D9Renderer::RT_RenderScene(CRenderView*, int,
+  SThreadInfo&, void(*)())` is the obvious next thread.
+- **Next question:** Resolve the two vtables at `0x181DD2FA0`/`0x181DD7CB0` to identify their owning
+  classes, then find the call sites that pass `bRecursive = true`.
