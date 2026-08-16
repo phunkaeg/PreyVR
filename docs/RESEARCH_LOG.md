@@ -416,3 +416,26 @@ Three static findings, no game running and no input required.
   committed source at `c062097`, 11/11 passing.
 - **The comment was reverted** and the deferral note lives in documentation only, which cannot affect
   the artifact.
+
+## 2026-08-15 - F-005 corrected; reference artifact re-recorded from a fresh build
+
+- **Correction.** The preceding entry claimed the build is not byte-reproducible. **That is withdrawn.**
+  A fresh `cmake --fresh` build of the committed source produced `1D21F6D8...`, identical to the
+  incremental build from the same source. The build is deterministic run-to-run in this environment.
+  The original claim rested on three data points and asserted an untested mechanism.
+- **A second hypothesis, also refuted.** The bundled `openxr_loader.dll` hash differs between the
+  build-1 manifest (`6DF5C6EC...`) and now (`5E502DFD...`) despite an unchanged pinned commit, which
+  looked like a candidate cause. It is not: `PreyVR.dll` imports only `bcrypt.dll`, `SHELL32.dll`,
+  `ADVAPI32.dll` and `KERNEL32.dll`, all with zero import timestamps. The loader is not linked into it.
+- **What remains true.** The hash recorded for build 1, `179652AA...`, does not reproduce from the
+  committed source, and that artifact was destroyed by rebuilding. Why build 1 differs is **not
+  established** and is now recorded as an open question rather than an explained one.
+- **The operational rule is unchanged and is the part that matters.** Compute the DLL's hash
+  immediately before loading it and record that with the capture; never rebuild between recording and
+  loading; treat a documented artifact hash as a historical label on a capture rather than a target.
+- **Reference artifact re-recorded:** `1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614`,
+  fresh build of `c062097`, 11/11 passing, manifest and on-disk file agreeing. Not to be rebuilt before
+  the pending supported-host load.
+- **New loose end.** The shipped `openxr_loader.dll` is not reproducing from a pinned commit. It is
+  provably not the cause of the PreyVR.dll difference, but it ships with the mod and its
+  reproducibility deserves its own investigation.

@@ -60,42 +60,71 @@ Begin handle Exception                  <- crash
 - **Rule:** Prey takes a vendor-extension device-creation path before plain `D3D11CreateDevice`. Any capture, injection, or wrapping layer must tolerate that path or it will fault during device creation. Check this before reaching for a new graphics tool, not after.
 - **Recovery:** No project files were modified. The `Release` directory still holds exactly its original seven files; the crash artefacts are the game's own and sit in the game root. Delete the 50 MB `error.dmp` when finished with it.
 
-## F-005 - The build is not byte-reproducible, and a rebuild destroys the referenced artifact
+## F-005 - A recorded artifact hash did not reproduce; treat artifact hashes as capture labels
 
 - **Date:** 2026-08-15
 - **Target:** `PreyVR.dll` `0.3.0-lifecycle-hardening`, built by `tools/Run-Headless.ps1`
 - **Intent:** Add a comment to `src/common/EngineMap.cpp` marking a deferred rename, then confirm the
   comment left the artifact hash untouched.
-- **Result:** Three builds produced three different hashes:
 
-| Build | Source state | `dll_sha256` |
-| --- | --- | --- |
-| 1 | committed | `179652AA69CD7EDF85CC45C0F2F2A75BD549FB5116E1F142FD3A87F744824E68` |
-| 2 | one added comment | `80AACFC389444B5BCFF3FC84AAEAFB079A870805C84B2A3EE417B0E41C3B67AE` |
-| 3 | reverted, byte-identical to build 1 | `1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614` |
+### What happened
 
-  Builds 1 and 3 were produced from **identical source** and do not match. The likely mechanism is the
-  PDB signature GUID, regenerated on every link and embedded in the PE debug directory; a comment
-  shifts line numbers, which forces a recompile, but even reverting does not restore the original GUID.
-  A fourth rebuild with no source change at all did **not** alter the hash, because nothing was
-  recompiled or relinked.
-- **Damage done:** [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) instructed the
-  next operator to "Load exactly the DLL whose SHA-256 is shown above" and to validate the resulting
-  log with `-ExpectedDllSha256 179652AA...`. **That artifact no longer exists and cannot be
-  regenerated.** It was overwritten by rebuilding while testing whether a comment was hash-neutral.
-  Nothing about the DLL's *behaviour* changed - the source is identical and all 11 tests pass - but the
-  specific binary the handover named is gone.
-- **Why this matters beyond one lost file.** The project records a self-hash for each artifact and
-  treats it as an identity. It is not an identity of the *source*; it identifies **one build output**.
-  Any rebuild, for any reason, invalidates every document that names the previous hash.
-- **Rule.** Never assume a recorded artifact hash is reproducible. For a live test, compute the hash of
-  the DLL **immediately before loading it**, and record that value alongside the capture - do not rely
-  on a hash written into a document earlier, and do not rebuild between recording and loading. Treat a
-  documented artifact hash as a historical label for a capture, never as a target to rebuild toward.
-- **Not affected:** the fail-closed gate is unharmed. The 22 landmark signatures, the
-  `supported_preydll_sha256` baseline, and the build doctor all validate against the *game*, not
-  against the mod's own hash.
-- **Recovery:** The current artifact is
-  `1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614`, built from the committed source at
-  `c062097`, passing 11/11. The handover was updated to name it and to replace the fixed-hash
-  instruction with a compute-it-at-load-time procedure.
+| Build | Source state | Kind | `dll_sha256` |
+| --- | --- | --- | --- |
+| 1 | committed | (from the hardening pass) | `179652AA...` |
+| 2 | one added comment | incremental | `80AACFC3...` |
+| 3 | reverted, byte-identical to build 1 | incremental | `1D21F6D8...` |
+| 4 | unchanged from build 3 | **fresh** (`cmake --fresh`) | `1D21F6D8...` |
+
+### Correction to this entry's first version
+
+This was first written up as "the build is not byte-reproducible", on the strength of builds 1-3.
+**Build 4 refutes that headline.** A fresh build and an incremental build from identical source
+produced the same hash, so the build *is* deterministic run-to-run in this environment. The original
+conclusion was drawn from three points and asserted a mechanism - a regenerating PDB signature GUID -
+that was never tested.
+
+A second hypothesis was then raised and also refuted: the `openxr_loader.dll` hash differs between the
+build-1 manifest (`6DF5C6EC...`) and the current one (`5E502DFD...`) despite the same pinned commit,
+which looked like it might propagate. It cannot. `PreyVR.dll` imports only `bcrypt.dll`, `SHELL32.dll`,
+`ADVAPI32.dll` and `KERNEL32.dll`, all with zero import timestamps; the loader is not linked into it.
+
+**What is actually established:** the build is deterministic here, and the hash recorded for build 1
+does not reproduce from the committed source. **Why build 1 differs is not established.** The most
+plausible remaining explanation is that build 1 was produced from a source or toolchain state that
+differs from the commit it was recorded against - for instance, built before a final edit that landed
+in the same commit - but that has not been demonstrated and should not be repeated as fact.
+
+### Damage done
+
+[`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) instructed the next operator to
+"Load exactly the DLL whose SHA-256 is shown above" and to validate the resulting log with
+`-ExpectedDllSha256 179652AA...`. **That artifact was overwritten by rebuilding and does not come back**
+- confirmed, since a fresh build from the committed source yields `1D21F6D8...`, not `179652AA...`.
+Behaviour is unchanged and all 11 tests pass, but the specific binary that procedure named is gone.
+
+### Rule
+
+Regardless of the unresolved cause, the operational rule stands and is what matters:
+
+**Compute the hash of the DLL immediately before loading it, and record that value alongside the
+capture.** Do not rely on a hash written into a document earlier, and do not rebuild between recording
+and loading. A documented artifact hash is a historical label attached to a capture, never a target to
+rebuild toward. Whether a given rebuild reproduces it is not something to assume in either direction.
+
+### Not affected
+
+The fail-closed gate is unharmed. The 22 landmark signatures, the `supported_preydll_sha256` game
+baseline and the build doctor all validate against the *game* binary, not against the mod's own hash.
+
+### Current reference artifact
+
+`1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614`, from a **fresh** build of the
+committed source at `c062097`, 11/11 passing, manifest and on-disk file agreeing. Recorded as the
+reference on 2026-08-15. Do not rebuild before the pending supported-host load.
+
+### Loose end worth its own look
+
+The bundled `openxr_loader.dll` hash changed from `6DF5C6EC...` to `5E502DFD...` across builds despite
+`openxr_commit` staying pinned at `64f2b37c8c6da3d83c9b4d11865ba1fb752cb8ec`. That loader is shipped
+with the mod, so its reproducibility is a real question even though it is provably not the cause here.

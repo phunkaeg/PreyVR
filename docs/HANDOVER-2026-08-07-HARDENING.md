@@ -13,7 +13,7 @@ startup. The current DLL is ready for one bounded supported-host validation.
 | --- | --- |
 | Version | `0.3.0-lifecycle-hardening` |
 | Release DLL | `build/headless/Release/PreyVR.dll` |
-| DLL SHA-256 | `1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614` (**was** `179652AA...`; see F-005 - the build is not byte-reproducible and that artifact no longer exists) |
+| DLL SHA-256 | `1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614` — fresh build of committed source `c062097`, recorded 2026-08-15. **Was** `179652AA...`, which no longer exists and does not reproduce; see F-005. Still compute the hash yourself before loading. |
 | OpenXR loader SHA-256 | `6DF5C6ECBE0BDEB2ED91A3F92151C54328264C705981A19D768EB047192A914A` |
 | Engine gate | 22 landmarks from one compiled C++ table |
 | Fresh Release loop | 11/11 CTest targets passed |
