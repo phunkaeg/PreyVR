@@ -386,3 +386,33 @@ Three static findings, no game running and no input required.
   as a separate decision rather than compounding an unverified build.
 - **Next question:** Decide whether to rename the descriptions in `src/common/EngineMap.cpp` and the
   build doctor, accepting a new artifact hash, or defer until after the pending supported-host load.
+
+## 2026-08-15 - The build is not byte-reproducible (F-005)
+
+- **How it surfaced.** The R-002/R-003 rename was deferred, so a comment was added to
+  `src/common/EngineMap.cpp` marking the deferral where an editor would see it, then the loop was run
+  to confirm the comment was hash-neutral. It was not. Reverting the comment did not restore the
+  original hash either.
+- **Evidence.** Three builds, three hashes: `179652AA...` (committed source), `80AACFC3...` (one added
+  comment), `1D21F6D8...` (reverted, byte-identical source to the first). Builds one and three came
+  from identical source and differ. A further rebuild with no source change left the hash alone,
+  because nothing was recompiled. The likely mechanism is the PDB signature GUID regenerating on each
+  link into the PE debug directory.
+- **Consequence, and it is not theoretical.** The hardening handover told the next operator to load
+  the DLL with hash `179652AA...` and to validate the smoke log against it. **That artifact was
+  destroyed by the rebuild and cannot be regenerated.** Behaviour is unchanged - identical source,
+  11/11 passing - but the specific binary named in the procedure is gone.
+- **The methodological error underneath.** A recorded artifact self-hash was being treated as an
+  identity for the *source*. It is not; it identifies one build output. Every document naming a
+  previous hash is invalidated by any rebuild, for any reason.
+- **Corrected procedure.** The handover now instructs the operator to compute the DLL's hash
+  immediately before loading it and record that value with the capture, rather than matching a hash
+  written down earlier. A documented artifact hash is a historical label on a capture, never a target
+  to rebuild toward.
+- **Not affected.** The fail-closed gate is unharmed. The 22 landmark signatures, the
+  `supported_preydll_sha256` game baseline and the build doctor all validate against the *game*
+  binary, not against the mod's own hash.
+- **Current artifact:** `1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614`, from the
+  committed source at `c062097`, 11/11 passing.
+- **The comment was reverted** and the deferral note lives in documentation only, which cannot affect
+  the artifact.

@@ -13,7 +13,7 @@ startup. The current DLL is ready for one bounded supported-host validation.
 | --- | --- |
 | Version | `0.3.0-lifecycle-hardening` |
 | Release DLL | `build/headless/Release/PreyVR.dll` |
-| DLL SHA-256 | `179652AA69CD7EDF85CC45C0F2F2A75BD549FB5116E1F142FD3A87F744824E68` |
+| DLL SHA-256 | `1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614` (**was** `179652AA...`; see F-005 - the build is not byte-reproducible and that artifact no longer exists) |
 | OpenXR loader SHA-256 | `6DF5C6ECBE0BDEB2ED91A3F92151C54328264C705981A19D768EB047192A914A` |
 | Engine gate | 22 landmarks from one compiled C++ table |
 | Fresh Release loop | 11/11 CTest targets passed |
@@ -106,8 +106,11 @@ parser, and build doctor.
 
 1. Start Prey, load a stable save, and attach the chosen x64 debugging/injection tool. Do not arm
    unrelated renderer, weapon, or interaction breakpoints.
-2. Load exactly the DLL whose SHA-256 is shown above. Wait for `PreyVR_GetSmokeStatus()` to become
-   nonzero.
+2. **Compute the SHA-256 of the DLL you are about to load, immediately before loading it, and
+   record that value.** Do not rely on the hash in the table above: per F-005 the build is not
+   byte-reproducible, so any rebuild changes it. The table's value identifies one historical
+   build output, not the source. Then load that DLL and wait for `PreyVR_GetSmokeStatus()` to
+   become nonzero.
 3. Require all of:
    - `preyvr_smoke_start` reports version `0.3.0-lifecycle-hardening`, the expected DLL hash, and
      `expectedLandmarks=22`;
@@ -128,7 +131,7 @@ parser, and build doctor.
 ./tools/Test-PreyVRSmokeLog.ps1 `
   -ExpectedStatus verified `
   -ExpectedLandmarkCount 22 `
-  -ExpectedDllSha256 179652AA69CD7EDF85CC45C0F2F2A75BD549FB5116E1F142FD3A87F744824E68
+  -ExpectedDllSha256 <the hash you computed in step 2>
 ```
 
 Any hash mismatch, unsupported result, missing/mismatched landmark, crash, or hang is a stop

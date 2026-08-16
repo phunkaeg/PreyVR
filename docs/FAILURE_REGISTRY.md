@@ -59,3 +59,43 @@ Begin handle Exception                  <- crash
 - **Runtime evidence gained:** `NVAPI: DepthBoundsTesting supported` is the first **runtime** confirmation that R-025's vendor-extension branch actually executes, and that the NVIDIA path is the one taken on this machine. The device-creation capture had explicitly left this open. The AMD twin string `AGS: DepthBoundsTesting supported` sits adjacent at `0x181DD1758`.
 - **Rule:** Prey takes a vendor-extension device-creation path before plain `D3D11CreateDevice`. Any capture, injection, or wrapping layer must tolerate that path or it will fault during device creation. Check this before reaching for a new graphics tool, not after.
 - **Recovery:** No project files were modified. The `Release` directory still holds exactly its original seven files; the crash artefacts are the game's own and sit in the game root. Delete the 50 MB `error.dmp` when finished with it.
+
+## F-005 - The build is not byte-reproducible, and a rebuild destroys the referenced artifact
+
+- **Date:** 2026-08-15
+- **Target:** `PreyVR.dll` `0.3.0-lifecycle-hardening`, built by `tools/Run-Headless.ps1`
+- **Intent:** Add a comment to `src/common/EngineMap.cpp` marking a deferred rename, then confirm the
+  comment left the artifact hash untouched.
+- **Result:** Three builds produced three different hashes:
+
+| Build | Source state | `dll_sha256` |
+| --- | --- | --- |
+| 1 | committed | `179652AA69CD7EDF85CC45C0F2F2A75BD549FB5116E1F142FD3A87F744824E68` |
+| 2 | one added comment | `80AACFC389444B5BCFF3FC84AAEAFB079A870805C84B2A3EE417B0E41C3B67AE` |
+| 3 | reverted, byte-identical to build 1 | `1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614` |
+
+  Builds 1 and 3 were produced from **identical source** and do not match. The likely mechanism is the
+  PDB signature GUID, regenerated on every link and embedded in the PE debug directory; a comment
+  shifts line numbers, which forces a recompile, but even reverting does not restore the original GUID.
+  A fourth rebuild with no source change at all did **not** alter the hash, because nothing was
+  recompiled or relinked.
+- **Damage done:** [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) instructed the
+  next operator to "Load exactly the DLL whose SHA-256 is shown above" and to validate the resulting
+  log with `-ExpectedDllSha256 179652AA...`. **That artifact no longer exists and cannot be
+  regenerated.** It was overwritten by rebuilding while testing whether a comment was hash-neutral.
+  Nothing about the DLL's *behaviour* changed - the source is identical and all 11 tests pass - but the
+  specific binary the handover named is gone.
+- **Why this matters beyond one lost file.** The project records a self-hash for each artifact and
+  treats it as an identity. It is not an identity of the *source*; it identifies **one build output**.
+  Any rebuild, for any reason, invalidates every document that names the previous hash.
+- **Rule.** Never assume a recorded artifact hash is reproducible. For a live test, compute the hash of
+  the DLL **immediately before loading it**, and record that value alongside the capture - do not rely
+  on a hash written into a document earlier, and do not rebuild between recording and loading. Treat a
+  documented artifact hash as a historical label for a capture, never as a target to rebuild toward.
+- **Not affected:** the fail-closed gate is unharmed. The 22 landmark signatures, the
+  `supported_preydll_sha256` baseline, and the build doctor all validate against the *game*, not
+  against the mod's own hash.
+- **Recovery:** The current artifact is
+  `1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614`, built from the committed source at
+  `c062097`, passing 11/11. The handover was updated to name it and to replace the fixed-hash
+  instruction with a compute-it-at-load-time procedure.
