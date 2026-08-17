@@ -60,71 +60,77 @@ Begin handle Exception                  <- crash
 - **Rule:** Prey takes a vendor-extension device-creation path before plain `D3D11CreateDevice`. Any capture, injection, or wrapping layer must tolerate that path or it will fault during device creation. Check this before reaching for a new graphics tool, not after.
 - **Recovery:** No project files were modified. The `Release` directory still holds exactly its original seven files; the crash artefacts are the game's own and sit in the game root. Delete the 50 MB `error.dmp` when finished with it.
 
-## F-005 - A recorded artifact hash did not reproduce; treat artifact hashes as capture labels
+## F-005 - The build is not reproducible: no `/Brepro`, so the PE timestamp is the link time
 
-- **Date:** 2026-08-15
-- **Target:** `PreyVR.dll` `0.3.0-lifecycle-hardening`, built by `tools/Run-Headless.ps1`
-- **Intent:** Add a comment to `src/common/EngineMap.cpp` marking a deferred rename, then confirm the
-  comment left the artifact hash untouched.
+- **Date:** 2026-08-15, mechanism established 2026-08-16
+- **Target:** every binary produced by `tools/Run-Headless.ps1`, including `PreyVR.dll` and the shipped
+  `openxr_loader.dll`
 
-### What happened
+### Established mechanism
 
-| Build | Source state | Kind | `dll_sha256` |
+`CMakeLists.txt` sets no `/Brepro`, and neither output carries an `IMAGE_DEBUG_TYPE_REPRO` debug entry.
+Without that flag MSVC writes the real wall-clock link time into `IMAGE_FILE_HEADER.TimeDateStamp`:
+
+| Binary | PE TimeDateStamp | decodes to | file mtime |
 | --- | --- | --- | --- |
-| 1 | committed | (from the hardening pass) | `179652AA...` |
-| 2 | one added comment | incremental | `80AACFC3...` |
-| 3 | reverted, byte-identical to build 1 | incremental | `1D21F6D8...` |
-| 4 | unchanged from build 3 | **fresh** (`cmake --fresh`) | `1D21F6D8...` |
+| `PreyVR.dll` | `0x6A813D67` | 2026-08-16 04:32:39 UTC | 04:32:39 |
+| `openxr_loader.dll` | `0x6A813D16` | 2026-08-16 04:31:18 UTC | 04:31:21 |
 
-### Correction to this entry's first version
+The timestamps match the file mtimes and sit 81 seconds apart, in dependency order. **Every relink
+writes a new timestamp, so every relink changes the SHA-256.** This is a property of the build
+configuration, not of any one target, which is why the OpenXR loader "not reproducing" was never a
+loader-specific mystery - nothing in this build reproduces.
 
-This was first written up as "the build is not byte-reproducible", on the strength of builds 1-3.
-**Build 4 refutes that headline.** A fresh build and an incremental build from identical source
-produced the same hash, so the build *is* deterministic run-to-run in this environment. The original
-conclusion was drawn from three points and asserted a mechanism - a regenerating PDB signature GUID -
-that was never tested.
+Helpfully, neither binary has a `CODEVIEW` debug entry, so no PDB GUID or path is embedded. The
+timestamp is plausibly the *only* source of non-determinism here, which means `/Brepro` alone may be
+enough to make these builds reproducible. That has not been tested.
 
-A second hypothesis was then raised and also refuted: the `openxr_loader.dll` hash differs between the
-build-1 manifest (`6DF5C6EC...`) and the current one (`5E502DFD...`) despite the same pinned commit,
-which looked like it might propagate. It cannot. `PreyVR.dll` imports only `bcrypt.dll`, `SHELL32.dll`,
-`ADVAPI32.dll` and `KERNEL32.dll`, all with zero import timestamps; the loader is not linked into it.
+### Correction history, because this entry was wrong twice
 
-**What is actually established:** the build is deterministic here, and the hash recorded for build 1
-does not reproduce from the committed source. **Why build 1 differs is not established.** The most
-plausible remaining explanation is that build 1 was produced from a source or toolchain state that
-differs from the commit it was recorded against - for instance, built before a final edit that landed
-in the same commit - but that has not been demonstrated and should not be repeated as fact.
+1. **v1** concluded "the build is not byte-reproducible" from three builds. The conclusion was right;
+   the mechanism given - a regenerating PDB signature GUID - was a guess, and is wrong. There is no
+   CODEVIEW entry to regenerate.
+2. **v2 withdrew the conclusion**, on the grounds that a `cmake --fresh` build reproduced the previous
+   hash. **That was wrong.** `cmake --fresh` wipes the CMake cache and reconfigures but does **not**
+   force a relink; existing outputs stay up to date. `PreyVR.dll` is timestamped 04:32:39 while the
+   fresh `CMakeCache.txt` is 04:59:18 - the DLL is 27 minutes older than the reconfigure that
+   supposedly produced it. Build 4 emitted no new binary, so the matching hash was the same file, not
+   a reproduced one.
+3. **v3, this version**, reinstates the conclusion with a mechanism that is checkable from the binary
+   alone and needs no rebuild to confirm.
+
+**The recurring error was reasoning from hash equality or difference without first establishing
+whether a build had actually occurred.** A hash comparison is only evidence about determinism if a
+relink demonstrably happened; check the PE timestamp or the file mtime before drawing either
+conclusion.
 
 ### Damage done
 
 [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) instructed the next operator to
-"Load exactly the DLL whose SHA-256 is shown above" and to validate the resulting log with
-`-ExpectedDllSha256 179652AA...`. **That artifact was overwritten by rebuilding and does not come back**
-- confirmed, since a fresh build from the committed source yields `1D21F6D8...`, not `179652AA...`.
-Behaviour is unchanged and all 11 tests pass, but the specific binary that procedure named is gone.
+load the DLL with hash `179652AA...`. That artifact was overwritten by rebuilding and cannot be
+recreated, because a rebuild cannot reproduce any prior hash.
 
 ### Rule
 
-Regardless of the unresolved cause, the operational rule stands and is what matters:
-
-**Compute the hash of the DLL immediately before loading it, and record that value alongside the
-capture.** Do not rely on a hash written into a document earlier, and do not rebuild between recording
-and loading. A documented artifact hash is a historical label attached to a capture, never a target to
-rebuild toward. Whether a given rebuild reproduces it is not something to assume in either direction.
+**Compute the hash of the DLL immediately before loading it, and record that value with the capture.**
+Never rebuild between recording a hash and loading that binary - not even for a comment, since any
+relink changes it. A documented artifact hash is a historical label attached to a capture, never a
+target to rebuild toward.
 
 ### Not affected
 
-The fail-closed gate is unharmed. The 22 landmark signatures, the `supported_preydll_sha256` game
-baseline and the build doctor all validate against the *game* binary, not against the mod's own hash.
+The fail-closed gate. The 22 landmark signatures, the `supported_preydll_sha256` game baseline and the
+build doctor all validate against the *game* binary, not the mod's own hash.
 
 ### Current reference artifact
 
-`1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614`, from a **fresh** build of the
-committed source at `c062097`, 11/11 passing, manifest and on-disk file agreeing. Recorded as the
-reference on 2026-08-15. Do not rebuild before the pending supported-host load.
+`1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614`, linked 2026-08-16 04:32:39 UTC from
+the committed source at `c062097`, 11/11 passing, manifest and on-disk file agreeing. **Do not rebuild
+before the pending supported-host load** - doing so destroys it exactly as `179652AA...` was destroyed.
 
-### Loose end worth its own look
+### Open option, not taken
 
-The bundled `openxr_loader.dll` hash changed from `6DF5C6EC...` to `5E502DFD...` across builds despite
-`openxr_commit` staying pinned at `64f2b37c8c6da3d83c9b4d11865ba1fb752cb8ec`. That loader is shipped
-with the mod, so its reproducibility is a real question even though it is provably not the cause here.
+Adding `/Brepro` to the linker flags would replace the timestamp with a content hash and may make these
+builds reproducible outright, given no PDB signature is embedded. It has not been done, because
+changing the build would destroy the reference artifact again. Worth doing deliberately after the live
+load, together with a test that actually forces a relink.

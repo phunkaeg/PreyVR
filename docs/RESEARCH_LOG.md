@@ -439,3 +439,32 @@ Three static findings, no game running and no input required.
 - **New loose end.** The shipped `openxr_loader.dll` is not reproducing from a pinned commit. It is
   provably not the cause of the PreyVR.dll difference, but it ships with the mod and its
   reproducibility deserves its own investigation.
+
+## 2026-08-16 - Why nothing in the build reproduces: no `/Brepro`
+
+- **Question asked:** why the shipped `openxr_loader.dll` was not reproducing from a pinned commit.
+- **Answer: it is not loader-specific.** `CMakeLists.txt` sets no `/Brepro`, and neither `PreyVR.dll`
+  nor `openxr_loader.dll` carries an `IMAGE_DEBUG_TYPE_REPRO` entry. MSVC therefore writes the real
+  link time into `IMAGE_FILE_HEADER.TimeDateStamp`. `PreyVR.dll` reads `0x6A813D67`, 2026-08-16
+  04:32:39 UTC; the loader reads `0x6A813D16`, 04:31:18 UTC, 81 seconds earlier and in dependency
+  order. Both match their file mtimes. Every relink writes a new timestamp, so every relink changes the
+  hash - for every target in the build.
+- **This overturns the previous entry's correction.** That entry withdrew the non-reproducibility
+  finding because a `cmake --fresh` build reproduced the prior hash. **`cmake --fresh` does not force a
+  relink** - it wipes the CMake cache and reconfigures, leaving existing outputs up to date.
+  `PreyVR.dll` is timestamped 04:32:39 while the fresh `CMakeCache.txt` is 04:59:18, so the DLL is 27
+  minutes older than the reconfigure that supposedly produced it. No new binary was emitted; the
+  matching hash was the same file.
+- **The recurring mistake, stated plainly.** Twice now a conclusion about determinism was drawn from
+  comparing hashes without first checking whether a build had actually happened. A hash comparison
+  says nothing about reproducibility unless a relink demonstrably occurred. The PE timestamp and the
+  file mtime both answer that in seconds.
+- **Useful detail:** neither binary carries a `CODEVIEW` debug entry, so no PDB GUID or path is
+  embedded. The link timestamp is plausibly the only source of non-determinism, which means `/Brepro`
+  alone might make these builds reproducible. Untested, and deliberately not attempted now, since
+  changing the build would destroy the reference artifact.
+- **No rebuild was performed for this investigation.** Everything above was read out of the existing
+  binaries and file metadata, precisely so the reference artifact
+  `1D21F6D8...` survives to the supported-host load.
+- **Next question:** After the live load, add `/Brepro`, then verify reproducibility with a test that
+  forces a genuine relink - touch a source file, build, revert, build again, and compare.
