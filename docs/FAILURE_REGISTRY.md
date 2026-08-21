@@ -134,3 +134,29 @@ Adding `/Brepro` to the linker flags would replace the timestamp with a content 
 builds reproducible outright, given no PDB signature is embedded. It has not been done, because
 changing the build would destroy the reference artifact again. Worth doing deliberately after the live
 load, together with a test that actually forces a relink.
+
+## F-006 - Ghidra `emulate_function` silently succeeds with all-zero registers on a bad format
+
+- **Date:** 2026-08-16
+- **Target:** `mcp__ghidra__emulate_function` against R-032 `CRenderer::GetRenderViewForThread`
+- **Intent:** Test R-032's index formula by execution instead of by reading five instructions.
+- **Mechanism:** `registers` was passed as `RCX=0x10000000,RDX=0x0,R8=0x0` - the obvious key-value form.
+- **Result:** The call returned `success: true`, `hit_return: true`, `stop_reason: "return"`, and
+  `steps_executed: 5`, which is exactly right for this five-instruction function. Every indicator said
+  the emulation worked. **But the inputs were silently discarded and the emulator ran with all-zero
+  registers.** Four runs across the full input matrix all returned `RAX = 0x0`, which reads naturally
+  as "the pool slots are null" - a plausible, completely false finding.
+- **How it was caught:** The function never writes `RCX`, so `RCX` was added to `return_registers` and
+  read back. It returned `0x0` after being set to `0x180000000`. That is unambiguous proof the inputs
+  were dropped rather than the memory being empty.
+- **Correct format: JSON.** `{"RCX":"0x180000000","RDX":"0x1","R8":"0x1"}` applies correctly; the
+  registers read back with the values supplied. A semicolon-separated variant also fails silently.
+- **Rule.** Before trusting any `emulate_function` result, **include an input register that the function
+  never modifies in `return_registers`, and confirm it reads back the value you supplied.** A malformed
+  `registers` string does not error - it produces a confident, well-formed, entirely wrong answer. The
+  same check applies to `memory`.
+- **Why this belongs here.** It is the same silent-failure class as F-002's ReGenny overlay, which also
+  returned plausible numbers from a misconfigured input. A tool that rejects bad input is safe; a tool
+  that accepts it and answers anyway is the dangerous kind. Verify the harness before the hypothesis.
+- **Recovery:** No lasting damage. The bad results were discarded before anything was recorded, and the
+  re-run with JSON produced the verified matrix now recorded against R-032 and R-033.

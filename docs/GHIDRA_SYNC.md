@@ -22,6 +22,8 @@ This file records the reproducible state of the shared analysis database; it is 
 
 | 2026-08-15 | `/Prey/PreyDll.dll` | Same | Corrected the renderer frame-boundary names | Renamed `0x180F7D710` to `CD3D9Renderer_RT_BeginFrame` and `0x180F7E210` to `CD3D9Renderer_RT_EndFrame`, replacing the invented `BeginRendererScene`/`EndRendererScene`. Real names recovered by reverse translation against the EGS reference and `DriverD3D.h:1049-1050`. Both plate comments rewritten to record the correction, the ABI confirmation, and the two-match disambiguation for R-002. Program saved. |
 
+| 2026-08-16 | `/Prey/PreyDll.dll` | Same | Created R-032 as a function and verified analysis health | Ghidra had not auto-created a function at `0x180FE5620` (a 20-byte leaf), which is why `get_function_callers` and `emulate_function` both failed on it. Created as `CRenderer_GetRenderViewForThread`, body size 20, matching the byte count. Program saved. **Analysis health checked** per a fleet-wide warning that Ghidra can report `analyzed: true` on a near-empty database: Steam `PreyDll.dll` holds 86,434 functions across 48,338,776 bytes and the EGS reference 87,026 across 48,289,760 — about one function per 557 bytes each, consistent with each other and plausible for the size. Neither program is under-analysed. Note that `analysis_status` reports `Program not found` for the EGS reference while `get_current_program_info` resolves it normally, so do not infer a missing program from `analysis_status` alone. |
+
 ## What a full re-analysis pass actually destroys
 
 Tested directly on 2026-08-07 against the surviving database, because the first characterisation of

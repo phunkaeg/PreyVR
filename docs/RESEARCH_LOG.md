@@ -468,3 +468,42 @@ Three static findings, no game running and no input required.
   `1D21F6D8...` survives to the supported-host load.
 - **Next question:** After the live load, add `/Brepro`, then verify reproducibility with a test that
   forces a genuine relink - touch a source file, build, revert, build again, and compare.
+
+## 2026-08-16 - R-032's index formula tested by emulation
+
+- **Prompted by** a fleet-wide audit noting that every RE tool is used through a narrow slice of its
+  surface, and flagging Ghidra's `emulate_function` as the highest-leverage unused call for a project
+  doing this much static work ahead of a live hook. That is a fair characterisation of this project.
+- **Analysis health checked first**, per the same audit's warning that Ghidra can report
+  `analyzed: true` on a near-empty database. Steam `PreyDll.dll` has 86,434 functions across 48,338,776
+  bytes; the EGS reference has 87,026 across 48,289,760. About one function per 557 bytes each,
+  consistent with each other. Neither is under-analysed, so no downstream result needed revisiting.
+- **Ghidra had never created a function at R-032.** At 20 bytes it is a leaf that auto-analysis skipped,
+  which is why `get_function_callers` returned nothing useful for it earlier and why `emulate_function`
+  initially refused it. Created as `CRenderer_GetRenderViewForThread`; the resulting body size of 20
+  matches the byte count exactly, which is itself a boundary confirmation.
+- **Result: the index formula is confirmed by execution.** With `RCX` set to the image base so the pool
+  overlays known file bytes, the four input combinations returned:
+
+| `nThreadID` | `bRecursive` | returned | slot | index |
+| ---: | ---: | --- | --- | ---: |
+| 0 | 0 | `0x8D4801C092E20D8D` | `+0x00` | 0 |
+| 0 | 1 | `0x05C74801CA738305` | `+0x08` | 1 |
+| 1 | 0 | `0x0000000002248CF8` | `+0x10` | 2 |
+| 1 | 1 | `0xE902248CD9058948` | `+0x18` | 3 |
+
+  The `nThreadID=1, bRecursive=0` case is the decisive one: it returns slot **2**, ruling out the
+  alternative ordering `nThreadID + bRecursive*2`. R-032 and R-033 are updated to record that the
+  arithmetic is tested rather than read.
+- **A trap found on the way, recorded as F-006.** The first four runs used the obvious
+  `RCX=0x...,RDX=0x0` key-value form for `registers`. Every run reported `success: true`,
+  `hit_return: true` and the correct five-step count - and returned `RAX = 0x0` in all four cases,
+  which reads naturally as "the pool slots are null". The inputs had been **silently discarded** and the
+  emulator ran with zeroed registers. It was caught by adding `RCX`, which the function never modifies,
+  to `return_registers` and finding it read back `0x0`. The correct format is JSON. Verify the harness
+  before the hypothesis; this is the same silent-failure shape as F-002.
+- **Scope:** static only. No game running, no rebuild, and the reference artifact `1D21F6D8...` is
+  untouched.
+- **Next question:** Emulation is now a proven technique here. The obvious next candidate is a camera or
+  projection builder, where the peer's framing applies directly - it converts "this decompilation looks
+  like a view-matrix builder" into a tested claim before a build is spent on it.
