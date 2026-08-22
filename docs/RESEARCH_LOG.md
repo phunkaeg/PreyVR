@@ -719,3 +719,29 @@ Closing the last open item from R-001 turned into the most useful static result 
   mismatch. It was not — the harness compared a 17-byte expectation against a 16-byte read. Re-run at
   equal length it matches exactly. Worth recording because a false mismatch in a verification script
   is exactly the kind of result that gets believed.
+
+### Whole-vtable alignment, measured rather than assumed
+
+The `CSystem` vtable was worth more than the four slots that located it, so the alignment of all 193
+was tested before trusting any of them. Recorded in [`SYSTEM_VTABLE.md`](SYSTEM_VTABLE.md).
+
+- **Shape asymmetry.** Slots whose header name begins `Get`/`Is` compile to a trivial accessor
+  **74 times out of 99**; slots that do not, **2 out of 94**. A misaligned table would show the same
+  rate in both groups. The two exceptions are `NeedDoWorkDuringOcclusionChecks` and `WasInDevMode` —
+  predicate getters whose names happen not to start with `Get`, so there is no counterexample at all.
+- **The decisive test — 24 independent name predictions.** Twenty-four accessors compile to
+  `MOV RAX,[this+0x28]; MOV RAX,[RAX+d]; RET`, relaying through the `gEnv` pointer at `CSystem+0x28`.
+  For each, `d` was checked against the member the header gives that accessor's name. **All 24 hit
+  the right member.** The two that first looked like misses are CryEngine's own aliases —
+  `GetIAnimationSystem()` returns `ICharacterManager*`, `GetIPak()` returns `ICryPak*`. One test
+  therefore confirms the vtable alignment *and* the entire `SSystemGlobalEnvironment` pointer layout,
+  which R-044 had derived from a three-point fit.
+- **What this buys.** A verified bridge in both directions: any of 193 named `ISystem` methods to its
+  Steam address, and 46 named `gEnv` subsystem pointers. Slots that were byte-verified individually
+  are marked in the table; the rest are derived from an alignment confirmed at 28 independent points
+  and should still have their bytes re-checked before being hooked.
+
+The method generalises. Where a class's PDB header is available but its RVAs are not, find the one
+member that can be identified in the target image by some other means — a log string, an imported
+API, a distinctive constant — compute its slot from the header, and subtract. Then verify the
+alignment statistically before using any other slot.
