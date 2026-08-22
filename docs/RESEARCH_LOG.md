@@ -668,3 +668,54 @@ Three static findings, no game running and no input required.
   same source.
 - **Next question:** classify the second `CreateDXGIFactory1` consumer at `PreyDll.dll+0xD87710`, the
   last open item from R-001/H-002.
+
+## 2026-08-22 - The system view camera is a member, and its setter does nothing else
+
+Closing the last open item from R-001 turned into the most useful static result of the session.
+
+- **The unclassified second `CreateDXGIFactory1` consumer is machine-spec telemetry** (R-046), not a
+  second render or present path. It enumerates adapters, probes each with a throwaway
+  `D3D11CreateDevice` over six feature levels, requires a connected output, keeps the best
+  `DXGI_ADAPTER_DESC1`, and releases everything. Its caller (R-047) caches the result behind a
+  did-run flag; that caller's caller is `ISystem::AutoDetectSpec` (R-045). **R-001 is fully
+  classified.** Useful byproduct: the engine honours an `r_overrideDXGIAdapter` cvar that forces one
+  adapter index, which is a native, supported lever if the HMD ever needs Prey pinned to a specific
+  GPU.
+- **`AutoDetectSpec` was the lever for everything that followed.** It is the one function in that
+  cluster the Chairloader headers actually name, so its vtable slot could be computed from
+  `ISystem.h` and subtracted from its address to locate the **`CSystem` vtable** (R-043).
+- **That independently verified R-039's slot index**, which its own registry entry had flagged as
+  unverified. Two methods agree: counting the virtuals declared directly in `struct ISystem` puts
+  `GetViewCamera` at index 113 = `+0x388`, and the located vtable's `+0x388` slot holds
+  `0x180DF2BB0`. Counting naively gives the wrong answer — two virtuals belong to the nested
+  `ILoadingProgressListener` and four sit inside `#if 0` blocks, and including them shifts the slot
+  by two. **Rule: when deriving a vtable index from a header, count only virtuals declared directly
+  in the class, and honour the preprocessor.**
+- **The payoff.** `CSystem::GetViewCamera` (R-040) is `LEA RAX,[RCX+0x788]; RET`, so the global view
+  camera is the *member* `CSystem::m_ViewCamera` at `+0x788` — not a pointer, and readable without
+  calling anything. `CSystem::SetViewCamera` (R-041) is `ADD RCX,0x788; JMP CCamera::operator=`, and
+  that operator (R-042) is a compiler-generated memberwise copy with no calls and no frustum
+  recomputation. **The setter has no side effects at all.**
+- **This sharpens H-008 rather than overturning it.** The hazard is unchanged in kind — R-011 still
+  rebuilds the aim ray from this camera during `CArkUIHUD::OnPreRender` — but it is now located
+  precisely: *all* of the risk is in who reads `m_ViewCamera` between a set and its restore, and none
+  of it is in the setter. Snapshot/restore is therefore sound in principle, since `CCamera` copies are
+  bit-exact, and the residual question is read ordering, which is a live-timing matter. Injecting at
+  `CRenderView::SetCamera` still wins because it sidesteps the ordering question entirely.
+- **`gEnv` located by a three-point fit** (R-044). Three globals seen in disassembly — an `IConsole`
+  used with `GetCVar`, the R-039 `ISystem` pointer, and a pointer null-checked to mean "renderer not
+  up yet" — land simultaneously on `pConsole` `+0xC0`, `pSystem` `+0xE0` and `pRenderer` `+0x120`
+  from one base. Three constraints, one solution; not a guess.
+- **Gate expanded 28 -> 30.** Only the two view-camera accessors were promoted, both unique at 7 and
+  8 bytes. They are on the mod's critical path and the `GetViewCamera` signature pins `+0x788`
+  itself. The DXGI and spec-detect functions were deliberately *not* gated: they sit on no hook path,
+  and `AutoDetectSpec`'s prologue is non-unique anyway, which is the R-002 hazard recurring.
+- **Verification:** every address above was re-checked directly against the installed `PreyDll.dll` by
+  parsing PE sections and converting RVA to file offset, with no Ghidra involved. Three of the four
+  vtable slots were predicted before being read. Fresh Release loop 11/11; doctor 7 pass, 0 warn,
+  0 fail, all 30 landmarks matched. Artifact
+  `C35B22D39E69D07AA7CC7DF6F5791B8EF598F81FEE293AAD8299EB6300F63AC4`.
+- **One correction to my own method:** the first on-disk check reported the R-046 signature as a
+  mismatch. It was not — the harness compared a 17-byte expectation against a 16-byte read. Re-run at
+  equal length it matches exactly. Worth recording because a false mismatch in a verification script
+  is exactly the kind of result that gets believed.

@@ -192,7 +192,23 @@ constexpr std::array<std::uint8_t, 21> kRenderViewJobPostWrite = {
     0xC1, 0x18, 0x18, 0x00, 0x00,
 };
 
-const std::array<Landmark, 28> kLandmarks = {{
+// R-040 CSystem::GetViewCamera, ISystem vtable slot 113 (+0x388). The whole
+// function is `LEA RAX,[RCX+0x788]; RET`, so the global view camera is the member
+// CSystem::m_ViewCamera at +0x788 rather than a pointer. Eight bytes, and unique
+// in the image: this landmark pins the offset that H-008 depends on.
+constexpr std::array<std::uint8_t, 8> kSystemGetViewCamera = {
+    0x48, 0x8D, 0x81, 0x88, 0x07, 0x00, 0x00, 0xC3,
+};
+
+// R-041 CSystem::SetViewCamera, ISystem vtable slot 112 (+0x380). The whole
+// function is `ADD RCX,0x788; JMP CCamera::operator=` -- a pure member assignment
+// that tail-calls a memberwise copy, notifying nothing and invalidating no cache.
+// Stops at 7 bytes because the following JMP carries a build-specific rel32.
+constexpr std::array<std::uint8_t, 7> kSystemSetViewCamera = {
+    0x48, 0x81, 0xC1, 0x88, 0x07, 0x00, 0x00,
+};
+
+const std::array<Landmark, 30> kLandmarks = {{
     {"renderer.begin", "CD3D9Renderer::RT_BeginFrame", 0xF7D710, kBeginRendererScene},
     {"renderer.end", "CD3D9Renderer::RT_EndFrame", 0xF7E210, kEndRendererScene},
     {"renderer.present", "RT_EndFrame Present dispatch", 0xF7E48A, kPresentDispatch},
@@ -221,6 +237,8 @@ const std::array<Landmark, 28> kLandmarks = {{
     {"view.collect_looking_glass", "CRenderView::CollectLookingGlassInformation", 0xEE44D0, kCollectLookingGlassInfo},
     {"view.enable_looking_glass", "CRenderView::EnableLookingGlass", 0xEE4B00, kEnableLookingGlass},
     {"view.job_post_write", "CRenderView::Job_PostWrite", 0xEE63C0, kRenderViewJobPostWrite},
+    {"system.get_view_camera", "CSystem::GetViewCamera", 0xDF2BB0, kSystemGetViewCamera},
+    {"system.set_view_camera", "CSystem::SetViewCamera", 0xDF4560, kSystemSetViewCamera},
 }};
 
 } // namespace

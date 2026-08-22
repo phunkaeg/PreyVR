@@ -89,8 +89,10 @@ diverge at byte 16: R-002 continues `4C 89 78 E8` (`mov [rax-0x18], r15`) where 
 `48 8B 59 38`. The promoted signature is now **23 bytes**, instruction-aligned and unique.
 
 **Rule.** A signature's length should be chosen by measuring uniqueness against the target image, not
-by taking a fixed number of prologue bytes. All 28 current landmarks were checked this way; R-002 was
-the only non-unique one.
+by taking a fixed number of prologue bytes. All 30 current landmarks were checked this way; R-002 was
+the only non-unique one. The rule earned its keep again on 2026-08-22: `ISystem::AutoDetectSpec`
+(R-045) matches at **three** sites on a 24-byte prologue, so it was left out of the gate rather than
+padded into uniqueness for a function on no hook path.
 
 ### Leading REX prefixes are not invariant
 

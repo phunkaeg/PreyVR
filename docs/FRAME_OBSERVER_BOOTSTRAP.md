@@ -4,7 +4,7 @@ This is the first mutation-capable runtime rung. It is deliberately smaller than
 
 ## Safety contract
 
-- `PreyVR.dll` validates all **28** exact `PreyDll.dll` landmarks before the observer can become ready. The completed supported-host proof below was run at 21. Landmarks 22 through 28 were added afterwards — R-025 device creation, then the six `CRenderView` / `CRenderer` functions of the per-eye route — and are verified headlessly and against the installed on-disk module, but have never been loaded into Prey.
+- `PreyVR.dll` validates all **30** exact `PreyDll.dll` landmarks before the observer can become ready. The completed supported-host proof below was run at 21. Landmarks 22 through 28 were added afterwards — R-025 device creation, then the six `CRenderView` / `CRenderer` functions of the per-eye route — and are verified headlessly and against the installed on-disk module, but have never been loaded into Prey.
 - The observer is compiled **off by default** and is never enabled from `DllMain` or the bootstrap worker.
 - The enable export rejects activation until the supported module has reached its process-exit pin state.
 - The sole target is `CD3D9Renderer::RT_EndFrame` at `PreyDll.dll+0xF7E210`, with ABI `void(CD3D9Renderer*)` confirmed by Ghidra, by live execution, and independently by the PDB signature `FRT_EndFrame` at `DriverD3D.h:1050`.
@@ -17,7 +17,7 @@ This is the first mutation-capable runtime rung. It is deliberately smaller than
 
 | Export | Contract |
 | --- | --- |
-| `PreyVR_GetSmokeStatus` | `0` starting, `1` unsupported/fail-closed, `2` all 28 landmarks verified. |
+| `PreyVR_GetSmokeStatus` | `0` starting, `1` unsupported/fail-closed, `2` all 30 landmarks verified. |
 | `PreyVR_SetFrameObserverEnabled` | Argument `1` installs/enables; `0` disables/removes. Returns the resulting observer status. |
 | `PreyVR_GetFrameObserverStatus` | `0` unavailable, `1` ready/off, `2` enabled, `3` failed. |
 | `PreyVR_GetObservedFrameCount` | Monotonic 64-bit callback count for the current enable interval. |
