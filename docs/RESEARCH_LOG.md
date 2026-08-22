@@ -623,3 +623,48 @@ Three static findings, no game running and no input required.
   `ISystem::GetViewCamera()`, and only one of them caches. The mitigation is unchanged: prefer
   `CRenderView::SetCamera` (R-030), which never alters what `GetViewCamera()` returns.
 - **Scope:** static only. No game running, no rebuild, nothing written.
+
+## 2026-08-22 - Findings folded into the build: 28 landmarks, unique R-002, reproducible artifacts
+
+- **Independent verification first.** Every address translated this session was re-checked directly
+  against the installed `PreyDll.dll` by parsing its PE sections and converting RVA to file offset -
+  no Ghidra involved. All nine checked signatures are byte-correct at their stated RVA. Eight are
+  unique in the image; **R-002 was not**.
+- **R-002's signature was ambiguous and is now fixed.** Its 16-byte prologue is a generic MSVC frame
+  setup occurring twice in the Steam image, at `0xF7D710` and `0x1449620` - mirroring the EGS
+  collision with `ArkCystoid::ProcessNearbyCystoids` found during the rename. The gate was never
+  wrong, because it compares bytes at a fixed RVA rather than scanning, but the signature could not
+  identify the function on its own. The two diverge at byte 16, so it is now **23 bytes**,
+  instruction-aligned and unique. Rule recorded in `BUILD_BASELINE.md`: choose signature length by
+  measuring uniqueness against the image, not by taking a fixed number of prologue bytes.
+- **Gate expanded from 22 to 28.** The six `CRenderView` / `CRenderer` functions translated this
+  session are promoted: `SetCamera`, the constructor, `GetRenderViewForThread`,
+  `CollectLookingGlassInformation`, `EnableLookingGlass` and `Job_PostWrite`. These are the per-eye
+  route's own functions, so the gate now covers the seam the mod will actually use rather than only
+  the frame boundary and gameplay lanes.
+- **R-002/R-003 renamed in the compiled table** to `CD3D9Renderer::RT_BeginFrame` / `RT_EndFrame`. The
+  rename had been deferred to avoid churning the artifact before the live load; that deferral is
+  superseded, since this change set alters the artifact regardless and leaving Ghidra, the registry
+  and the DLL's own log output disagreeing is worse than one more hash change.
+- **F-005 closed: builds are reproducible.** `/Brepro` added to the MSVC link options. Verified with
+  the test the entry called for - one that forces a genuine relink instead of a `cmake --fresh` that
+  rebuilds nothing. Baseline, comment-added and reverted builds all produced
+  `E9A82DB5...`, with both relinks confirmed by changed file mtimes. `add_link_options` reached the
+  FetchContent-built loader too, so the separate `openxr_loader.dll` reproducibility loose end is
+  closed in the same change; both binaries now carry content-hash timestamps rather than wall-clock
+  link times.
+- **A self-inflicted loss worth recording.** During the first reproducibility attempt,
+  `git checkout -- src/common/EngineMap.cpp` was used to remove a probe comment. Those changes were
+  uncommitted, so it discarded the R-002 fix, the renames and all six new landmarks, and the next
+  build silently fell back to 22 landmarks. Recovered by re-running the generating script. The rule is
+  simple: commit before running any test that reverts files, and treat `git checkout --` as
+  destructive to uncommitted work.
+- **Single source of truth held.** Only `EngineMap.cpp` and its test needed count changes. The
+  smoke-log parser, build doctor and build manifest all derive the landmark count from the compiled
+  table, so the hardening pass's deduplication did its job.
+- **Verification:** fresh Release loop 11/11; build doctor 7 pass, 0 warn, 0 fail with all 28
+  landmarks matched against the installed `PreyDll.dll`. Current artifact
+  `E9A82DB50B82B95F373A83AA96A801726C6C3A78D203F4B6E7B28A8DCBEE49A5`, and it now regenerates from the
+  same source.
+- **Next question:** classify the second `CreateDXGIFactory1` consumer at `PreyDll.dll+0xD87710`, the
+  last open item from R-001/H-002.

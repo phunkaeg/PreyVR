@@ -128,7 +128,32 @@ build doctor all validate against the *game* binary, not the mod's own hash.
 the committed source at `c062097`, 11/11 passing, manifest and on-disk file agreeing. **Do not rebuild
 before the pending supported-host load** - doing so destroys it exactly as `179652AA...` was destroyed.
 
-### Open option, not taken
+### RESOLVED 2026-08-22
+
+`/Brepro` was added to the MSVC link options and **the build is now reproducible**. Verified by the
+test this entry called for, one that forces a genuine relink rather than relying on a `cmake --fresh`
+that rebuilds nothing:
+
+| Build | Source state | Relinked | `dll_sha256` |
+| --- | --- | --- | --- |
+| A | committed | baseline | `E9A82DB5...` |
+| B | one comment added | yes | `E9A82DB5...` |
+| C | comment reverted | yes | `E9A82DB5...` |
+
+All three identical, with both relinks confirmed by a changed file mtime. A comment turns out to be
+hash-neutral as well, because comments do not affect codegen and these binaries embed no `CODEVIEW`
+debug entry. Both `PreyVR.dll` and `openxr_loader.dll` now carry content-hash `TimeDateStamp` values
+instead of wall-clock link times, which also closes the separate loader-reproducibility loose end
+noted below — `add_link_options` reached the FetchContent-built loader too.
+
+**The operational rule is relaxed, not withdrawn.** A recorded artifact hash is now reproducible from
+the same source, so it is a meaningful identity again. Computing the hash immediately before loading
+remains good practice, since it costs nothing and still catches the case where the binary on disk is
+not the one you think you built.
+
+### Original option, now taken
+
+
 
 Adding `/Brepro` to the linker flags would replace the timestamp with a content hash and may make these
 builds reproducible outright, given no PDB signature is embedded. It has not been done, because

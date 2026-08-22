@@ -57,7 +57,7 @@ A signature that embeds a `[RIP+disp32]` operand encodes the *distance* to a glo
 whenever anything between the instruction and its target changes size. Such a signature is exact for
 one build and worthless for translation.
 
-An audit of the 22 promoted signatures on 2026-08-15 found **three** affected:
+An audit of the then-22 promoted signatures on 2026-08-15 found **three** affected:
 
 | Landmark | RVA | Embedded instruction | disp32 |
 | --- | ---: | --- | ---: |
@@ -75,6 +75,22 @@ to locate their functions in the EGS build or in any future Steam patch.
 **Rule.** When translating, either mask the four displacement bytes or anchor on a stretch without
 one. This is why R-031's signature stops at 39 bytes — the next instruction is a `LEA RAX,[RIP+…]`
 vtable load, and including it would have guaranteed a miss.
+
+### A promoted signature was not unique
+
+Verified against the installed DLL on 2026-08-22: R-002's original 16-byte signature
+`48 8B C4 55 53 48 8D 68 A1 48 81 EC B8 00 00 00` is a generic MSVC frame setup that occurs **twice**
+in the Steam image, at `0xF7D710` and `0x1449620`. The same collision exists in EGS at `0x141CAD0`,
+which the header table names `ArkCystoid::ProcessNearbyCystoids`.
+
+The gate was never wrong — it compares bytes at a fixed RVA rather than scanning — but the signature
+could not identify the function on its own, which is what cross-build translation needs. The two
+diverge at byte 16: R-002 continues `4C 89 78 E8` (`mov [rax-0x18], r15`) where the collision has
+`48 8B 59 38`. The promoted signature is now **23 bytes**, instruction-aligned and unique.
+
+**Rule.** A signature's length should be chosen by measuring uniqueness against the target image, not
+by taking a fixed number of prologue bytes. All 28 current landmarks were checked this way; R-002 was
+the only non-unique one.
 
 ### Leading REX prefixes are not invariant
 

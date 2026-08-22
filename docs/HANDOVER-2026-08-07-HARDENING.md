@@ -13,11 +13,11 @@ startup. The current DLL is ready for one bounded supported-host validation.
 | --- | --- |
 | Version | `0.3.0-lifecycle-hardening` |
 | Release DLL | `build/headless/Release/PreyVR.dll` |
-| DLL SHA-256 | `1D21F6D8DE722926187D4377E6F1CAEDC33456F665CFABD03BB57A9CFC3BE614` — fresh build of committed source `c062097`, recorded 2026-08-15. **Was** `179652AA...`, which no longer exists and does not reproduce; see F-005. Still compute the hash yourself before loading. |
+| DLL SHA-256 | `E9A82DB50B82B95F373A83AA96A801726C6C3A78D203F4B6E7B28A8DCBEE49A5` — fresh build of committed source `dd9060a`, 2026-08-22. **Builds are now reproducible** (`/Brepro`, F-005 closed), so this hash regenerates from the same source; it was verified across two forced relinks. Earlier values `179652AA...` and `1D21F6D8...` are superseded. Verifying the hash before loading is still good practice. |
 | OpenXR loader SHA-256 | `6DF5C6ECBE0BDEB2ED91A3F92151C54328264C705981A19D768EB047192A914A` |
-| Engine gate | 22 landmarks from one compiled C++ table |
+| Engine gate | **28** landmarks from one compiled C++ table |
 | Fresh Release loop | 11/11 CTest targets passed |
-| Installed-game doctor | 7 pass, 0 warn, 0 fail; one result covers all 22 landmarks |
+| Installed-game doctor | 7 pass, 0 warn, 0 fail; one result covers all 28 landmarks |
 | Unsupported-host stress | 100 consecutive load/status/unload iterations passed |
 | Live status | Current DLL has **not** been loaded into Prey |
 
@@ -79,11 +79,12 @@ lifetime. Restart Prey to test another DLL.
 ### Evidence corrections
 
 - Current documentation clearly separates the historical 21-landmark live proof from the current
-  22-landmark artifact, which is live-validation pending.
+  current 28-landmark artifact, which is live-validation pending.
 - H-001 is a strong negative for an exposed stock stereo/HMD control surface and for an eye pair in
   the probed resident R-026 frame slots. It is not proof that every internal scene re-entry or
   dynamically constructed multi-view route is impossible.
-- R-025 is already promoted into the 22-landmark gate; only the second device-creation consumer at
+- R-025 is promoted into the gate, which now holds 28 landmarks including the six `CRenderView` /
+  `CRenderer` functions of the per-eye route. Only the second device-creation consumer at
   `PreyDll.dll+0xD87710` remains to classify.
 
 ## Verification performed
@@ -113,12 +114,12 @@ parser, and build doctor.
    become nonzero.
 3. Require all of:
    - `preyvr_smoke_start` reports version `0.3.0-lifecycle-hardening`, the expected DLL hash, and
-     `expectedLandmarks=22`;
-   - 22 `preyvr_landmark` lines, all `status=match`;
+     `expectedLandmarks=28`;
+   - 28 `preyvr_landmark` lines, all `status=match`;
    - `preyvr_frame_observer_plan status=ready ... enabled=0`;
    - a bounded `preyvr_openxr_preflight` result with `action=none`;
    - `preyvr_lifecycle module=pinned unload=process_exit_only`;
-   - `preyvr_smoke_result status=verified landmarks=22 ... module=pinned`.
+   - `preyvr_smoke_result status=verified landmarks=28 ... module=pinned`.
 4. If and only if that gate passes, call `PreyVR_SetFrameObserverEnabled(1)`. Let at least 120
    normal gameplay frames pass, then call `PreyVR_SetFrameObserverEnabled(0)`.
 5. Require one disable summary with `frames >= 120`, nonzero first/milestone threads, and non-null

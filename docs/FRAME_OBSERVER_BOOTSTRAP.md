@@ -4,10 +4,10 @@ This is the first mutation-capable runtime rung. It is deliberately smaller than
 
 ## Safety contract
 
-- `PreyVR.dll` validates all 22 exact `PreyDll.dll` landmarks before the observer can become ready. The completed supported-host proof below was run at 21; the 22nd landmark (R-025) was added afterwards and is so far verified only headlessly and against the installed on-disk module.
+- `PreyVR.dll` validates all **28** exact `PreyDll.dll` landmarks before the observer can become ready. The completed supported-host proof below was run at 21. Landmarks 22 through 28 were added afterwards — R-025 device creation, then the six `CRenderView` / `CRenderer` functions of the per-eye route — and are verified headlessly and against the installed on-disk module, but have never been loaded into Prey.
 - The observer is compiled **off by default** and is never enabled from `DllMain` or the bootstrap worker.
 - The enable export rejects activation until the supported module has reached its process-exit pin state.
-- The sole target is `EndRendererScene` at `PreyDll.dll+0xF7E210`, with ABI `void(renderer*)` confirmed by Ghidra and live execution.
+- The sole target is `CD3D9Renderer::RT_EndFrame` at `PreyDll.dll+0xF7E210`, with ABI `void(CD3D9Renderer*)` confirmed by Ghidra, by live execution, and independently by the PDB signature `FRT_EndFrame` at `DriverD3D.h:1050`.
 - Enabling installs a MinHook trampoline whose callback only updates atomic telemetry and calls the original function. It performs no file or string I/O on the render thread.
 - Disabling restores the target entry bytes and emits one control-thread summary. The disabled hook entry and trampoline are retained until process exit so a callback that was already in flight cannot return through freed executable memory.
 - After the exact supported-host gate succeeds, the DLL is permanently pinned until process exit. It must not be passed to `FreeLibrary`; restart Prey to load another build.
@@ -17,7 +17,7 @@ This is the first mutation-capable runtime rung. It is deliberately smaller than
 
 | Export | Contract |
 | --- | --- |
-| `PreyVR_GetSmokeStatus` | `0` starting, `1` unsupported/fail-closed, `2` all 22 landmarks verified. |
+| `PreyVR_GetSmokeStatus` | `0` starting, `1` unsupported/fail-closed, `2` all 28 landmarks verified. |
 | `PreyVR_SetFrameObserverEnabled` | Argument `1` installs/enables; `0` disables/removes. Returns the resulting observer status. |
 | `PreyVR_GetFrameObserverStatus` | `0` unavailable, `1` ready/off, `2` enabled, `3` failed. |
 | `PreyVR_GetObservedFrameCount` | Monotonic 64-bit callback count for the current enable interval. |
@@ -27,7 +27,7 @@ This is the first mutation-capable runtime rung. It is deliberately smaller than
 ## Supported-host proof
 
 1. Load the exact Release DLL while Prey is in a stable saved game.
-2. Require `status=verified landmarks=22`, `observer=ready`, and no unsupported/mismatch line.
+2. Require `status=verified landmarks=28`, `observer=ready`, and no unsupported/mismatch line.
 3. Require an OpenXR preflight result. `ready` authorizes a later bootstrap experiment, but starts no XR work.
 4. Call `PreyVR_SetFrameObserverEnabled(1)` for a bounded interval.
 5. Let at least 120 frames pass and require a running game.
