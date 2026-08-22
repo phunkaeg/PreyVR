@@ -22,6 +22,7 @@ The notebook separates evidence from plans so implementation follows demonstrate
 13. [`LIVE_INTERACTION_A0_PROTOCOL.md`](LIVE_INTERACTION_A0_PROTOCOL.md) — completed no-button, stack-local changed-use-target proof for the native interaction selector.
 14. [`FRAME_OBSERVER_BOOTSTRAP.md`](FRAME_OBSERVER_BOOTSTRAP.md) — historical default-off EndScene proof plus the lifecycle-hardened current protocol.
 15. [`LIVE_MULTIVIEW_PROBE_PROTOCOL.md`](LIVE_MULTIVIEW_PROBE_PROTOCOL.md) — completed read-only probe that closed the multi-view half of H-001 negative.
-16. [`VR_MECHANICS_RISK.md`](VR_MECHANICS_RISK.md) — binary-grounded ranking of which Prey mechanics are hardest to bring into VR, and what to decide first.
+16. [`PRIOR_ART_FC2VR.md`](PRIOR_ART_FC2VR.md) — assessment of the Far Cry 2 / Dunia VR mod: an existence proof of the mod-owned per-eye route, with the failure analysis worth inheriting.
+17. [`VR_MECHANICS_RISK.md`](VR_MECHANICS_RISK.md) — binary-grounded ranking of which Prey mechanics are hardest to bring into VR, and what to decide first.
 
 Use the shared D3D11/OpenXR playbook as methodology, but do not copy its engine-specific assumptions into Prey findings.

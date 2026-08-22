@@ -507,3 +507,47 @@ Three static findings, no game running and no input required.
 - **Next question:** Emulation is now a proven technique here. The obvious next candidate is a camera or
   projection builder, where the peer's framing applies directly - it converts "this decompilation looks
   like a view-matrix builder" into a tested claim before a build is spent on it.
+
+## 2026-08-22 - FC2VR prior art assessed
+
+- **What it is.** `FC2VR_DISCORD_TEST_v1.0.1R4` for Far Cry 2 / Dunia. Its "native stereo" is **not** an
+  engine stereo mode: `NATIVE_VIEW_BEGIN`/`END` bracket one eye rendered through the engine's own camera
+  and view-builder path, and "native stereo" means both eyes done that way and submitted as an
+  `XrCompositionLayerProjection`. Their recurring failure, "Projection/Quad flapping", is the host
+  falling back to a flat `XrCompositionLayerQuad`. So it is an **existence proof of the mod-owned
+  per-eye route** PreyVR committed to after H-001 — not evidence that any engine kept a stereo switch.
+  The lineage is close: Dunia forks CryEngine 1, Prey is CryEngine 3.x-era.
+- **Reuse is blocked by bitness, measured not assumed.** The bridge `d3d9_fc2vr.dll` and both outers are
+  **x86**; `fc2vr-host.exe` and their OpenXR loader are **x64**. Far Cry 2 is 32-bit and the host is
+  deliberately out-of-process so a 32-bit game can reach a 64-bit runtime. Prey is 64-bit, so the
+  in-process bridge cannot load, and only binaries are shipped — no source, and no documented
+  shared-memory protocol. The value is the design and the failure analysis, not the binaries.
+- **The most valuable transfer is a bug we have not hit yet.** Their R2 evidence is bit-exact: while the
+  LEFT eye was being built, the game's own camera observer kept running and overwrote the stored primary
+  camera with LEFT's transient value; RIGHT then rejected a correctly-restored stock camera against that
+  contaminated reference. **PreyVR has a mapped analogue** — R-011 recomputes a cached world ray from the
+  camera every frame into ArkPlayer `+0x17D4`/`+0x17E0`, and that ray is what the A0b wrench proof and
+  the interaction A0 proof both steer. Driving the camera per eye would feed it whichever eye ran last.
+  Tracked as H-008.
+- **Second transfer: validate pose, not matrix coefficients.** Their original guard compared 16 raw View
+  coefficients against a fixed `0.010` threshold and produced yaw-dependent false rejects, because
+  world-space translation amplifies rotation rounding at large map coordinates. They now validate the
+  rebuilt physical pose (rotation error `< 0.0025`, position error `< 0.010`) and keep the raw value as
+  telemetry. R-026's camera was measured at roughly `(786, 1572, 17)` — the same coordinate range that
+  caused their problem.
+- **Also worth inheriting:** separate persistent stereo ownership from per-frame transfer state (their
+  R3); hold the last complete L/R pair rather than letting a mono frame overwrite eye slots (their R4);
+  transactional camera restore with a *visible* fail-back (their R1).
+- **They have deterministic fresh rebuilds** that reproduce the shipped SHA-256 exactly, which PreyVR
+  currently does not — an existence proof supporting the `/Brepro` option recorded in F-005.
+- **An injection vector we had dismissed.** FC2VR reaches the game with a `d3d9.dll` **proxy** in the
+  game folder. R-025 established that `PreyDll.dll` calls `LoadLibraryA("dxgi.dll")` with a bare name,
+  and bare-name `LoadLibrary` searches the application directory first — so a `dxgi.dll` proxy beside
+  `Prey.exe` would be loaded by Prey itself. apitrace's refusal to install a DXGI wrapper (F-003) was an
+  apitrace limitation, not a Windows one. This gives a lifecycle PreyVR's manual injection cannot: the
+  mod is present before any device exists. It also writes to the game directory, which the project has
+  avoided so far — a real tradeoff, not a free win.
+- **Scope:** read-only inspection. Nothing was executed, nothing copied, and the PE bitness table was
+  measured from the shipped headers rather than taken from their own validation file.
+- **Next question:** Before any camera write, resolve H-008 — sample R-011's and R-016's outputs across a
+  frame to establish which camera consumers recompute and when.
