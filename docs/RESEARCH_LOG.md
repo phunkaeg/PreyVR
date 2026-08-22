@@ -772,3 +772,48 @@ final instructions.
   stale. Both are now recorded in R-048 and against H-008.
 
 Full table in [`CCAMERA_LAYOUT.md`](CCAMERA_LAYOUT.md).
+
+### `CRenderView::SetCamera` characterised: the per-eye seam derives the projection for us
+
+The seam H-008 recommended was still only known by name and signature. Decompiling it turned out to
+settle both of the questions that were blocking the camera lane.
+
+`CRenderView::SetCamera` is 842 bytes, RVA `0xEE7E80`..`0xEE81CA`, and does three things:
+
+1. **Copies the camera by value.** It opens `MOV RDI,RCX; ADD RCX,0x11A0; MOV RBX,RDX` and calls
+   `CCamera::operator=` with `RDX` untouched, so `CRenderView::m_camera` at `+0x11A0` (R-049) is a
+   full `CCamera` copy, not a reference. **This makes the H-008 contamination structurally impossible
+   on this path** rather than merely avoided by careful ordering: a camera written here cannot alias
+   `CSystem::m_ViewCamera`, whatever the call order turns out to be. It also re-confirms R-042's
+   identification of `CCamera::operator=`, since that is the function being called.
+2. **Builds an orthonormal basis** from the camera matrix — normalising column 0, cross-producting
+   against column 1, renormalising — then calls `CRenderCamera::LookAt` (R-051) with `Eye` = camera
+   position, `ViewRefPt` = position + forward, and the derived up vector. The four-argument shape
+   matches `IRenderer.h:504` exactly.
+3. **Derives the frustum, and it reads the asymmetry fields.** With `t = tanf(m_fov * 0.5)`:
+
+   ```
+   fWL = m_asymL - t * m_ProjectionRatio      fWR = t * m_ProjectionRatio + m_asymR
+   fWB = m_asymB - t                          fWT = t + m_asymT
+   ```
+
+   then stores near from `m_edge_nlt.y` `+0x4C` and far from `m_edge_flt.y` `+0x64` into the
+   `CRenderCamera` block at `CRenderView+0x1620` (R-050).
+
+**Two things follow, and both matter.**
+
+- **Prey's asymmetric-frustum path is live in the render pipeline, not dead code.** The offsets
+  `+0x6C`..`+0x78` were header-derived an hour ago; they are now read directly by a render-path
+  function, which confirms the offsets *and* their use. `fWL/fWR/fWB/fWT` are frustum **tangents** —
+  the same parameterisation OpenXR's `XrFovf` uses — so an OpenXR per-eye projection is expressed by
+  writing four floats on the camera handed to `SetCamera` and taking `tan` of each eye angle. No
+  matrix injection, no camera restructuring.
+- **This seam is now strictly better than writing the system camera**, on two independent grounds
+  rather than one: it is downstream of `GetViewCamera()` *and* it copies by value.
+
+The culling caveat from R-048 still stands and is unaffected by any of this: the engine header marks
+the asymmetry *"not used for culling atm"*, so the expectation should be that setting it changes what
+is rendered without changing what is culled. That remains an open live test.
+
+Verified on disk: the function's own bytes carry `ADD RCX,0x11A0` at offset `+0x25` and disp32 stores
+at `0x1620`/`0x1630`/`0x1640`/`0x1650`/`0x1660` between `+0x2DE` and `+0x309`.

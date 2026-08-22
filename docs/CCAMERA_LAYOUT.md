@@ -24,9 +24,14 @@ tail and total all agree.
 
 ## What this means for VR
 
-- **Asymmetric projection is first-class.** `m_asymL/R/B/T` at `+0x6C`/`+0x70`/`+0x74`/`+0x78` are
-  four independent frustum shifts, so an OpenXR per-eye asymmetric projection is representable
-  directly, with no restructuring of the camera and no matrix injection.
+- **Asymmetric projection is first-class, and the path is live.** `m_asymL/R/B/T` at `+0x6C`/`+0x70`/
+  `+0x74`/`+0x78` are four independent frustum shifts. These offsets are not merely header-derived:
+  `CRenderView::SetCamera` (R-030) reads all four and folds them into the render view's frustum
+  tangents as `fWL = m_asymL - t*ratio`, `fWR = t*ratio + m_asymR`, `fWB = m_asymB - t`,
+  `fWT = t + m_asymT`, where `t = tanf(m_fov*0.5)`. Those tangents are the same parameterisation
+  OpenXR's `XrFovf` uses, so an eye FOV maps on by taking `tan` of each angle. A per-eye asymmetric
+  projection is therefore four float writes on the camera handed to `SetCamera` — no matrix
+  injection, no restructuring.
 - **But the header carries a warning worth heeding**: the asymmetry fields are annotated *"not used
   for culling atm"*. Setting them should therefore be expected to change what is **rendered** without
   changing what is **culled**. For a modest per-eye IPD shift that is likely invisible; it becomes a
