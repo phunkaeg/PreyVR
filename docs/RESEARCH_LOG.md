@@ -745,3 +745,30 @@ The method generalises. Where a class's PDB header is available but its RVAs are
 member that can be identified in the target image by some other means — a log string, an imported
 API, a distinctive constant — compute its slot from the header, and subtract. Then verify the
 alignment statistically before using any other slot.
+
+### `CCamera` closes byte-exactly, and asymmetric projection is first-class
+
+Applying the same discipline to the camera itself paid off, because R-042 had already measured two
+things the header could be tested against: the size the copy stops at, and the exact shape of its
+final instructions.
+
+- **`sizeof(CCamera) == 0x240`**, computed from `Cry_Camera.h`, matching what R-042 measured.
+- **Eleven independently observed offsets land on member boundaries**, spread from the first field to
+  the last with no slack. Six come from R-039's decompilation of R-011's reads. Five come from the
+  *copy widths* in `CCamera::operator=`: `m_pPortal` `+0x218` and `m_pMultiCamera` `+0x228` are copied
+  as qwords because they are pointers, while everything around them moves as dwords.
+- **The tail is the strongest single check.** The copy ends by merging one byte with masks `& 1` and
+  `& 0xE` — a 1-bit field followed by a 3-bit field — and the header's last two members are
+  `m_JustActivated : 1; m_sceneMaskFilter : 3`. Compiler output and header agree down to the bit.
+- **The VR payoff: `m_asymL/R/B/T` at `+0x6C`/`+0x70`/`+0x74`/`+0x78`.** Four independent frustum
+  shifts mean an OpenXR per-eye asymmetric projection is directly representable — no matrix injection
+  and no restructuring of the camera. This is the concrete backing for the claim ARCHITECTURE has
+  carried since the R-026 probe.
+- **Two caveats that belong next to that payoff, not in a footnote.** The header annotates the
+  asymmetry fields *"not used for culling atm"*, so setting them should be expected to change what is
+  rendered without changing what is culled — invisible at a modest IPD shift, a correctness question
+  at wide asymmetry. And `m_fp`, the `m_id*` index arrays and the twelve cached corner vertices are
+  derived data stored *inside* the struct, so writing `m_Matrix` or `m_fov` directly leaves them
+  stale. Both are now recorded in R-048 and against H-008.
+
+Full table in [`CCAMERA_LAYOUT.md`](CCAMERA_LAYOUT.md).
