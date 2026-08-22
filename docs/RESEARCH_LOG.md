@@ -590,3 +590,36 @@ Three static findings, no game running and no input required.
 - **Next question:** Confirm at runtime that `CRenderView::SetCamera` does not disturb
   `ISystem::GetViewCamera()`, by reading ArkPlayer `+0x17D4`/`+0x17E0` across frames while the render
   view camera is observed - still read-only, before any write is attempted.
+
+## 2026-08-22 - R-016 closed: same camera, but no cache to corrupt
+
+- **It reads the same camera.** `ArkPlayerMovementController::GetMovementState` calls vtable `+0x388` on
+  the global at `PreyDll.dll+0x224DA60` — byte-for-byte the same `ISystem::GetViewCamera()` call that
+  R-011 makes, promoted as R-039. So it is exposed to exactly the same per-eye camera.
+- **But it caches nothing, and that is the difference that matters.** Every write in the function lands
+  in the caller-supplied `SMovementState&`: `+0x54`, `+0x5C`, `+0x60`, `+0x68` and `+0xB0`. Nothing is
+  written to a global or to the ArkPlayer object. It is a pure on-demand query that hands a fresh
+  snapshot to whoever asked and keeps none of it.
+- **Contrast with R-011**, which is why that one is dangerous and this one is not: R-011 writes into
+  *persistent* ArkPlayer fields `+0x17D4`/`+0x17E0` that the entire aim lane later reads through R-013.
+  A contaminated value there outlives the eye loop. R-016 has no such residue — a per-eye camera can
+  only affect a call made *while* the eye camera is set, and the restore closes that window.
+- **What the two vectors actually are.** From the view camera's `Matrix34`: `+0x54` receives the
+  translation column `{+0x0C, +0x1C, +0x2C}`, i.e. camera position; `+0x60` receives column 1
+  `{+0x04, +0x14, +0x24}`, the Y axis, which is forward under CryEngine's forward=Y convention. The
+  field *names* remain unconfirmed — `SMovementState` is only forward-declared in the Chairloader
+  headers, so this is content established by decompilation, not names taken from a PDB.
+- **A limit worth stating plainly.** Callers could not be enumerated: `GetMovementState` is a pure
+  virtual on `IMovementController`, so every call dispatches through a vtable and no direct xref
+  exists. The inherited registry claim that the `GetAimDir`/`GetHeadDir` script wrappers "are not
+  per-frame hooks" was therefore **not** re-verified. The low-risk conclusion rests on the absence of
+  caching, which is a stronger argument than call frequency anyway — it holds regardless of how often
+  the function runs.
+- **The acceptance gate is unchanged**, and now for a stated reason: it samples ArkPlayer
+  `+0x17D4`/`+0x17E0` because those are the only *persistent* fields either consumer writes. R-016 has
+  no persistent state to sample, so a before/after check cannot cover it; catching an R-016 problem
+  would require hooking the call itself.
+- **H-008 is now fully closed.** Both known per-frame camera consumers are traced, both read
+  `ISystem::GetViewCamera()`, and only one of them caches. The mitigation is unchanged: prefer
+  `CRenderView::SetCamera` (R-030), which never alters what `GetViewCamera()` returns.
+- **Scope:** static only. No game running, no rebuild, nothing written.
