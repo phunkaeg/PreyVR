@@ -551,3 +551,42 @@ Three static findings, no game running and no input required.
   measured from the shipped headers rather than taken from their own validation file.
 - **Next question:** Before any camera write, resolve H-008 — sample R-011's and R-016's outputs across a
   frame to establish which camera consumers recompute and when.
+
+## 2026-08-22 - H-008 resolved: the aim ray is rebuilt from the global view camera
+
+- **Answer: the contamination risk is real, and now specific.** R-011
+  `ArkPlayer::UpdateCachedReticleViewPosAndDir` has exactly **one** caller, `CArkUIHUD::OnPreRender`
+  (EGS `0x1639B40`, resolved by reverse translation). The cached aim ray is therefore rebuilt during
+  *render preparation*, not during the gameplay tick.
+- **Which camera it reads.** Decompiling R-011 shows it calls vtable `+0x388` on the global at
+  `PreyDll.dll+0x224DA60` and unprojects through the returned object. Every field it touches maps to a
+  named `CCamera` member: `m_Matrix` at `+0x00`, `m_fov` at `+0x30` fed to `tanf(x*0.5)`,
+  `m_Width`/`m_Height` at `+0x38`/`+0x3C`, `m_ProjectionRatio` at `+0x40`, and the two that clinch it -
+  `GetNearPlane() = m_edge_nlt.y` at `+0x4C` and `GetFarPlane() = m_edge_flt.y` at `+0x64`, exactly as
+  `Cry_Camera.h` defines them. `ISystem::GetViewCamera()` is declared at `CrySystem/ISystem.h:1309`.
+  Promoted as R-039.
+- **Consequence.** Setting the **system view camera** once per eye would feed R-011 an eye-specific
+  camera, corrupting ArkPlayer `+0x17D4`/`+0x17E0`. That is the ray the A0b wrench proof and the
+  interaction A0 proof steer, and the one every native weapon, melee and interaction consumer reads
+  through R-013. This is FC2VR's R2 contamination expressed in Prey's own data flow, established by
+  decompilation rather than by analogy.
+- **Prey has an escape they did not.** F.E.A.R. and FC2VR inject *upstream*, writing the game camera
+  object itself - `g_client->SetObjectTransform(camera, eyeTransform)` in
+  `fear-vr/src/gameclient_loader/stereo_hook.cpp` - which is precisely why their own observers saw the
+  eye cameras. Prey offers a **downstream** point: `CRenderView::SetCamera` (R-030) sets a render
+  view's camera, not `ISystem`'s, so `GetViewCamera()` keeps returning the unmodified gameplay camera
+  and R-011 is unaffected. That should be the preferred injection point on this evidence.
+- **If the system view camera must also be set** - which culling correctness may require, given
+  `CCamera::SetAsymmetry`'s "not used for culling atm" comment - then the F.E.A.R. pattern applies:
+  snapshot before the eye loop, restore after, and ensure `CArkUIHUD::OnPreRender` is not re-entered
+  inside it.
+- **New acceptance criterion.** Any future per-eye camera protocol must sample ArkPlayer
+  `+0x17D4`/`+0x17E0` before and after and require them unchanged. That converts this from a predicted
+  bug into a testable gate.
+- **Not fully closed.** R-016 `ArkPlayerMovementController::GetMovementState` writes view vectors at
+  movement-state `+0x54`/`+0x60` and was not traced. Its registry entry records that the `GetAimDir` /
+  `GetHeadDir` script wrappers are not per-frame hooks, so it is lower risk, but it is unexamined.
+- **Scope:** static only. Ghidra plus the PDB headers; no game running, no rebuild, nothing written.
+- **Next question:** Confirm at runtime that `CRenderView::SetCamera` does not disturb
+  `ISystem::GetViewCamera()`, by reading ArkPlayer `+0x17D4`/`+0x17E0` across frames while the render
+  view camera is observed - still read-only, before any write is attempted.
