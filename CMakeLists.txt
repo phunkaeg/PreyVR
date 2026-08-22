@@ -23,6 +23,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+    # Deterministic output. Without /Brepro the linker writes the wall-clock link
+    # time into IMAGE_FILE_HEADER.TimeDateStamp, so every relink produces a new
+    # SHA-256 even from identical source -- see FAILURE_REGISTRY F-005, where a
+    # documented artifact hash became unreproducible and the binary a live-test
+    # procedure named was lost. /Brepro replaces the timestamp with a content
+    # hash. These binaries carry no CODEVIEW debug entry, so no PDB signature is
+    # embedded and the timestamp is expected to be the only varying field.
+    add_link_options($<$<C_COMPILER_ID:MSVC>:/Brepro> $<$<CXX_COMPILER_ID:MSVC>:/Brepro>)
 endif()
 
 include(FetchContent)

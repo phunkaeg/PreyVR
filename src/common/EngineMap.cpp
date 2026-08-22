@@ -6,9 +6,15 @@
 namespace preyvr::engine {
 namespace {
 
-constexpr std::array<std::uint8_t, 16> kBeginRendererScene = {
+// R-002 CD3D9Renderer::RT_BeginFrame. Extended from 16 to 23 bytes on 2026-08-22:
+// the 16-byte prologue is a generic MSVC frame setup that occurs TWICE in this
+// image, at RVA 0xF7D710 and 0xF7D710's collision at 0x1449620. The two diverge
+// at byte 16 -- this one continues `4C 89 78 E8` (mov [rax-0x18], r15) where the
+// other has `48 8B 59 38`. 23 bytes is instruction-aligned and unique.
+constexpr std::array<std::uint8_t, 23> kBeginRendererScene = {
     0x48, 0x8B, 0xC4, 0x55, 0x53, 0x48, 0x8D, 0x68,
     0xA1, 0x48, 0x81, 0xEC, 0xB8, 0x00, 0x00, 0x00,
+    0x4C, 0x89, 0x78, 0xE8, 0x48, 0x8B, 0xD9,
 };
 constexpr std::array<std::uint8_t, 16> kEndRendererScene = {
     0x40, 0x57, 0x48, 0x83, 0xEC, 0x60, 0x83, 0xB9,
@@ -133,12 +139,65 @@ constexpr std::array<std::uint8_t, 16> kPlayerInteractionInteract = {
     0xEC, 0x68, 0x48, 0x8B, 0xE9, 0x48, 0x63, 0xF2,
 };
 
-const std::array<Landmark, 22> kLandmarks = {{
-    {"renderer.begin", "BeginRendererScene", 0xF7D710, kBeginRendererScene},
-    {"renderer.end", "EndRendererScene", 0xF7E210, kEndRendererScene},
-    {"renderer.present", "EndRendererScene Present dispatch", 0xF7E48A, kPresentDispatch},
-    {"renderer.device_removed", "EndRendererScene device-removed dispatch", 0xF7E4DA, kDeviceRemovedDispatch},
-    {"renderer.dispatch", "EndRendererScene vtable dispatch", 0xFE9D14, kEndSceneVtableDispatch},
+// R-030 CRenderView::SetCamera. Includes `add rcx, 0x11A0`, the m_camera member
+// offset, which matched verbatim across EGS and Steam.
+constexpr std::array<std::uint8_t, 64> kRenderViewSetCamera = {
+    0x48, 0x8B, 0xC4, 0x48, 0x89, 0x58, 0x08, 0x48,
+    0x89, 0x78, 0x10, 0x55, 0x48, 0x8D, 0x68, 0xD8,
+    0x48, 0x81, 0xEC, 0x20, 0x01, 0x00, 0x00, 0x0F,
+    0x29, 0x70, 0xE8, 0x48, 0x8B, 0xF9, 0x0F, 0x29,
+    0x78, 0xD8, 0x48, 0x81, 0xC1, 0xA0, 0x11, 0x00,
+    0x00, 0x44, 0x0F, 0x29, 0x40, 0xC8, 0x48, 0x8B,
+    0xDA, 0x44, 0x0F, 0x29, 0x48, 0xB8, 0x44, 0x0F,
+    0x29, 0x50, 0xA8, 0x44, 0x0F, 0x29, 0x58, 0x98,
+};
+// R-031 CRenderView::CRenderView. Deliberately stops before the following
+// LEA RAX,[RIP+...] vtable load; RIP-relative displacements are build-specific.
+// `44 89 41 14` stores the EViewType argument, so m_viewType is at +0x14.
+constexpr std::array<std::uint8_t, 39> kRenderViewCtor = {
+    0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x6C,
+    0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18, 0x57,
+    0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57,
+    0x48, 0x83, 0xEC, 0x20, 0x45, 0x33, 0xED, 0x44,
+    0x89, 0x41, 0x14, 0x44, 0x89, 0x69, 0x10,
+};
+// R-032 CRenderer::GetRenderViewForThread. A 20-byte leaf computing
+// m_pRenderViews[nThreadID*2 + bRecursive]; the pool base +0x6F38 is R-033.
+// Index arithmetic confirmed by emulation, not just by reading.
+constexpr std::array<std::uint8_t, 20> kGetRenderViewForThread = {
+    0x48, 0x63, 0xD2, 0x41, 0x0F, 0xB6, 0xC0, 0x48,
+    0x8D, 0x04, 0x50, 0x48, 0x8B, 0x84, 0xC1, 0x38,
+    0x6F, 0x00, 0x00, 0xC3,
+};
+// R-034 CRenderView::CollectLookingGlassInformation. Gated on
+// m_bLookingGlassEnabled at +0xFC0. Stops before a RIP-relative operand.
+constexpr std::array<std::uint8_t, 31> kCollectLookingGlassInfo = {
+    0x40, 0x53, 0x48, 0x83, 0xEC, 0x20, 0x80, 0xB9,
+    0xC0, 0x0F, 0x00, 0x00, 0x00, 0x48, 0x8B, 0xD9,
+    0x0F, 0x84, 0x41, 0x01, 0x00, 0x00, 0x65, 0x48,
+    0x8B, 0x04, 0x25, 0x58, 0x00, 0x00, 0x00,
+};
+// R-035 CRenderView::EnableLookingGlass -- a 7-byte setter storing to +0xFC0,
+// plus padding to reach a unique match. Too small for Ghidra to auto-define.
+constexpr std::array<std::uint8_t, 12> kEnableLookingGlass = {
+    0x88, 0x91, 0xC0, 0x0F, 0x00, 0x00, 0xC3, 0xCC,
+    0xCC, 0xCC, 0xCC, 0xCC,
+};
+// R-036 CRenderView::Job_PostWrite, the sole caller of R-034 and the job behind
+// the JobRenderViewPostWrite string. Looking Glass is collected here, in a
+// post-write job -- never by nesting RT_BeginFrame/RT_EndFrame.
+constexpr std::array<std::uint8_t, 21> kRenderViewJobPostWrite = {
+    0x40, 0x53, 0x55, 0x57, 0x48, 0x81, 0xEC, 0x80,
+    0x00, 0x00, 0x00, 0x48, 0x8B, 0xE9, 0x48, 0x81,
+    0xC1, 0x18, 0x18, 0x00, 0x00,
+};
+
+const std::array<Landmark, 28> kLandmarks = {{
+    {"renderer.begin", "CD3D9Renderer::RT_BeginFrame", 0xF7D710, kBeginRendererScene},
+    {"renderer.end", "CD3D9Renderer::RT_EndFrame", 0xF7E210, kEndRendererScene},
+    {"renderer.present", "RT_EndFrame Present dispatch", 0xF7E48A, kPresentDispatch},
+    {"renderer.device_removed", "RT_EndFrame device-removed dispatch", 0xF7E4DA, kDeviceRemovedDispatch},
+    {"renderer.dispatch", "RT_EndFrame vtable dispatch", 0xFE9D14, kEndSceneVtableDispatch},
     {"renderer.device_init", "InitializeD3D11DeviceAndSwapChain", 0xF50000, kDeviceAndSwapChainInit},
     {"camera.update_view", "ArkPlayerCamera::UpdateView", 0x148B820, kCameraUpdateView},
     {"camera.set_custom_view", "ArkPlayerCamera::SetCustomViewFunction", 0x1456460, kCameraSetCustomView},
@@ -156,6 +215,12 @@ const std::array<Landmark, 22> kLandmarks = {{
     {"interaction.player_dispatch", "ArkPlayer interaction-update dispatch", 0x15850DC, kPlayerInteractionUpdateDispatch},
     {"interaction.select_candidates", "ArkPlayerTargetSelector::UpdateCandidates", 0x159A660, kInteractionUpdateCandidates},
     {"interaction.interact", "ArkPlayerInteraction::Interact", 0x1593690, kPlayerInteractionInteract},
+    {"view.set_camera", "CRenderView::SetCamera", 0xEE7E80, kRenderViewSetCamera},
+    {"view.ctor", "CRenderView::CRenderView", 0xEDF390, kRenderViewCtor},
+    {"view.get_for_thread", "CRenderer::GetRenderViewForThread", 0xFE5620, kGetRenderViewForThread},
+    {"view.collect_looking_glass", "CRenderView::CollectLookingGlassInformation", 0xEE44D0, kCollectLookingGlassInfo},
+    {"view.enable_looking_glass", "CRenderView::EnableLookingGlass", 0xEE4B00, kEnableLookingGlass},
+    {"view.job_post_write", "CRenderView::Job_PostWrite", 0xEE63C0, kRenderViewJobPostWrite},
 }};
 
 } // namespace

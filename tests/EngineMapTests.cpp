@@ -39,7 +39,7 @@ int main()
     using preyvr::engine::ArkPlayerLayout;
     using preyvr::engine::ArkPlayerTargetSelectorLayout;
 
-    Require(preyvr::engine::Landmarks().size() == 22, "all promoted runtime landmarks are typed");
+    Require(preyvr::engine::Landmarks().size() == 28, "all promoted runtime landmarks are typed");
     Require(!preyvr::engine::AllLandmarksMatch({}), "empty validation cannot pass vacuously");
     Require(
         ArkPlayerLayout::interaction + ArkPlayerInteractionLayout::targetSelector == 0xC58,
