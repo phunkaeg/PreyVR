@@ -17,3 +17,26 @@ Each completed row requires a log or capture manifest in `captures/` and a link 
 | V0 | The rendered arms/weapon can move independently of camera and gameplay aim. | Reversible visual-only pose offset with an unchanged shot endpoint. | Planned |
 | I0 | Controller pose drives native gameplay aim and actions. | Controller/aim trace plus hitscan, projectile, melee, and use-ray validation. | Partial/reproduced: native melee and use targeting are live-steerable from transient detached rays; keypad `0xFDE0` changed to usable entity `0x1117` in the no-button interaction capture. Projectile proof and controller-pose injection remain. |
 | V1 | Controller pose drives the visual weapon and remains aligned with gameplay aim. | Muzzle/controller residuals across representative weapons and animations. | Planned |
+
+## Camera restore validation: compare in pose space, not raw coefficients
+
+Not yet needed — nothing writes a camera — but recorded now so the mistake is not made later.
+
+Contributed by the cross-engine playbook from FC2VR's experience. Their original camera-restore guard
+thresholded all 16 raw view-matrix coefficients at `0.010`. Because the translation terms are
+rotation multiplied by world position, that produced **yaw-dependent false rejects that got worse the
+further the player was from the world origin** — a guard that passes in the test level and fails in
+the real one.
+
+**Rule.** Decompose before comparing, and threshold rotation and position separately:
+`eRot >= 0.0025 || ePos >= 0.010`.
+
+Two Prey-specific notes on top of that:
+
+- For an exact save/restore, comparison is not needed at all. `CCamera::operator=` is a plain
+  memberwise copy (R-042), so a restored camera is **bit-identical** to the saved one and can be
+  checked with `memcmp` over `sizeof(CCamera) == 0x240`. Pose-space thresholds are for validating a
+  camera the *engine* rebuilt, not one we copied.
+- FC2VR's failure mode — a transient eye camera overwriting a stored primary — is **structurally
+  impossible** on the seam this project prefers: `CRenderView::SetCamera` copies by value into the
+  render view's own storage (R-049) and never writes `CSystem::m_ViewCamera`.
