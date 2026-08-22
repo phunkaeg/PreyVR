@@ -895,3 +895,59 @@ directly. Checked for the three functions the camera lane would touch — `CSyst
 `CSystem::SetViewCamera` and `CRenderView::SetCamera` — all unique, so none has a folding partner.
 This is a second reason to keep R-040's eight-byte signature even though it spans the whole
 two-instruction function: it doubles as the anti-folding proof.
+
+## 2026-08-22 - Native stereo: both halves of the primitive are callable, and an old claim was wrong
+
+A peer session's playbook chapter on native stereo — driving the engine's own world render twice per
+frame with the camera moved, rather than patching matrices downstream — argued the deciding property
+is whether the world-render is reachable as a **vtable slot** rather than inlined in the frame loop,
+and that this is answerable statically. For Prey it is, and the answer is yes.
+
+**The world render is a vtable slot.** `C3DEngine::RenderWorld(int nRenderFlags, const
+SRenderingPassInfo&, const char* szDebugName)` sits at Steam RVA `0x21F520` (R-054). It was found by
+its own `"RenderWorld"` profile marker and its four-parameter shape, then confirmed structurally: it
+has **zero direct call xrefs**, only DATA references — a `.pdata` unwind entry and vtable slots — so
+every call is virtual dispatch. `RenderWorld` is declared on `IProcess`, the base of `I3DEngine`, at
+index 3, putting it at vtable `+0x18`; the `C3DEngine` vtable is at `0x1C912A0`. Alignment confirmed
+by shape rather than assumed: slot 5 `SetFlags` is `MOV [RCX+8],EDX; RET` and slot 6 `GetFlags` is
+`MOV EAX,[RCX+8]; RET` — a setter and a getter on the *same* member, both predicted by name.
+
+**The camera enters through an argument, and that constructor is callable.**
+`SRenderingPassInfo::CreateGeneralPassRenderingInfo(const CCamera&, uint32, bool)` is a real function
+at `0x1E5B30` (R-055), not inlined — unlike `CreateRecursivePassRenderingInfo`, which is why the
+recursive route looked closed earlier. It takes an **arbitrary camera**. It has exactly **3 direct
+callers**, the small validator set the playbook asked for, and one of them shows the canonical
+pattern outright: fetch `gEnv->pSystem->GetViewCamera()`, hand it to this function with flags
+`0x2E5DF`, pass the result to a render call.
+
+So the primitive is `RenderWorld(flags, CreateGeneralPassRenderingInfo(eyeCamera, ...), "EyeL")`, and
+both halves exist as callable code. Corroborating evidence already in hand: the `e_ArkLookingGlass`
+experiment showed Prey rendering a *complete* scene from a non-default viewpoint.
+
+**What this does not establish.** Nothing has been called or observed executing. Render-target and
+`CRenderView` lifecycle behaviour under a second pass is unknown, and render views are pooled `[2][2]`
+(R-026) so a second pass may contend for them. `SwitchUsageMode` sequencing is untouched and cost is
+unmeasured. H-009 records this as *preconditions met*, not viability established.
+
+### A correction: the view-camera consumer count was off by an order of magnitude
+
+The playbook's warning — enumerate what reads the camera before borrowing it, because the engine
+keeps observing while you hold it — prompted a proper sweep, and it caught an error of mine.
+
+H-008 said "both known consumers are now traced." That was wrong in scope. R-011 and R-016 are the
+two consumers relevant to the **aim ray**; they are not the consumers of the **view camera**. A
+byte-level sweep for `CALL [reg+0x388]` finds **144 candidate sites in `.text`, of which 84 provably
+load `gEnv->pSystem` RIP-relative within 48 bytes**. They span rendering, gameplay, UI and 3D-engine
+code. 84 is a lower bound: the 48-byte window is arbitrary, and some of the other 60 will be `ISystem`
+too.
+
+Two method notes worth keeping. The sweep's *call-site* detection is sound, but its
+*enclosing-function attribution* is not — it scanned back to `CC CC` padding, and MSVC does not always
+pad function boundaries, so R-011's own call site at `0x15854C7` was mis-attributed to the function
+before it. That is why R-011 first appeared to be missing from its own result set, which is exactly
+the kind of false negative that would have been believed had the list not contained a known answer to
+check against. **Put a known result in the input whenever a new enumeration method is used.**
+
+This correction does not weaken H-008's conclusion — it strengthens it, and it makes the choice of
+seam decisive rather than merely preferable: `CRenderView::SetCamera` copies the camera **by value**
+into the render view's own storage, so none of those 84-plus readers can observe it.
