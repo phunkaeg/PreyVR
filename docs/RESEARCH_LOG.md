@@ -848,3 +848,24 @@ set before the renderer initialises rather than adjusted at runtime.
 This also settles what R-046 was worth. As a hook target it was nothing — telemetry that creates and
 releases throwaway devices. Its value was entirely in the cvar it revealed, which turned out to
 control a completely different code path.
+
+### The layout constants are in the build, and the tests were checked by mutation
+
+`EngineMap.h` now carries `CameraLayout`, `SystemLayout`, `GlobalEnvironmentLayout`,
+`RenderViewLayout` and `RenderCameraLayout` in the existing `XxxLayout` idiom, with the two caveats
+in comments beside the fields they qualify rather than buried in a doc.
+
+The tests assert *relationships* rather than restating the values, since a test that repeats the
+constant it is checking proves nothing: members must abut with no gap, the four asymmetry shifts must
+be consecutive floats in the order `SetCamera` reads them, every offset must fall inside the `0x240`
+that `operator=` copies, `CRenderView`'s camera copy must not overlap its `CRenderCamera` block, and
+`CRenderCamera` must begin at its first member since it has no vtable.
+
+**Those assertions were then verified by mutation**, not merely by passing. Changing `asymBottom`
+from `0x74` to `0x78` — a plausible off-by-one-field slip — produced
+`FAILED: asymR and asymB are adjacent`, exit 1. Reverted, rebuilt, green again, working tree clean.
+A test that has never been seen to fail is not yet evidence of anything.
+
+The artifact stayed `C35B22D3...` across this change, because the constants are header-only and
+nothing in the DLL references them yet. That is a small free re-demonstration of the `/Brepro`
+reproducibility from F-005.
