@@ -76,6 +76,7 @@ add_library(preyvr_core STATIC
     src/common/FrameObserver.cpp
     src/common/InteractionQuery.cpp
     src/common/OpenXRBootstrap.cpp
+    src/common/RuntimeSnapshot.cpp
     src/common/VrMath.cpp
     src/common/WrenchQuery.cpp
 )
@@ -98,7 +99,10 @@ if((PREYVR_BUILD_TOOLS OR PREYVR_BUILD_SMOKE_DLL) AND WIN32)
 endif()
 
 if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
-    add_library(preyvr_win32_bootstrap STATIC src/dll/OpenXRPreflightWin32.cpp)
+    add_library(preyvr_win32_bootstrap STATIC
+        src/dll/OpenXRPreflightWin32.cpp
+        src/dll/RuntimeSnapshotWin32.cpp
+    )
     target_include_directories(preyvr_win32_bootstrap PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/dll")
     target_compile_definitions(preyvr_win32_bootstrap PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
     target_link_libraries(preyvr_win32_bootstrap PUBLIC preyvr_core advapi32)
@@ -201,6 +205,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_interaction_query_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_interaction_query_tests)
     add_test(NAME interaction_query_fixture COMMAND preyvr_interaction_query_tests)
+
+    add_executable(preyvr_runtime_snapshot_tests tests/RuntimeSnapshotTests.cpp)
+    target_link_libraries(preyvr_runtime_snapshot_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_runtime_snapshot_tests)
+    add_test(NAME runtime_snapshot COMMAND preyvr_runtime_snapshot_tests)
 
     add_executable(preyvr_runtime_bootstrap_tests tests/RuntimeBootstrapTests.cpp)
     target_link_libraries(preyvr_runtime_bootstrap_tests PRIVATE preyvr_core)

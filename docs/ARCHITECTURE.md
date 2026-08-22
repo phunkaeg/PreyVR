@@ -55,4 +55,7 @@ The bootstrap/build-gating rung is now `PreyVR.dll` version `0.3.0-lifecycle-har
   so adapter agreement is reachable natively with no hook. It is an index rather than a LUID, and it is read once at device
   creation, so the mod must translate LUID to index itself and set it before the renderer initialises.
 - **Look for an override the engine already honours before hooking anything.** Prey has one: `ArkPlayerCamera::UpdateView` tests a nullable callback at camera `+0x148` every frame and, when non-null, invokes it with `SViewParams&` and skips the entire default camera-mode path (R-009). Its supported installer is `SetCustomViewFunction` (R-010). This is strictly better than a matrix-pointer override — the engine hands us the out-parameter to fill, so there is no race against its own write. `CCamera` itself has no such override; that is a definitive absence, since its layout closes byte-exactly (R-048).
+- Live-host time is the scarce resource, so captures are planned ahead of the work that needs them and one session harvests
+  data for milestones not yet started; see [`LIVE_CAPTURE_PLAN.md`](LIVE_CAPTURE_PLAN.md). The first capture is built and runs
+  read-only on load, validating R-005, R-039, R-040, R-043, R-044, R-048 and R-054 in a single supported-host load.
 - All engine pointers, vtables, and signatures are build-gated and fail closed.

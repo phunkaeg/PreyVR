@@ -3,6 +3,7 @@
 #include "FrameObserverHook.h"
 #include "Logger.h"
 #include "OpenXRPreflightWin32.h"
+#include "RuntimeSnapshotWin32.h"
 #include "Version.h"
 #include "preyvr/EngineMap.h"
 
@@ -206,6 +207,20 @@ DWORD RunBootstrap(HMODULE self)
         gSmokeStatus.store(1, std::memory_order_release);
         return 0;
     }
+    // Read-only capture of the engine facts that only a running Prey can supply.
+    // It runs here, after the landmark gate has proved the image is the supported
+    // build and before any hook is armed, so the values recorded are the engine's
+    // own undisturbed state. Failure is never fatal: a partial snapshot still
+    // localises the first bad pointer, and the mod proceeds exactly as before.
+    // See docs/LIVE_CAPTURE_PLAN.md for what each field is for.
+    {
+        const auto captured = CaptureRuntimeSnapshot(reinterpret_cast<std::uintptr_t>(preyDll));
+        snapshot::Report(
+            captured,
+            [](std::string_view line, void*) { lifecycle::Log(line); },
+            nullptr);
+    }
+
     const auto openxr = CollectOpenXRPreflight(selfPath);
     gOpenXRPreflightStatus.store(
         static_cast<DWORD>(openxr.status),

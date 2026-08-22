@@ -85,6 +85,7 @@ struct SystemLayout {
 // through it, each landing on its own correctly named member.
 struct GlobalEnvironmentLayout {
     static constexpr std::uintptr_t baseRva = 0x224D980;
+    static constexpr std::uintptr_t threeDEngine = 0x08;
     static constexpr std::uintptr_t console = 0xC0;
     static constexpr std::uintptr_t system = 0xE0;
     static constexpr std::uintptr_t renderer = 0x120;

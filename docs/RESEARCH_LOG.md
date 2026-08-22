@@ -1043,3 +1043,60 @@ That is the cheapest next step, and it needs a live host.
 Either way this was never a per-eye mechanism - it is a whole-view override, so it could not have
 been a native-stereo enabler. Its only value would have been as evidence about whether the engine
 tolerates an externally driven view camera.
+
+## 2026-08-23 - Data gathering built ahead of the work that needs it
+
+Live-host time is the scarce resource on this project. Static analysis runs unattended; every
+question that needs Prey actually running costs an operator round-trip, a launch and a save load. The
+expensive failure mode is discovering mid-implementation that we need one more number.
+
+So the next three hurdles were named, their data needs written down, and the capture that answers
+them built now rather than when we reach them. Recorded in
+[`LIVE_CAPTURE_PLAN.md`](LIVE_CAPTURE_PLAN.md).
+
+**The hurdles.** (1) First supported-host load. (2) OpenXR session and first HMD output. (3) Per-eye
+camera. Each entry lists what only a live run can supply, and where the answer comes from.
+
+**Capture A is built and wired.** `preyvr::snapshot` resolves `gEnv` from the module base, follows
+`pSystem`/`pRenderer`/`p3DEngine`, checks each object's vtable against the RVA resolved statically,
+confirms `IProcess` slot 3 really is `RenderWorld`, confirms `gEnv->pRenderer` and the
+`CD3D9Renderer` singleton are the same object, and decodes `CSystem::m_ViewCamera`. It runs
+read-only on load, after the landmark gate and before any hook is armed, so what it records is the
+engine's own undisturbed state.
+
+**The leverage: one load validates seven registry entries at once** - R-005, R-039, R-040, R-043,
+R-044, R-048 and R-054. Those are all `static-only` today. A single supported-host run promotes the
+whole cluster or tells us exactly which pointer is wrong, and it costs nothing extra because the mod
+was going to load anyway.
+
+**Design notes worth keeping.**
+
+- *Capture wide, decide later.* Reading a whole struct costs the same as reading one field, and a
+  logged blob can answer a question we have not thought of yet. Only the decoding is selective.
+- *Emit verdicts, not numbers.* `IsPlausible` and `RenderCameraMatchesSource` mean the log says
+  pass/fail against an expectation rather than leaving us to eyeball floats - otherwise reading the
+  capture is another round-trip. `RenderCameraMatchesSource` is the sharpest of these: **one boolean
+  on a live frame validates our entire model of `SetCamera`**, because it recomputes the derived
+  frustum tangents from the source camera the way R-030 does and compares.
+- *The reader fails closed.* `VirtualQuery` checks every page is committed and readable before the
+  copy, chosen over SEH so a bad address is a returned `false` rather than a swallowed fault, and so
+  the module stays `/EHsc`-clean. A partial snapshot still localises the first bad pointer, and the
+  mod proceeds exactly as before.
+- *The pure/Win32 split holds.* All the logic lives in `src/common` behind a reader callback, so it
+  is testable headlessly against a synthetic address space; the DLL only supplies the guarded reader.
+
+**Tests, and their limits.** 12/12 now, the twelfth being the snapshot fixture: decode round-trips,
+plausibility rejecting what a wrong offset would produce, the `SetCamera` frustum formula, a
+synthetic supported engine, and five negatives that each break exactly one thing. Mutation-checked -
+decoding the near plane from `m_edge_nlt.x` instead of `.y` produces
+`FAILED: near and far are read from the edge vertices, not adjacent fields`. **But these verify the
+decoding and capture logic, not the offsets.** The offsets are verified against the installed
+`PreyDll.dll` by the build doctor and by the static analysis in the registry. The two kinds of
+verification should not be confused when reading a green run.
+
+**Captures B, C and D are specified but not built** - device/swapchain/render-view reads, per-frame
+change detection to derive the restore list, and three scenario captures. They are written as a work
+order so the next session starts from a specification rather than a blank page.
+
+Fresh loop 12/12, doctor 7 pass 0 warn 0 fail, all 30 landmarks matched. Artifact
+`959276B8A7D4C9186065C1244F8B89885E9129770F1AE833A71B6EC13BD72EC4`.
