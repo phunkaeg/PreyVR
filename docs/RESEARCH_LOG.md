@@ -869,3 +869,29 @@ A test that has never been seen to fail is not yet evidence of anything.
 The artifact stayed `C35B22D3...` across this change, because the constants are header-only and
 nothing in the DLL references them yet. That is a small free re-demonstration of the `/Brepro`
 reproducibility from F-005.
+
+### `SetCamera` is virtual, and a vtable pass turned up a hazard worth a rule
+
+Trying to answer "what calls `SetCamera`?" statically found **no direct call xrefs at all** — only two
+DATA references, one in `.pdata` (the unwind entry) and one in `.rdata`. It is a virtual, dispatched
+through the `CRenderView` vtable, which is why the caller question stays live.
+
+The `.rdata` reference plus `IRenderer.h:585` (index 8, counting the two inherited
+`CMultiThreadRefCount` virtuals) puts the vtable at `0x1DCAE00` (R-053). Confirmed independently:
+slot 23 predicts `EnableLookingGlass` and reads `0xEE4B00`, which is R-035 — a hit at the opposite
+end of the table from the anchor. Practically, this means the seam can be taken by swapping a vtable
+slot rather than patching bytes; the render views are pooled, so either technique affects all
+instances.
+
+**The hazard.** Slot 3, `GetFrameId`, reads `0x903CA0` — the same address as
+`ISystem::GetGlobalEnvironment`. They are unrelated functions that happen to compile to the same five
+bytes, `MOV RAX,[RCX+0x28]; RET`, and MSVC's `/OPT:ICF` folded them together. So **an address does
+not identify a function**, and worse, **hooking a folded address hooks every caller of every function
+folded onto it** — a bug that would present as unrelated subsystems misbehaving simultaneously.
+
+The rule is now in `BUILD_BASELINE.md`: before hooking a short function, confirm its bytes occur
+exactly once in the image. The uniqueness test already used for signature promotion answers this
+directly. Checked for the three functions the camera lane would touch — `CSystem::GetViewCamera`,
+`CSystem::SetViewCamera` and `CRenderView::SetCamera` — all unique, so none has a folding partner.
+This is a second reason to keep R-040's eight-byte signature even though it spans the whole
+two-instruction function: it doubles as the anti-folding proof.

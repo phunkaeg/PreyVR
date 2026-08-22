@@ -124,3 +124,30 @@ builds can silently miss or mismatch.
 or ignore leading bytes in the REX range when searching. R-024 already does this — its registry entry
 records that its "unique interior begins at `+0x27`" because its prologue was not distinctive enough.
 Treat that as the normal method for cross-build work, not an exception.
+
+### Identical COMDAT folding shares one address between unrelated functions
+
+Found on 2026-08-22 while mapping the `CRenderView` vtable. `IRenderView::GetFrameId` and
+`ISystem::GetGlobalEnvironment` both resolve to `0x903CA0`. They are not related: one returns a frame
+counter, the other the global environment pointer. They compile to the same five bytes —
+`48 8B 41 28 C3`, `MOV RAX,[RCX+0x28]; RET` — and MSVC's `/OPT:ICF` folded them onto a single
+address. Several other trivial accessors in that vtable point outside `CRenderView`'s own code region
+for the same reason.
+
+**Two consequences, and the second is a real hazard.**
+
+1. *An address does not identify a function.* A trivial accessor's address may be shared by any
+   number of unrelated classes, so "this vtable slot points at `0x903CA0`" says nothing about which
+   source function it came from.
+2. *Hooking a folded address hooks every caller of every folded function.* Patching `0x903CA0` to
+   intercept `GetFrameId` would also intercept `GetGlobalEnvironment` and anything else folded there
+   — a class of bug that would present as unrelated subsystems misbehaving at once.
+
+**Rule.** Before hooking any short function, check that its bytes occur exactly once in the image.
+The uniqueness test already used for signature promotion answers this directly: a unique signature
+means no folding partner exists.
+
+Checked for the three functions the camera lane would touch, all unique and therefore safe on this
+count: `CSystem::GetViewCamera` (8B), `CSystem::SetViewCamera` (7B), `CRenderView::SetCamera` (31B).
+This is also why `R-040`'s eight-byte signature is worth having despite covering an entire two-
+instruction function — it doubles as the anti-folding proof.
