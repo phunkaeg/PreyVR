@@ -49,4 +49,8 @@ The bootstrap/build-gating rung is now `PreyVR.dll` version `0.3.0-lifecycle-har
 - Distinct eye images alone are not native 6DoF; the engine must own camera/culling changes for translation to reveal new geometry.
 - Changing one projection matrix is not enough. Audit dependent camera constants and screen-space producer passes together.
 - Prefer a verified engine scene-render/re-entry/multi-view seam over indiscriminate draw duplication.
+- OpenXR's `XR_KHR_D3D11_enable` requires the app's D3D11 device to sit on the adapter LUID the runtime names. Prey picks its own
+  adapter, but honours `r_overrideDXGIAdapter` (R-052) as an `EnumAdapters1` index inside the real device-creation path (R-025),
+  so adapter agreement is reachable natively with no hook. It is an index rather than a LUID, and it is read once at device
+  creation, so the mod must translate LUID to index itself and set it before the renderer initialises.
 - All engine pointers, vtables, and signatures are build-gated and fail closed.

@@ -817,3 +817,34 @@ is rendered without changing what is culled. That remains an open live test.
 
 Verified on disk: the function's own bytes carry `ADD RCX,0x11A0` at offset `+0x25` and disp32 stores
 at `0x1620`/`0x1630`/`0x1640`/`0x1650`/`0x1660` between `+0x2DE` and `+0x309`.
+
+### `r_overrideDXGIAdapter` reaches the real device, which solves OpenXR adapter agreement natively
+
+The cvar first showed up as a footnote in R-046, the spec-detect helper, where it hardly mattered —
+that path creates throwaway devices. Following it to its other call site is what made it useful.
+
+`GetOverrideDXGIAdapter()` (R-052) has exactly one caller: `InitializeD3D11DeviceAndSwapChain`
+(R-025), the path that creates the device the game actually renders with. The call site is explicit:
+
+```
+CALL   GetOverrideDXGIAdapter    ; EAX = cvar value, or -1
+MOVSXD RDI, EAX
+MOV    R13D, R14D                ; default start index 0
+CMOVNS R13D, EDI                 ; override >= 0 ? use it as the index
+MOV    EDX, R13D
+CALL   qword ptr [R9 + 0x60]     ; IDXGIFactory1::EnumAdapters1(index, &adapter)
+```
+
+**Why this matters.** `XR_KHR_D3D11_enable` requires the application's device to be created on the
+adapter LUID `xrGetD3D11GraphicsRequirementsKHR` returns. On a hybrid-graphics laptop, or any machine
+where the HMD hangs off a second card, that need not be the adapter Prey's own scan would choose —
+and a mismatch there is not a subtle artefact, it is a failure to present. Prey already exposes the
+control, so this is reachable **natively, with no hook**.
+
+**Two constraints belong with the finding.** It is an adapter *index*, not a LUID, so the mod has to
+enumerate adapters itself and translate. And it is read once during device creation, so it must be
+set before the renderer initialises rather than adjusted at runtime.
+
+This also settles what R-046 was worth. As a hook target it was nothing — telemetry that creates and
+releases throwaway devices. Its value was entirely in the cvar it revealed, which turned out to
+control a completely different code path.
