@@ -951,3 +951,49 @@ check against. **Put a known result in the input whenever a new enumeration meth
 This correction does not weaken H-008's conclusion — it strengthens it, and it makes the choice of
 seam decisive rather than merely preferable: `CRenderView::SetCamera` copies the camera **by value**
 into the render view's own storage, so none of those 84-plus readers can observe it.
+
+### Checking for a native override: Prey already had one, and we had already found it
+
+A peer's chapter on injector modes made the point that before hooking a matrix write you should look
+for an override the engine already honours — their example being AnvilNext reading a nullable
+`worldMatrixOverride` pointer and adopting your view matrix before building the frustum. Worth ten
+minutes on CryEngine. Three results.
+
+**Prey has the equivalent, and it is R-009/R-010 — mapped back in July, but never framed this way.**
+Re-verified the disassembly at `0x148BB59`:
+
+```
+MOV  RCX, [RDI + 0x148]    ; nullable custom-view callback
+TEST RCX, RCX
+JZ   0x18148BB73           ; null -> default camera-mode path (reads mode at +0x1A4)
+MOV  RAX, [RCX]
+MOV  RDX, RSI              ; RDX = SViewParams& , the out parameter
+CALL [RAX + 0x10]
+JMP  0x18148C5F4           ; skips the entire default path
+```
+
+The engine tests that pointer every frame and, when non-null, hands the callable the out-parameter
+and jumps past everything else. **Prey's form is better shaped than a matrix-pointer override**: we
+are handed the struct to fill rather than having to win a race against the engine's own write. The
+supported installer, `SetCustomViewFunction`, is already a fail-closed gate landmark. The lesson is
+about framing rather than discovery — this was in the registry for three weeks described as "a
+seam we mapped", when it is actually the highest-value item in the whole camera lane.
+
+**`CCamera` itself has no such override — and that is a definitive absence, not a failed search.**
+Because the layout closes byte-exactly at `0x240` with no unexplained slack (R-048), every pointer is
+accounted for: `m_pPortal` and `m_pMultiCamera`, neither a view-matrix override. Being able to say a
+confident "no" is the payoff of having verified the layout rather than merely read it out of a header.
+
+**One unexpected lead.** `m_pMultiCamera` at `+0x228` is commented *"Maybe used for culling instead of
+this camera"* — a nullable pointer that substitutes a **different camera for culling**. That is the
+shape of a native answer to R-048's own culling caveat: supply a combined symmetric frustum covering
+both eyes for culling, while each eye renders asymmetrically. Consumer untraced; recorded as a lead.
+
+**Also found: a detached-camera cvar family** (R-056) — `g_detachCamera` and five companions, plus
+`e_CameraFreeze` and `e_CameraGoto`. Registration is confirmed twice over (the `Register` call binds a
+backing int at `gameCVars+0x284`, and a cleanup pass unregisters the name), but **the consumer is not
+traced**, so whether the path survives in this release build is unknown — registration alone does not
+prove a live feature. If it is live its value is as a **zero-hook, reversible live experiment**: it
+would decouple the view from the player using only the game's own cvars, showing whether the engine
+tolerates an externally driven view camera and which systems object. It is a whole-view override, so
+it is not a per-eye mechanism and not a native-stereo enabler.
