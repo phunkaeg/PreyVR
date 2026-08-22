@@ -997,3 +997,49 @@ prove a live feature. If it is live its value is as a **zero-hook, reversible li
 would decouple the view from the player using only the game's own cvars, showing whether the engine
 tolerates an externally driven view camera and which systems object. It is a whole-view override, so
 it is not a per-eye mechanism and not a native-stereo enabler.
+
+### Tracing the `g_detachCamera` consumer: what I proved, and what I could not
+
+The result is an honest inconclusive, so it is worth separating what is established from what is not.
+
+**Established.** The six cvars are contiguous at `gameCVars+0x284`..`+0x298`, mapped by pairing each
+`LEA R8,[RDI+disp]` in the registration function with its name string. The registration **is
+reached**: Ghidra reported no callers, but a byte search found a tail `JMP` at `0x1727AA3` from a
+small wrapper at `0x1727A90` -
+
+```
+MOV RAX, [RCX + 0xF8]   ; CGame::m_pCVars
+TEST RAX, RAX
+JZ  skip
+MOV RDX, [RCX + 0x50]
+MOV RCX, RAX
+JMP registration
+```
+
+So the cvars struct is **heap-allocated and held at `CGame+0xF8`**, not a global - which is why every
+global-based search failed. The cvars are genuinely registered and would appear in the console.
+Nothing looks any of them up by name; the only two string xrefs are the registration and the
+`UnregisterVariable` cleanup sweep.
+
+**Not established: whether anything consumes them.** I could not find a consumer, and **that negative
+is not trustworthy.** Following the rule from earlier in the session I seeded the search with control
+cvars from the same struct, and it failed to find consumers for those too - including
+`g_difficultyLevel`, which Prey unquestionably uses. A method that cannot find a known answer cannot
+be used to assert an absence. Recorded as F-007 with the rules that came out of it.
+
+**Strong circumstantial evidence that it is vestigial Crysis GameSDK code.** The registered help
+strings are unmodified GameSDK boilerplate - *"Move speed turbo boost when holding down (360) A
+button"* and *"Display debug graphics for detached camera spline playback"* - describing an Xbox 360
+button and a cinematic spline system. The same registration block installs `g_mpNoVTOL`,
+`g_mpHatsBootsOnRadar`, `g_maxGameBrowserResults` and `g_randomSpawnPointCacheTime`: multiplayer and
+vehicle cvars for systems Prey does not have. Registering a cvar is one line; the feature behind it
+can be entirely absent.
+
+**Withdrawing my earlier suggestion.** I had floated this as an available zero-hook live experiment.
+It should not be treated that way - the evidence points to dead code. And settling it does not need
+more static analysis: one console command in a running game, `g_detachCamera 1`, answers it outright.
+That is the cheapest next step, and it needs a live host.
+
+Either way this was never a per-eye mechanism - it is a whole-view override, so it could not have
+been a native-stereo enabler. Its only value would have been as evidence about whether the engine
+tolerates an externally driven view camera.

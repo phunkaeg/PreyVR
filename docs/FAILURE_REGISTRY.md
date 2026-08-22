@@ -185,3 +185,37 @@ load, together with a test that actually forces a relink.
   that accepts it and answers anyway is the dangerous kind. Verify the harness before the hypothesis.
 - **Recovery:** No lasting damage. The bad results were discarded before anything was recorded, and the
   re-run with JSON produced the verified matrix now recorded against R-032 and R-033.
+
+## F-007 - Hand-rolled x86 operand scanning to find struct-field consumers
+
+**Status:** unreliable for negatives. Use only with controls.
+
+**What was attempted.** To find what reads `g_detachCamera` (R-056), I wrote a scanner that decodes
+x86 memory operands out of `.text` and reports accesses at a given struct offset - first by raw
+4-byte search, then by decoding ModRM properly, then by chaining through a base register loaded from
+a global or from `[CGame+0xF8]`.
+
+| Attempt | Result | Why it failed |
+| --- | --- | --- |
+| Raw 4-byte search for the offsets | 3,759 hits | `0x284` and its neighbours are common offsets in unrelated structs, and the bytes also occur as immediates and as data |
+| Proper ModRM decode, `mod=10` | 3,245 hits | Correct decoding, but still every struct in the image rather than the one wanted |
+| Chain through a base loaded from a global | Top hit `0x18243A688` | That is the **3DEngine cvar block** already identified in R-045; `+0x284` there is an unrelated cvar |
+| Chain through `[CGame+0xF8]`, 256-byte window | **0 hits, including controls** | Real code caches the pointer far from the use, across spills and long spans |
+| Chain through a cached global | 2 loads, 0 hits | The candidate global was not the widely used accessor |
+
+**The decisive detail.** The last two attempts returned zero for the *control* cvars as well -
+including `g_difficultyLevel`, which Prey unquestionably consumes. Had the controls not been in the
+input, the zero for the detached-camera family would have read as a clean negative and been believed.
+
+**Rules.**
+
+1. **Never report a negative from this technique without controls in the same run** - a known-consumed
+   field in the same struct. If the controls come back empty, the run says nothing about anything.
+2. Prefer Ghidra's own xref and decompiler analysis, which resolves indirection properly. Hand-rolled
+   scanning is good for questions like *is this byte pattern unique in the image*, which it answered
+   correctly all session, and poor for *what reads this field*.
+3. A struct offset is meaningless without its base object. Chasing an offset before pinning the
+   object's address is the mistake underneath every row above.
+
+Same family as F-006: a method that answers confidently while silently operating on the wrong input.
+The defence is identical - put a known answer in, and check it comes back out.
