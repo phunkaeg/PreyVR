@@ -1,0 +1,46 @@
+# graphify's own ignore file. Read in preference to .gitignore at this
+# directory (see graphify.detect._load_graphifyignore) -- NOT merged with it.
+#
+# Mirrors .gitignore's build/generated-artifact exclusions, with one
+# deliberate difference: /graphify/corpus/ stays visible to graphify. It is
+# git-ignored because it is a disposable staging mirror, not source of truth,
+# but it is exactly what a graphify run needs to scan. Keep the two files in
+# sync by hand; the only intended divergence is that one rule.
+
+# Build products and local tooling
+/build/
+/out/
+/.vs/
+/.idea/
+/.vscode/
+*.user
+*.suo
+
+# Generated evidence and captures (keep the README files that describe them)
+/captures/**/*.png
+/captures/**/*.jpg
+/captures/**/*.jpeg
+/captures/**/*.exr
+/captures/**/*.dds
+/captures/**/*.rdc
+/captures/**/*.zip
+/captures/**/*.log
+/captures/**/*.json
+/captures/**/*.bin
+
+# Graphify's own output, so a repo-root scan never ingests its prior report.
+# /graphify/corpus/ is intentionally NOT excluded here -- see header note.
+/graphify/graphify-out/
+/graphify/*.log
+
+# Local configuration and secrets
+/.env
+/.env.*
+!/env.example
+/config/local/
+
+# Third-party tooling vendored under tools/ (binaries and source checkouts).
+# Chairloader is the PDB-derived reference for the canonical EGS build; its
+# release binaries and source clone are large and are not this project's work.
+/tools/Chairloader-*/
+/tools/Chairloader-*.zip
