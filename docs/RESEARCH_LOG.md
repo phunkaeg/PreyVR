@@ -1100,3 +1100,46 @@ order so the next session starts from a specification rather than a blank page.
 
 Fresh loop 12/12, doctor 7 pass 0 warn 0 fail, all 30 landmarks matched. Artifact
 `959276B8A7D4C9186065C1244F8B89885E9129770F1AE833A71B6EC13BD72EC4`.
+
+## 2026-08-23 - The FC1 IK lineage does not survive into Prey, but its descendant is named and findable
+
+A cross-engine peer supplied two facts from Far Cry 1's `CryAnimation/CryModEffIKSolver.cpp`, held as a
+lineage oracle: the two-bone solver takes **no pole/hint input** (its bend plane is derived as
+`n = a ^ c`, current upper-arm crossed with shoulder-to-goal, with a `nlen < 1E-6` degenerate bail),
+and `SetGoal`'s `goal_normal` is **not** an elbow hint but an end-effector twist correction applied
+after the solve. They graded both INFERENCE for Prey and said the value was vocabulary and shape --
+`SetGoal`, `ApplyToBone`, `m_additLen`, a bend plane from `a^c` -- to make a descendant findable.
+
+**Tested the vocabulary against the binary. It does not survive.** No `IKSolver`, no `SolveIK`, no
+`m_additLen`, no `ApplyToBone` anywhere in `PreyDll.dll`; the only `SetGoal` hits are unrelated
+(network serialisation, `ArkTurret` orientation). The Chairloader PDB headers have **no `CryAnimation`
+directory at all** and zero `IK` matches across all 1,131 files.
+
+**But the generation that did land is named, and it is more useful than the one we were looking for.**
+Prey implements CryEngine 3's `IAnimationPoseModifier` architecture, with 21 modifiers registered by
+name:
+
+- `AnimationPoseModifier_Ik2Segments` — the two-bone solver, direct descendant of the FC1 code
+- `AnimationPoseModifier_LimbIk`, `_IKTorsoAim`, `_PoseAlignerChain`, `_ConstraintAim`, `_Recoil`,
+  `_PoseBlenderAim`, `_PoseBlenderLook`, `_LookAtSimple`, `_TransformationPin`, and others
+- **`IKLIMB_LEFTHAND` / `IKLIMB_RIGHTHAND`** — named limb identifiers, with `CreateIKLimb`, `IKLimbs`,
+  and `LimbIK_Definition` / `IK_Definition` / `AimIK_Definition` / `LookIK_Definition` CHRPARAMS keys
+- PoseAligner exposed at runtime through `a_poseAlignerEnable`, `a_poseAlignerForceLock` and five more
+- `CPoseModifierSetup` as a serialised, data-driven modifier stack
+
+**Why this matters more than confirming the tip would have.** A named per-hand IK facility with a
+factory entry point is the same shape as R-009's custom-view callback and R-052's adapter cvar: an
+override the engine already honours. That is the third instance of this pattern in Prey, and it is
+becoming the first thing worth checking in any new lane rather than an occasional lucky find.
+
+**Confidence.** Strings only. No address, no call site, nothing traced or executed. The peer's two FC1
+facts remain INFERENCE for Prey and are recorded as lineage context, not as claims about this binary —
+and the specific mechanism they warn about (`goal_normal` mistaken for a pole vector) cannot be
+transferred, because the function it describes is not present. Recorded against H-005.
+
+**Second item, recorded against H-009 and not adopted:** bioshock-trilogy-vr gates its second world
+pass deny-by-default on the return RVA of a known gameplay caller, plus camera-silent, present-stall,
+teardown and poison gates. For Prey this is a strong fit for a reason specific to what we found:
+`C3DEngine::RenderWorld` is virtual with zero direct call sites, so a second pass we drive is
+indistinguishable from the engine's own by signature alone. Who called us is the only discriminator
+available.
