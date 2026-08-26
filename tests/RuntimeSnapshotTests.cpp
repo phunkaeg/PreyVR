@@ -198,6 +198,134 @@ int main()
             "and the shifted frustum matches the shifted source");
     }
 
+    // --- the residual must SEPARATE, or no threshold saves it ---------------
+    //
+    // Imported from the cross-engine playbook (A3.4): a residual limit is a
+    // property of a metric, not of a problem. FarCry2-VR imported another
+    // project's threshold and got a gate looser than no gate at all, because
+    // every wrong case still scored under it. So build the wrong-input table
+    // first, prove the metric separates, and only then keep the number.
+    {
+        const CameraView source = SampleCamera();
+
+        const auto derive = [](const CameraView& c) {
+            const float tan = std::tan(c.fov * 0.5f);
+            const float horiz = tan * c.projectionRatio;
+            RenderCameraView d{};
+            d.axisX = Vec3{1.0f, 0.0f, 0.0f};
+            d.axisY = Vec3{0.0f, 1.0f, 0.0f};
+            d.axisZ = Vec3{0.0f, 0.0f, 1.0f};
+            d.frustumLeft = c.asymLeft - horiz;
+            d.frustumRight = horiz + c.asymRight;
+            d.frustumBottom = c.asymBottom - tan;
+            d.frustumTop = tan + c.asymTop;
+            d.nearPlane = c.nearPlane;
+            d.farPlane = c.farPlane;
+            return d;
+        };
+
+        const RenderCameraView truth = derive(source);
+        const float correct = RenderCameraResidual(source, truth);
+        Require(correct < 1.0e-6f, "a correctly derived render camera reproduces to ~zero");
+
+        // Each wrong case perturbs exactly one input and must score far above.
+        CameraView wrongFov = source;
+        wrongFov.fov = source.fov * 1.05f; // 5% FoV error
+        CameraView wrongRatio = source;
+        wrongRatio.projectionRatio = 4.0f / 3.0f;
+        CameraView wrongNear = source;
+        wrongNear.nearPlane = source.nearPlane * 4.0f;
+        CameraView symmetrised = source; // the classic: asymmetry silently dropped
+        symmetrised.asymLeft = 0.0f;
+        symmetrised.asymRight = 0.0f;
+
+        // A deliberately SMALL asymmetry error -- the tightest wrong case, and
+        // the one that decides whether the threshold is defensible.
+        CameraView tinyAsym = source;
+        tinyAsym.asymTop = 0.004f;
+
+        const CameraView asymSource = [&] {
+            CameraView c = source;
+            c.asymLeft = 0.06f;
+            c.asymRight = -0.02f;
+            return c;
+        }();
+        const RenderCameraView asymTruth = derive(asymSource);
+
+        struct WrongCase { const char* name; float residual; };
+        const WrongCase wrong[] = {
+            {"5% FoV error", RenderCameraResidual(wrongFov, truth)},
+            {"wrong aspect (4:3)", RenderCameraResidual(wrongRatio, truth)},
+            {"wrong near plane", RenderCameraResidual(wrongNear, truth)},
+            {"asymmetry symmetrised away", RenderCameraResidual(symmetrised, asymTruth)},
+            {"tiny 0.004 asymmetry error", RenderCameraResidual(tinyAsym, truth)},
+        };
+
+        float tightest = 1.0e9f;
+        for (const WrongCase& w : wrong) {
+            Require(w.residual > kRenderCameraResidualLimit, w.name);
+            tightest = std::min(tightest, w.residual);
+        }
+        // The gap must be real, not nominal: the limit sits well inside it.
+        Require(correct < kRenderCameraResidualLimit * 0.1f,
+            "correct scores an order of magnitude below the limit");
+        Require(tightest > kRenderCameraResidualLimit * 10.0f,
+            "the tightest wrong case scores an order of magnitude above the limit");
+        Require(RenderCameraMatchesSource(asymSource, asymTruth),
+            "a genuinely asymmetric frustum still passes");
+    }
+
+    // --- OpenXR per-eye asymmetry solves back to the requested frustum ------
+    {
+        const CameraView base = SampleCamera();
+        const float t = std::tan(base.fov * 0.5f);
+        const float h = t * base.projectionRatio;
+
+        // A symmetric FOV must produce ZERO shift. A sign error survives every
+        // other check while quietly symmetrising the eye, so this is the guard.
+        const EyeAsymmetry none =
+            AsymmetryFromFovTangents(-h, h, -t, t, base.fov, base.projectionRatio);
+        Require(std::fabs(none.left) < 1e-6f && std::fabs(none.right) < 1e-6f &&
+                std::fabs(none.bottom) < 1e-6f && std::fabs(none.top) < 1e-6f,
+            "a symmetric FoV yields zero asymmetry shift");
+
+        // A realistic asymmetric eye: inner edge narrower than outer.
+        const float tanL = -1.10f, tanR = 0.95f, tanD = -0.98f, tanU = 1.02f;
+        const EyeAsymmetry eye =
+            AsymmetryFromFovTangents(tanL, tanR, tanD, tanU, base.fov, base.projectionRatio);
+
+        // Round-trip: write the shifts onto the camera, push it through the
+        // SetCamera formula, and confirm the frustum we asked for comes back.
+        CameraView eyeCamera = base;
+        eyeCamera.asymLeft = eye.left;
+        eyeCamera.asymRight = eye.right;
+        eyeCamera.asymBottom = eye.bottom;
+        eyeCamera.asymTop = eye.top;
+
+        RenderCameraView produced{};
+        produced.axisX = Vec3{1.0f, 0.0f, 0.0f};
+        produced.axisY = Vec3{0.0f, 1.0f, 0.0f};
+        produced.axisZ = Vec3{0.0f, 0.0f, 1.0f};
+        produced.frustumLeft = eyeCamera.asymLeft - h;
+        produced.frustumRight = h + eyeCamera.asymRight;
+        produced.frustumBottom = eyeCamera.asymBottom - t;
+        produced.frustumTop = t + eyeCamera.asymTop;
+        produced.nearPlane = eyeCamera.nearPlane;
+        produced.farPlane = eyeCamera.farPlane;
+
+        Require(std::fabs(produced.frustumLeft - tanL) < 1e-5f, "left tangent round-trips");
+        Require(std::fabs(produced.frustumRight - tanR) < 1e-5f, "right tangent round-trips");
+        Require(std::fabs(produced.frustumBottom - tanD) < 1e-5f, "bottom tangent round-trips");
+        Require(std::fabs(produced.frustumTop - tanU) < 1e-5f, "top tangent round-trips");
+        Require(IsPlausible(produced), "the per-eye frustum is plausible");
+        Require(RenderCameraMatchesSource(eyeCamera, produced),
+            "and agrees with the camera that produced it");
+
+        // The asymmetry must be genuinely off-centre, or we have symmetrised.
+        Require(std::fabs(produced.frustumLeft) - std::fabs(produced.frustumRight) > 0.1f,
+            "the eye frustum is actually asymmetric, not a symmetric one in disguise");
+    }
+
     // --- capture against a synthetic supported engine ----------------------
     {
         const CameraView camera = SampleCamera();

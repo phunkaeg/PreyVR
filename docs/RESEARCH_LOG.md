@@ -1143,3 +1143,61 @@ teardown and poison gates. For Prey this is a strong fit for a reason specific t
 `C3DEngine::RenderWorld` is virtual with zero direct call sites, so a second pass we drive is
 indistinguishable from the engine's own by signature alone. Who called us is the only discriminator
 available.
+
+## 2026-08-27 - Playbook sweep: a threshold I had not derived, and the OpenXR-to-CCamera solve
+
+Reviewed the cross-engine playbook against our open lanes. Four things fell out, two of which changed
+code.
+
+**1. A validation threshold I had guessed.** `RenderCameraMatchesSource` shipped four days ago with
+`tolerance = 0.001f`, a number chosen by eye. Appendix A3.4 is a correction the playbook made to its
+*own* earlier advice, and it lands directly on that: a residual limit is a property of a metric, not of
+a problem, and FarCry2-VR imported another project's limit and got a gate looser than no gate at all.
+Worse, the obvious projection check is mathematically blind to a wrong FoV -- a guessed 75 degrees
+scored identically to correct, because FoV lives in the scale terms and the affine test reads the
+projective row.
+
+Fixed properly: the function now exposes `RenderCameraResidual()`, and the limit is derived from a
+separation table measured in the tests rather than asserted. Correct scores `0.000000000`; the tightest
+wrong case, a `0.004` asymmetry error, scores `0.004000008` -- 40x above the `1e-4` limit; the others
+land 600x to 7500x above. The tests assert the *gap*, not just the outcome, so widening the limit later
+breaks a test.
+
+I also corrected my own header comment during this: I had written "correct reproduces to ~1e-7" before
+measuring. It reproduces to exactly zero, because the test recomputes with the same formula on the same
+inputs. That distinction matters for the live capture -- the engine derives the block in its own float
+ops, so a live residual will be non-zero from rounding alone, and `LIVE_CAPTURE_PLAN` now says to log
+the residual as a **number rather than a verdict** so we learn where that floor actually sits.
+
+**2. The OpenXR-to-Prey projection bridge is a direct solve, and it is now implemented.** A3.1 notes
+`XrFovf` is four *signed angles* from the view axis, so their tangents are in the same units as Prey's
+`fWL/fWR/fWB/fWT` (R-050). Inverting the `SetCamera` formula gives the asymmetry shifts outright:
+
+```
+asymL = tan(angleLeft)  + t*ratio        asymB = tan(angleDown) + t
+asymR = tan(angleRight) - t*ratio        asymT = tan(angleUp)   - t      t = tan(fov/2)
+```
+
+`AsymmetryFromFovTangents()` implements it, with a round-trip test that pushes the result back through
+the `SetCamera` formula and confirms the requested tangents come out. The guard test is that a
+**symmetric FoV must yield all-zero shifts** -- a sign error survives every other check while quietly
+symmetrising the eye, which the playbook names as the most common way to "fix" an asymmetric frustum
+that looked wrong.
+
+**3. A second-pass hazard class broader than render targets** (recorded against H-009). Any *per-frame
+mutable state* touched by a pass run twice advances twice. SOMAVR hit this in two unrelated effects
+with identical shape -- SSAO temporal phase, and a tone-mapping packet carrying exposure, white-cut,
+fade and grain phase together -- so the second eye rendered at a different phase. The classifier is
+whether a resource is **read before it is written** within a frame: carried state must be replayed,
+intra-frame scratch must not be duplicated. Plus two traps: fixing a producer does not move its
+downstream consumers, and a fix should be scoped to the narrowest predicate that reproduces.
+
+**4. The playbook's own assessment of us matches ours**, which is worth noting because it is an
+independent read: `stereo` partial/STATIC, `camera_tracking` partial/STATIC, `re_discovery` full, and
+`xr_lifecycle` / `xr_input` / `ui_hud` / `hands_interaction` / `performance` / `audio` with no entry at
+all. Its bottleneck line for us is "deferred CryEngine companions and render-view pools are not yet
+exercised by a second eye" -- the same gate H-009 records, phrased from the render side.
+
+Verification: 12/12, doctor 7 pass 0 warn 0 fail, all 30 landmarks matched. Artifact unchanged at
+`959276B8...` -- the new functions are not referenced by the DLL, so the linker drops them, which is
+the expected outcome for analysis code that only the tests and a future capture will call.

@@ -90,10 +90,75 @@ bool IsPlausible(const RenderCameraView& camera);
 // where t = tan(fov/2), so this recomputes that and compares. Disagreement
 // means either our layout is wrong or the view was built from a different
 // camera -- both worth knowing before writing anything.
+//
+// Returns the raw residual: the largest absolute disagreement across the four
+// frustum tangents and near/far. Exposed rather than hidden behind the bool
+// because a threshold is a property of a *metric*, not of a problem -- you
+// cannot tell whether a limit is sane without seeing the separation it is
+// supposed to sit inside. RuntimeSnapshotTests builds that separation table.
+float RenderCameraResidual(const CameraView& source, const RenderCameraView& derived);
+
+// Threshold derived from the separation actually measured in
+// RuntimeSnapshotTests, never imported from another project:
+//
+//   correct (synthetic)            0.000000000   <- bit-exact, same formula
+//   tiny 0.004 asymmetry error     0.004000008   <- tightest wrong case, 40x
+//   asymmetry symmetrised away     0.059999943      600x
+//   5% FoV error                   0.108985543     1090x
+//   wrong aspect (4:3)             0.372933149     3729x
+//   wrong near plane               0.750000000     7500x
+//
+// **The correct case is exactly zero only because the test recomputes with the
+// same formula on the same inputs.** A live capture will not be: the engine
+// derives the block in its own float ops, so expect a small non-zero residual
+// from rounding alone. 1e-4 is chosen to sit above that rounding floor while
+// staying 40x below the tightest wrong input. If a live capture ever scores
+// between them, treat that as an unexplained result and investigate rather than
+// widening the limit -- widening is how a gate becomes looser than no gate.
+inline constexpr float kRenderCameraResidualLimit = 1.0e-4f;
+
 bool RenderCameraMatchesSource(
     const CameraView& source,
     const RenderCameraView& derived,
-    float tolerance = 0.001f);
+    float tolerance = kRenderCameraResidualLimit);
+
+// ---------------------------------------------------------------------------
+// OpenXR per-eye projection
+// ---------------------------------------------------------------------------
+
+// The four CCamera asymmetry shifts that make CRenderView::SetCamera derive a
+// requested per-eye frustum. Written to m_asymL/R/B/T at +0x6C/+0x70/+0x74/+0x78.
+struct EyeAsymmetry {
+    float left = 0.0f;
+    float right = 0.0f;
+    float bottom = 0.0f;
+    float top = 0.0f;
+};
+
+// Solves the SetCamera frustum formula backwards for the asymmetry shifts.
+//
+// OpenXR hands out XrFovf as four *signed angles* from the view axis; take tan
+// of each and they are in the same units as Prey's fWL/fWR/fWB/fWT tangents,
+// which is what makes this a direct solve rather than a matrix rebuild:
+//
+//   fWL = asymL - t*ratio = tan(angleLeft)   ->  asymL = tan(angleLeft) + t*ratio
+//   fWR = t*ratio + asymR = tan(angleRight)  ->  asymR = tan(angleRight) - t*ratio
+//   fWB = asymB - t       = tan(angleDown)   ->  asymB = tan(angleDown)  + t
+//   fWT = t + asymT       = tan(angleUp)     ->  asymT = tan(angleUp)    - t
+//
+// where t = tan(fov/2). A symmetric FOV must therefore yield all-zero shifts;
+// the tests assert exactly that, because a sign error survives every other
+// check while symmetrising the eye.
+//
+// Takes tangents rather than angles so the caller owns the XrFovf dependency
+// and this stays headless-testable.
+EyeAsymmetry AsymmetryFromFovTangents(
+    float tanLeft,
+    float tanRight,
+    float tanDown,
+    float tanUp,
+    float fov,
+    float projectionRatio);
 
 // ---------------------------------------------------------------------------
 // Capture

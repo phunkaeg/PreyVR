@@ -40,3 +40,41 @@ Two Prey-specific notes on top of that:
 - FC2VR's failure mode — a transient eye camera overwriting a stored primary — is **structurally
   impossible** on the seam this project prefers: `CRenderView::SetCamera` copies by value into the
   render view's own storage (R-049) and never writes `CSystem::m_ViewCamera`.
+
+## A validation threshold is a property of the metric, not of the problem
+
+Adopted 2026-08-27 from the cross-engine playbook, and applied immediately to code in this repo.
+
+**The rule.** Build the wrong-input table *first*. Confirm the metric actually separates correct from
+wrong — if a wrong input scores like a correct one, the metric is blind and no threshold saves it.
+Only then derive the limit from the measured gap. **Never import a threshold from another project.**
+
+The playbook records what happens otherwise. FarCry2-VR imported BioshockVR's residual limit of `1.0`
+and got *a gate looser than no gate at all*, because the two metrics were scaled differently and every
+wrong case still scored under it. Worse, the obvious projection check — that `WVP · P_center⁻¹` comes
+out affine — is **mathematically incapable of detecting a wrong FoV**: a deliberately guessed 75°
+scored `0.000031`, identical to correct, because FoV lives in the scale terms and the affine test
+reads the projective row.
+
+**Applied to `RenderCameraMatchesSource`.** That function shipped on 2026-08-23 with
+`tolerance = 0.001f` — a number chosen by eye, never derived. It now exposes
+`RenderCameraResidual()` and takes its limit from a measured separation table:
+
+| case | residual | vs limit |
+| --- | ---: | ---: |
+| correct (synthetic) | `0.000000000` | bit-exact |
+| tiny `0.004` asymmetry error | `0.004000008` | 40x above |
+| asymmetry symmetrised away | `0.059999943` | 600x |
+| 5% FoV error | `0.108985543` | 1090x |
+| wrong aspect (4:3) | `0.372933149` | 3729x |
+| wrong near plane | `0.750000000` | 7500x |
+
+Limit: **`1e-4`**. The tests assert every wrong case fails *and* that the gap is real — correct an
+order of magnitude below, tightest wrong an order of magnitude above — so raising the limit later
+breaks a test instead of quietly weakening the gate.
+
+**One caveat that matters for the live capture.** The correct case scores exactly zero only because
+the test recomputes with the same formula on the same inputs. A live `CRenderCamera` is derived by the
+engine's own float ops, so expect a small non-zero residual from rounding alone. If a live capture
+ever lands *between* the rounding floor and `0.004`, that is an unexplained result to investigate —
+not a reason to widen the limit.

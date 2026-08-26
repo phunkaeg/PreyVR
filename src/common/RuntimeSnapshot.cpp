@@ -4,8 +4,10 @@
 
 #include <array>
 #include <cmath>
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <limits>
 
 namespace preyvr::snapshot {
 namespace {
@@ -205,25 +207,58 @@ bool IsPlausible(const RenderCameraView& camera)
     return camera.nearPlane > 0.0f && camera.farPlane > camera.nearPlane;
 }
 
+float RenderCameraResidual(const CameraView& source, const RenderCameraView& derived)
+{
+    const float tangent = std::tan(source.fov * 0.5f);
+    if (!Finite(tangent)) {
+        return std::numeric_limits<float>::infinity();
+    }
+    const float horizontal = tangent * source.projectionRatio;
+
+    const float terms[] = {
+        derived.frustumLeft - (source.asymLeft - horizontal),
+        derived.frustumRight - (horizontal + source.asymRight),
+        derived.frustumBottom - (source.asymBottom - tangent),
+        derived.frustumTop - (tangent + source.asymTop),
+        derived.nearPlane - source.nearPlane,
+        derived.farPlane - source.farPlane,
+    };
+
+    float worst = 0.0f;
+    for (const float term : terms) {
+        if (!Finite(term)) {
+            return std::numeric_limits<float>::infinity();
+        }
+        worst = std::max(worst, std::fabs(term));
+    }
+    return worst;
+}
+
 bool RenderCameraMatchesSource(
     const CameraView& source,
     const RenderCameraView& derived,
     float tolerance)
 {
-    const float tangent = std::tan(source.fov * 0.5f);
-    if (!Finite(tangent)) {
-        return false;
-    }
-    const float horizontal = tangent * source.projectionRatio;
-    const auto close = [tolerance](float lhs, float rhs) {
-        return std::fabs(lhs - rhs) <= tolerance;
-    };
-    return close(derived.frustumLeft, source.asymLeft - horizontal) &&
-        close(derived.frustumRight, horizontal + source.asymRight) &&
-        close(derived.frustumBottom, source.asymBottom - tangent) &&
-        close(derived.frustumTop, tangent + source.asymTop) &&
-        close(derived.nearPlane, source.nearPlane) &&
-        close(derived.farPlane, source.farPlane);
+    return RenderCameraResidual(source, derived) <= tolerance;
+}
+
+EyeAsymmetry AsymmetryFromFovTangents(
+    float tanLeft,
+    float tanRight,
+    float tanDown,
+    float tanUp,
+    float fov,
+    float projectionRatio)
+{
+    const float tangent = std::tan(fov * 0.5f);
+    const float horizontal = tangent * projectionRatio;
+
+    EyeAsymmetry shifts{};
+    shifts.left = tanLeft + horizontal;
+    shifts.right = tanRight - horizontal;
+    shifts.bottom = tanDown + tangent;
+    shifts.top = tanUp - tangent;
+    return shifts;
 }
 
 Snapshot Capture(std::uintptr_t moduleBase, Reader read, void* context)

@@ -131,10 +131,13 @@ unchanged.
 | `RT_EndFrame` thread id and interval | observer telemetry | Hurdle 2 |
 | `CRenderView` pool at `CRenderer+0x6F38`, all four slots | R-026 | Hurdle 3 |
 | Per view: `m_camera` at `+0x11A0`, `CRenderCamera` at `+0x1620` | R-049, R-050 | Hurdle 3 |
-| `RenderCameraMatchesSource(m_camera, m_RenderCamera)` verdict | computed | Hurdle 3 |
+| `RenderCameraResidual(m_camera, m_RenderCamera)` **value**, not just the verdict | computed | Hurdle 3 |
+| The four `m_asym*` baseline (expected all-zero) | R-048 | Hurdle 3 |
 
-`DecodeRenderCamera`, `IsPlausible` and `RenderCameraMatchesSource` are already built and tested —
-Capture B needs the *reads*, not the analysis.
+`DecodeRenderCamera`, `IsPlausible`, `RenderCameraResidual` and `AsymmetryFromFovTangents` are already built and
+tested — Capture B needs the *reads*, not the analysis. **Log the residual as a number, not a pass/fail.** The
+synthetic correct case is bit-exact zero, but a live block is derived by the engine's own float ops and will carry
+some rounding; recording the actual value is what establishes where that floor sits, and a bool would throw it away.
 
 **Note on scope.** Everything in Capture A is a pure memory read. Capture B calls COM methods
 (`GetDesc`, `GetAdapter`) on objects the game owns. Those are read-only queries, but they are a step
