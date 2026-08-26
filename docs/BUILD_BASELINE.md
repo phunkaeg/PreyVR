@@ -151,3 +151,24 @@ Checked for the three functions the camera lane would touch, all unique and ther
 count: `CSystem::GetViewCamera` (8B), `CSystem::SetViewCamera` (7B), `CRenderView::SetCamera` (31B).
 This is also why `R-040`'s eight-byte signature is worth having despite covering an entire two-
 instruction function — it doubles as the anti-folding proof.
+
+### Vocabulary does not survive engine generations; structure does
+
+Found on 2026-08-23 while testing a Far Cry 1 `CryAnimation` tip against Prey. Every specific symbol
+from the older generation was absent — no `IKSolver`, `SolveIK`, `m_additLen` or `ApplyToBone` in
+`PreyDll.dll`, no `CryAnimation` directory in the Chairloader PDB headers, zero `IK` matches across
+all 1,131 header files. The FC1 solver belongs to the CryEngine 1 generation; Arkane's CryEngine is
+far downstream of it.
+
+**But the search still succeeded**, because what transferred was the *shape* — a two-bone solver, a
+named limb, a goal, a definition block. Searching for that shape rather than those names found
+CryEngine 3's replacement: `AnimationPoseModifier_Ik2Segments`, `AnimationPoseModifier_LimbIk`,
+`IKLIMB_LEFTHAND`/`IKLIMB_RIGHTHAND`, `CreateIKLimb`, and the `*_Definition` CHRPARAMS keys.
+
+**Rule.** When using an older engine version as an oracle, expect the names to fail and the structure
+to hold. Search for the concept's shape — the arity, the naming convention, the adjacent definition
+keys — not the literal identifiers. A negative on the exact symbol is not evidence the feature is
+missing; it is usually evidence you are one generation off.
+
+This sits alongside the translation hazards above for the same reason: like a REX prefix or a folded
+COMDAT address, it is a case where an exact-match search returns a confident wrong answer.
