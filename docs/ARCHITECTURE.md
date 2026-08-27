@@ -54,8 +54,13 @@ The bootstrap/build-gating rung is now `PreyVR.dll` version `0.3.0-lifecycle-har
   adapter, but honours `r_overrideDXGIAdapter` (R-052) as an `EnumAdapters1` index inside the real device-creation path (R-025),
   so adapter agreement is reachable natively with no hook. It is an index rather than a LUID, and it is read once at device
   creation, so the mod must translate LUID to index itself and set it before the renderer initialises.
-- **Look for an override the engine already honours before hooking anything.** Prey has one: `ArkPlayerCamera::UpdateView` tests a nullable callback at camera `+0x148` every frame and, when non-null, invokes it with `SViewParams&` and skips the entire default camera-mode path (R-009). Its supported installer is `SetCustomViewFunction` (R-010). This is strictly better than a matrix-pointer override — the engine hands us the out-parameter to fill, so there is no race against its own write. `CCamera` itself has no such override; that is a definitive absence, since its layout closes byte-exactly (R-048).
+- **Look for an override the engine already honours before hooking anything.** This is now a cross-fleet pattern (META-006), reached independently by four projects; Prey contributed the `CreateIKLimb` instance. Enumerate what the engine already honours — a stereo device interface, a view-supplier callback, a native-extension loader, a named IK facility, a cvar — before designing a hook. Prey has three: `ArkPlayerCamera::UpdateView` tests a nullable callback at camera `+0x148` every frame and, when non-null, invokes it with `SViewParams&` and skips the entire default camera-mode path (R-009). Its supported installer is `SetCustomViewFunction` (R-010). This is strictly better than a matrix-pointer override — the engine hands us the out-parameter to fill, so there is no race against its own write. `CCamera` itself has no such override; that is a definitive absence, since its layout closes byte-exactly (R-048).
 - Live-host time is the scarce resource, so captures are planned ahead of the work that needs them and one session harvests
   data for milestones not yet started; see [`LIVE_CAPTURE_PLAN.md`](LIVE_CAPTURE_PLAN.md). The first capture is built and runs
   read-only on load, validating R-005, R-039, R-040, R-043, R-044, R-048 and R-054 in a single supported-host load.
+- **The XR frame contract, adopted before the submission path exists (XR-005).** Wait once early, cache the poses, render
+  every camera from that *same cached pose*, submit from an end-of-frame hook after all cameras have rendered, and hand off
+  last. A cross-engine survey of eleven mods found **five got this wrong**; we get to start correct rather than debug into
+  it. The one legitimate deviation is re-polling *inside the render backend at draw time* — that is late-latching, and it
+  applies to head motion only, never to the gameplay-aim pose.
 - All engine pointers, vtables, and signatures are build-gated and fail closed.

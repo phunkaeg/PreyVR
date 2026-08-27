@@ -96,3 +96,39 @@ tail and total all agree.
 | `+0x23C` | `uint8 :1 / :3` | `m_JustActivated / m_sceneMaskFilter` | Bitfield: 1-bit then 3-bit. |
 
 Total `0x240` bytes after 8-byte alignment (the two pointer members force 8-byte alignment).
+
+## Does a four-tangent parameterisation lose anything? Not on this path.
+
+A cross-engine briefing warns that **a projection rebuilt from four tangents discards the shear that
+canted displays fold into the matrix**, and advises treating a reachable matrix as opaque and
+left-multiplying a clip-space crop instead. Checked against Prey, and the warning does **not** apply to
+this seam — for a structural reason worth recording.
+
+`CRenderCamera` (`IRenderer.h:545-549`) stores exactly ten scalars and **no matrix**:
+
+```cpp
+Vec3  vX, vY, vZ;
+Vec3  vOrigin;
+float fWL, fWR, fWB, fWT;
+float fNear, fFar;
+```
+
+`GetProjectionMatrix(float* M) const` *derives* the matrix from those on demand, and the class exposes
+`Frustum(l, r, b, t, Ndist, Fdist)` — the canonical off-axis frustum setter taking exactly the four
+tangents plus near and far. So on this path there is **no stored matrix to destroy**: four tangents is
+not a lossy reconstruction of Prey's projection, it *is* Prey's projection.
+
+Two consequences, one reassuring and one a genuine limit:
+
+- **Reassuring.** `AsymmetryFromFovTangents` writes the engine's own native representation. And
+  OpenXR's `XrFovf` is itself four signed angles, so the runtime never asks for shear — a canted
+  display is expressed in the per-eye *view pose*, not the projection. The contract is satisfiable.
+- **A real limit.** Prey's `CRenderCamera` therefore *cannot represent a sheared projection at all*.
+  If some future requirement needs one, it cannot be met by writing this block; it would have to be
+  met downstream, and that is where the briefing's opaque-matrix advice would apply.
+
+**Open question, not yet answered.** Whether anything downstream of `CRenderCamera` modifies the
+derived projection — a TAA sub-pixel jitter is the common case, and engines add it either to the matrix
+(harmless, it composes) or by perturbing the frustum (which a per-eye write would fight). No pass census
+exists yet. Worth resolving before the first per-eye write, and cheap to check once a capture can walk
+the render path.

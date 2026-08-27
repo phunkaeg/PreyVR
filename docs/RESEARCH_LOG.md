@@ -1201,3 +1201,37 @@ exercised by a second eye" -- the same gate H-009 records, phrased from the rend
 Verification: 12/12, doctor 7 pass 0 warn 0 fail, all 30 landmarks matched. Artifact unchanged at
 `959276B8...` -- the new functions are not referenced by the DLL, so the linker drops them, which is
 the expected outcome for analysis code that only the tests and a future capture will call.
+
+### Fleet briefing 2026-08-27: three items, and one that tested a decision from the same day
+
+**1. The XR frame contract (XR-005), adopted before the code exists.** Wait once early, cache the
+poses, render every camera from that same cached pose, submit from an end-of-frame hook after all
+cameras have rendered, hand off last. A survey of eleven mods found **five got this wrong**. The value
+here is entirely in the timing: we have not built the submission path, so adopting it costs nothing,
+whereas five projects had to debug into it. The one legitimate deviation is re-polling inside the
+render backend at draw time -- late-latching, head motion only, never the gameplay-aim pose. Recorded
+as a binding constraint in `ARCHITECTURE.md` and against Hurdle 2. It also makes `RT_EndFrame` (R-003)
+the natural submit site, which is already the frame observer's target.
+
+**2. A challenge to the solve I implemented earlier the same day, checked and dismissed -- with a
+limit recorded.** The briefing warns that a projection rebuilt from four tangents discards the shear
+canted displays fold into the matrix, and advises treating a reachable matrix as opaque instead. That
+lands directly on `AsymmetryFromFovTangents`, so it was worth testing rather than filing.
+
+It does not apply to this seam. `CRenderCamera` (`IRenderer.h:545-549`) stores ten scalars and **no
+matrix** -- three basis vectors, an origin, four tangents, near and far -- and `GetProjectionMatrix()`
+derives the matrix on demand. The class even exposes `Frustum(l, r, b, t, Ndist, Fdist)`, the canonical
+off-axis setter. So four tangents is not a lossy reconstruction of Prey's projection; **it is Prey's
+projection.** And OpenXR's `XrFovf` is itself four signed angles, so the runtime never asks for shear
+-- a canted display lives in the per-eye view pose.
+
+The honest converse is now recorded in `CCAMERA_LAYOUT.md`: Prey's `CRenderCamera` therefore *cannot*
+represent a sheared projection at all, and if that is ever needed it must be met downstream, which is
+exactly where the briefing's advice would apply. Plus an open question the check surfaced -- whether
+anything downstream perturbs the derived projection, TAA sub-pixel jitter being the common case. Added
+to the matrix if it composes, harmful if it perturbs the frustum. No pass census exists yet.
+
+**3. `CreateIKLimb` became META-006.** The "enumerate what the engine already honours before designing
+a hook" generalisation was adopted fleet-wide, reached independently by four projects, with our
+instance cited. `ARCHITECTURE.md` now records it as a cross-fleet pattern rather than a local
+observation, which is the correct weight for something four projects converged on.

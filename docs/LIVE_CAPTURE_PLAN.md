@@ -53,6 +53,12 @@ process*. This is the moment to validate the entire address model at once, which
 **Goal.** Create an instance, system, and session; bind D3D11; create swapchains; present something
 to the headset, even a duplicated flat image.
 
+**Binding design constraint (XR-005), adopted before any of it is written.** Wait once early, cache the poses, render
+every camera from that same cached pose, submit from an end-of-frame hook after all cameras have rendered, hand off last.
+Five of eleven surveyed mods got this wrong; the cost of getting it right is zero while the submission path does not yet
+exist. The only legitimate deviation is re-polling inside the render backend at draw time — late-latching, head motion
+only. This makes `RT_EndFrame` (R-003) the natural submit site, which the frame observer already targets.
+
 **The questions that will block us, and where the answers come from.**
 
 | Question | Why it blocks | Source |
