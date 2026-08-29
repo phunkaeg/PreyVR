@@ -323,6 +323,99 @@ Snapshot Capture(std::uintptr_t moduleBase, Reader read, void* context)
     return snapshot;
 }
 
+RenderViewCapture CaptureRenderViews(std::uintptr_t moduleBase, Reader read, void* context)
+{
+    using engine::RenderViewIdentity;
+
+    RenderViewCapture capture{};
+    if (moduleBase == 0 || read == nullptr) {
+        return capture;
+    }
+
+    PointerFact renderer{};
+    if (!ReadPointer(read, context, moduleBase + RendererLayout::singletonPointerRva, renderer)) {
+        return capture;
+    }
+    capture.renderer = renderer.value;
+    capture.rendererPlausible = true;
+
+    // Raw pointer values only -- no COM call is made on either object.
+    ReadPointer(read, context, capture.renderer + RendererLayout::swapchain, capture.swapChain);
+    ReadPointer(read, context, capture.renderer + RendererLayout::device, capture.device);
+
+    // R-033: m_pRenderViews[t][r] at +0x6F38 + (t*2 + r)*8.
+    bool allNonNull = true;
+    for (int t = 0; t < 2; ++t) {
+        for (int r = 0; r < 2; ++r) {
+            const std::size_t index = static_cast<std::size_t>(t) * 2 + static_cast<std::size_t>(r);
+            RenderViewFact& fact = capture.views[index];
+            fact.threadId = t;
+            fact.recursive = r;
+
+            const std::uintptr_t slot =
+                capture.renderer + RendererLayout::renderViewPool + index * sizeof(std::uintptr_t);
+            if (!ReadPointer(read, context, slot, fact.pointer)) {
+                allNonNull = false;
+                continue;
+            }
+
+            fact.vtableMatches = VtableMatches(
+                read, context, fact.pointer.value, moduleBase, RenderViewIdentity::vtableRva);
+            if (!fact.vtableMatches) {
+                continue;
+            }
+
+            std::array<std::uint8_t, kCameraSize> cameraBytes{};
+            if (read(fact.pointer.value + RenderViewLayout::camera, cameraBytes, context)) {
+                fact.camera = DecodeCamera(cameraBytes);
+            }
+            std::array<std::uint8_t, kRenderCameraSize> derivedBytes{};
+            if (read(fact.pointer.value + RenderViewLayout::renderCamera, derivedBytes, context)) {
+                fact.derived = DecodeRenderCamera(derivedBytes);
+            }
+            if (fact.camera.has_value() && fact.derived.has_value()) {
+                fact.residual = RenderCameraResidual(*fact.camera, *fact.derived);
+                fact.residualWithinLimit = fact.residual <= kRenderCameraResidualLimit;
+            }
+        }
+    }
+    for (const RenderViewFact& fact : capture.views) {
+        allNonNull = allNonNull && fact.pointer.plausible;
+    }
+    capture.allFourNonNull = allNonNull;
+
+    // R-033's own acceptance test: the recursive view must be a different
+    // object from the default one, or the pool is not what we think it is.
+    capture.recursiveDistinctFromDefault =
+        capture.views[0].pointer.value != capture.views[1].pointer.value &&
+        capture.views[2].pointer.value != capture.views[3].pointer.value &&
+        capture.views[0].pointer.plausible && capture.views[1].pointer.plausible;
+
+    // R-026, the independently live-verified per-frame block, as a cross-check.
+    std::array<std::uint8_t, sizeof(std::int32_t)> slotBytes{};
+    capture.frameSlotRead =
+        read(capture.renderer + RendererLayout::frameSlotIndex, slotBytes, context);
+    if (capture.frameSlotRead) {
+        std::memcpy(&capture.frameSlot, slotBytes.data(), sizeof(capture.frameSlot));
+        if (capture.frameSlot >= 0 &&
+            static_cast<std::size_t>(capture.frameSlot) < RendererLayout::frameBlockCount) {
+            const std::uintptr_t block = capture.renderer + RendererLayout::frameBlock +
+                static_cast<std::uintptr_t>(capture.frameSlot) * RendererLayout::frameBlockStride;
+            std::array<std::uint8_t, kRenderCameraSize> bytes{};
+            if (read(block + RendererLayout::frameBlockRenderCamera, bytes, context)) {
+                capture.frameBlockCamera = DecodeRenderCamera(bytes);
+            }
+        }
+    }
+
+    capture.complete = capture.rendererPlausible && capture.allFourNonNull &&
+        capture.recursiveDistinctFromDefault;
+    for (const RenderViewFact& fact : capture.views) {
+        capture.complete = capture.complete && fact.vtableMatches;
+    }
+    return capture;
+}
+
 namespace {
 
 void Emit(LineSink sink, void* context, const char* text)
@@ -389,6 +482,79 @@ void Report(const Snapshot& snapshot, LineSink sink, void* context)
 
     std::snprintf(
         line, sizeof(line), "preyvr_snapshot result=%s", snapshot.complete ? "complete" : "partial");
+    Emit(sink, context, line);
+}
+
+void Report(const RenderViewCapture& capture, LineSink sink, void* context)
+{
+    if (sink == nullptr) {
+        return;
+    }
+    char line[256];
+    const auto flag = [](bool value) { return value ? "yes" : "no"; };
+
+    std::snprintf(
+        line, sizeof(line),
+        "preyvr_renderview renderer=0x%llX plausible=%s swapchain=0x%llX device=0x%llX",
+        static_cast<unsigned long long>(capture.renderer), flag(capture.rendererPlausible),
+        static_cast<unsigned long long>(capture.swapChain.value),
+        static_cast<unsigned long long>(capture.device.value));
+    Emit(sink, context, line);
+
+    for (const RenderViewFact& fact : capture.views) {
+        std::snprintf(
+            line, sizeof(line),
+            "preyvr_renderview slot t=%d r=%d ptr=0x%llX plausible=%s is_crenderview=%s",
+            fact.threadId, fact.recursive,
+            static_cast<unsigned long long>(fact.pointer.value), flag(fact.pointer.plausible),
+            flag(fact.vtableMatches));
+        Emit(sink, context, line);
+
+        if (fact.camera.has_value()) {
+            const CameraView& c = *fact.camera;
+            std::snprintf(
+                line, sizeof(line),
+                "preyvr_renderview cam t=%d r=%d pos=%.4f,%.4f,%.4f fov=%.6f res=%dx%d "
+                "asym=%.6f,%.6f,%.6f,%.6f",
+                fact.threadId, fact.recursive, c.matrix[3], c.matrix[7], c.matrix[11], c.fov,
+                c.width, c.height, c.asymLeft, c.asymRight, c.asymBottom, c.asymTop);
+            Emit(sink, context, line);
+        }
+        if (fact.derived.has_value()) {
+            const RenderCameraView& d = *fact.derived;
+            std::snprintf(
+                line, sizeof(line),
+                "preyvr_renderview rcam t=%d r=%d fW=%.6f,%.6f,%.6f,%.6f near=%.4f far=%.2f",
+                fact.threadId, fact.recursive, d.frustumLeft, d.frustumRight, d.frustumBottom,
+                d.frustumTop, d.nearPlane, d.farPlane);
+            Emit(sink, context, line);
+        }
+        // The residual is logged as a NUMBER. The synthetic correct case is
+        // bit-exact zero; a live block carries the engine's own float rounding,
+        // and learning where that floor sits is part of why we are here.
+        if (fact.residual >= 0.0f) {
+            std::snprintf(
+                line, sizeof(line),
+                "preyvr_renderview residual t=%d r=%d value=%.9f limit=%.9f within=%s",
+                fact.threadId, fact.recursive, static_cast<double>(fact.residual),
+                static_cast<double>(kRenderCameraResidualLimit), flag(fact.residualWithinLimit));
+            Emit(sink, context, line);
+        }
+    }
+
+    std::snprintf(
+        line, sizeof(line), "preyvr_renderview frame_slot=%d read=%s block_rcam=%s",
+        capture.frameSlot, flag(capture.frameSlotRead),
+        flag(capture.frameBlockCamera.has_value()));
+    Emit(sink, context, line);
+
+    // R-033's stated acceptance test, reported as its own line so the answer is
+    // legible without re-deriving it from the slot dump.
+    std::snprintf(
+        line, sizeof(line),
+        "preyvr_renderview r033 all_four_non_null=%s recursive_distinct=%s result=%s",
+        flag(capture.allFourNonNull), flag(capture.recursiveDistinctFromDefault),
+        capture.complete ? "complete" : "partial");
     Emit(sink, context, line);
 }
 

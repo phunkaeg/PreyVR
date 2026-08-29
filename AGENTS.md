@@ -1,5 +1,11 @@
 # PreyVR
 
+
+> Also read `CLAUDE.md` in this folder — it carries project rules that are **not** repeated here,
+> and they apply whichever tool you are. Claude Code auto-loads `CLAUDE.md` and Codex auto-loads
+> this file, so neither sees the other's unless it goes and reads it. Treat the pair as one
+> instruction set.
+
 VR modding project for Prey (2017). Target: `Prey.exe` (64-bit, CryEngine/Arkane, D3D11).
 
 ## Reverse-engineering MCPs
@@ -26,3 +32,29 @@ per-tool caveats, and the pairing workflows (Ghidra static offsets -> ReGenny li
    `Captures/`.
 6. Target is `Prey.exe` (Prey 2017, CryEngine-derived, **64-bit** -> use **x64dbg**).
 7. RenderDoc works here — Prey renders via **Direct3D 11**.
+
+## Cross-engine docs graph (added 2026-08-27)
+
+This project is **not** in that graph. It covers SS2VR, BioshockVR and SOMAVR — Dark/KEX,
+Unreal 2.5 Vengeance and HPL3, across D3D11 and OpenGL — so query it as **prior art**, for
+problems those three already hit.
+
+Separate from this project's own `graphify-out/`. Use it for **"has another project hit this?"**:
+
+```
+graphify query "<question>" --graph "D:\Dev Debug\VR Modding\cross-engine-graph\graphify-out\reconciled-graph.json" --budget 900
+```
+
+Rules:
+
+- **It tells you WHERE a problem was solved, never what the answer was.** Every node carries the document
+  that minted it. Treat a hit as a lead, open that document, and grade what you find there yourself.
+- **It indexes documentation, not code.** A symbol is absent because nobody wrote it down, not because it
+  does not exist. It is also a snapshot — anything written since 2026-08-27 is missing.
+- **Cross-project edges are tagged `same_concept_as`** with the concept name and a one-line reason. Read
+  the reason; reject the link if it does not hold for your engine.
+- **Cross-project findings are `INFERENCE` for this target** until confirmed against these bytes. Another
+  engine solving a problem is a lead and a vocabulary, not a result.
+- Use `..\VR Modding\graphify-key.bat` if the query needs an API key in the environment.
+
+Rebuild and extension instructions: `D:\Dev Debug\VR Modding\cross-engine-graph\README.md`.

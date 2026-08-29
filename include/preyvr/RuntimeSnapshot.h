@@ -209,6 +209,61 @@ Snapshot Capture(std::uintptr_t moduleBase, Reader read, void* context);
 // A stable, greppable one-line-per-fact rendering for the smoke log. Callers
 // pass a sink so this stays free of I/O and testable.
 using LineSink = void (*)(std::string_view line, void* context);
+
+// ---------------------------------------------------------------------------
+// Capture B (memory-only half) -- the pooled render views
+// ---------------------------------------------------------------------------
+//
+// R-033 records `SRenderPipeline::m_pRenderViews[2][2]` as static-only and
+// states its own acceptance test: all four entries non-null heap pointers, and
+// `[t][1]` distinct from `[t][0]`, before it may be treated as a usable seam.
+// This capture runs exactly that test and decodes what it finds.
+//
+// Deliberately NOT run on load. Hurdle 1's job is to prove a never-loaded
+// lifecycle with the smallest possible payload; this is reached only through an
+// explicit export, so a failure here cannot be mistaken for a lifecycle fault.
+
+struct RenderViewFact {
+    int threadId = 0;   // first index of m_pRenderViews[t][r]
+    int recursive = 0;  // second index
+    PointerFact pointer;
+    bool vtableMatches = false; // is it really a CRenderView? (R-053)
+
+    std::optional<CameraView> camera;         // m_camera at +0x11A0 (R-049)
+    std::optional<RenderCameraView> derived;  // CRenderCamera at +0x1620 (R-050)
+    // The number, not a verdict: a live block is derived by the engine's own
+    // float ops, so its rounding floor is itself a thing we are here to learn.
+    float residual = -1.0f;
+    bool residualWithinLimit = false;
+};
+
+struct RenderViewCapture {
+    std::uintptr_t renderer = 0;
+    bool rendererPlausible = false;
+
+    std::array<RenderViewFact, 4> views{};
+
+    // R-033's stated acceptance test, evaluated rather than assumed.
+    bool allFourNonNull = false;
+    bool recursiveDistinctFromDefault = false;
+
+    // R-026, the live-verified per-frame block, as an independent cross-check
+    // on the pool: its CRenderCamera should agree with whichever view is live.
+    std::int32_t frameSlot = -1;
+    bool frameSlotRead = false;
+    std::optional<RenderCameraView> frameBlockCamera;
+
+    // Raw pointer values only. No COM call is made -- querying the game's
+    // device or swapchain is a step beyond reading memory and is not done here.
+    PointerFact swapChain; // R-006
+    PointerFact device;    // R-007
+
+    bool complete = false;
+};
+
+RenderViewCapture CaptureRenderViews(std::uintptr_t moduleBase, Reader read, void* context);
+void Report(const RenderViewCapture& capture, LineSink sink, void* context);
+
 void Report(const Snapshot& snapshot, LineSink sink, void* context);
 
 } // namespace preyvr::snapshot

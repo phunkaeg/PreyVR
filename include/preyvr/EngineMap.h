@@ -38,6 +38,31 @@ struct RendererLayout {
     static constexpr std::uintptr_t singletonPointerRva = 0x2B3E8E0;
     static constexpr std::uintptr_t swapchain = 0xAE88;
     static constexpr std::uintptr_t device = 0xAF28;
+
+    // R-033: SRenderPipeline::m_pRenderViews[2][2], four CRenderView* at
+    // +0x6F38 + (nThreadID*2 + bRecursive)*8. The indexing arithmetic is
+    // confirmed by emulating R-032; the base offset is static-only and its
+    // registry entry names its own acceptance test -- all four non-null, and
+    // [t][1] distinct from [t][0].
+    static constexpr std::uintptr_t renderViewPool = 0x6F38;
+    static constexpr std::size_t renderViewPoolCount = 4;
+
+    // R-026: per-frame render view block, live-verified by ReGenny probe.
+    // Two slots of stride 0x328 selected by the index at +0x499C, with a
+    // CRenderCamera at +0x240 within each block.
+    static constexpr std::uintptr_t frameBlock = 0x4A08;
+    static constexpr std::uintptr_t frameBlockStride = 0x328;
+    static constexpr std::uintptr_t frameBlockRenderCamera = 0x240;
+    static constexpr std::uintptr_t frameSlotIndex = 0x499C;
+    static constexpr std::size_t frameBlockCount = 2;
+};
+
+// R-053: the CRenderView vtable. Reading a pooled entry's first qword and
+// comparing against this is what turns "a plausible pointer" into "a
+// CRenderView" -- the same identity discipline Capture A uses for CSystem.
+struct RenderViewIdentity {
+    static constexpr std::uintptr_t vtableRva = 0x1DCAE00;
+    static constexpr std::uintptr_t vtableSetCameraSlot = 0x40;
 };
 
 // Offsets below are verified against the installed PreyDll.dll, not merely read

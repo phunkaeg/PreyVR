@@ -421,6 +421,113 @@ int main()
         Require(sawAsym, "the report records the asymmetry baseline we will need later");
     }
 
+    // --- Capture B: the pooled render views (R-033) -------------------------
+    {
+        using namespace preyvr::engine;
+        constexpr std::uintptr_t kView0 = 0x00007FF9'4000'0000ULL;
+        constexpr std::uintptr_t kSwapChain = 0x00007FF9'5000'0000ULL;
+        constexpr std::uintptr_t kDevice = 0x00007FF9'6000'0000ULL;
+
+        const CameraView camera = SampleCamera();
+        const float t = std::tan(camera.fov * 0.5f);
+        const float h = t * camera.projectionRatio;
+
+        std::vector<std::uint8_t> rcBlob(kRenderCameraSize, 0);
+        const auto putf = [&rcBlob](std::size_t off, float v) {
+            std::memcpy(rcBlob.data() + off, &v, sizeof(v));
+        };
+        const std::uintptr_t rcBase = RenderViewLayout::renderCamera;
+        putf(RenderCameraLayout::axisX - rcBase, 1.0f);
+        putf(RenderCameraLayout::axisY - rcBase + 4, 1.0f);
+        putf(RenderCameraLayout::axisZ - rcBase + 8, 1.0f);
+        putf(RenderCameraLayout::frustumLeft - rcBase, camera.asymLeft - h);
+        putf(RenderCameraLayout::frustumRight - rcBase, h + camera.asymRight);
+        putf(RenderCameraLayout::frustumBottom - rcBase, camera.asymBottom - t);
+        putf(RenderCameraLayout::frustumTop - rcBase, t + camera.asymTop);
+        putf(RenderCameraLayout::nearPlane - rcBase, camera.nearPlane);
+        putf(RenderCameraLayout::farPlane - rcBase, camera.farPlane);
+
+        const std::vector<std::uint8_t> camBlob = EncodeCamera(camera);
+
+        const auto buildPool = [&](FakeMemory& m, bool distinctRecursive) {
+            m.PlacePointer(kModuleBase + RendererLayout::singletonPointerRva, kRendererObject);
+            m.PlacePointer(kRendererObject + RendererLayout::swapchain, kSwapChain);
+            m.PlacePointer(kRendererObject + RendererLayout::device, kDevice);
+            const std::int32_t slot = 0;
+            m.Place(kRendererObject + RendererLayout::frameSlotIndex, &slot, sizeof(slot));
+            m.Place(kRendererObject + RendererLayout::frameBlock +
+                    RendererLayout::frameBlockRenderCamera, rcBlob.data(), rcBlob.size());
+            for (std::size_t i = 0; i < 4; ++i) {
+                const std::uintptr_t view =
+                    kView0 + (distinctRecursive ? i : (i / 2) * 2) * 0x10000ULL;
+                m.PlacePointer(kRendererObject + RendererLayout::renderViewPool + i * 8, view);
+                m.PlacePointer(view, kModuleBase + RenderViewIdentity::vtableRva);
+                m.Place(view + RenderViewLayout::camera, camBlob.data(), camBlob.size());
+                m.Place(view + RenderViewLayout::renderCamera, rcBlob.data(), rcBlob.size());
+            }
+        };
+
+        FakeMemory good;
+        buildPool(good, true);
+        const RenderViewCapture ok = CaptureRenderViews(kModuleBase, &FakeRead, &good);
+        Require(ok.complete, "a well-formed render-view pool yields a complete capture");
+        Require(ok.allFourNonNull, "all four pool entries are non-null");
+        Require(ok.recursiveDistinctFromDefault,
+            "R-033's own test: the recursive view is a distinct object");
+        Require(ok.swapChain.value == kSwapChain && ok.device.value == kDevice,
+            "the swapchain and device pointer VALUES are captured (no COM call)");
+        for (const RenderViewFact& f : ok.views) {
+            Require(f.vtableMatches, "each pooled entry identifies as a CRenderView");
+            Require(f.camera.has_value() && f.derived.has_value(), "both cameras decode");
+            Require(f.residual >= 0.0f && f.residualWithinLimit,
+                "the derived frustum agrees with the camera it came from");
+        }
+        Require(ok.frameSlotRead && ok.frameBlockCamera.has_value(),
+            "the R-026 per-frame block is captured as an independent cross-check");
+
+        // R-033 warns the pool may not be what we think. Each negative proves the
+        // capture reports that rather than decoding garbage.
+        FakeMemory sharedRecursive;
+        buildPool(sharedRecursive, false);
+        const RenderViewCapture shared =
+            CaptureRenderViews(kModuleBase, &FakeRead, &sharedRecursive);
+        Require(!shared.recursiveDistinctFromDefault && !shared.complete,
+            "a pool whose recursive slot aliases the default fails R-033's test");
+
+        FakeMemory wrongVtable;
+        buildPool(wrongVtable, true);
+        wrongVtable.PlacePointer(kView0, kModuleBase + 0x1234);
+        const RenderViewCapture bad = CaptureRenderViews(kModuleBase, &FakeRead, &wrongVtable);
+        Require(!bad.views[0].vtableMatches && !bad.complete,
+            "an entry that is not a CRenderView is reported, not decoded");
+        Require(bad.views[1].vtableMatches,
+            "and one bad entry does not contaminate the others");
+
+        FakeMemory nullSlot;
+        buildPool(nullSlot, true);
+        nullSlot.PlacePointer(kRendererObject + RendererLayout::renderViewPool + 3 * 8, 0);
+        const RenderViewCapture holed = CaptureRenderViews(kModuleBase, &FakeRead, &nullSlot);
+        Require(!holed.allFourNonNull && !holed.complete, "a null pool entry fails the test");
+
+        FakeMemory empty;
+        const RenderViewCapture none = CaptureRenderViews(kModuleBase, &FakeRead, &empty);
+        Require(!none.rendererPlausible && !none.complete,
+            "an unmapped renderer fails closed rather than faulting");
+
+        std::vector<std::string> lines;
+        Report(ok, [](std::string_view l, void* c) {
+            static_cast<std::vector<std::string>*>(c)->emplace_back(l); }, &lines);
+        bool sawResidualValue = false, sawR033 = false;
+        for (const std::string& l : lines) {
+            Require(l.rfind("preyvr_renderview", 0) == 0, "every line carries the grep prefix");
+            if (l.find("residual") != std::string::npos && l.find("value=") != std::string::npos)
+                sawResidualValue = true;
+            if (l.find("r033") != std::string::npos) sawR033 = true;
+        }
+        Require(sawResidualValue, "the residual is logged as a number, not just a verdict");
+        Require(sawR033, "R-033's acceptance verdict is reported on its own line");
+    }
+
     std::cout << "PreyVR runtime-snapshot tests passed\n";
     return 0;
 }

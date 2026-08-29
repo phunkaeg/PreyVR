@@ -1099,7 +1099,7 @@ change detection to derive the restore list, and three scenario captures. They a
 order so the next session starts from a specification rather than a blank page.
 
 Fresh loop 12/12, doctor 7 pass 0 warn 0 fail, all 30 landmarks matched. Artifact
-`959276B8A7D4C9186065C1244F8B89885E9129770F1AE833A71B6EC13BD72EC4`.
+`A37D4C004808322F24B3C660DA42CA7C679FD34906F407CF8FB765567989D8C1`.
 
 ## 2026-08-23 - The FC1 IK lineage does not survive into Prey, but its descendant is named and findable
 
@@ -1235,3 +1235,46 @@ to the matrix if it composes, harmful if it perturbs the frustum. No pass census
 a hook" generalisation was adopted fleet-wide, reached independently by four projects, with our
 instance cited. `ARCHITECTURE.md` now records it as a cross-fleet pattern rather than a local
 observation, which is the correct weight for something four projects converged on.
+
+## 2026-08-27 - Capture B's memory-only half, built ahead of tomorrow's session
+
+The operator tests tomorrow, so the question was what else a single session could harvest. Capture B
+was specified-not-built, and its memory-only portion turned out to be entirely reachable without any
+COM call -- so it is now shipped, behind an export.
+
+**Why an export and not the load path.** Hurdle 1's job is to prove a lifecycle that has never run,
+with the smallest possible payload. Adding a second capture to the automatic path would mean a failure
+there could be mistaken for a lifecycle fault. `PreyVR_CaptureRenderViews` is called explicitly, and
+refuses outright unless the gate has already verified the host. The automatic load path is unchanged.
+
+**It implements R-033's own acceptance test.** That entry has been sitting at `static-only` with an
+explicit instruction -- confirm all four `m_pRenderViews[2][2]` entries are non-null heap pointers and
+that `[t][1]` differs from `[t][0]` before treating the pool as usable. The capture runs exactly that
+and reports the verdict on its own line. Each entry's vtable is checked against R-053, so a wrong pool
+offset is *reported* rather than decoded into plausible-looking garbage -- the same identity discipline
+Capture A uses for `CSystem`.
+
+For each live view it decodes `m_camera` (R-049) and the `CRenderCamera` block (R-050) and logs the
+residual **as a number**. It also captures the R-026 per-frame block as an independent cross-check --
+R-026 is `reproduced` from a live ReGenny probe while R-033 is `static-only`, so if they disagree the
+better-evidenced one wins.
+
+**A citation error found while doing this.** `LIVE_CAPTURE_PLAN` credited the `CRenderer+0x6F38` pool
+to R-026. It is R-033. R-026 is a different thing entirely -- the per-frame block at `+0x4A08`, stride
+`0x328`, with a `CRenderCamera` at `+0x240`. Both are now captured, correctly attributed.
+
+**Deliberately still not built: the COM half.** `IDXGISwapChain::GetDesc`,
+`IDXGIDevice::GetAdapter` and `ID3D11Multithread::GetMultithreadProtected` are read-only queries, but
+they are calls into the game's own objects rather than reads of its memory. Only the pointer *values*
+are captured. That line stays until Hurdle 1 has passed.
+
+**Mutation-checked, with one honest detour.** Disabling the first clause of the R-033 distinctness
+check did *not* fail the tests -- because the second clause independently catches the same synthetic
+case. That is the check being robust rather than the test being broken, but it meant the first mutation
+proved nothing. Bypassing the whole predicate produced
+`FAILED: a pool whose recursive slot aliases the default fails R-033's test`, which is the result that
+counts. Reverted; `git diff --stat` confirmed insertions only.
+
+Fresh loop 12/12, doctor 7 pass 0 warn 0 fail, all 30 landmarks matched. New artifact
+`A37D4C004808322F24B3C660DA42CA7C679FD34906F407CF8FB765567989D8C1`, exporting
+`PreyVR_CaptureRenderViews` alongside the existing six.

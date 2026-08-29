@@ -127,7 +127,22 @@ unchanged.
 ### Capture B — device, swapchain, and render views
 
 **Game state:** in-game, a save loaded, standing still.
-**Status: SPECIFIED, NOT BUILT.** This is the work order for when Hurdle 1 passes.
+**Status: MEMORY-ONLY HALF BUILT** (2026-08-27). Reached through the `PreyVR_CaptureRenderViews`
+export, and **never run on load** — Hurdle 1's job is to prove a never-loaded lifecycle with the
+smallest possible payload, so a failure here can never be mistaken for a lifecycle fault. The export
+refuses unless the gate has already verified the host (smoke status 2). Returns `0` complete,
+`2` partial, `1` refused; results land in the smoke log as `preyvr_renderview` lines.
+
+It walks `m_pRenderViews[2][2]` (R-033) and runs **that entry's own stated acceptance test** — all
+four non-null, and `[t][1]` distinct from `[t][0]` — checking each entry's vtable against R-053 so a
+wrong pool offset is reported rather than decoded as garbage. For each live view it decodes `m_camera`
+(R-049) and the `CRenderCamera` block (R-050) and logs the **residual as a number**. It also captures
+the R-026 per-frame block as an independent cross-check, and the swapchain and device pointer
+*values* only.
+
+**The COM half is still not built, deliberately.** `IDXGISwapChain::GetDesc`, `IDXGIDevice::GetAdapter`
+and `ID3D11Multithread::GetMultithreadProtected` are read-only queries but they are calls into the
+game's objects, a step beyond reading memory. They stay out until Hurdle 1 has passed.
 
 | Item | Source | Serves |
 | --- | --- | --- |
@@ -135,7 +150,7 @@ unchanged.
 | Adapter `DXGI_ADAPTER_DESC1`, including `AdapterLuid` | device → `IDXGIDevice::GetAdapter` | Hurdle 2 |
 | Feature level, creation flags, `ID3D11Multithread` state | `CRenderer+0xAF28` (R-005) | Hurdle 2 |
 | `RT_EndFrame` thread id and interval | observer telemetry | Hurdle 2 |
-| `CRenderView` pool at `CRenderer+0x6F38`, all four slots | R-026 | Hurdle 3 |
+| `CRenderView` pool at `CRenderer+0x6F38`, all four slots | **R-033** (was mis-cited as R-026) | Hurdle 3 |
 | Per view: `m_camera` at `+0x11A0`, `CRenderCamera` at `+0x1620` | R-049, R-050 | Hurdle 3 |
 | `RenderCameraResidual(m_camera, m_RenderCamera)` **value**, not just the verdict | computed | Hurdle 3 |
 | The four `m_asym*` baseline (expected all-zero) | R-048 | Hurdle 3 |

@@ -1,7 +1,10 @@
 # PreyVR — Claude guide
 
-> Also read `AGENTS.md` in this folder — anything there (graphify rules, project notes) applies to
-> Claude too; it lives in one file to avoid two copies drifting apart.
+> Also read `AGENTS.md` in this folder — anything there (graphify rules, the **cross-engine docs
+> graph**, project notes) applies to Claude too; it lives in one file to avoid two copies drifting
+> apart. The cross-engine graph answers *"has another project already hit this?"*; it tells you
+> **where** a problem was solved, never what the answer was, and anything it surfaces is `INFERENCE`
+> for this target until confirmed against these bytes.
 
 ## Reverse-engineering MCPs
 

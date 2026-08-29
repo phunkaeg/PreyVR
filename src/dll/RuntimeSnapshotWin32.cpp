@@ -69,4 +69,9 @@ snapshot::Snapshot CaptureRuntimeSnapshot(std::uintptr_t moduleBase)
     return snapshot::Capture(moduleBase, &GuardedRead, nullptr);
 }
 
+snapshot::RenderViewCapture CaptureRenderViewsNow(std::uintptr_t moduleBase)
+{
+    return snapshot::CaptureRenderViews(moduleBase, &GuardedRead, nullptr);
+}
+
 } // namespace preyvr::dll

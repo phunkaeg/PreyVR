@@ -17,6 +17,7 @@ This is the first mutation-capable runtime rung. It is deliberately smaller than
 
 | Export | Contract |
 | --- | --- |
+| `PreyVR_CaptureRenderViews` | On-demand Capture B (memory-only). Refuses unless the gate has verified the host. `0` complete, `2` partial, `1` refused; output as `preyvr_renderview` lines. **Never runs on load.** |
 | `PreyVR_GetSmokeStatus` | `0` starting, `1` unsupported/fail-closed, `2` all 30 landmarks verified. |
 | `PreyVR_SetFrameObserverEnabled` | Argument `1` installs/enables; `0` disables/removes. Returns the resulting observer status. |
 | `PreyVR_GetFrameObserverStatus` | `0` unavailable, `1` ready/off, `2` enabled, `3` failed. |

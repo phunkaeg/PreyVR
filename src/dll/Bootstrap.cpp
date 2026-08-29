@@ -297,6 +297,28 @@ DWORD ModulePinStatus()
     return gModulePinned.load(std::memory_order_acquire);
 }
 
+// On-demand Capture B. Refuses unless the gate has already verified this process
+// (smoke status 2), so it can never read a process we have not identified.
+// Read-only: no COM call, no write, and a failure is reported rather than thrown.
+DWORD CaptureRenderViewsToLog()
+{
+    if (gSmokeStatus.load(std::memory_order_acquire) != 2) {
+        lifecycle::Log("preyvr_renderview refused reason=host_not_verified");
+        return 1;
+    }
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) {
+        lifecycle::Log("preyvr_renderview refused reason=PreyDll.dll_not_loaded");
+        return 1;
+    }
+    const auto capture = CaptureRenderViewsNow(reinterpret_cast<std::uintptr_t>(preyDll));
+    snapshot::Report(
+        capture,
+        [](std::string_view line, void*) { lifecycle::Log(line); },
+        nullptr);
+    return capture.complete ? 0 : 2;
+}
+
 } // namespace preyvr::dll
 
 extern "C" __declspec(dllexport) DWORD PreyVR_GetSmokeStatus()
@@ -327,4 +349,11 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetOpenXRPreflightStatus()
 extern "C" __declspec(dllexport) DWORD PreyVR_GetModulePinStatus()
 {
     return preyvr::dll::ModulePinStatus();
+}
+
+// Capture B, on demand. Returns 0 complete, 2 partial, 1 refused. Results go to
+// the smoke log as `preyvr_renderview` lines. Never runs on load.
+extern "C" __declspec(dllexport) DWORD PreyVR_CaptureRenderViews()
+{
+    return preyvr::dll::CaptureRenderViewsToLog();
 }
