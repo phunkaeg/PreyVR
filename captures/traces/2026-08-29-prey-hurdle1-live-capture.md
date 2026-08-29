@@ -490,3 +490,42 @@ failure in the middle of a live session.
 expected result with no headset powered. The probe is verified end to end up to exactly the point that
 needs hardware, so tomorrow's session gets the LUID and the `r_overrideDXGIAdapter` index from a single
 run with nothing else attached.
+
+## Closing the loop: promoting what the Ghidra pass had only predicted
+
+The Ghidra cross-check produced four entries that were static-only. Prey was still up, so they were
+read rather than left as predictions. All reads passive; nothing was called.
+
+**`GetViewCamera` proves R-040 from the accessor itself.** `pSystem` vtable `+0x388` (RVA `0xDF2BB0`)
+begins `48 8D 81 88 07 00 00 C3`, which is `lea rax,[rcx+0x788]; ret`. The function is nothing but the
+offset. Until now `CSystem+0x788` rested on its consumers agreeing; now it rests on the accessor.
+Disassembled rather than called, so nothing executed in the game.
+
+**R-059 — `CSystem::m_pProcess` is `C3DEngine` at delta zero.** `CSystem+0xAB0` = `0x1AF9F0A9200`,
+*exactly* `gEnv->p3DEngine`. `IProcess` is therefore `C3DEngine`'s primary base and needs no pointer
+adjustment — worth knowing before anyone writes a cast. Its vtable RVA is `0x1C912A0`, matching
+`kThreeDEngineVtableRva`, and slot 3 is `0x21F520` = R-054.
+
+**R-060 — the engine's rendering camera and the system view camera are the same camera.** Both `0x240`
+blocks were compared byte for byte: **8 differing bytes out of 576**, at `+0x214` and `+0x23C` only,
+both inside the cached-derived-state region and consistent with a bookkeeping or frame tag.
+
+| field | `CSystem+0x788` | `C3DEngine+0x610` |
+| --- | --- | --- |
+| position | `325.847, 740.602, 482.790` | identical |
+| fov / ratio | `1.5447413` / `1.7777778` | identical |
+| dimensions | `2560x1440` | identical |
+| near / far | `0.1` / `8000` | identical |
+| asymmetry | `0, 0, 0, 0` | identical |
+
+The asymmetry baseline being zero in **both** copies strengthens the earlier Hurdle 3 finding that a
+per-eye projection may overwrite rather than compose.
+
+**R-066 — and a positive control for the freeze-path reading.** `0x243A658` = `0x7FFD16674E80` =
+`gEnv->pRenderer`, with `IRenderer::SetCamera` at vtable `+0x188` = RVA `0xF7FE70`. The static frozen
+camera at `0x243A820` is **all zeros** and its init-once guard at `0x243AA60` is `0`. That is exactly
+what R-063's control-flow reading predicts: the static is initialised only inside the freeze branch,
+and with `e_CameraFreeze = 0` that branch has never run this session. A prediction that would have
+been falsified by a non-zero value, and was not.
+
+Registry after this round: **34 `reproduced`, 25 `static-only`, 7 `observed`** across 66 entries.
