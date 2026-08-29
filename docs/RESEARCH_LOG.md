@@ -1336,3 +1336,58 @@ unobserved on a live host and must not be described as proven.
 
 **Verification:** 12/12 including the new live-frame regression, doctor 7 pass 0 warn 0 fail, all 30
 landmarks. Artifact `407733D4D9089C3292E918607E1479E4CFB43AB111874EC8A9085BE08AFC28BB`.
+
+## 2026-08-29 — exhaustive live harvest, and the Ghidra cross-check of the call sites
+
+Same live session as the entry above, continued at the instruction to gather everything needed now
+or later. Prey PID `50832`, all reads through Frida, no writes to game memory. Full detail in
+`captures/traces/2026-08-29-prey-hurdle1-live-capture.md`; ten new registry entries, R-057 to R-066.
+
+**The rate discrepancy was my measurement, not the engine's behaviour.** Measured in one window
+instead of several, `RT_EndFrame`, `Present`, `SetCamera` and `RenderWorld` all returned exactly 432
+calls in 3.001 s — 144/s, 1:1, once per frame each. The earlier 33/s figures came from sampling
+different windows while the framerate moved. Comparing rates across separate windows is invalid when
+the rate is not stationary. The structural conclusions drawn from those samples were unaffected, but
+the numbers in that table were wrong and are now superseded in the trace.
+
+**Named the call sites in Ghidra, which is what the live census could not do.** The chain is now
+named end to end: `CSystem::Render` (R-058) -> `RenderWorld` (R-054, via `CSystem::m_pProcess` at
+`+0xAB0`) -> `C3DEngine::UpdateRenderingCamera` (R-057) -> `CRenderView::SetCamera` (R-030).
+`get_function_callers` confirms `UpdateRenderingCamera` has exactly one caller, and the live census
+confirms it is the only site reaching `SetCamera`.
+
+`CSystem::Render` turned out to re-confirm four offsets we had established separately — `+0x788`
+`m_ViewCamera`, `+0x28` `gEnv`, `gEnv+0x08` `p3DEngine`, `gEnv+0x120` `pRenderer` — all used together
+in one twenty-line function. It also shows `m_ViewCamera` is the **single source** feeding both the
+3DEngine camera update and `CreateGeneralPassRenderingInfo`, which is the structural fact H-008
+needed.
+
+**Found a camera override the engine already honours.** `UpdateRenderingCamera` branches on
+`if (!e_CameraFreeze && !e_CoverageBufferDebugFreeze)`; the else-branch feeds `SetCamera` from
+`gEnv->pSystem->GetViewCamera()` and skips updating the culling camera at `C3DEngine+0x610`. I
+resolved the cvar-to-offset binding live rather than guessing it, by looking each name up through
+`pConsole->GetCVar` and comparing the backing pointer at `ICVar+0x48` against the predicted field
+address. `e_CameraGoto` and `e_Recursion` were run as negative controls and correctly matched
+nothing — without them the four positives would not have meant much. This is recorded as evidence
+about the engine's plumbing, **not** as a recommended seam: freezing the culling camera is a side
+effect, not an option.
+
+**A correction to something we had assumed.** R-033's `m_pRenderViews[2][2]` pool holds only 4 of the
+**16** render views scheduled per frame. Fourteen are Shadow views (640x480, flags `0xAE5DE`) that
+live outside the pool entirely. I found this by identifying `CRenderView+0x14` as `EViewType` and
+`+0x10` as `EUsageMode` — the latter verified by tracking `SwitchUsageMode`'s argument through all
+five modes. H-009 has to account for views the pool does not enumerate. The two Recursive pool
+entries are allocated, correctly typed, and never scheduled or given a camera, so they are free.
+
+**A new constraint on Hurdle 3 that static analysis had not surfaced.** `SetPreviousFrameCamera`
+(R-064) fires immediately after *every* `SetCamera`, with a different camera. `r_MotionBlur = 2` and
+`r_AntialiasingMode = 3` are both live, so it is load-bearing for motion vectors and temporal
+reprojection: a per-eye write that handles only `SetCamera` will give the second eye the wrong
+reprojection history.
+
+**The frustum does not jitter.** Sixteen consecutive `SetCamera` calls produced one distinct frustum
+and a residual of `9.519862e-9`, min equal to max. That fixes the live rounding floor four orders of
+magnitude below `kRenderCameraResidualLimit`, so the limit is comfortable in both directions. Where
+the temporal jitter is applied is still open — it is just not in `CRenderCamera`.
+
+No code changed in this entry; documentation and registry only.
