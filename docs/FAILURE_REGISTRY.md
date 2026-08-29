@@ -219,3 +219,62 @@ input, the zero for the detached-camera family would have read as a clean negati
 
 Same family as F-006: a method that answers confidently while silently operating on the wrong input.
 The defence is identical - put a known answer in, and check it comes back out.
+
+## F-008 - x64dbg `loadlib` freezes Prey by leaving the hijacked thread suspended
+
+**Status:** do not use. Use Frida.
+
+**What happened.** With x64dbg attached to a running Prey and the debuggee paused,
+`loadlib "D:\Dev Debug\PreyVRuild\headless\Release\PreyVR.dll"` returned success. It did not
+load the DLL. The game froze, and every subsequent `pause` was refused, with x64dbg's status bar
+reading *"The active thread is suspended, switch to a running thread to pause the process"*.
+
+`loadlib` works by hijacking a thread in the debuggee to call `LoadLibraryA`. On this target it
+suspended the main thread and left it suspended. The process could not be paused *through* a
+suspended thread, so the debugger's own recovery paths were unavailable.
+
+**Recovery.** Resuming the thread by id (`pause_resume_thread(tid, 'resume')`, main thread from the
+session title) unfroze it, but the game had to be restarted anyway.
+
+**Diagnostic notes worth keeping.**
+
+- The command's return value **is** meaningful: a deliberately bogus command returned `Success: False`
+  while `loadlib` returned `True`, which is how we established the command was accepted and the
+  failure was inside the debuggee rather than a typo. Seeding with a known-wrong input is what made
+  that distinguishable.
+- `eval_expression("PreyVR.dll:0")` failing was only trustworthy because
+  `eval_expression("PreyDll.dll:0")` succeeded and returned the right base. Same rule: check the probe
+  against a known answer before believing its negative.
+- A spaced path was the initial hypothesis and was **wrong** -- the path never got as far as mattering.
+
+**Use Frida instead.** `LoadLibraryW` through a Frida `NativeFunction` injected on the first attempt,
+`lastError=0`, with no pause and no thread hijack. Frida runs the call on its own thread, which is
+exactly why it suits a live game. Cheat Engine's `inject_dll` (`CreateRemoteThread`) is the equivalent
+fallback.
+
+## F-009 - Two PreyVR exports raise `system error` when called through Frida
+
+**Status:** partially understood. Data is reachable another way.
+
+`PreyVR_CaptureRenderViews` and `PreyVR_SetFrameObserverEnabled` both raise `system error` when
+invoked via a Frida `NativeFunction`. The trivial getters (`PreyVR_GetSmokeStatus` and friends) work
+normally.
+
+**The enable call took effect anyway** -- observer status moved `1 -> 2` and frames began counting --
+so the error is raised around a call that at least partially completes. The most likely cause is
+Frida's exception handler reacting to MinHook's `VirtualProtect` and write into `PreyDll.dll`'s
+`.text`, rather than a fault in our code. `CaptureRenderViews` produced no log output, so it did fault
+before reaching its logging.
+
+**Consequence, and the more serious half.** `PreyVR_SetFrameObserverEnabled(0)` raised the same error
+twice and **did not disable the observer**: status stayed `2` and the prologue at `+0xF7E210` remained
+`E9 BF 2D 07 FF ...` (MinHook's `JMP rel32`) instead of being restored to
+`40 57 48 83 EC 60 ...`. The hook is our own and functioning, and the module is pinned until process
+exit by design, so this is stable rather than dangerous -- but the documented *"disable restores the
+target entry bytes"* behaviour **has never been observed on a live host** and must not be described as
+proven.
+
+**Workaround used.** The render-view walk was performed directly in Frida JS against the same offsets,
+which produced better data than the export would have (raw values, full control, and the residual as a
+number). Where an in-process export is awkward to call, reproducing its reads externally is often
+cheaper than debugging the call path.

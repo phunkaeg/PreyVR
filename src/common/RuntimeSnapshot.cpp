@@ -209,7 +209,11 @@ bool IsPlausible(const RenderCameraView& camera)
 
 float RenderCameraResidual(const CameraView& source, const RenderCameraView& derived)
 {
-    const float tangent = std::tan(source.fov * 0.5f);
+    // CONFIRMED LIVE 2026-08-29: SetCamera scales the tangent by the NEAR PLANE
+    // before applying asymmetry, so fW* are glFrustum near-plane coordinates, not
+    // raw tangents. Omitting the factor scored 1.5588 against a live frame; with
+    // it, 1e-9. See captures/traces/2026-08-29-prey-hurdle1-live-capture.md.
+    const float tangent = std::tan(source.fov * 0.5f) * source.nearPlane;
     if (!Finite(tangent)) {
         return std::numeric_limits<float>::infinity();
     }
@@ -248,16 +252,21 @@ EyeAsymmetry AsymmetryFromFovTangents(
     float tanDown,
     float tanUp,
     float fov,
-    float projectionRatio)
+    float projectionRatio,
+    float nearPlane)
 {
-    const float tangent = std::tan(fov * 0.5f);
+    // Every term carries the near-plane factor, because fW* are near-plane
+    // coordinates rather than tangents (confirmed live, see RenderCameraResidual).
+    // The caller passes raw XrFovf tangents; scaling to Prey's units happens here
+    // so the OpenXR side never has to know about it.
+    const float tangent = std::tan(fov * 0.5f) * nearPlane;
     const float horizontal = tangent * projectionRatio;
 
     EyeAsymmetry shifts{};
-    shifts.left = tanLeft + horizontal;
-    shifts.right = tanRight - horizontal;
-    shifts.bottom = tanDown + tangent;
-    shifts.top = tanUp - tangent;
+    shifts.left = tanLeft * nearPlane + horizontal;
+    shifts.right = tanRight * nearPlane - horizontal;
+    shifts.bottom = tanDown * nearPlane + tangent;
+    shifts.top = tanUp * nearPlane - tangent;
     return shifts;
 }
 

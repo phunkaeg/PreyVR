@@ -17,9 +17,9 @@ reading one field, and a logged blob can answer a question we have not thought o
 
 | Hurdle | State | Blocked on |
 | --- | --- | --- |
-| 1. Supported-host load | Artifact built and verified on disk, never loaded into Prey | Operator + a running game |
-| 2. OpenXR session and first HMD output | Preflight only; no instance, session, or swapchain exists | Hurdle 1, plus the Batch B data below |
-| 3. Per-eye camera | Seam identified and fully characterised statically; nothing written | Hurdles 1-2, plus Batch B/C data |
+| 1. Supported-host load | **PASSED 2026-08-29** — all acceptance criteria met; seven registry entries promoted | done |
+| 2. OpenXR session and first HMD output | Preflight `ready`; **all blocking device/swapchain/adapter data now captured** | the runtime's required LUID, answerable out of process |
+| 3. Per-eye camera | Seam confirmed live: R-033 pool passes, single caller, asym baseline zero, frustum formula corrected | Hurdle 2; culling-vs-asymmetry still untested |
 
 Everything in `ADDRESS_REGISTRY.md` is `static-only` confidence unless its entry says otherwise. No
 camera has been written to.
@@ -214,3 +214,32 @@ The tests verify the **decoding and capture logic** against a synthetic engine i
 cannot verify the **offsets** — those are verified against the installed `PreyDll.dll` by the build
 doctor and by the static analysis recorded in `ADDRESS_REGISTRY.md`. Keep the two kinds of
 verification distinct when reading a green test run.
+
+---
+
+## Results — Hurdle 1 session, 2026-08-29
+
+Full record in the [live capture](../captures/traces/2026-08-29-prey-hurdle1-live-capture.md). Headlines:
+
+- **Hurdle 1 passed.** `smoke_result status=verified landmarks=30`, `snapshot result=complete`, all
+  identity checks yes. Seven entries promoted from `static-only` to `reproduced`.
+- **The residual earned its keep.** It scored `1.5588` on the first live frame, which is how the
+  missing near-plane factor in the `SetCamera` frustum formula was found. Logging it as a number
+  rather than a verdict is the only reason the cause was diagnosable from one sample.
+- **Asymmetry baseline is zero**, so Hurdle 3 may overwrite rather than compose.
+- **Both seams have exactly one caller** — `SetCamera` from `+0x2110E5`, `RenderWorld` from
+  `+0xE0BC62`, both on thread 44208 at 33/s. The return-RVA gate is trivially implementable.
+- **Adapter selection genuinely needs LUID matching**: five adapters, four of them identical
+  `RTX 5070 Ti` entries distinguishable only by LUID.
+- **`ID3D11Multithread` protection is OFF**, which confirms submission must happen on the render
+  thread — exactly where `RT_EndFrame` already sits.
+
+### Still outstanding after this session
+
+| Question | Why it is still open |
+| --- | --- |
+| The LUID `xrGetD3D11GraphicsRequirementsKHR` returns | Needs an XR instance; **answerable out of process**, no Prey required |
+| Does culling follow the asymmetry? | Needs a write, which has not happened |
+| The `RT_EndFrame` rate discrepancy | Measured 144/s and ~34/s in two windows; needs a controlled re-measure |
+| Does anything downstream perturb the projection (TAA jitter)? | Needs a pass census |
+| Observer disable restoring the prologue | Never observed; see F-009 |

@@ -166,7 +166,7 @@ int main()
     // --- the render camera must agree with the camera it came from ---------
     {
         const CameraView source = SampleCamera();
-        const float tangent = std::tan(source.fov * 0.5f);
+        const float tangent = std::tan(source.fov * 0.5f) * source.nearPlane;
         const float horizontal = tangent * source.projectionRatio;
 
         RenderCameraView derived{};
@@ -209,7 +209,7 @@ int main()
         const CameraView source = SampleCamera();
 
         const auto derive = [](const CameraView& c) {
-            const float tan = std::tan(c.fov * 0.5f);
+            const float tan = std::tan(c.fov * 0.5f) * c.nearPlane;
             const float horiz = tan * c.projectionRatio;
             RenderCameraView d{};
             d.axisX = Vec3{1.0f, 0.0f, 0.0f};
@@ -278,13 +278,13 @@ int main()
     // --- OpenXR per-eye asymmetry solves back to the requested frustum ------
     {
         const CameraView base = SampleCamera();
-        const float t = std::tan(base.fov * 0.5f);
+        const float t = std::tan(base.fov * 0.5f) * base.nearPlane;
         const float h = t * base.projectionRatio;
 
         // A symmetric FOV must produce ZERO shift. A sign error survives every
         // other check while quietly symmetrising the eye, so this is the guard.
         const EyeAsymmetry none =
-            AsymmetryFromFovTangents(-h, h, -t, t, base.fov, base.projectionRatio);
+            AsymmetryFromFovTangents(-h/base.nearPlane, h/base.nearPlane, -t/base.nearPlane, t/base.nearPlane, base.fov, base.projectionRatio, base.nearPlane);
         Require(std::fabs(none.left) < 1e-6f && std::fabs(none.right) < 1e-6f &&
                 std::fabs(none.bottom) < 1e-6f && std::fabs(none.top) < 1e-6f,
             "a symmetric FoV yields zero asymmetry shift");
@@ -292,7 +292,7 @@ int main()
         // A realistic asymmetric eye: inner edge narrower than outer.
         const float tanL = -1.10f, tanR = 0.95f, tanD = -0.98f, tanU = 1.02f;
         const EyeAsymmetry eye =
-            AsymmetryFromFovTangents(tanL, tanR, tanD, tanU, base.fov, base.projectionRatio);
+            AsymmetryFromFovTangents(tanL, tanR, tanD, tanU, base.fov, base.projectionRatio, base.nearPlane);
 
         // Round-trip: write the shifts onto the camera, push it through the
         // SetCamera formula, and confirm the frustum we asked for comes back.
@@ -313,16 +313,16 @@ int main()
         produced.nearPlane = eyeCamera.nearPlane;
         produced.farPlane = eyeCamera.farPlane;
 
-        Require(std::fabs(produced.frustumLeft - tanL) < 1e-5f, "left tangent round-trips");
-        Require(std::fabs(produced.frustumRight - tanR) < 1e-5f, "right tangent round-trips");
-        Require(std::fabs(produced.frustumBottom - tanD) < 1e-5f, "bottom tangent round-trips");
-        Require(std::fabs(produced.frustumTop - tanU) < 1e-5f, "top tangent round-trips");
+        Require(std::fabs(produced.frustumLeft - tanL * base.nearPlane) < 1e-5f, "left round-trips");
+        Require(std::fabs(produced.frustumRight - tanR * base.nearPlane) < 1e-5f, "right round-trips");
+        Require(std::fabs(produced.frustumBottom - tanD * base.nearPlane) < 1e-5f, "bottom round-trips");
+        Require(std::fabs(produced.frustumTop - tanU * base.nearPlane) < 1e-5f, "top round-trips");
         Require(IsPlausible(produced), "the per-eye frustum is plausible");
         Require(RenderCameraMatchesSource(eyeCamera, produced),
             "and agrees with the camera that produced it");
 
         // The asymmetry must be genuinely off-centre, or we have symmetrised.
-        Require(std::fabs(produced.frustumLeft) - std::fabs(produced.frustumRight) > 0.1f,
+        Require(std::fabs(produced.frustumLeft) - std::fabs(produced.frustumRight) > 0.01f,
             "the eye frustum is actually asymmetric, not a symmetric one in disguise");
     }
 
@@ -429,7 +429,7 @@ int main()
         constexpr std::uintptr_t kDevice = 0x00007FF9'6000'0000ULL;
 
         const CameraView camera = SampleCamera();
-        const float t = std::tan(camera.fov * 0.5f);
+        const float t = std::tan(camera.fov * 0.5f) * camera.nearPlane;
         const float h = t * camera.projectionRatio;
 
         std::vector<std::uint8_t> rcBlob(kRenderCameraSize, 0);
@@ -526,6 +526,53 @@ int main()
         }
         Require(sawResidualValue, "the residual is logged as a number, not just a verdict");
         Require(sawR033, "R-033's acceptance verdict is reported on its own line");
+    }
+
+    // --- REGRESSION: the real frame captured from a live Prey ---------------
+    //
+    // Exact values read out of Prey.exe PID 50832 on 2026-08-29, from
+    // m_pRenderViews[0][0]. This is the test that would have caught the missing
+    // near-plane factor on day one: under the old formula it scores 1.5588.
+    // See captures/traces/2026-08-29-prey-hurdle1-live-capture.md.
+    {
+        CameraView live{};
+        live.fov = 1.5447412729263306f;
+        live.width = 2560; live.height = 1440;
+        live.projectionRatio = 1.7777777910232544f;
+        live.nearPlane = 0.10000000149011612f;
+        live.farPlane = 8000.0f;
+        live.asymLeft = live.asymRight = live.asymBottom = live.asymTop = 0.0f;
+        live.matrix = {1.0f,0.0f,0.0f,331.0834655761719f,
+                       0.0f,1.0f,0.0f,756.6542358398438f,
+                       0.0f,0.0f,1.0f,481.7030944824219f};
+
+        RenderCameraView engine{};
+        engine.axisX = Vec3{-0.421665757894516f, 0.9067510962486267f, -0.0005370806902647018f};
+        engine.axisY = Vec3{-0.0492047443985939f, -0.022290194407105446f, 0.998539924621582f};
+        engine.axisZ = Vec3{0.9054152369499207f, 0.42107653617858887f, 0.054015468806028366f};
+        engine.origin = Vec3{331.0834655761719f, 756.6542358398438f, 481.7030944824219f};
+        engine.frustumLeft = -0.17320509254932404f;
+        engine.frustumRight = 0.17320509254932404f;
+        engine.frustumBottom = -0.0974278599023819f;
+        engine.frustumTop = 0.0974278599023819f;
+        engine.nearPlane = 0.10000000149011612f;
+        engine.farPlane = 8000.0f;
+
+        Require(IsPlausible(live), "the live camera is plausible");
+        Require(IsPlausible(engine), "the live render camera is plausible");
+
+        const float r = RenderCameraResidual(live, engine);
+        Require(r < kRenderCameraResidualLimit,
+            "the corrected formula reproduces a REAL engine frame within the limit");
+        // The measured live floor was ~1e-9. Assert we are near it, so a future
+        // regression that merely squeaks under 1e-4 still fails here.
+        Require(r < 1.0e-6f, "and reproduces it to near the measured live rounding floor");
+
+        // Guard the specific bug: dropping the near-plane factor must NOT pass.
+        CameraView unscaled = live;
+        unscaled.nearPlane = 1.0f;          // what the old formula effectively assumed
+        Require(RenderCameraResidual(unscaled, engine) > 0.5f,
+            "omitting the near-plane factor scores far outside the limit");
     }
 
     std::cout << "PreyVR runtime-snapshot tests passed\n";

@@ -1278,3 +1278,61 @@ counts. Reverted; `git diff --stat` confirmed insertions only.
 Fresh loop 12/12, doctor 7 pass 0 warn 0 fail, all 30 landmarks matched. New artifact
 `A37D4C004808322F24B3C660DA42CA7C679FD34906F407CF8FB765567989D8C1`, exporting
 `PreyVR_CaptureRenderViews` alongside the existing six.
+
+## 2026-08-29 - Hurdle 1 passed, and the live frame corrected our own formula
+
+First supported-host load of the `0.3.0` artifact. Full record in
+[the capture trace](../captures/traces/2026-08-29-prey-hurdle1-live-capture.md); this entry keeps what
+changes how we work.
+
+**Hurdle 1 met every acceptance criterion.** `status=verified landmarks=30`,
+`snapshot result=complete`, all identity checks `yes`, 0 landmark mismatches. Seven registry entries
+moved from `static-only` to `reproduced` in a single load: R-005, R-039, R-040, R-043, R-044, R-053,
+R-054, plus R-012 and the R-006/R-007 mirrors. The renderer check was the sharp one --
+`gEnv->pRenderer` and the singleton at `+0x2B3E8E0` both returned `0x7FFD16674E80`, which was a
+prediction rather than a reading.
+
+**The residual paid for itself on its first live frame.** It scored **1.5588** against a `1e-4` limit.
+The cause: `SetCamera` multiplies the tangent by the **near plane** before applying asymmetry, so
+`fW*` are glFrustum near-plane coordinates rather than raw tangents. We had dropped that factor when
+writing the formula down -- and the giveaway, `fWT / tan(fov/2) = 0.100000002`, is exactly the near
+plane. With `t' = tan(fov/2) * near` the residual is `1e-9`.
+
+Two things about this are worth keeping. First, **the error was a misreading of our own
+decompilation**: `fVar8 = fVar8 * fVar1` (with `fVar1` = near) was present in the output we quoted in
+the research log on 2026-08-22 and was simply not carried into the formula. Static analysis produced
+the right bytes and the wrong reading. Second, **logging the residual as a number rather than a
+verdict is the only reason this was diagnosable from one sample.** A bool would have said "no" and we
+would have been guessing between a wrong offset, a wrong view, and a wrong formula. That decision was
+made on 2026-08-27 for exactly this reason and it worked.
+
+The fix is in `RuntimeSnapshot`, and there is now a regression test built from the **actual captured
+frame** -- it asserts the corrected formula reproduces the real values to near the measured live floor,
+and separately that omitting the near factor scores `> 0.5`. That test would have caught this on day
+one.
+
+**Both write seams have exactly one caller.** `CRenderView::SetCamera` runs 33/s on thread 44208 from
+`PreyDll+0x2110E5`; `C3DEngine::RenderWorld` runs 33/s on the same thread from `PreyDll+0xE0BC62`,
+with `szDebugName="CSystem::Render"` on every call. Presentation is a **different** thread (54600) at
+144/s. That is precisely the XR-005 shape -- cache on the game thread, submit from the render thread --
+and a single caller each makes the playbook's deny-by-default return-RVA gate trivial rather than
+aspirational.
+
+**R-033's acceptance test passed**, promoting the pooled `CRenderView` array to `reproduced`. The
+`[t][1]` recursive slots are permanently allocated but hold untouched defaults (640x480, `fW -1,1,-1,1`,
+far 10), so they are idle rather than in use.
+
+**An assumption of mine was wrong about adapters.** I had written that mismatch was "unlikely on a
+single-GPU machine". Enumeration returns **five** adapters, four of which are identical
+`NVIDIA GeForce RTX 5070 Ti` entries with the same 15995 MB, distinguishable **only by LUID**. Adapter
+selection here cannot be done by name or memory; the LUID-to-index translation for
+`r_overrideDXGIAdapter` is necessary rather than precautionary.
+
+**Tooling, recorded as F-008 and F-009.** x64dbg's `loadlib` hijacked and suspended Prey's main thread,
+froze the game, and never loaded the DLL; Frida injected cleanly first time with no pause. And two of
+our own exports raise `system error` under Frida -- the observer *enable* took effect anyway, but
+**disable did not**, so the documented "disable restores the target prologue" behaviour remains
+unobserved on a live host and must not be described as proven.
+
+**Verification:** 12/12 including the new live-frame regression, doctor 7 pass 0 warn 0 fail, all 30
+landmarks. Artifact `407733D4D9089C3292E918607E1479E4CFB43AB111874EC8A9085BE08AFC28BB`.
