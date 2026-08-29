@@ -444,3 +444,49 @@ option. Recorded as evidence about the engine's own plumbing, not as a recommend
 `UpdateRenderingCamera` also applies a Z-rotation to the camera when `e_CameraRotationSpeed != 0`,
 before either branch — so the engine already accepts that the camera it renders with is not
 necessarily the camera it was handed.
+
+## The adapter LUID — out of process, and the version constraint it exposed
+
+`LIVE_CAPTURE_PLAN` left one Hurdle 2 question open after the in-process work: the LUID
+`xrGetD3D11GraphicsRequirementsKHR` returns. It needs an XR instance, not a running Prey, so it was
+answerable separately — `tools/xr_adapter_probe` now does it, and `preyvr_xr_adapter_probe` is built
+by the normal tools target.
+
+Run on 2026-08-29 with the headset **off**:
+
+```
+preyvr_xr_adapter extensions count=31 d3d11_enable=yes
+preyvr_xr_adapter attempt api_version=1.1.60 result=XR_ERROR_API_VERSION_UNSUPPORTED
+preyvr_xr_adapter attempt api_version=1.0.60 result=ok
+preyvr_xr_adapter runtime name="VirtualDesktopXR" version=1.0.10
+preyvr_xr_adapter result=no_system detail=XR_ERROR_FORM_FACTOR_UNAVAILABLE
+preyvr_xr_adapter adapter index=0 luid=0x00000000:0x00015533 vram_mb=15995 software=no
+preyvr_xr_adapter adapter index=1 luid=0x00000000:0x00025DE7 vram_mb=15995 software=no
+preyvr_xr_adapter adapter index=2 luid=0x00000000:0x00022F3F vram_mb=15995 software=no
+preyvr_xr_adapter adapter index=3 luid=0x00000000:0x0001EB8E vram_mb=15995 software=no
+preyvr_xr_adapter adapter index=4 luid=0x00000000:0x00016AE6 vram_mb=0     software=yes
+preyvr_xr_adapter adapters count=5
+```
+
+Three results, only one of which was the question asked.
+
+**The adapter enumeration reproduces the in-process capture exactly** — same five adapters, same
+LUIDs, same order, `0x15533` (the one Prey's device was created on) at index 0. Two independent
+observations, one from inside Prey through its own factory and one from a separate process, agree.
+That retires any doubt about the enumeration order `r_overrideDXGIAdapter` indexes into.
+
+**The runtime does support `XR_KHR_D3D11_enable`** — 31 extensions, the D3D11 one present. Previously
+only the loader *files* had been inspected (that is all `CollectOpenXRPreflight` does), so
+`openxr=preflight_only openxrStatus=ready` never meant the runtime could accept a D3D11 swapchain. Now
+it does.
+
+**A blocker we would otherwise have hit on headset day: the runtime rejects OpenXR 1.1.** The pinned
+SDK is 1.1.60 and `VirtualDesktopXR 1.0.10` refuses that version outright with
+`XR_ERROR_API_VERSION_UNSUPPORTED`; 1.0 is accepted. Recorded as F-010. Every other precondition looked
+green, and none of them touch `xrCreateInstance`, so this would have surfaced as an unexplained
+failure in the middle of a live session.
+
+**Still open, and now one command away.** `XR_ERROR_FORM_FACTOR_UNAVAILABLE` is the correct and
+expected result with no headset powered. The probe is verified end to end up to exactly the point that
+needs hardware, so tomorrow's session gets the LUID and the `r_overrideDXGIAdapter` index from a single
+run with nothing else attached.

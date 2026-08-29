@@ -17,3 +17,24 @@ Place small, reproducible helpers here: log parsers, capture-index generators, b
 ## Detached-ray probe helper
 
 `preyvr_ray_probe` accepts a normalized live direction and bounded Z-up yaw, then prints the rotated direction and exactly twelve little-endian bytes. It uses the same tested pure policy as the wrench and interaction stack-local protocols.
+
+## OpenXR adapter probe
+
+`preyvr_xr_adapter_probe` answers the one Hurdle 2 question a running Prey cannot: which GPU the
+OpenXR runtime requires, and what index that is in the order R-025's `EnumAdapters1` loop walks --
+which is exactly the value `r_overrideDXGIAdapter` (R-052) takes. It creates a real `XrInstance`,
+calls `xrGetD3D11GraphicsRequirementsKHR`, and matches the returned LUID against the DXGI
+enumeration, ending in one actionable line:
+
+```
+preyvr_xr_adapter result=matched enum_index=N r_overrideDXGIAdapter=N override_needed=yes|no
+```
+
+It runs **out of process** -- no Prey, no injection, no writes -- and is the first code here that
+actually calls into OpenXR rather than inspecting its files. It needs a headset connected and the
+runtime streaming to reach the LUID; without one it stops at `XR_ERROR_FORM_FACTOR_UNAVAILABLE` and
+still prints the adapter list, which is half the answer and costs nothing.
+
+It tries `XR_CURRENT_API_VERSION` first and falls back to `XR_API_VERSION_1_0`, printing which was
+accepted. That is not defensive padding -- see F-010, where the pinned 1.1 SDK is rejected outright by
+a 1.0 runtime.

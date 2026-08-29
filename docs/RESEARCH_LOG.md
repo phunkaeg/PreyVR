@@ -1391,3 +1391,42 @@ magnitude below `kRenderCameraResidualLimit`, so the limit is comfortable in bot
 the temporal jitter is applied is still open — it is just not in `CRenderCamera`.
 
 No code changed in this entry; documentation and registry only.
+
+## 2026-08-29 — the adapter LUID probe, and an OpenXR version rejection found for free
+
+The one Hurdle 2 question the in-process capture could not answer was the LUID
+`xrGetD3D11GraphicsRequirementsKHR` returns. It needs an XR instance rather than a running Prey, so
+it was always separable; `tools/xr_adapter_probe` now answers it out of process, with no injection
+and no writes. It is the first code in this project that actually calls into OpenXR — everything
+before it inspected the loader's *files*.
+
+**It found a blocker before the blocker could cost a session.** The project pins OpenXR-SDK 1.1.60,
+so `XR_CURRENT_API_VERSION` is 1.1.60, and `VirtualDesktopXR 1.0.10` rejects that outright with
+`XR_ERROR_API_VERSION_UNSUPPORTED`. Requesting 1.0 succeeds. Recorded as F-010. What makes this worth
+writing down is that **every other precondition looked green** — preflight `status=ready`, loader
+present and x64 and exporting `xrGetInstanceProcAddr`, 31 extensions advertised including
+`XR_KHR_D3D11_enable` — and none of those checks touch `xrCreateInstance`. A file-inspection
+preflight cannot tell you the runtime will refuse your instance. This would have surfaced tomorrow as
+an unexplained failure with a headset on and Prey running, which is the most expensive place to find
+it.
+
+**The adapter enumeration reproduced the in-process capture exactly**: five adapters, four identical
+RTX 5070 Ti entries plus the Microsoft software adapter, same LUIDs in the same order, `0x15533` at
+index 0. Two independent observations — one from inside Prey through its own factory, one from a
+separate process — now agree, which retires any doubt about the order `r_overrideDXGIAdapter` indexes
+into.
+
+**Two design points the run itself taught me**, both fixed in the probe rather than noted and left.
+The loader refuses `xrResultToString` without a live `XrInstance`, which is exactly when a failure
+most needs naming; my first run printed `XrResult_-4` and I initially read that as
+`XR_ERROR_INITIALIZATION_FAILED`. It is `XR_ERROR_API_VERSION_UNSUPPORTED`. A twenty-line fallback
+table for the common negative results removed the guesswork and immediately corrected me. And a probe
+that returns on its first failure wastes the run: enumerating the adapters anyway costs nothing and is
+half the answer, which is why the headset-off run above is still useful.
+
+**Still open, and now one command away.** `XR_ERROR_FORM_FACTOR_UNAVAILABLE` is the correct result
+with no headset powered, so the probe is verified end to end up to precisely the point that needs
+hardware. Tomorrow's session gets the LUID and the `r_overrideDXGIAdapter` index from one run with
+nothing attached to Prey.
+
+**Verification:** clean build with no warnings, 12/12 tests pass.

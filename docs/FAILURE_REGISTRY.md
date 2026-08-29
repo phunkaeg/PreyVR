@@ -278,3 +278,35 @@ proven.
 which produced better data than the export would have (raw values, full control, and the residual as a
 number). Where an in-process export is awkward to call, reproducing its reads externally is often
 cheaper than debugging the call path.
+
+## F-010 - `XR_CURRENT_API_VERSION` is rejected by the installed runtime
+
+**Status:** understood, and the workaround is one line. Found before it could cost a live session.
+
+The project pins OpenXR-SDK `1.1.60`, so `XR_CURRENT_API_VERSION` expands to **1.1.60**. Passing that
+as `XrApplicationInfo::apiVersion` makes `xrCreateInstance` fail against this machine's runtime:
+
+```
+attempt api_version=1.1.60 result=XR_ERROR_API_VERSION_UNSUPPORTED
+attempt api_version=1.0.60 result=ok
+runtime name="VirtualDesktopXR" version=1.0.10
+```
+
+`VirtualDesktopXR 1.0.10` implements OpenXR **1.0** and refuses a 1.1 instance outright. The loader
+reports this only as `xrCreateInstance failed`; the useful code is in the return value.
+
+**Fix:** request `XR_API_VERSION_1_0` rather than `XR_CURRENT_API_VERSION`, or try newest-first and
+fall back. `preyvr_xr_adapter_probe` does the latter and prints which version was accepted, so the
+answer is re-measured on whatever machine it runs on instead of being hardcoded from this one.
+
+**Why this was nearly expensive.** Every other OpenXR precondition looked green: the preflight
+reported `status=ready`, the loader is present, x64, and exports `xrGetInstanceProcAddr`, and the
+runtime advertises 31 extensions including `XR_KHR_D3D11_enable`. None of those checks touch
+`xrCreateInstance`, so the first real XR call in the project would have failed on a headset-day
+session with a message pointing at nothing in particular. It cost nothing to find here because the
+probe runs out of process, with no Prey and no headset.
+
+**Two smaller lessons, both now fixed in the probe.** The loader refuses `xrResultToString` without a
+live `XrInstance` -- exactly the case where a failure most needs naming -- so a fallback table for the
+common negative results is worth the twenty lines. And a probe that gives up on its first failure
+wastes the run: enumerating the adapters anyway is free and is half the answer.

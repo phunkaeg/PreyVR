@@ -238,7 +238,7 @@ Full record in the [live capture](../captures/traces/2026-08-29-prey-hurdle1-liv
 
 | Question | Why it is still open |
 | --- | --- |
-| The LUID `xrGetD3D11GraphicsRequirementsKHR` returns | Needs an XR instance; **answerable out of process**, no Prey required |
+| The LUID `xrGetD3D11GraphicsRequirementsKHR` returns | **Tooled, 2026-08-29**: `preyvr_xr_adapter_probe` asks and prints the matching `r_overrideDXGIAdapter` index. Verified out of process up to `xrGetSystem`; needs only a powered headset to finish. Its headset-off run already re-confirmed the five-adapter enumeration and exposed F-010 |
 | Does culling follow the asymmetry? | Needs a write, which has not happened |
 | The `RT_EndFrame` rate discrepancy | Measured 144/s and ~34/s in two windows; needs a controlled re-measure |
 | Does anything downstream perturb the projection (TAA jitter)? | Needs a pass census |
