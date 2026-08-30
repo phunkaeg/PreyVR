@@ -86,6 +86,7 @@ add_library(preyvr_core STATIC
     src/common/VrMath.cpp
     src/common/WrenchQuery.cpp
     src/common/XrFrameContract.cpp
+    src/common/XrSwapchainFormat.cpp
 )
 target_link_libraries(preyvr_core PUBLIC preyvr_headers)
 
@@ -243,6 +244,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_runtime_snapshot_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_runtime_snapshot_tests)
     add_test(NAME runtime_snapshot COMMAND preyvr_runtime_snapshot_tests)
+
+    add_executable(preyvr_xr_swapchain_format_tests tests/XrSwapchainFormatTests.cpp)
+    target_link_libraries(preyvr_xr_swapchain_format_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_xr_swapchain_format_tests)
+    add_test(NAME xr_swapchain_format COMMAND preyvr_xr_swapchain_format_tests)
 
     add_executable(preyvr_xr_frame_contract_tests tests/XrFrameContractTests.cpp)
     target_link_libraries(preyvr_xr_frame_contract_tests PRIVATE preyvr_core)
