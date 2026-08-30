@@ -1430,3 +1430,96 @@ hardware. Tomorrow's session gets the LUID and the `r_overrideDXGIAdapter` index
 nothing attached to Prey.
 
 **Verification:** clean build with no warnings, 12/12 tests pass.
+
+## 2026-08-30 — building the stereo, 6DoF and motion-controller stack
+
+A long build session with no game running and no headset, aimed at exhausting
+what could be built toward the three targets. Eleven commits. The organising
+decision was to keep splitting problems until each piece could be verified
+without hardware, and the split that mattered most is described under A2 below.
+
+**Instrumentation first, because the next experiment's acceptance criterion is an
+image.** "Does writing `m_ViewCamera` change the picture?" had exactly one
+instrument until today: a person looking at a monitor. That is not a measurement
+— it cannot be automated, compared against a prior run, or distinguished from
+"something else moved". So the session started with a frame-capture path
+(backbuffer readback serviced from the existing `RT_EndFrame` observer, which is
+the only correct place given `ID3D11Multithread` protection is off), a console
+bridge behind an allowlist, and a differ that prints numbers and no verdict.
+
+**The console bridge earns its place on determinism, not convenience.** Temporal
+AA and motion blur are both live, so a *static* scene still differs frame to
+frame. `t_Scale 0` plus `r_AntialiasingMode 0` is the difference between evidence
+and noise, and without it every frame comparison in the rest of this entry would
+be uninterpretable. The allowlist is fail-closed and bans command separators,
+because without that `t_Scale 0; quit` passes a first-token check.
+
+**Two engine findings came out of building the camera write.**
+`CCamera::UpdateFrustum` at `0x121D70` rebuilds every cached field a matrix write
+invalidates — the eight corners, the six planes at `+0x10C` exactly as
+`CameraLayout` documents, the sign tables, and the cached position at `+0x230`.
+It takes a `CCamera*` and touches nothing else, so the edit is applied to a
+private copy, the engine function is run on *that*, and only then are the bytes
+blitted. And its orthonormality predicate at `0x11A310` decides whether all six
+plane normals get negated — so a denormalising write does not render slightly
+wrong, it inverts culling. **It also has a hole:** an all-zero matrix satisfies
+all nine of its comparisons. Transcribing it verbatim rather than paraphrasing
+was not fastidiousness; paraphrasing flipped a sign on the first attempt.
+
+**The split that made stereo testable without a headset.** Validating per-eye
+camera construction and validating that Prey can render twice in one frame are
+independent problems, and only the second is risky. With the scene frozen, a
+left-eye frame followed by a right-eye frame *is* a stereo pair — so the whole
+per-eye path is provable by alternating eyes across frames, with a synthetic IPD,
+in flat Prey. That is A2. The double render is A3 and stays separate, so a crash
+there cannot be ambiguous between "the engine cannot do this" and "the second
+camera was malformed".
+
+**The virtual VR view.** Anaglyph is the mode that matters: disparity appears
+directly as colour fringing, so a swapped pair, a zero IPD or an inverted eye
+offset are all obvious — and all nearly invisible side by side. The difference
+mode encodes disparity as bar width, which is how a viewmodel drawn from a single
+camera will announce itself, as a black region while the world behind shows
+bands.
+
+**Prey can do asymmetric projection, and Crysis could not.** `SetCamera` folds
+`m_asymL/R/B/T` into the render frustum, so we take the proper per-eye path where
+fholger's Crysis mod had to use a symmetric FOV and crop at submission. The
+caveat is recorded where it will be needed: the engine header marks those fields
+"not used for culling", so the render frustum will be per-eye correct while the
+cull frustum stays symmetric, and geometry vanishing at the outer edge of each
+eye is the expected symptom rather than a new bug.
+
+**A viewmodel constraint, from static analysis.** `r_DrawNearFoV` is latched once
+per frame by `RT_BeginFrame` into `CD3D9Renderer+0x95B4`, not read per draw. So
+writing the cvar between two eye renders cannot give per-eye viewmodel FOV; the
+latched field is the lever. The weapon renders at 54 degrees against the world's
+88, so it does not share the world's projection and will not follow a per-eye
+camera on its own.
+
+**Motion controllers have a route into native gameplay.** Prey did not replace
+CryEngine's input layer — `CActionMapManager`, `CActionMap`, `CMouse` on
+DirectInput, the `i_xinput*` cvars — and named actions like `attack1`, `firemode`
+and `reload` are present. So a synthesised action can reach every consumer a real
+button does, rather than requiring a parallel simulation. Recorded as R-070; the
+`pInput` slot and the `PostInputEvent` index still want a live process.
+
+**What the maths layer asserts.** The OpenXR-to-CryEngine basis change is
+Rx(+90), derived rather than guessed and checked to be a proper rotation, since a
+mirror would make `UpdateFrustum` negate the plane normals. Rotations convert by
+conjugation, pinned by the invariant that converting a rotated vector equals
+rotating the converted vector — the tempting alternative of rotating the
+quaternion's axis agrees on simple cases and diverges once the head tilts. The
+asymmetry solve is verified by pushing the shifts back through the engine's own
+`SetCamera` formula and checking all four frustum edges reproduce to 1e-6.
+
+**Also settled from the previous session's leftovers:** the 33/s vs 144/s
+discrepancy was a measurement fault of mine, R-033's pool holds only 4 of the 16
+views scheduled per frame, and `UpdateRenderingCamera` has a shipped camera
+override gated on `e_CameraFreeze`. And the OpenXR adapter probe found F-010
+before it could cost a session: the pinned SDK is 1.1.60 and VirtualDesktopXR
+rejects that outright.
+
+**Verification:** clean build with no warnings, 19/19 tests. Nothing has been run
+against a live Prey today — the game was closed before the session began, so
+every protocol here is written and unexercised.
