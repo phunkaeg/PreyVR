@@ -183,3 +183,56 @@ A stereo pair whose disparity is consistent with the geometry, restore failures
 at zero, and no unexplained artefacts beyond the two predicted above. That
 result makes per-eye camera construction a solved problem and leaves the
 double-render as the only open question for native stereo.
+
+---
+
+# A3 — the double render
+
+**Question:** can Prey render the world twice inside one frame?
+
+This is the last architectural unknown for native stereo, and the only genuinely
+risky mode in the DLL. **Run A2 first.** If A2 has not passed, a crash here is
+ambiguous between "the engine cannot render twice" and "the second camera was
+malformed", and that ambiguity would cost far more than the ordering does.
+
+## What it does
+
+Inside one `CSystem::Render`, writes the left-eye camera, calls the original,
+writes the right-eye camera, calls the original again, then restores. Each eye is
+built from the *original* camera rather than from the previous eye's, so an error
+cannot accumulate across the two passes.
+
+The second render overwrites the backbuffer, so the presented image is the right
+eye. **A capture here is one eye, not a pair** -- A2 is how pairs are made.
+
+## The frame budget is not optional
+
+```
+PreyVR_SetDoubleRenderStereo(0.064, 50.0, 120)   ; ~1 second at 144Hz
+```
+
+The mode disarms itself after that many frames, and the budget is decremented
+*before* the renders so a call that never returns still costs exactly one frame
+of the allowance. There is no unbounded option, and the ceiling is capped at 600.
+An experiment that runs for ten thousand frames is not an experiment.
+
+Start at **1**. A single double-rendered frame answers "does it survive" without
+committing to a second. Only then go to 120 for a rate measurement.
+
+## What to record
+
+- `PreyVR_GetDoubleRenderedFrameCount()` — how many completed
+- `PreyVR_GetCameraEditRestoreFailureCount()` — must stay 0
+- the observed frame rate while armed, against `sys_MaxFPS 144`. Roughly half
+  would mean the world render dominates the frame and native stereo costs what
+  you would expect. Much worse than half means something is being redone that
+  should not be.
+- anything in the log matching `detail=double_render_`
+
+## What would make this a negative result
+
+A crash, a restore failure, or visibly corrupt rendering. Any of those closes the
+native-stereo path and makes the alternative -- one eye per frame, alternating,
+with reprojection -- the design to pursue instead. That would be a real answer,
+not a failure: A2's per-eye machinery is unchanged by it, and the alternating
+mode already exists and works.

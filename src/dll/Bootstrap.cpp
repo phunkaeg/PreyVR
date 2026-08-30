@@ -449,3 +449,20 @@ extern "C" __declspec(dllexport) int PreyVR_GetLastRenderedEye()
 {
     return preyvr::dll::LastRenderedEye();
 }
+
+// The double-render experiment: calls CSystem::Render twice in one frame, once
+// per eye. This is the one remaining architectural unknown for native stereo and
+// the only genuinely risky mode here - run the alternating-eye stereo first, so
+// that a crash cannot be ambiguous between "cannot render twice" and "the second
+// camera was malformed". frameBudget is a hard ceiling, capped at 600; there is
+// no unbounded option. Pass ipd 0 or budget 0 to disarm.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetDoubleRenderStereo(
+    float ipdMetres, float halfFovDegrees, unsigned int frameBudget)
+{
+    return preyvr::dll::SetDoubleRenderStereo(ipdMetres, halfFovDegrees, frameBudget);
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetDoubleRenderedFrameCount()
+{
+    return preyvr::dll::DoubleRenderedFrameCount();
+}

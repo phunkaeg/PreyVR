@@ -53,6 +53,9 @@ std::atomic<float> gStereoIpd{0.0f};
 std::atomic<float> gStereoHalfFov{50.0f};
 std::atomic<unsigned long long> gEyeCounter{0};
 std::atomic<int> gLastEye{-1};
+std::atomic<bool> gDoubleRender{false};
+std::atomic<unsigned int> gDoubleRenderBudget{0};
+std::atomic<unsigned long long> gDoubleRendered{0};
 void* gTarget = nullptr;
 bool gHookCreated = false;
 
@@ -152,6 +155,78 @@ void __fastcall RenderWithCameraEdit(void* system)
     std::memcpy(edited.data(), restore.bytes.data(), cameraedit::kCameraSize);
 
     const UpdateFrustumFn updateFrustum = gUpdateFrustum.load(std::memory_order_acquire);
+
+    if (gDoubleRender.load(std::memory_order_acquire) && updateFrustum != nullptr) {
+        // Render both eyes inside one frame. The budget is decremented first so
+        // that a call which never returns still costs exactly one frame of the
+        // allowance rather than leaving the mode armed forever.
+        const unsigned int remaining = gDoubleRenderBudget.load(std::memory_order_acquire);
+        if (remaining == 0) {
+            gDoubleRender.store(false, std::memory_order_release);
+            gStereoIpd.store(0.0f, std::memory_order_release);
+            SetFrameCaptureTagOverride(-1);
+            lifecycle::Log("preyvr_camera_edit result=0 detail=double_render_budget_exhausted");
+            if (original != nullptr) {
+                original(system);
+            }
+            return;
+        }
+        gDoubleRenderBudget.store(remaining - 1, std::memory_order_release);
+
+        const float ipd = gStereoIpd.load(std::memory_order_acquire);
+        const float halfFov = gStereoHalfFov.load(std::memory_order_acquire);
+        bool bothEyesOk = true;
+
+        for (int eye = 0; eye < 2 && bothEyesOk; ++eye) {
+            std::array<std::uint8_t, cameraedit::kCameraSize> eyeCamera{};
+            std::memcpy(eyeCamera.data(), restore.bytes.data(), cameraedit::kCameraSize);
+            if (!BuildSyntheticEye(eyeCamera, eye, ipd, halfFov)) {
+                bothEyesOk = false;
+                break;
+            }
+            updateFrustum(eyeCamera.data());
+            if (!cameraedit::RotationIsSafeToWrite(eyeCamera)) {
+                bothEyesOk = false;
+                break;
+            }
+            // Each eye is built from the *original* camera, not from the previous
+            // eye's, so an error cannot accumulate across the two passes.
+            std::memcpy(camera, eyeCamera.data(), cameraedit::kCameraSize);
+            gLastEye.store(eye, std::memory_order_release);
+            SetFrameCaptureTagOverride(eye);
+            if (original != nullptr) {
+                original(system);
+            }
+        }
+
+        std::memcpy(camera, restore.bytes.data(), cameraedit::kCameraSize);
+        if (!cameraedit::MatchesRestorePoint(live, restore)) {
+            gRestoreFailures.fetch_add(1, std::memory_order_relaxed);
+            gDoubleRender.store(false, std::memory_order_release);
+            gStereoIpd.store(0.0f, std::memory_order_release);
+            SetFrameCaptureTagOverride(-1);
+            lifecycle::Log("preyvr_camera_edit result=restore_failed detail=double_render_disarmed");
+            return;
+        }
+        if (!bothEyesOk) {
+            gDoubleRender.store(false, std::memory_order_release);
+            gStereoIpd.store(0.0f, std::memory_order_release);
+            SetFrameCaptureTagOverride(-1);
+            lifecycle::Log("preyvr_camera_edit result=refused detail=double_render_eye_build_failed");
+            return;
+        }
+
+        const unsigned long long done = gDoubleRendered.fetch_add(1, std::memory_order_relaxed) + 1;
+        bool expectedFirst = false;
+        if (gLoggedFirstApplication.compare_exchange_strong(expectedFirst, true)) {
+            std::ostringstream line;
+            line << "preyvr_camera_edit result=0 detail=double_render_first_frame"
+                 << " ipd=" << ipd << " budget=" << remaining << " done=" << done;
+            lifecycle::Log(line.str());
+        }
+        return;
+    }
+
     bool built = false;
     if (stereoArmed) {
         // Alternate every frame. With the simulation frozen, consecutive frames
@@ -367,6 +442,45 @@ DWORD SetSyntheticStereo(float ipdMetres, float halfFovDegrees)
          << " halfFovDegrees=" << halfFovDegrees;
     lifecycle::Log(line.str());
     return static_cast<DWORD>(CameraEditStatus::armed);
+}
+
+DWORD SetDoubleRenderStereo(float ipdMetres, float halfFovDegrees, unsigned int frameBudget)
+{
+    if (ipdMetres == 0.0f || frameBudget == 0) {
+        std::lock_guard lock(gMutex);
+        gDoubleRender.store(false, std::memory_order_release);
+        gDoubleRenderBudget.store(0, std::memory_order_release);
+        gStereoIpd.store(0.0f, std::memory_order_release);
+        SetFrameCaptureTagOverride(-1);
+        lifecycle::Log("preyvr_camera_edit result=0 detail=double_render_disarmed");
+        return gStatus.load(std::memory_order_acquire);
+    }
+
+    // A ceiling on the ceiling: this is the riskiest thing the DLL can do, and
+    // an experiment that runs for ten thousand frames is not an experiment.
+    if (frameBudget > 600) {
+        lifecycle::Log("preyvr_camera_edit result=refused detail=double_render_budget_too_large");
+        return static_cast<DWORD>(CameraEditStatus::failed);
+    }
+
+    // Reuses the synthetic-stereo bounds check, then swaps the mode over.
+    const DWORD armed = SetSyntheticStereo(ipdMetres, halfFovDegrees);
+    if (armed != static_cast<DWORD>(CameraEditStatus::armed)) {
+        return armed;
+    }
+
+    std::lock_guard lock(gMutex);
+    gDoubleRenderBudget.store(frameBudget, std::memory_order_release);
+    gDoubleRender.store(true, std::memory_order_release);
+    std::ostringstream line;
+    line << "preyvr_camera_edit result=0 detail=double_render_armed frameBudget=" << frameBudget;
+    lifecycle::Log(line.str());
+    return static_cast<DWORD>(CameraEditStatus::armed);
+}
+
+unsigned long long DoubleRenderedFrameCount()
+{
+    return gDoubleRendered.load(std::memory_order_acquire);
 }
 
 int LastRenderedEye()

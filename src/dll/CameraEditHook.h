@@ -66,6 +66,30 @@ DWORD SetSyntheticStereo(float ipdMetres, float halfFovDegrees);
 // silently swapped stereo pair inverts depth and looks almost right.
 int LastRenderedEye();
 
+// **The double-render experiment: native stereo, or not.**
+//
+// Calls the original CSystem::Render twice inside one frame, once per eye. This
+// is the one remaining architectural unknown for native stereo, and it is the
+// risky one -- everything else can be validated by the alternating-eye mode
+// above, which is why that exists and why this is separate.
+//
+// What it answers: whether Prey survives rendering the world twice in a frame at
+// all, and what it costs. What it does **not** answer: whether the per-eye
+// cameras are correct. A2 answers that, and it should be run first, because a
+// crash here would otherwise be ambiguous between "cannot render twice" and
+// "the second camera was malformed".
+//
+// `frameBudget` is a hard ceiling: the mode disarms itself after that many
+// frames, so a crash-prone experiment cannot run away while a person reaches for
+// the keyboard. There is no unbounded option on purpose.
+//
+// Note that the second render overwrites the backbuffer, so the presented image
+// is the right eye. A capture taken here is therefore *one* eye, not a pair --
+// use the alternating mode for pairs.
+DWORD SetDoubleRenderStereo(float ipdMetres, float halfFovDegrees, unsigned int frameBudget);
+
+unsigned long long DoubleRenderedFrameCount();
+
 DWORD CameraEditStatusValue();
 
 // Counts frames on which the edit was actually applied and the restore verified
