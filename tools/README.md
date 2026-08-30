@@ -163,3 +163,23 @@ printing nothing, because it would look like evidence.
 Verified on a simulated run 2026-08-30: a jittered same-camera pair and a
 22-pixel-parallax eye pair produced a 5.3x mean separation, and the maximum
 channel difference discriminated far harder still (2 against 194).
+
+## Running against xr-sim (no headset)
+
+```bash
+./tools/Invoke-PreyVRUnderXrSim.ps1
+```
+
+Runs a PreyVR executable against the `xr-sim` headset-free OpenXR runtime. Prey
+is x64/D3D11, which is xr-sim's richest tier — full session, swapchain and frame
+lifecycle plus per-layer PNG/JSON capture that selects the submitted
+`imageArrayIndex`, so a two-slice stereo texture captures the correct eye.
+
+A thin wrapper on purpose: it knows PreyVR's paths and delegates everything else,
+so the two projects cannot drift the way a copied launcher would. The runtime is
+selected per process via `XR_RUNTIME_JSON` and the environment is restored
+afterwards, so the machine's real runtime is untouched and a connected Quest
+keeps working.
+
+See `docs/XRSIM_INTEGRATION.md` — particularly the section on what a pass under
+the sim does and does not prove.

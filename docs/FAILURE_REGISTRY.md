@@ -310,3 +310,23 @@ probe runs out of process, with no Prey and no headset.
 live `XrInstance` -- exactly the case where a failure most needs naming -- so a fallback table for the
 common negative results is worth the twenty lines. And a probe that gives up on its first failure
 wastes the run: enumerating the adapters anyway is free and is half the answer.
+
+### F-010 addendum, 2026-08-30 — the fallback validated against a second runtime
+
+`xr-sim` **accepts** `XR_CURRENT_API_VERSION` (1.1.60), where VirtualDesktopXR
+rejects it. The same unmodified `preyvr_xr_adapter_probe` binary now works
+against both, and only because it tries newest-first and falls back rather than
+hardcoding a version:
+
+```
+xr-sim                : attempt api_version=1.1.60 result=ok
+VirtualDesktopXR 1.0.10: attempt api_version=1.1.60 result=XR_ERROR_API_VERSION_UNSUPPORTED
+                         attempt api_version=1.0.60 result=ok
+```
+
+Worth recording because the fallback was written as a reaction to a single
+runtime, and a one-runtime reaction is indistinguishable from a workaround until
+a second runtime disagrees in the other direction. Had the probe been "fixed" by
+hardcoding 1.0 — the smaller change, and the tempting one — it would have worked
+on this machine's headset and been wrong the moment it met xr-sim. See
+`docs/XRSIM_INTEGRATION.md`.

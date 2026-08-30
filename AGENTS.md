@@ -13,6 +13,10 @@ VR modding project for Prey (2017). Target: `Prey.exe` (64-bit, CryEngine/Arkane
 Ghidra, ReGenny, Frida, Cheat Engine, x64dbg/x32dbg and RenderDoc are all available as MCP tools.
 **Load the `re-mcp-toolkit` skill before using any of them** — it carries the preflight calls,
 per-tool caveats, and the pairing workflows (Ghidra static offsets -> ReGenny live layout, etc.).
+The **`vr-re-workflow`** skill is the other half — the METHOD rather than the tools: the
+new-game onboarding checklist, the per-engine approach, and the recipe for finding the camera,
+view matrix, FOV and player structs. Load it when you are deciding *what to look for*;
+`re-mcp-toolkit` tells you *what to look with*.
 
 1. **Never assume a tool's host app is running or attached.** The tools always appear in your tool
    list; that says nothing about whether the app behind them is live. Preflight first: Ghidra
