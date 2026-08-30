@@ -1,5 +1,8 @@
 #include "Bootstrap.h"
 
+#include "ConsoleBridgeWin32.h"
+#include "FrameCaptureWin32.h"
+
 #include "FrameObserverHook.h"
 #include "Logger.h"
 #include "OpenXRPreflightWin32.h"
@@ -356,4 +359,48 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetModulePinStatus()
 extern "C" __declspec(dllexport) DWORD PreyVR_CaptureRenderViews()
 {
     return preyvr::dll::CaptureRenderViewsToLog();
+}
+
+// --- Test harness -----------------------------------------------------------
+//
+// These make a rendered result and a deterministic scene reachable from an
+// automation script, which is what turns "does the view move?" from something a
+// human squints at into something with a number attached. Both are inert until
+// the frame observer is enabled, because both are serviced from inside it.
+
+// Arms a one-shot backbuffer dump of the next observed frame. `tag` is written
+// into the dump header so an A/B pair is distinguishable without trusting
+// filenames. Returns 0 ok, 1 refused (one already pending), 2 unavailable,
+// 3 failed.
+extern "C" __declspec(dllexport) DWORD PreyVR_RequestFrameCapture(DWORD tag)
+{
+    return preyvr::dll::RequestFrameCapture(static_cast<std::uint32_t>(tag));
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetLastFrameCaptureResult()
+{
+    return preyvr::dll::LastFrameCaptureResult();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetCompletedFrameCaptureCount()
+{
+    return preyvr::dll::CompletedFrameCaptureCount();
+}
+
+// Queues one allowlisted console command. Anything not on the list is refused
+// here rather than passed to the engine. Returns 0 ok, 1 denied, 2 unavailable,
+// 3 signature mismatch, 4 busy, 5 too long.
+extern "C" __declspec(dllexport) DWORD PreyVR_QueueConsoleCommand(const char* command)
+{
+    return preyvr::dll::QueueConsoleCommand(command);
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetLastConsoleResult()
+{
+    return preyvr::dll::LastConsoleBridgeResult();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetSubmittedConsoleCommandCount()
+{
+    return preyvr::dll::SubmittedConsoleCommandCount();
 }

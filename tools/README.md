@@ -38,3 +38,55 @@ still prints the adapter list, which is half the answer and costs nothing.
 It tries `XR_CURRENT_API_VERSION` first and falls back to `XR_API_VERSION_1_0`, printing which was
 accepted. That is not defensive padding -- see F-010, where the pinned 1.1 SDK is rejected outright by
 a 1.0 runtime.
+
+## Frame capture and the console bridge — the test harness
+
+Three pieces that together turn *"does the view move?"* from something a human squints at into a
+number that can be re-measured tomorrow. All three are inert until the frame observer is enabled.
+
+**`PreyVR_RequestFrameCapture(tag)`** arms a one-shot backbuffer readback of the next observed frame,
+serviced from inside the existing `RT_EndFrame` observer. That is the only correct place: the
+callback runs on the engine's render thread, and `ID3D11Multithread` protection is **off** on this
+device, so touching the immediate context from anywhere else would race the engine. Captures are not
+queued -- a second request while one is pending is refused, because a queue would silently spread one
+A/B experiment across frames that are not adjacent. The dump lands beside the DLL, or in
+`PREYVR_CAPTURE_DIR` if set.
+
+`Map` with `D3D11_MAP_READ` stalls the GPU, so a capture perturbs frame timing. It is default-off and
+one-shot for that reason, and must never be left armed during a measurement that cares about rates.
+
+**`PreyVR_QueueConsoleCommand(cmd)`** types an **allowlisted** command into Prey's console via
+`CXConsole::ExecuteString` (RVA `0xE1FBE0`, verified against its prologue at call time rather than
+trusted). Everything goes through `preyvr::console::Classify` first, which denies anything not on a
+short justified list, denies `exec` by name, and denies any line containing a command separator --
+without that, `t_Scale 0; quit` would pass a first-token check. Commands are submitted with
+`bDeferExecution = true` so the engine drains them on its own update instead of running console work
+on our thread.
+
+This is what makes frame comparison meaningful. A scene that is still simulating differs frame to
+frame regardless of the camera, and temporal AA (`r_AntialiasingMode = 3`) and motion blur
+(`r_MotionBlur = 2`) are both live, so even a *static* scene does. `t_Scale 0` plus
+`r_AntialiasingMode 0` is the difference between evidence and noise.
+
+**`preyvr_frame_diff a.pvrframe b.pvrframe`** prints the numbers:
+
+```
+preyvr_frame_diff result=ok width=2560 height=1440 pixels=3686400 \
+  meanAbsolute=... maxAbsolute=... changedPixelRatio=... tagA=0 tagB=1
+```
+
+It reports `result=incomparable` distinctly rather than as a zero difference, because "these frames
+are not the same shape" and "the image did not change" are opposite conclusions. **It passes no
+judgement**: no acceptance threshold exists yet, and inventing one before the separation table has
+been measured would produce something that looks like evidence without being any. Build the table
+first -- identical frame, consecutive frozen frames, small yaw, large yaw -- the same way the
+render-camera residual limit was built.
+
+**`Convert-FrameDump.ps1`** encodes a dump to PNG for viewing. Encoding happens out of process so the
+in-game path stays dependency-free, and the PNG is only ever for eyes -- `preyvr_frame_diff` reads the
+raw mapped bytes, so nothing about the conversion (including its default downscale) can affect a
+measurement.
+
+Verified end to end on synthetic dumps 2026-08-30: a 40-pixel bar shift across differing row pitches
+produced `changedPixelRatio = 0.125`, exactly the 80 of 640 columns that changed, and the same file
+against itself produced exactly zero.

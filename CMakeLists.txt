@@ -72,7 +72,9 @@ target_include_directories(preyvr_headers INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}
 
 add_library(preyvr_core STATIC
     src/common/AimState.cpp
+    src/common/ConsolePolicy.cpp
     src/common/EngineMap.cpp
+    src/common/FrameDump.cpp
     src/common/FrameObserver.cpp
     src/common/InteractionQuery.cpp
     src/common/OpenXRBootstrap.cpp
@@ -110,7 +112,9 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
 
     add_library(preyvr SHARED
         src/dll/Bootstrap.cpp
+        src/dll/ConsoleBridgeWin32.cpp
         src/dll/DllMain.cpp
+        src/dll/FrameCaptureWin32.cpp
         src/dll/FrameObserverHook.cpp
         src/lifecycle/Logger.cpp
     )
@@ -120,7 +124,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         "${CMAKE_CURRENT_BINARY_DIR}/generated"
     )
     target_compile_definitions(preyvr PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
-    target_link_libraries(preyvr PRIVATE preyvr_core preyvr_win32_bootstrap minhook bcrypt psapi shell32)
+    target_link_libraries(preyvr PRIVATE preyvr_core preyvr_win32_bootstrap minhook bcrypt psapi shell32 d3d11 dxgi)
     preyvr_enable_warnings(preyvr)
     set_target_properties(preyvr PROPERTIES OUTPUT_NAME PreyVR)
     if(TARGET preyvr_engine_map_probe)
@@ -177,6 +181,10 @@ if(PREYVR_BUILD_TOOLS AND WIN32)
     target_link_libraries(preyvr_ray_probe PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_ray_probe)
 
+    add_executable(preyvr_frame_diff tools/frame_diff/main.cpp)
+    target_link_libraries(preyvr_frame_diff PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_frame_diff)
+
     # Answers the adapter-LUID question out of process, so it needs no running
     # Prey and no headset to build. Skipped when the loader is not being built,
     # since without it there is nothing to ask.
@@ -229,6 +237,16 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_runtime_snapshot_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_runtime_snapshot_tests)
     add_test(NAME runtime_snapshot COMMAND preyvr_runtime_snapshot_tests)
+
+    add_executable(preyvr_frame_dump_tests tests/FrameDumpTests.cpp)
+    target_link_libraries(preyvr_frame_dump_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_frame_dump_tests)
+    add_test(NAME frame_dump COMMAND preyvr_frame_dump_tests)
+
+    add_executable(preyvr_console_policy_tests tests/ConsolePolicyTests.cpp)
+    target_link_libraries(preyvr_console_policy_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_console_policy_tests)
+    add_test(NAME console_policy COMMAND preyvr_console_policy_tests)
 
     add_executable(preyvr_runtime_bootstrap_tests tests/RuntimeBootstrapTests.cpp)
     target_link_libraries(preyvr_runtime_bootstrap_tests PRIVATE preyvr_core)

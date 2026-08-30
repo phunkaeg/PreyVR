@@ -1,6 +1,8 @@
 #include "FrameObserverHook.h"
 
 #include "Bootstrap.h"
+#include "ConsoleBridgeWin32.h"
+#include "FrameCaptureWin32.h"
 #include "Logger.h"
 #include "preyvr/FrameObserver.h"
 
@@ -44,6 +46,13 @@ void __fastcall ObserveEndRendererScene(void* renderer)
         gMilestoneThreadId.store(GetCurrentThreadId(), std::memory_order_relaxed);
         gMilestoneRenderer.store(renderer, std::memory_order_relaxed);
     }
+
+    // Both return on a single atomic load when nothing is armed, so the
+    // observer stays as close to free as it was. They run before the original
+    // so a console command lands at a frame boundary, and so a capture reads the
+    // backbuffer this callback was invoked for.
+    ServiceConsoleQueue();
+    ServiceFrameCapture(renderer, count);
 
     const EndRendererSceneFn original = gOriginal.load(std::memory_order_acquire);
     if (original != nullptr) {
