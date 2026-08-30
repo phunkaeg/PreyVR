@@ -183,3 +183,17 @@ keeps working.
 
 See `docs/XRSIM_INTEGRATION.md` — particularly the section on what a pass under
 the sim does and does not prove.
+
+## OpenXR session probe
+
+`preyvr_xr_session_probe [frames]` runs the complete session lifecycle — instance,
+system, D3D11 device on the runtime's required adapter, session, texture-array
+swapchain, frame loop, submitted projection layer. It clears each eye a different
+colour, so a capture that shows one colour means the array slices were never
+addressed separately.
+
+Standalone rather than in the DLL so it can be run at all: F-010 is the standing
+evidence that OpenXR code written without executing it comes out confidently
+wrong. Run it under xr-sim with `Invoke-PreyVRUnderXrSim.ps1`; see
+`docs/XRSIM_INTEGRATION.md` for what its first run established, including a
+measured colour-space finding that the swapchain-format policy had left open.

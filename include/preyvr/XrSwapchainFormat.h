@@ -20,10 +20,31 @@
 //
 // **What this header does not do is assert which choice is correct.** Whether an
 // sRGB swapchain double-corrects or round-trips depends on what the runtime does
-// on its side, and that is a property of VirtualDesktopXR rather than something
+// on its side, and that is a property of the runtime rather than something
 // derivable here. So the policy prefers the format that involves no conversion at
-// all, records the alternative, and leaves the question to be *measured* on the
-// first headset run -- the same discipline as the frame-difference threshold.
+// all, records the alternative, and leaves the question to be *measured* -- the
+// same discipline as the frame-difference threshold.
+//
+// **First measurement, xr-sim, 2026-08-31.** A session probe cleared the swapchain
+// to a known colour and the compositor's own luminance statistic was read back:
+//
+//     clear colour written : (0.85, 0.15, 0.15) into a format-28 swapchain
+//     luma if bytes taken as-is        :  91.5
+//     luma if linear->sRGB encoded     : 145.8
+//     luma xr-sim actually reported    : 146.0
+//
+// So **xr-sim treats format-28 content as linear and encodes it for display.**
+// That is a problem in waiting for Prey specifically: its backbuffer holds an
+// already gamma-encoded image, because it is what would have been presented. Copy
+// that into a format-28 swapchain under a runtime that behaves like xr-sim and it
+// is encoded a second time -- the washed-out result this header was written to
+// anticipate.
+//
+// The policy is deliberately **not** changed on one runtime's behaviour. What has
+// changed is that the question now has a cheap repeatable method: clear to a known
+// colour, read the reported luma, compare against both hypotheses. Run that against
+// VirtualDesktopXR before choosing, because if the two runtimes differ then the
+// format has to be chosen per runtime rather than once.
 namespace preyvr::xrswapchain {
 
 // DXGI values, as OpenXR reports them for the D3D11 extension.

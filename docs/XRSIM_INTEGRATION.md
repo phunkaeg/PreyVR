@@ -102,3 +102,83 @@ rather than only through unit tests.
 xr-sim's own `catalog/profiles.json` carries a PreyVR profile
 (CryEngine/Arkane fork, x64, D3D11, direct binding) marked **client probe
 verified** — that verification is this project's adapter probe.
+
+---
+
+## The session probe — the whole path, run
+
+`preyvr_xr_session_probe` does what the DLL will eventually do: instance, system,
+a D3D11 device on the runtime's required adapter, session, a texture-array
+swapchain with a slice per eye, the frame loop, and a submitted projection layer.
+It exists as a standalone executable so it can be *run*; until xr-sim there was no
+way to execute any of it without a headset.
+
+```bash
+./tools/Invoke-PreyVRUnderXrSim.ps1 -Executable build/headless/Release/preyvr_xr_session_probe.exe -Arguments 10
+```
+
+First run, 2026-08-31, complete lifecycle, exit 0:
+
+```
+attempt api_version=1.1.60 result=ok
+views count=2 recommended=2064x2208 samples=1
+required luid=0x00000000:0x0001EB8E
+adapter matched enum_index=3 r_overrideDXGIAdapter=3
+formats count=8 offered=[ 29 28 91 87 10 24 40 45 ]
+format chosen=28 match=0 colour_conversion=no
+swapchain created 2064x2208 arraySize=2 images=3
+engine_space left=-0.0315,-0.0000,1.6000 right=0.0315,-0.0000,1.6000 ipd_m=0.0630
+fov_left l=-0.9425 r=0.7679 u=0.9599 d=-0.9599 (radians)
+prey_projection fov=1.919862 ratio=0.963753 asym=0.000000,-0.041069,0.000000,0.000000
+frames submitted=10 completed=10 skipped=0 protocol_errors=0
+```
+
+Four modules that had only ever been unit-tested were exercised against a real
+runtime here, and all four came out right.
+
+**`xrswapchain::SelectFormat` overrode the runtime and was correct to.** The
+runtime offered `29 28 91 87 ...` — sRGB *first*, which the specification says is
+its own preference order. The policy deliberately ignores that and takes the exact
+match to Prey's backbuffer, and it did: `chosen=28 match=exact`.
+
+**The LUID-to-index translation held through a real session.** Index 3, device
+created on it, session accepted it. On the real headset the device was at index 0,
+where this could not have failed visibly.
+
+**The basis change is right.** OpenXR reported eyes at Y-up height 1.6 m; engine
+space came out `z = 1.6000` with the separation on engine X, and the IPD matched
+xr-sim's configured 63 mm exactly.
+
+**The asymmetry solve reproduces by hand.** `asymRight = tan(0.7679) x 0.1 -
+0.14281 = -0.04102` against the reported `-0.041069`, and the two symmetric
+vertical edges produced exactly zero shift. The envelope put the zero on the wider
+edge and the asymmetry on the narrower one, as designed.
+
+**`xrframe::FrameContract` agreed with the runtime's own accounting.** The contract
+reported 10 completed, 0 skipped, 0 protocol errors; xr-sim's `state.json`
+independently reported `waitFrames 10, beginFrames 10, endFrames 10,
+framesDiscarded 0, endsOutOfOrder 0`. Two separate accountings of the same frames.
+
+### Per-eye capture proves the array indexing
+
+The probe clears slice 0 red and slice 1 blue, so a capture that showed one colour
+would mean the two eyes were never addressed separately. `xrsim-shot.ps1` returned
+a side-by-side that is red on the left and blue on the right, with
+`ProjViews 2`, `EyeSeparationM 0.063`, and `MeanLumaL 146.0 / MeanLumaR 152.0`.
+
+### And an unplanned finding: xr-sim gamma-encodes format-28 content
+
+Those luma numbers answer a question the swapchain-format policy had left open.
+A `(0.85, 0.15, 0.15)` clear gives luma **91.5** if the bytes are taken as written
+and **145.8** if linear→sRGB encoded. xr-sim reported **146.0**.
+
+So xr-sim treats a format-28 swapchain as linear and encodes it for display. For
+Prey that is a problem in waiting: its backbuffer is *already* gamma-encoded,
+being what would have been presented, so a second encode is exactly the washed-out
+result the policy header anticipates.
+
+The policy is **not** being changed on one runtime's behaviour. What this buys is a
+cheap repeatable method — clear to a known colour, read the reported luma, compare
+against both hypotheses — which should be run against VirtualDesktopXR before the
+format is fixed. If the two runtimes differ, the format must be chosen per runtime
+rather than once.

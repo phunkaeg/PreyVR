@@ -196,6 +196,21 @@ if(PREYVR_BUILD_TOOLS AND WIN32)
     # Prey and no headset to build. Skipped when the loader is not being built,
     # since without it there is nothing to ask.
     if(PREYVR_BUILD_OPENXR_LOADER AND TARGET openxr_loader)
+        # The full session lifecycle, runnable against xr-sim without a headset.
+        add_executable(preyvr_xr_session_probe tools/xr_session_probe/main.cpp)
+        target_compile_definitions(preyvr_xr_session_probe PRIVATE
+            WIN32_LEAN_AND_MEAN NOMINMAX XR_USE_PLATFORM_WIN32 XR_USE_GRAPHICS_API_D3D11)
+        target_link_libraries(preyvr_xr_session_probe PRIVATE preyvr_core openxr_loader d3d11 dxgi)
+        preyvr_enable_warnings(preyvr_xr_session_probe)
+        add_custom_command(
+            TARGET preyvr_xr_session_probe
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:openxr_loader>
+                $<TARGET_FILE_DIR:preyvr_xr_session_probe>/$<TARGET_FILE_NAME:openxr_loader>
+            VERBATIM
+        )
+
         add_executable(preyvr_xr_adapter_probe tools/xr_adapter_probe/main.cpp)
         target_compile_definitions(preyvr_xr_adapter_probe PRIVATE
             WIN32_LEAN_AND_MEAN NOMINMAX XR_USE_PLATFORM_WIN32 XR_USE_GRAPHICS_API_D3D11)
