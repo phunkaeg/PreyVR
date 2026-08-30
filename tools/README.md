@@ -90,3 +90,31 @@ measurement.
 Verified end to end on synthetic dumps 2026-08-30: a 40-pixel bar shift across differing row pitches
 produced `changedPixelRatio = 0.125`, exactly the 80 of 640 columns that changed, and the same file
 against itself produced exactly zero.
+
+## The virtual VR view
+
+`New-StereoView.ps1` composes two eye dumps into one image that can be judged by
+eye, with no headset, no OpenXR session and no submission path involved. That
+separation is the point: per-eye rendering being *correct* and the XR swapchain
+being *plumbed* are independent problems, and this lets the first be finished and
+verified before the second starts.
+
+```bash
+./tools/New-StereoView.ps1 -Left frame-100-tag0.pvrframe -Right frame-100-tag1.pvrframe -Mode Anaglyph
+```
+
+| mode | the question it answers |
+| --- | --- |
+| `SideBySide` | Is each eye individually sane? Framing, culling, the viewmodel. |
+| `Anaglyph` | Is the stereo *correct*? Disparity appears directly as colour fringing. A swapped pair, a zero IPD, or an inverted eye offset are all obvious here and nearly invisible side by side. |
+| `Difference` | How much disparity, and where? Amplified abs(L-R): bar width encodes magnitude, so near objects give thick bands and far ones thin. A viewmodel drawn from a single camera shows as a black region while the world behind it shows bands. |
+
+Verified on a synthetic stereo pair 2026-08-30: background at infinity produced
+no fringing and a black difference, a 22-pixel near-object disparity produced
+strong fringes and thick bands, and a 7-pixel mid-object disparity produced thin
+ones.
+
+`FrameDumpCommon.ps1` holds the shared reader. The dump format is described in
+exactly one place on the PowerShell side for the same reason it is described once
+in C++: a format contract duplicated across two readers drifts, and the drift
+shows up as plausible-looking wrong images.
