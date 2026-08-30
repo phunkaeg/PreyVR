@@ -1,5 +1,6 @@
 #include "Bootstrap.h"
 
+#include "CameraEditHook.h"
 #include "ConsoleBridgeWin32.h"
 #include "FrameCaptureWin32.h"
 
@@ -403,4 +404,33 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetLastConsoleResult()
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetSubmittedConsoleCommandCount()
 {
     return preyvr::dll::SubmittedConsoleCommandCount();
+}
+
+// The first write to the render path. Wraps CSystem::Render so a bounded yaw is
+// applied to m_ViewCamera for the duration of one render and then restored, with
+// the restore verified byte for byte. Pass 0 to disarm; the hook stays installed
+// as a pass-through because F-009 recorded that our unhook path has never been
+// observed restoring a prologue on a live host.
+//
+// Returns 0 unavailable, 1 ready, 2 armed, 3 failed.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetCameraYawEdit(float degrees)
+{
+    return preyvr::dll::SetCameraYawEdit(degrees);
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetCameraEditStatus()
+{
+    return preyvr::dll::CameraEditStatusValue();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetCameraEditAppliedCount()
+{
+    return preyvr::dll::CameraEditAppliedCount();
+}
+
+// Non-zero here means an edit was applied but the camera did not come back
+// byte-identical. The hook disarms itself on the first such frame.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetCameraEditRestoreFailureCount()
+{
+    return preyvr::dll::CameraEditRestoreFailureCount();
 }

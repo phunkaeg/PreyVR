@@ -72,6 +72,7 @@ target_include_directories(preyvr_headers INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}
 
 add_library(preyvr_core STATIC
     src/common/AimState.cpp
+    src/common/CameraEdit.cpp
     src/common/ConsolePolicy.cpp
     src/common/EngineMap.cpp
     src/common/FrameDump.cpp
@@ -112,6 +113,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
 
     add_library(preyvr SHARED
         src/dll/Bootstrap.cpp
+        src/dll/CameraEditHook.cpp
         src/dll/ConsoleBridgeWin32.cpp
         src/dll/DllMain.cpp
         src/dll/FrameCaptureWin32.cpp
@@ -237,6 +239,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_runtime_snapshot_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_runtime_snapshot_tests)
     add_test(NAME runtime_snapshot COMMAND preyvr_runtime_snapshot_tests)
+
+    add_executable(preyvr_camera_edit_tests tests/CameraEditTests.cpp)
+    target_link_libraries(preyvr_camera_edit_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_camera_edit_tests)
+    add_test(NAME camera_edit COMMAND preyvr_camera_edit_tests)
 
     add_executable(preyvr_frame_dump_tests tests/FrameDumpTests.cpp)
     target_link_libraries(preyvr_frame_dump_tests PRIVATE preyvr_core)
