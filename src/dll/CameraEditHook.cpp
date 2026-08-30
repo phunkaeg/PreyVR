@@ -1,13 +1,17 @@
 #include "CameraEditHook.h"
 
+#include "FrameCaptureWin32.h"
 #include "Logger.h"
 #include "preyvr/CameraEdit.h"
 #include "preyvr/EngineMap.h"
+#include "preyvr/StereoCamera.h"
+#include "preyvr/StereoFrame.h"
 
 #include <MinHook.h>
 
 #include <array>
 #include <atomic>
+#include <cmath>
 #include <cstring>
 #include <mutex>
 #include <sstream>
@@ -45,6 +49,10 @@ std::atomic<bool> gArmed{false};
 std::atomic<unsigned long long> gApplied{0};
 std::atomic<unsigned long long> gRestoreFailures{0};
 std::atomic<bool> gLoggedFirstApplication{false};
+std::atomic<float> gStereoIpd{0.0f};
+std::atomic<float> gStereoHalfFov{50.0f};
+std::atomic<unsigned long long> gEyeCounter{0};
+std::atomic<int> gLastEye{-1};
 void* gTarget = nullptr;
 bool gHookCreated = false;
 
@@ -61,11 +69,64 @@ bool PrologueMatches(std::uintptr_t address, const std::uint8_t* expected, std::
     return std::memcmp(reinterpret_cast<const void*>(address), expected, length) == 0;
 }
 
+// Produces the edited camera for a synthetic stereo eye, composed onto whatever
+// camera the engine was about to render with.
+bool BuildSyntheticEye(
+    std::array<std::uint8_t, cameraedit::kCameraSize>& edited,
+    int eye,
+    float ipdMetres,
+    float halfFovDegrees)
+{
+    const stereo::Matrix34 baseMatrix = stereo::ReadMatrix(edited);
+    const Pose basePose = stereo::PoseFromMatrix(baseMatrix);
+
+    // Half the IPD along the camera's own right axis.
+    const float half = ipdMetres * 0.5f;
+    const Vec3 offset{eye == 0 ? -half : half, 0.0f, 0.0f};
+    const Pose eyePose = stereo::OffsetInLocalFrame(basePose, offset);
+    if (!stereo::WriteMatrix(edited, stereo::MatrixFromPose(eyePose))) {
+        return false;
+    }
+
+    // Mirrored asymmetry, the way a headset actually reports it: the outer edge
+    // extends further than the inner one. Symmetric values here would leave the
+    // shift path untested until a headset was attached, which is precisely when
+    // an untested path is most expensive.
+    const float radians = halfFovDegrees * 3.14159265358979323846f / 180.0f;
+    const float outer = std::tan(radians * 1.1f);
+    const float inner = std::tan(radians * 0.9f);
+    const float vertical = std::tan(radians);
+
+    stereoframe::EyeView view{};
+    view.tanUp = vertical;
+    view.tanDown = -vertical;
+    view.tanLeft = eye == 0 ? -outer : -inner;
+    view.tanRight = eye == 0 ? inner : outer;
+
+    const float nearPlane = stereoframe::NearPlaneOf(edited);
+    const auto projection = stereoframe::ProjectionFromTangents(view, nearPlane);
+    if (!projection) {
+        return false;
+    }
+
+    const auto write = [&edited](std::size_t offsetBytes, float value) {
+        std::memcpy(edited.data() + offsetBytes, &value, sizeof(float));
+    };
+    write(engine::CameraLayout::fov, projection->fov);
+    write(engine::CameraLayout::projectionRatio, projection->projectionRatio);
+    write(engine::CameraLayout::asymLeft, projection->asymmetry.left);
+    write(engine::CameraLayout::asymRight, projection->asymmetry.right);
+    write(engine::CameraLayout::asymBottom, projection->asymmetry.bottom);
+    write(engine::CameraLayout::asymTop, projection->asymmetry.top);
+    return true;
+}
+
 void __fastcall RenderWithCameraEdit(void* system)
 {
     const SystemRenderFn original = gOriginal.load(std::memory_order_acquire);
 
-    if (!gArmed.load(std::memory_order_acquire) || system == nullptr) {
+    const bool stereoArmed = gStereoIpd.load(std::memory_order_acquire) > 0.0f;
+    if ((!gArmed.load(std::memory_order_acquire) && !stereoArmed) || system == nullptr) {
         if (original != nullptr) {
             original(system);
         }
@@ -90,9 +151,26 @@ void __fastcall RenderWithCameraEdit(void* system)
     std::array<std::uint8_t, cameraedit::kCameraSize> edited{};
     std::memcpy(edited.data(), restore.bytes.data(), cameraedit::kCameraSize);
 
-    const cameraedit::YawEdit edit{gYawDegrees.load(std::memory_order_acquire)};
     const UpdateFrustumFn updateFrustum = gUpdateFrustum.load(std::memory_order_acquire);
-    if (!cameraedit::ApplyYaw(edited, edit) || updateFrustum == nullptr) {
+    bool built = false;
+    if (stereoArmed) {
+        // Alternate every frame. With the simulation frozen, consecutive frames
+        // differ only by the eye, which is exactly a stereo pair.
+        const int eye = static_cast<int>(gEyeCounter.fetch_add(1, std::memory_order_relaxed) & 1ull);
+        built = BuildSyntheticEye(edited, eye,
+                                  gStereoIpd.load(std::memory_order_acquire),
+                                  gStereoHalfFov.load(std::memory_order_acquire));
+        if (built) {
+            gLastEye.store(eye, std::memory_order_release);
+            // Stamp the capture so the two dumps of a pair cannot be confused.
+            SetFrameCaptureTagOverride(eye);
+        }
+    } else {
+        const cameraedit::YawEdit edit{gYawDegrees.load(std::memory_order_acquire)};
+        built = cameraedit::ApplyYaw(edited, edit);
+    }
+
+    if (!built || updateFrustum == nullptr) {
         if (original != nullptr) {
             original(system);
         }
@@ -105,7 +183,11 @@ void __fastcall RenderWithCameraEdit(void* system)
     // satisfies the engine's own check.
     if (!cameraedit::RotationIsSafeToWrite(edited)) {
         lifecycle::Log("preyvr_camera_edit result=refused detail=unsafe_rotation");
+        // Disarm *both* producers. Leaving stereo armed after rejecting its
+        // camera would retry the same bad build every frame.
         gArmed.store(false, std::memory_order_release);
+        gStereoIpd.store(0.0f, std::memory_order_release);
+        SetFrameCaptureTagOverride(-1);
         if (original != nullptr) {
             original(system);
         }
@@ -124,6 +206,8 @@ void __fastcall RenderWithCameraEdit(void* system)
     if (!cameraedit::MatchesRestorePoint(live, restore)) {
         gRestoreFailures.fetch_add(1, std::memory_order_relaxed);
         gArmed.store(false, std::memory_order_release);
+        gStereoIpd.store(0.0f, std::memory_order_release);
+        SetFrameCaptureTagOverride(-1);
         lifecycle::Log("preyvr_camera_edit result=restore_failed detail=disarmed");
         return;
     }
@@ -136,8 +220,14 @@ void __fastcall RenderWithCameraEdit(void* system)
         const auto position = cameraedit::PositionOf(restore.bytes);
         std::ostringstream line;
         line << "preyvr_camera_edit result=0 detail=first_application"
-             << " yawDegrees=" << edit.degrees
-             << " originalPos=" << position[0] << ',' << position[1] << ',' << position[2]
+             << " mode=" << (stereoArmed ? "stereo" : "yaw");
+        if (stereoArmed) {
+            line << " ipd=" << gStereoIpd.load(std::memory_order_acquire)
+                 << " eye=" << gLastEye.load(std::memory_order_acquire);
+        } else {
+            line << " yawDegrees=" << gYawDegrees.load(std::memory_order_acquire);
+        }
+        line << " originalPos=" << position[0] << ',' << position[1] << ',' << position[2]
              << " applied=" << applied;
         lifecycle::Log(line.str());
     }
@@ -235,6 +325,53 @@ DWORD SetCameraYawEdit(float degrees)
     line << "preyvr_camera_edit result=0 detail=armed yawDegrees=" << degrees;
     lifecycle::Log(line.str());
     return static_cast<DWORD>(CameraEditStatus::armed);
+}
+
+DWORD SetSyntheticStereo(float ipdMetres, float halfFovDegrees)
+{
+    std::lock_guard lock(gMutex);
+
+    if (ipdMetres == 0.0f) {
+        gStereoIpd.store(0.0f, std::memory_order_release);
+        gLastEye.store(-1, std::memory_order_release);
+        SetFrameCaptureTagOverride(-1);
+        if (gHookCreated) {
+            gStatus.store(static_cast<DWORD>(CameraEditStatus::ready), std::memory_order_release);
+        }
+        lifecycle::Log("preyvr_camera_edit result=0 detail=stereo_disarmed");
+        return gStatus.load(std::memory_order_acquire);
+    }
+
+    // A human IPD is 55-75mm. Anything outside that is a caller error rather
+    // than an unusual head, and a wildly wrong separation is exactly the input
+    // that produces a nauseating image instead of an obviously broken one.
+    if (!std::isfinite(ipdMetres) || ipdMetres < 0.045f || ipdMetres > 0.085f ||
+        !std::isfinite(halfFovDegrees) || halfFovDegrees < 20.0f || halfFovDegrees > 70.0f) {
+        lifecycle::Log("preyvr_camera_edit result=refused detail=stereo_out_of_bounds");
+        return static_cast<DWORD>(CameraEditStatus::failed);
+    }
+
+    if (!EnsureHook()) {
+        gStatus.store(static_cast<DWORD>(CameraEditStatus::unavailable), std::memory_order_release);
+        return static_cast<DWORD>(CameraEditStatus::unavailable);
+    }
+
+    gStereoIpd.store(ipdMetres, std::memory_order_release);
+    gStereoHalfFov.store(halfFovDegrees, std::memory_order_release);
+    gEyeCounter.store(0, std::memory_order_release);
+    gLoggedFirstApplication.store(false, std::memory_order_release);
+    gStatus.store(static_cast<DWORD>(CameraEditStatus::armed), std::memory_order_release);
+
+    std::ostringstream line;
+    line << "preyvr_camera_edit result=0 detail=stereo_armed ipd=" << ipdMetres
+         << " halfFovDegrees=" << halfFovDegrees;
+    lifecycle::Log(line.str());
+    return static_cast<DWORD>(CameraEditStatus::armed);
+}
+
+int LastRenderedEye()
+{
+    return gLastEye.load(std::memory_order_acquire);
 }
 
 DWORD CameraEditStatusValue()

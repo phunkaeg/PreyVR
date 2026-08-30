@@ -58,6 +58,56 @@ Matrix34 MatrixFromPose(const Pose& pose)
     return matrix;
 }
 
+Quaternion QuaternionFromBasis(const Vec3& right, const Vec3& forward, const Vec3& up)
+{
+    // Column-major reading of the basis, matching MatrixFromPose's layout.
+    const float m00 = right.x,   m01 = forward.x,  m02 = up.x;
+    const float m10 = right.y,   m11 = forward.y,  m12 = up.y;
+    const float m20 = right.z,   m21 = forward.z,  m22 = up.z;
+
+    Quaternion q{};
+    const float trace = m00 + m11 + m22;
+    if (trace > 0.0f) {
+        const float s = std::sqrt(trace + 1.0f) * 2.0f;
+        q.w = 0.25f * s;
+        q.x = (m21 - m12) / s;
+        q.y = (m02 - m20) / s;
+        q.z = (m10 - m01) / s;
+    } else if (m00 > m11 && m00 > m22) {
+        const float s = std::sqrt(1.0f + m00 - m11 - m22) * 2.0f;
+        q.w = (m21 - m12) / s;
+        q.x = 0.25f * s;
+        q.y = (m01 + m10) / s;
+        q.z = (m02 + m20) / s;
+    } else if (m11 > m22) {
+        const float s = std::sqrt(1.0f + m11 - m00 - m22) * 2.0f;
+        q.w = (m02 - m20) / s;
+        q.x = (m01 + m10) / s;
+        q.y = 0.25f * s;
+        q.z = (m12 + m21) / s;
+    } else {
+        const float s = std::sqrt(1.0f + m22 - m00 - m11) * 2.0f;
+        q.w = (m10 - m01) / s;
+        q.x = (m02 + m20) / s;
+        q.y = (m12 + m21) / s;
+        q.z = 0.25f * s;
+    }
+    return Normalize(q);
+}
+
+Pose PoseFromMatrix(const Matrix34& matrix)
+{
+    Pose pose{};
+    pose.orientation = QuaternionFromBasis(RightOf(matrix), ForwardOf(matrix), UpOf(matrix));
+    pose.position = PositionOf(matrix);
+    return pose;
+}
+
+Pose OffsetInLocalFrame(const Pose& pose, const Vec3& localOffset)
+{
+    return Compose(pose, Pose{Quaternion{}, localOffset});
+}
+
 Vec3 RightOf(const Matrix34& matrix)
 {
     return {matrix[0], matrix[4], matrix[8]};

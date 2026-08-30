@@ -73,6 +73,24 @@ using Matrix34 = std::array<float, 12>;
 
 Matrix34 MatrixFromPose(const Pose& pose);
 
+// The inverse. Needed to ask "where is the engine's camera right now?" so a
+// per-eye offset can be composed onto it rather than replacing it -- which is
+// what lets the eye construction be exercised against the game's own camera,
+// including its pitch and roll, instead of a synthetic one.
+//
+// Branches on the largest diagonal term rather than using the single-branch
+// trace form. That is not premature caution: the naive version loses precision
+// as the trace approaches zero, which happens at exactly the 180-degree
+// orientations a player reaches by turning around.
+Quaternion QuaternionFromBasis(const Vec3& right, const Vec3& forward, const Vec3& up);
+
+Pose PoseFromMatrix(const Matrix34& matrix);
+
+// Composes an offset expressed in the camera's own frame -- +X right, +Y
+// forward, +Z up -- onto a pose. Half the IPD along the camera's right axis is
+// exactly a synthetic eye.
+Pose OffsetInLocalFrame(const Pose& pose, const Vec3& localOffset);
+
 Vec3 RightOf(const Matrix34& matrix);
 Vec3 ForwardOf(const Matrix34& matrix);
 Vec3 UpOf(const Matrix34& matrix);

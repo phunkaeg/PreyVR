@@ -103,52 +103,11 @@ std::optional<Pose> TwoHandedWeaponPose(
     }
     const Vec3 up = Cross(*right, *forward);
 
-    // Build the orientation from the basis by going through a matrix, so this
-    // uses the same column convention as everything else rather than a second
-    // hand-rolled quaternion construction.
-    stereo::Matrix34 matrix{};
-    matrix[0] = right->x;   matrix[1] = forward->x;  matrix[2] = up.x;
-    matrix[4] = right->y;   matrix[5] = forward->y;  matrix[6] = up.y;
-    matrix[8] = right->z;   matrix[9] = forward->z;  matrix[10] = up.z;
-
-    // Quaternion from an orthonormal basis, branching on the largest diagonal
-    // term for numerical stability -- the naive single-branch form loses
-    // precision when the trace approaches zero, which happens at exactly the
-    // 180-degree orientations a player reaches by turning around.
-    const float m00 = matrix[0], m01 = matrix[1], m02 = matrix[2];
-    const float m10 = matrix[4], m11 = matrix[5], m12 = matrix[6];
-    const float m20 = matrix[8], m21 = matrix[9], m22 = matrix[10];
-
-    Quaternion q{};
-    const float trace = m00 + m11 + m22;
-    if (trace > 0.0f) {
-        const float s = std::sqrt(trace + 1.0f) * 2.0f;
-        q.w = 0.25f * s;
-        q.x = (m21 - m12) / s;
-        q.y = (m02 - m20) / s;
-        q.z = (m10 - m01) / s;
-    } else if (m00 > m11 && m00 > m22) {
-        const float s = std::sqrt(1.0f + m00 - m11 - m22) * 2.0f;
-        q.w = (m21 - m12) / s;
-        q.x = 0.25f * s;
-        q.y = (m01 + m10) / s;
-        q.z = (m02 + m20) / s;
-    } else if (m11 > m22) {
-        const float s = std::sqrt(1.0f + m11 - m00 - m22) * 2.0f;
-        q.w = (m02 - m20) / s;
-        q.x = (m01 + m10) / s;
-        q.y = 0.25f * s;
-        q.z = (m12 + m21) / s;
-    } else {
-        const float s = std::sqrt(1.0f + m22 - m00 - m11) * 2.0f;
-        q.w = (m10 - m01) / s;
-        q.x = (m02 + m20) / s;
-        q.y = (m12 + m21) / s;
-        q.z = 0.25f * s;
-    }
-
+    // Shared with StereoCamera rather than hand-rolled a second time: two copies
+    // of quaternion-from-basis is two chances to get the branch conditions
+    // subtly different, and they would disagree only at rare orientations.
     Pose pose{};
-    pose.orientation = Normalize(q);
+    pose.orientation = stereo::QuaternionFromBasis(*right, *forward, up);
     pose.position = frontHandWorld;
     return pose;
 }

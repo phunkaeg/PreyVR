@@ -120,3 +120,66 @@ It does not render twice. It does not touch per-eye projection, the asymmetry
 fields, `SetPreviousFrameCamera`, or the viewmodel. Those are separate
 experiments and each has its own failure modes; bundling them into this one would
 make a negative result uninterpretable.
+
+---
+
+# A2 — synthetic stereo, still with no headset and no double-render
+
+Once A1 shows that writing `m_ViewCamera` changes the image, the next question is
+whether a *per-eye* camera is constructed correctly. That does not require a
+headset, and it does not require rendering twice in one frame.
+
+**With the scene frozen, a left-eye frame followed by a right-eye frame is a
+stereo pair.** So the hook alternates the eye every frame and the whole per-eye
+construction -- pose offset, asymmetric projection, frustum rebuild -- can be
+proven and *looked at* before anyone calls the render function twice.
+
+Splitting it this way matters because the two risks are unrelated. Per-eye camera
+construction being wrong is a maths bug with a visible signature. Rendering twice
+in one frame is an engine-architecture question that might simply not work. Doing
+them together would make a failure uninterpretable.
+
+## Preconditions
+
+Everything from A1, and the scene freeze is now **mandatory** rather than
+advisable: `t_Scale 0`, `r_AntialiasingMode 0`, `r_MotionBlur 0`. Two consecutive
+frames of a moving scene are not a stereo pair, they are two different moments.
+
+## Steps
+
+```
+PreyVR_SetSyntheticStereo(0.064, 50.0)    ; 64mm IPD, 50-degree half-FOV -> 2 = armed
+PreyVR_RequestFrameCapture(0)             ; tag is overridden with the real eye index
+PreyVR_RequestFrameCapture(0)             ; the next frame renders the other eye
+PreyVR_SetSyntheticStereo(0, 0)           ; disarm
+```
+
+Captures are stamped with the eye the hook actually rendered, not with the tag
+passed in -- the requester cannot know which eye is next, and a silently swapped
+pair inverts depth while looking almost right.
+
+Then check `PreyVR_GetCameraEditRestoreFailureCount()` is 0, and:
+
+```bash
+./tools/New-StereoView.ps1 -Left frame-<a>-tag0.pvrframe -Right frame-<b>-tag1.pvrframe -Mode Anaglyph
+```
+
+## What to look for
+
+| view | what it tells you |
+| --- | --- |
+| `Anaglyph` | Distant geometry should show little or no fringing, near geometry clear fringing, and the fringe should run the same way throughout. Uniform fringing everywhere means the eyes differ by a rotation rather than a translation. Reversed fringing means the pair is swapped or the IPD sign is inverted. |
+| `Difference` | Bands should scale with proximity. **A black region where the weapon is, while the world behind shows bands, is the viewmodel failing to follow the per-eye camera** -- expected, since it renders at `r_DrawNearFoV` 54 degrees against the world's 88 and that value is latched once per frame (R-069). |
+| `SideBySide` | Each eye individually sane: no inverted culling, no geometry missing from one eye only. |
+
+Geometry vanishing at the **outer** edge of each eye is the predicted
+cull-versus-render divergence: the engine header marks the asymmetry shifts "not
+used for culling", so the render frustum is per-eye while the cull frustum stays
+symmetric. Expected, worth measuring, and not a reason to stop.
+
+## Acceptance
+
+A stereo pair whose disparity is consistent with the geometry, restore failures
+at zero, and no unexplained artefacts beyond the two predicted above. That
+result makes per-eye camera construction a solved problem and leaves the
+double-render as the only open question for native stereo.

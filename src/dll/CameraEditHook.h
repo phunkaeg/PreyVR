@@ -43,6 +43,29 @@ enum class CameraEditStatus : DWORD {
 // preyvr::cameraedit.
 DWORD SetCameraYawEdit(float degrees);
 
+// Alternating-eye stereo, without any double-render.
+//
+// **This is the point of the design.** Validating per-eye camera construction
+// and validating that Prey can render twice in one frame are separate problems,
+// and only the second one is risky. With the scene frozen (`t_Scale 0`), a
+// left-eye frame followed by a right-eye frame *is* a stereo pair -- so the whole
+// eye-construction path can be proven correct, and looked at through
+// New-StereoView, before anyone calls the render function twice.
+//
+// The eye offset is composed onto the engine's *current* camera rather than
+// replacing it, so this exercises the real path including the game's own pitch,
+// roll and position. `ipdMetres` of 0 disarms.
+//
+// The FOV is synthetic and deliberately asymmetric per eye, mirrored the way a
+// real headset reports, so the asymmetry-shift path is exercised too rather than
+// being left untested until a headset is attached.
+DWORD SetSyntheticStereo(float ipdMetres, float halfFovDegrees);
+
+// Which eye the most recent render used, or -1. The frame capture is stamped
+// with this automatically, so the two dumps of a pair cannot be confused -- a
+// silently swapped stereo pair inverts depth and looks almost right.
+int LastRenderedEye();
+
 DWORD CameraEditStatusValue();
 
 // Counts frames on which the edit was actually applied and the restore verified

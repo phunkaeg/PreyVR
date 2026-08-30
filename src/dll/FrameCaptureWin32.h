@@ -36,6 +36,16 @@ DWORD RequestFrameCapture(std::uint32_t tag);
 // Called from the frame observer. Returns immediately when nothing is armed.
 void ServiceFrameCapture(void* renderer, unsigned long long frameIndex);
 
+// Overrides the tag written into the dump header, so a producer that knows more
+// than the requester can label the capture correctly. Pass -1 to clear.
+//
+// The stereo hook uses this to stamp the eye index: the caller arming a capture
+// does not know which eye the next frame will render, but the hook that chose it
+// does. Without this the two dumps in a stereo pair would be indistinguishable
+// except by filename order, which is exactly the kind of thing that silently
+// swaps a stereo pair and inverts the depth.
+void SetFrameCaptureTagOverride(int tag);
+
 // Status of the most recent capture attempt, and how many have completed.
 DWORD LastFrameCaptureResult();
 unsigned long long CompletedFrameCaptureCount();

@@ -137,6 +137,53 @@ void TestBuiltMatrixIsSafeToWrite()
     }
 }
 
+void TestPoseMatrixRoundTrip()
+{
+    // The inverse must actually invert, including at the orientations where the
+    // naive quaternion-from-matrix form loses precision: near 180 degrees the
+    // trace approaches zero and the single-branch version degrades badly.
+    const float angles[] = {0.0f, 0.5f, 1.5f, 3.0f, 3.1415f, -2.7f};
+    const Vec3 axes[] = {
+        {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},
+        {0.577f, 0.577f, 0.577f}, {-0.26f, 0.53f, -0.81f},
+    };
+
+    for (const Vec3& axis : axes) {
+        for (const float angle : angles) {
+            const Pose original{AxisAngle(axis, angle), Vec3{12.0f, -34.0f, 56.0f}};
+            const Matrix34 matrix = MatrixFromPose(original);
+            const Pose recovered = PoseFromMatrix(matrix);
+
+            Require(NearVec(recovered.position, original.position, 1e-3f),
+                "the position round-trips through the matrix");
+
+            // Compare the rotations by what they do, not by their components: q
+            // and -q are the same rotation, so comparing components directly
+            // would report a spurious failure at half the orientations.
+            const Vec3 probe{0.3f, -0.6f, 0.74f};
+            Require(NearVec(Rotate(original.orientation, probe),
+                            Rotate(recovered.orientation, probe), 1e-3f),
+                "the rotation round-trips through the matrix");
+        }
+    }
+}
+
+void TestLocalFrameOffset()
+{
+    // Half the IPD along the camera's own right axis is exactly a synthetic eye,
+    // and it must follow the camera's orientation rather than the world axes.
+    const Pose facingY{Quaternion{}, Vec3{100.0f, 200.0f, 300.0f}};
+    const Pose right = OffsetInLocalFrame(facingY, Vec3{0.032f, 0.0f, 0.0f});
+    Require(NearVec(right.position, Vec3{100.032f, 200.0f, 300.0f}, 1e-4f),
+        "a local right offset moves along world X when the camera faces +Y");
+
+    // Turn the camera 90 degrees about up: its right axis now points along -X.
+    const Pose facingX{AxisAngle({0.0f, 0.0f, 1.0f}, -1.57079632679f), Vec3{0.0f, 0.0f, 0.0f}};
+    const Pose turned = OffsetInLocalFrame(facingX, Vec3{0.032f, 0.0f, 0.0f});
+    Require(NearVec(turned.position, Vec3{0.0f, -0.032f, 0.0f}, 1e-4f),
+        "the local offset follows the camera's orientation, not the world axes");
+}
+
 void TestEyePoseComposition()
 {
     // With an identity reference the eye pose is just the converted pose.
@@ -222,6 +269,8 @@ int main()
     TestRotationConversionInvariant();
     TestAxisAlignedRotationsMapAsExpected();
     TestMatrixFromPose();
+    TestPoseMatrixRoundTrip();
+    TestLocalFrameOffset();
     TestBuiltMatrixIsSafeToWrite();
     TestEyePoseComposition();
     TestCyclopsPose();

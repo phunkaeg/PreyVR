@@ -21,6 +21,7 @@ std::atomic<bool> gRequestPending{false};
 std::atomic<std::uint32_t> gRequestTag{0};
 std::atomic<DWORD> gLastResult{static_cast<DWORD>(FrameCaptureResult::ok)};
 std::atomic<unsigned long long> gCompleted{0};
+std::atomic<int> gTagOverride{-1};
 
 void Finish(FrameCaptureResult result, const char* detail)
 {
@@ -101,6 +102,11 @@ DWORD RequestFrameCapture(std::uint32_t tag)
     return static_cast<DWORD>(FrameCaptureResult::ok);
 }
 
+void SetFrameCaptureTagOverride(int tag)
+{
+    gTagOverride.store(tag, std::memory_order_release);
+}
+
 DWORD LastFrameCaptureResult()
 {
     return gLastResult.load(std::memory_order_acquire);
@@ -117,7 +123,9 @@ void ServiceFrameCapture(void* renderer, unsigned long long frameIndex)
         return; // the hot path: one relaxed load and out
     }
 
-    const std::uint32_t tag = gRequestTag.load(std::memory_order_acquire);
+    const int override = gTagOverride.load(std::memory_order_acquire);
+    const std::uint32_t tag = override >= 0 ? static_cast<std::uint32_t>(override)
+                                            : gRequestTag.load(std::memory_order_acquire);
     // Clear the request whatever happens below, so a failing capture cannot arm
     // itself again every frame and turn one bad request into a permanent stall.
     struct RequestGuard {

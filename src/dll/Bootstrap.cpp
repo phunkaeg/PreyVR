@@ -434,3 +434,18 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetCameraEditRestoreFailureCou
 {
     return preyvr::dll::CameraEditRestoreFailureCount();
 }
+
+// Alternating-eye stereo with a synthetic IPD and FOV, no double-render and no
+// headset. With the scene frozen via t_Scale 0, consecutive frames differ only
+// by the eye, so they form a genuine stereo pair that New-StereoView can judge.
+// Captures are stamped with the eye index automatically. Pass ipd 0 to disarm.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetSyntheticStereo(float ipdMetres, float halfFovDegrees)
+{
+    return preyvr::dll::SetSyntheticStereo(ipdMetres, halfFovDegrees);
+}
+
+// Which eye the most recent render used, or -1.
+extern "C" __declspec(dllexport) int PreyVR_GetLastRenderedEye()
+{
+    return preyvr::dll::LastRenderedEye();
+}
