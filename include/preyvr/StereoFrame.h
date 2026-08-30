@@ -1,0 +1,108 @@
+#pragma once
+
+#include "preyvr/RuntimeSnapshot.h"
+#include "preyvr/StereoCamera.h"
+#include "preyvr/VrMath.h"
+
+#include <array>
+#include <cstdint>
+#include <optional>
+#include <span>
+
+// A complete description of one stereo frame: given the camera the engine was
+// about to render with, and what OpenXR says about the two eyes, produce the two
+// cameras that should be rendered instead.
+//
+// This is the payload of the double-render experiment. Keeping it pure means the
+// whole per-eye construction can be checked without a headset, a GPU, or a
+// running Prey -- and it means the hook that eventually executes it is small
+// enough to read in one sitting, which is what you want in code that runs inside
+// someone else's render loop.
+//
+// It deliberately does **not** call CCamera::UpdateFrustum. That is an engine
+// function and this is pure; the caller runs it on each produced camera before
+// the bytes reach the game. Skipping it leaves the cached planes describing the
+// previous camera -- see CameraEditHook for how that is sequenced.
+namespace preyvr::stereoframe {
+
+inline constexpr std::size_t kCameraSize = 0x240;
+
+// One eye as OpenXR reports it: a pose in the reference space, and the four
+// signed tangent half-angles of its frustum.
+//
+// Tangents rather than XrFovf angles so this stays free of the OpenXR headers
+// and the caller owns that dependency -- the same choice AsymmetryFromFovTangents
+// already makes.
+struct EyeView {
+    Pose openXrPose{};
+    float tanLeft = 0.0f;  // negative for a normal frustum
+    float tanRight = 0.0f;
+    float tanDown = 0.0f;  // negative
+    float tanUp = 0.0f;
+};
+
+// What Prey's CCamera needs to express that frustum: a symmetric vertical FOV, a
+// projection ratio, and the four asymmetry shifts that carry the difference.
+//
+// Prey can express a genuinely asymmetric frustum -- SetCamera folds m_asymL/R/B/T
+// into the render frustum, which Crysis' CCamera could not do, and fholger's mod
+// had to fall back to a symmetric FOV plus cropping at submission. We use the
+// asymmetric path because the engine supports it.
+//
+// **The known caveat**, and it is not hypothetical: the engine header marks those
+// shift fields "not used for culling". So the *render* frustum will be correct
+// per eye while the *cull* frustum stays symmetric. Expect the visible symptom to
+// be geometry appearing or vanishing near the outer edge of each eye rather than
+// a wrong image. Recorded here so that when it shows up it is recognised instead
+// of investigated from scratch.
+struct EyeProjection {
+    float fov = 0.0f; // vertical, radians
+    float projectionRatio = 0.0f;
+    snapshot::EyeAsymmetry asymmetry{};
+};
+
+// Chooses the symmetric envelope that makes the shifts small, then solves for
+// them. Any envelope works -- the shifts absorb whatever is left -- but keeping
+// them near zero means a mistake shows up as a small artefact rather than a
+// wildly skewed image, and it keeps the numbers legible in a log.
+std::optional<EyeProjection> ProjectionFromTangents(const EyeView& view, float nearPlane);
+
+// A finished camera, ready for UpdateFrustum and then a blit.
+struct EyeCamera {
+    std::array<std::uint8_t, kCameraSize> bytes{};
+};
+
+struct StereoPlan {
+    EyeCamera left{};
+    EyeCamera right{};
+
+    // The single eye point for gameplay systems, in engine world space.
+    Pose cyclops{};
+
+    EyeProjection leftProjection{};
+    EyeProjection rightProjection{};
+};
+
+// Builds both eye cameras from the camera the engine was about to use.
+//
+// Everything not related to the view is inherited from `baseCamera` unchanged --
+// dimensions, near and far planes, and every cached field. A per-eye camera
+// should differ from the engine's own in exactly the ways it has to and in no
+// others, both because that is the smallest change and because it makes a diff
+// of the two blobs readable.
+//
+// Returns nothing if the base camera is too small, if either eye's tangents are
+// not a valid frustum, or if a produced matrix is not safe to write. A partial
+// stereo plan is never returned: rendering one good eye and one bad one is worse
+// than rendering neither, because it looks like it nearly works.
+std::optional<StereoPlan> BuildStereoPlan(
+    std::span<const std::uint8_t> baseCamera,
+    const stereo::ReferenceFrame& reference,
+    const EyeView& leftEye,
+    const EyeView& rightEye);
+
+// Reads the near plane the engine is currently using, since the asymmetry solve
+// needs it and it must come from the live camera rather than a constant.
+float NearPlaneOf(std::span<const std::uint8_t> camera);
+
+} // namespace preyvr::stereoframe

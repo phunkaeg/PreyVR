@@ -82,6 +82,7 @@ add_library(preyvr_core STATIC
     src/common/OpenXRBootstrap.cpp
     src/common/RuntimeSnapshot.cpp
     src/common/StereoCamera.cpp
+    src/common/StereoFrame.cpp
     src/common/VrMath.cpp
     src/common/WrenchQuery.cpp
 )
@@ -241,6 +242,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_runtime_snapshot_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_runtime_snapshot_tests)
     add_test(NAME runtime_snapshot COMMAND preyvr_runtime_snapshot_tests)
+
+    add_executable(preyvr_stereo_frame_tests tests/StereoFrameTests.cpp)
+    target_link_libraries(preyvr_stereo_frame_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_stereo_frame_tests)
+    add_test(NAME stereo_frame COMMAND preyvr_stereo_frame_tests)
 
     add_executable(preyvr_motion_controller_tests tests/MotionControllerTests.cpp)
     target_link_libraries(preyvr_motion_controller_tests PRIVATE preyvr_core)
