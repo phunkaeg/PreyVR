@@ -1,6 +1,7 @@
 #include "Bootstrap.h"
 
 #include "CameraEditHook.h"
+#include "XrSessionHost.h"
 #include "ConsoleBridgeWin32.h"
 #include "FrameCaptureWin32.h"
 
@@ -465,4 +466,33 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetDoubleRenderStereo(
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetDoubleRenderedFrameCount()
 {
     return preyvr::dll::DoubleRenderedFrameCount();
+}
+
+// --- Hurdle 2: an OpenXR session hosted inside Prey ------------------------
+//
+// Binds a session to *Prey's own* D3D11 device and mirrors its backbuffer into
+// both eyes. Never starts on load.
+//
+// Returns 0 idle, 1 running, 2 adapter mismatch, 3 unavailable, 4 failed,
+// 5 stopped. On 2 the log names the r_overrideDXGIAdapter index to set **before
+// the next launch** - the cvar is read once during device creation, so it cannot
+// be fixed from here.
+extern "C" __declspec(dllexport) DWORD PreyVR_StartXrSession()
+{
+    return preyvr::dll::StartXrSession();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_StopXrSession()
+{
+    return preyvr::dll::StopXrSession();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetXrSessionStatus()
+{
+    return preyvr::dll::XrSessionStatusValue();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetXrSubmittedFrameCount()
+{
+    return preyvr::dll::XrSubmittedFrameCount();
 }

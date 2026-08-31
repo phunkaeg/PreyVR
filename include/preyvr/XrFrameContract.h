@@ -61,6 +61,22 @@ public:
     void SetSessionRunning(bool running);
     bool SessionRunning() const { return sessionRunning_; }
 
+    // Deliberately permit wait and submit on the same thread.
+    //
+    // OpenXR allows it; XR-005 does not, and the difference matters. During
+    // bring-up the whole XR frame runs on Prey's render thread, because that is
+    // the only place the backbuffer is valid, and splitting the wait onto the
+    // game thread would add cross-thread pose caching before there is anything
+    // to cache. So the rule is **opted out of explicitly, with a reason**, rather
+    // than deleted or quietly not enforced.
+    //
+    // Defaults to false. It must go back to false before per-eye submission
+    // ships: the split is what keeps head-to-photon latency down, and a
+    // single-threaded pipeline that works is exactly the kind of thing that
+    // survives to release by never being revisited.
+    void AllowSingleThreaded(bool allow) { allowSingleThreaded_ = allow; }
+    bool SingleThreadedAllowed() const { return allowSingleThreaded_; }
+
     // xrWaitFrame returned. `shouldRender` is the runtime's own answer, which
     // must be honoured -- a runtime that says not to render this frame still
     // expects a begin/end pair.
@@ -98,6 +114,7 @@ private:
 
     Phase phase_ = Phase::idle;
     bool sessionRunning_ = false;
+    bool allowSingleThreaded_ = false;
     bool runtimeWantsRender_ = false;
     std::int64_t predictedDisplayTime_ = 0;
     CachedViews views_{};

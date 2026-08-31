@@ -123,6 +123,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/DllMain.cpp
         src/dll/FrameCaptureWin32.cpp
         src/dll/FrameObserverHook.cpp
+        src/dll/XrSessionHost.cpp
         src/lifecycle/Logger.cpp
     )
     target_include_directories(preyvr PRIVATE
@@ -132,6 +133,21 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
     )
     target_compile_definitions(preyvr PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
     target_link_libraries(preyvr PRIVATE preyvr_core preyvr_win32_bootstrap minhook bcrypt psapi shell32 d3d11 dxgi)
+    if(PREYVR_BUILD_OPENXR_LOADER AND TARGET openxr_loader)
+        # The in-process session host needs the loader. The DLL already ships
+        # openxr_loader.dll beside itself for the preflight, so this adds a link
+        # dependency rather than a new deployment requirement.
+        target_link_libraries(preyvr PRIVATE openxr_loader delayimp)
+        target_compile_definitions(preyvr PRIVATE XR_USE_PLATFORM_WIN32 XR_USE_GRAPHICS_API_D3D11)
+        # **Delay-loaded on purpose.** A hard import would make PreyVR.dll fail to
+        # load at all when openxr_loader.dll is not beside it -- the landmark gate
+        # would never run, nothing would reach the log, and the failure would read
+        # as "the DLL is broken" rather than "a dependency is missing". Injection
+        # is precisely where an adjacent DLL may not be on the search path.
+        # Delay-loading keeps the fail-closed lifecycle intact and turns a missing
+        # loader into a clean refusal inside StartXrSession instead.
+        target_link_options(preyvr PRIVATE /DELAYLOAD:openxr_loader.dll)
+    endif()
     preyvr_enable_warnings(preyvr)
     set_target_properties(preyvr PROPERTIES OUTPUT_NAME PreyVR)
     if(TARGET preyvr_engine_map_probe)

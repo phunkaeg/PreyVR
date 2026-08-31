@@ -77,7 +77,7 @@ Result FrameContract::OnSubmitted(std::uint32_t threadId)
     if (phase_ != Phase::begun) {
         return Fail(Result::outOfOrder);
     }
-    if (threadId == waitThreadId_) {
+    if (threadId == waitThreadId_ && !allowSingleThreaded_) {
         // XR-005 puts the wait on the game thread and the submit on the render
         // thread. Seeing both on one thread means the design has been collapsed,
         // which is worth failing loudly about while it is still cheap to fix.

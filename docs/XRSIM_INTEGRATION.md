@@ -245,3 +245,108 @@ headset day alongside the LUID.
 
 And if a check fires and the check looks wrong rather than the code, that argument
 is settled by adding a fault case to `tools/xrtape_selftest.py`, not by arguing.
+
+---
+
+# B1 — an OpenXR session hosted inside Prey
+
+**Question:** can `PreyVR.dll` create an OpenXR session bound to *Prey's own*
+D3D11 device, and submit Prey's backbuffer to a runtime?
+
+This is Hurdle 2, and it is now runnable without a headset. It is a separate
+track from A1/A2/A3: those are about the camera, this is about the plumbing, and
+neither depends on the other's result.
+
+## What is different from the session probe
+
+The probe created its own device on whatever adapter the runtime asked for. That
+is the easy case. Here the device belongs to Prey, was created before we loaded,
+and sits on whatever adapter Prey chose — so the adapter question stops being
+theoretical.
+
+**xr-sim requires adapter index 3; Prey creates its device on index 0.** That
+mismatch is exactly what `r_overrideDXGIAdapter` (R-052) exists to fix, and the
+real headset can never test it, because there the required adapter *is* index 0
+and a broken override looks correct. The simulator hands us the adversarial case
+inside the real game.
+
+## The pre-launch step, which cannot be done afterwards
+
+`r_overrideDXGIAdapter` is **read once during device creation**, long before this
+DLL loads. Setting it from the console during play does nothing, and the
+resulting session failure points somewhere unhelpful.
+
+Prey is CryEngine-derived, so the command line should take it without touching
+any installed file — which matters, because **this project does not modify the
+installed game**:
+
+```
+Prey.exe +r_overrideDXGIAdapter 3
+```
+
+*Unverified:* whether Prey honours `+cvar` on the command line has not been
+tested. If it does not, the fallback is the **user** config under
+`Documents\My Games\Prey`, which is not part of the installation. Editing
+anything inside the game directory is out of scope.
+
+Run `PreyVR_StartXrSession()` **without** setting it first if you want the
+mismatch demonstrated: it will return `2` and the log will name the index to use.
+That is a useful first result rather than a wasted run.
+
+## Steps
+
+1. Launch Prey with the adapter set, inject `PreyVR.dll`, confirm
+   `preyvr_smoke_result status=verified`.
+2. `PreyVR_SetFrameObserverEnabled(1)` — the XR frame is serviced from the
+   observer, on the render thread, because that is the only place Prey's
+   backbuffer is valid.
+3. `PreyVR_StartXrSession()`.
+
+| return | meaning |
+| ---: | --- |
+| 1 | running |
+| 2 | **adapter mismatch** — the log names the index; relaunch with it |
+| 3 | unavailable (no runtime, no system, or `openxr_loader.dll` missing) |
+| 4 | failed — see the log's `step=` |
+
+4. `PreyVR_GetXrSubmittedFrameCount()` should climb.
+5. `PreyVR_StopXrSession()`. Teardown happens on the render thread at the next
+   frame boundary, because the D3D resources belong to that thread.
+
+## What it submits
+
+A **flat mirror**: Prey's backbuffer copied into both eye slices. Deliberately
+not per-eye — that depends on the camera track, and bundling them would make a
+failure uninterpretable. This proves device, session, swapchain and submission;
+nothing more.
+
+The swapchain is built at Prey's backbuffer size rather than the runtime's
+recommendation, so the copy is a straight `CopySubresourceRegion` with no scaling
+blit. The runtime scales for display. Matching the recommendation is a later
+optimisation and a different problem.
+
+## Taping it
+
+```bash
+& 'D:\Dev Debug\xr-tape\tools\Invoke-XrTape.ps1' -Executable <Prey.exe> -Architecture x64 -RuntimeJson $manifest -Check -ExpectRuntime xr-sim
+```
+
+Expect `both_eyes_submitted` and `eye_pair_shares_display_time` to pass, and
+`eye_subimages_distinct` to **fail** — the two eyes are genuinely the same image
+in a flat mirror. That failure is the correct result for this step and becomes
+the pass condition once per-eye rendering lands.
+
+## Known deviation, recorded rather than hidden
+
+Bring-up runs wait, begin and submit all on the render thread, because that is
+where the backbuffer lives. XR-005 wants the wait on the game thread. The frame
+contract's rule is opted out of explicitly with `AllowSingleThreaded(true)`
+rather than left to fire every frame — and it must go back before per-eye
+submission ships, because the split is what keeps head-to-photon latency down.
+
+## A robustness note
+
+`openxr_loader.dll` is **delay-loaded**. A hard import would make `PreyVR.dll`
+fail to load at all when the loader is absent — the landmark gate would never
+run and the failure would read as "the DLL is broken". Verified empirically by
+removing the loader and confirming the fail-closed load test still passes.

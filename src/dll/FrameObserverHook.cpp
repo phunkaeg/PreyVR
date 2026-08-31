@@ -4,6 +4,7 @@
 #include "ConsoleBridgeWin32.h"
 #include "FrameCaptureWin32.h"
 #include "Logger.h"
+#include "XrSessionHost.h"
 #include "preyvr/FrameObserver.h"
 
 #include <MinHook.h>
@@ -53,6 +54,10 @@ void __fastcall ObserveEndRendererScene(void* renderer)
     // backbuffer this callback was invoked for.
     ServiceConsoleQueue();
     ServiceFrameCapture(renderer, count);
+    // The XR frame runs here because this is the render thread and the only
+    // place Prey's backbuffer is valid. Returns on one atomic load when no
+    // session is running.
+    ServiceXrFrame(renderer);
 
     const EndRendererSceneFn original = gOriginal.load(std::memory_order_acquire);
     if (original != nullptr) {

@@ -119,6 +119,40 @@ void TestThreadSplitIsEnforced()
         "a rejected submit still releases the frame rather than wedging the state machine");
 }
 
+void TestSingleThreadedOptOut()
+{
+    // The opt-out must be explicit and must default off, or it stops being an
+    // opt-out and becomes the rule quietly not being enforced.
+    FrameContract contract;
+    contract.SetSessionRunning(true);
+    Require(!contract.SingleThreadedAllowed(), "the split is enforced by default");
+
+    Require(contract.OnWaited(1000, true, kGameThread) == Result::ok, "wait accepted");
+    Require(contract.OnViewsLocated(1000, true, true) == Result::ok, "views cached");
+    Require(contract.OnBegun() == Result::ok, "begin accepted");
+    Require(contract.OnSubmitted(kGameThread) == Result::wrongThread,
+        "same-thread submit is still refused by default");
+
+    contract.AllowSingleThreaded(true);
+    Require(contract.SingleThreadedAllowed(), "the opt-out is observable");
+    Require(RunGoodFrame(contract, 2000) == Result::ok, "the split is still fine when allowed");
+
+    // And a genuinely single-threaded frame now passes.
+    Require(contract.OnWaited(3000, true, kGameThread) == Result::ok, "wait accepted");
+    Require(contract.OnViewsLocated(3000, true, true) == Result::ok, "views cached");
+    Require(contract.OnBegun() == Result::ok, "begin accepted");
+    Require(contract.OnSubmitted(kGameThread) == Result::ok,
+        "same-thread submit is accepted once explicitly allowed");
+
+    // Turning it back off restores the rule, so the opt-out cannot be sticky.
+    contract.AllowSingleThreaded(false);
+    Require(contract.OnWaited(4000, true, kGameThread) == Result::ok, "wait accepted");
+    Require(contract.OnViewsLocated(4000, true, true) == Result::ok, "views cached");
+    Require(contract.OnBegun() == Result::ok, "begin accepted");
+    Require(contract.OnSubmitted(kGameThread) == Result::wrongThread,
+        "revoking the opt-out restores the rule");
+}
+
 void TestOutOfOrderCalls()
 {
     FrameContract contract;
@@ -169,6 +203,7 @@ int main()
     TestRenderingWithoutViewsIsRefused();
     TestSkippedFrameStillPairs();
     TestThreadSplitIsEnforced();
+    TestSingleThreadedOptOut();
     TestOutOfOrderCalls();
     TestSessionState();
     TestResetIsIdempotent();
