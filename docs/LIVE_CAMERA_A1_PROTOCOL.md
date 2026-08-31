@@ -421,3 +421,36 @@ discovered as a comfort problem later.
 
 Per-eye camera construction is a solved problem. The double render (A3) is the
 only remaining architectural unknown for native stereo.
+
+---
+
+# A3 result, 2026-09-01 — the double render does NOT work as built
+
+**Answer: Prey survives rendering the world twice in one frame exactly once, and
+wedges when it is sustained.**
+
+| budget | outcome |
+| --- | --- |
+| 1 | works: `done=1`, clean budget exhaust, ~142 fps continued, restore verified |
+| 300 | wedges: ~4 frames completed, frame counter stopped, never resumed |
+
+The level vanished leaving only the skybox. Since the skybox draws unculled, that
+is occlusion culling rejecting all world geometry -- which points at the
+per-frame `CRenderView` and coverage buffer being filled once and consumed once,
+and the second pass culling against state the first pass already used.
+
+Splitting A2 from A3 paid for itself here: because A2b had already passed, this
+failure is unambiguously "the engine cannot be re-entered like this" and not "the
+second camera was malformed".
+
+**The frame budget did not contain it.** It bounds attempted frames and disarms
+when exhausted, but the engine stopped completing frames at about frame 4 of 300,
+so the budget never drained and the mode never disarmed. Disarming by hand did
+not recover it. See F-013 -- a budget in frames cannot bound a failure that stops
+frames.
+
+**Next, and neither needs a policy change:** re-run with
+`e_CoverageBufferDebugFreeze 1` and `e_CameraFreeze 1`, which freeze exactly the
+subsystem implicated; and investigate `e_Recursion`, the engine's own mechanism
+for drawing the world more than once per frame, which is a better foundation for
+native stereo than re-entering the top-level render function.

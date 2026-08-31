@@ -424,3 +424,56 @@ not attribute its result to a cause. This was a measurement with no cause at all
 confident numbers. The defence is the same in both cases: know what the result should be *before*
 running, and make the harness prove it actually did the thing it claims to have done -- here, by
 stamping every reading with the frame that produced it.
+
+---
+
+## F-013 - Re-entering CSystem::Render works once and wedges the engine when sustained
+
+**Status:** understood well enough to stop doing it. A3's question is answered, and the answer is no.
+
+The double render calls the original `CSystem::Render` twice inside one invocation, once per eye.
+Run live 2026-09-01:
+
+| budget | result |
+| --- | --- |
+| 1 frame | **works.** `done=1`, budget exhausted cleanly, game continued at ~142 fps, restore verified |
+| 300 frames | **wedges.** One frame logged, ~4 completed, then the observed frame count stopped advancing and never resumed |
+
+**The symptom names the cause.** The level disappeared and only the skybox remained. The skybox is
+drawn unculled, so "everything except the skybox is gone" is occlusion culling rejecting all world
+geometry -- not a crash, and not a camera that pointed the wrong way.
+
+That is consistent with what the pipeline is. `CSystem::Render` fills a `CRenderView` and the
+coverage buffer, both per-frame structures that are filled once and consumed once. Re-entering it
+without an intervening frame boundary -- no `RT_EndFrame`, no present -- leaves the second pass
+culling against state the first pass already consumed. One re-entry survives because nothing has
+been consumed yet. Sustained re-entry does not, because every frame now starts from state the
+previous frame corrupted.
+
+**The frame budget did not save it, and that is the design lesson.** The budget bounds how many
+frames the mode *attempts*, and it self-disarms when the budget reaches zero. But the engine wedged
+at roughly frame 4 of 300, so no further frames completed, so the budget was never consumed and the
+mode never disarmed itself. Disarming by hand afterwards did not recover it either: the damage was
+already in engine state, not in our flag.
+
+**A budget expressed in frames cannot bound a failure that stops frames from completing.** A time
+budget serviced from a thread that is not the render thread would have. That is the fix if this is
+ever retried.
+
+**Two leads, both already in the project, and both better founded than another attempt at re-entry.**
+
+`e_CoverageBufferDebugFreeze` and `e_CameraFreeze` are already on the console allowlist, recorded as
+"the engine-honoured override found in UpdateRenderingCamera: together they switch the render camera
+to GetViewCamera() while freezing culling". Culling is precisely the subsystem this failure
+implicates, so the next experiment is the double render with culling frozen -- and it needs no policy
+change to run.
+
+`e_Recursion` is also allowlisted, noted as "the recursive render views are allocated and idle".
+CryEngine renders mirrors and portals through recursive render views, which is the engine's *own*
+mechanism for drawing the world more than once in a frame. That is a far more promising architecture
+for native stereo than re-entering the top-level render function, and it is the direction to take
+next.
+
+**Cost:** one hung game session, killed from outside. No writes to the installed game, and
+`restoreFailures` stayed 0 throughout -- the camera was always restored byte for byte. The damage was
+entirely in the engine's own per-frame state.
