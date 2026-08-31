@@ -362,3 +362,62 @@ native-stereo path and makes the alternative -- one eye per frame, alternating,
 with reprojection -- the design to pursue instead. That would be a real answer,
 not a failure: A2's per-eye machinery is unchanged by it, and the alternating
 mode already exists and works.
+
+---
+
+# A2b result, 2026-09-01 — PASSED
+
+Run in the Talos I lobby (near planter and leaves, mid signage, far windows), scene
+frozen, symmetric frusta, eye locked rather than tagged.
+
+| IPD | residualAtZero | bestShift | improvement | verdict |
+| --- | --- | --- | --- | --- |
+| 0 mm | **0.0112** | 0 px | 1.00 | control |
+| 45 mm | 6.970 | -7 px | 1.36 | `no_single_shift_explains_it` |
+| 64 mm | 8.242 | -9 px | 1.375 | `no_single_shift_explains_it` |
+| 85 mm | 9.565 | -15 px | 1.383 | `no_single_shift_explains_it` |
+
+Every prediction recorded above held.
+
+**The load-bearing one:** improvement below 2.0 at every armed IPD. No single
+offset re-aligns the pair, so the difference is depth-varying parallax rather
+than the uniform shear that made the first two runs unjudgeable.
+
+**The control:** 0.0112, below the A1 noise floor of 0.0167, and 620x below the
+smallest armed IPD. With symmetric frusta and no eye offset the two eyes are the
+same camera, so this is the row that would have failed had the difference been
+temporal AA, capture jitter, or a scene that was not as frozen as assumed. It is
+the reason the other three rows can be believed.
+
+**bestShift stayed small and grew with IPD** -- 7, 9, 15 px against a predicted
+ceiling of 140 -- which is what modal-depth disparity should do.
+
+**Monotonic, and sub-proportional as predicted.** IPD x1.42 gave residual x1.18
+and IPD x1.89 gave x1.37. Proportionality was written down beforehand as the
+weaker claim, because disparity saturates once it exceeds the local image
+structure. It came in under the line, as expected.
+
+For contrast, the same test with the asymmetry left at 1.1: `meanAbsolute 30.17,
+bestShift -462 px, improvement 3.23x, uniform_shear_dominates`.
+
+`restoreFailures` was 0 across all four steps and 240+ applied frames.
+
+## What the anaglyph adds
+
+Fringing scales with proximity and runs the same way throughout -- a translation
+between the eyes, not a rotation. Two further observations:
+
+**The wrench barely fringes** while foliage beside it fringes clearly. That is
+R-069 confirmed once more: the viewmodel renders at `r_DrawNearFoV`, latched once
+per frame, so it does not follow the per-eye camera. Predicted, and now seen.
+
+**The HUD fringes, and that was not predicted.** The health and shield widget and
+the reticle are drawn through the per-eye camera, so a 2D overlay picks up
+disparity it should not have. Harmless here, but a real VR build needs the HUD at
+a fixed comfortable depth or on its own layer. Recorded now rather than
+discovered as a comfort problem later.
+
+## Status
+
+Per-eye camera construction is a solved problem. The double render (A3) is the
+only remaining architectural unknown for native stereo.

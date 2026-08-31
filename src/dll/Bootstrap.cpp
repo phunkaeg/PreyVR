@@ -482,6 +482,73 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetDoubleRenderStereo(
     return preyvr::dll::SetDoubleRenderStereo(ipdMetres, halfFovDegrees, frameBudget);
 }
 
+// ---------------------------------------------------------------------------
+// Pointer-argument variants, for automation
+// ---------------------------------------------------------------------------
+//
+// **These exist because a float argument cannot be driven reliably from Frida.**
+//
+// F-009 records that Frida's NativeFunction aborts a call into this DLL with a
+// bare "system error". The harness works around it by invoking anything that
+// does work on a real Windows thread, where Frida marshals nothing -- but
+// CreateThread can only pass a *pointer*, and the x64 calling convention passes
+// floats in XMM registers, so a float-taking export cannot go through that route
+// at all.
+//
+// That left the float exports on the unreliable path, and on 2026-09-01 it cost
+// a live A2b run: SetStereoAsymmetry raised the abort and **never executed**, as
+// the log proved by not containing its line. Had the sweep continued, every step
+// would have run at the default 1.1 asymmetry and measured the same 462 px shear
+// that F-011 is about -- while looking like a clean run.
+//
+// Each of these takes a pointer to its arguments, so it matches
+// LPTHREAD_START_ROUTINE exactly and can be called on a real thread. The thread's
+// exit code is the return value. Null is rejected rather than dereferenced;
+// beyond that the caller is trusted with its own memory, which is inherent to
+// the pattern and is why these are automation-only entry points.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetStereoAsymmetryPtr(const float* outerScale)
+{
+    if (outerScale == nullptr) {
+        return static_cast<DWORD>(preyvr::dll::CameraEditStatus::failed);
+    }
+    return preyvr::dll::SetStereoAsymmetry(*outerScale);
+}
+
+// args[0] = IPD in metres, args[1] = half-FOV in degrees.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetSyntheticStereoPtr(const float* args)
+{
+    if (args == nullptr) {
+        return static_cast<DWORD>(preyvr::dll::CameraEditStatus::failed);
+    }
+    return preyvr::dll::SetSyntheticStereo(args[0], args[1]);
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_SetCameraYawEditPtr(const float* degrees)
+{
+    if (degrees == nullptr) {
+        return static_cast<DWORD>(preyvr::dll::CameraEditStatus::failed);
+    }
+    return preyvr::dll::SetCameraYawEdit(*degrees);
+}
+
+// Laid out as two floats followed by a frame budget, so one allocation carries
+// the whole call.
+struct PreyVRDoubleRenderArgs {
+    float ipdMetres;
+    float halfFovDegrees;
+    unsigned int frameBudget;
+};
+
+extern "C" __declspec(dllexport) DWORD PreyVR_SetDoubleRenderStereoPtr(
+    const PreyVRDoubleRenderArgs* args)
+{
+    if (args == nullptr) {
+        return static_cast<DWORD>(preyvr::dll::CameraEditStatus::failed);
+    }
+    return preyvr::dll::SetDoubleRenderStereo(
+        args->ipdMetres, args->halfFovDegrees, args->frameBudget);
+}
+
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetDoubleRenderedFrameCount()
 {
     return preyvr::dll::DoubleRenderedFrameCount();
