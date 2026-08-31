@@ -11,6 +11,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <mutex>
@@ -40,7 +41,13 @@ constexpr std::array<std::uint8_t, 20> kUpdateFrustumPrologue{
 using SystemRenderFn = void(__fastcall*)(void* system);
 using UpdateFrustumFn = void(__fastcall*)(void* camera);
 
-std::mutex gMutex;
+// Timed, for the reason XrSessionHost is: a control export called from an
+// external tool can have its call aborted mid-flight, and a plain mutex held at
+// that moment is never released -- poisoning every later call with a hang rather
+// than an error. Observed live 2026-08-31, where it silently stopped the yaw
+// from arming and left a capture that looked fine and proved nothing.
+std::timed_mutex gMutex;
+constexpr auto kControlLockTimeout = std::chrono::milliseconds(250);
 std::atomic<DWORD> gStatus{static_cast<DWORD>(CameraEditStatus::unavailable)};
 std::atomic<SystemRenderFn> gOriginal{nullptr};
 std::atomic<UpdateFrustumFn> gUpdateFrustum{nullptr};
@@ -370,7 +377,11 @@ bool EnsureHook()
 
 DWORD SetCameraYawEdit(float degrees)
 {
-    std::lock_guard lock(gMutex);
+    std::unique_lock lock(gMutex, kControlLockTimeout);
+    if (!lock.owns_lock()) {
+        lifecycle::Log("preyvr_camera_edit result=refused detail=busy step=SetCameraYawEdit");
+        return static_cast<DWORD>(CameraEditStatus::failed);
+    }
 
     if (degrees == 0.0f) {
         gArmed.store(false, std::memory_order_release);
@@ -404,7 +415,11 @@ DWORD SetCameraYawEdit(float degrees)
 
 DWORD SetSyntheticStereo(float ipdMetres, float halfFovDegrees)
 {
-    std::lock_guard lock(gMutex);
+    std::unique_lock lock(gMutex, kControlLockTimeout);
+    if (!lock.owns_lock()) {
+        lifecycle::Log("preyvr_camera_edit result=refused detail=busy step=SetSyntheticStereo");
+        return static_cast<DWORD>(CameraEditStatus::failed);
+    }
 
     if (ipdMetres == 0.0f) {
         gStereoIpd.store(0.0f, std::memory_order_release);
@@ -447,7 +462,7 @@ DWORD SetSyntheticStereo(float ipdMetres, float halfFovDegrees)
 DWORD SetDoubleRenderStereo(float ipdMetres, float halfFovDegrees, unsigned int frameBudget)
 {
     if (ipdMetres == 0.0f || frameBudget == 0) {
-        std::lock_guard lock(gMutex);
+        std::unique_lock lock(gMutex, kControlLockTimeout);
         gDoubleRender.store(false, std::memory_order_release);
         gDoubleRenderBudget.store(0, std::memory_order_release);
         gStereoIpd.store(0.0f, std::memory_order_release);
@@ -469,7 +484,11 @@ DWORD SetDoubleRenderStereo(float ipdMetres, float halfFovDegrees, unsigned int 
         return armed;
     }
 
-    std::lock_guard lock(gMutex);
+    std::unique_lock lock(gMutex, kControlLockTimeout);
+    if (!lock.owns_lock()) {
+        lifecycle::Log("preyvr_camera_edit result=refused detail=busy step=double_render");
+        return static_cast<DWORD>(CameraEditStatus::failed);
+    }
     gDoubleRenderBudget.store(frameBudget, std::memory_order_release);
     gDoubleRender.store(true, std::memory_order_release);
     std::ostringstream line;

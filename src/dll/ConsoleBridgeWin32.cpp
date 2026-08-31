@@ -6,6 +6,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <mutex>
 #include <sstream>
@@ -33,7 +34,11 @@ constexpr std::array<std::uint8_t, 24> kExecuteStringPrologue{
 using ExecuteStringFn = void(__fastcall*)(
     void* console, const char* command, bool silentMode, bool deferExecution);
 
-std::mutex gQueueMutex;
+// Timed for the control side, try_lock for the render side. ServiceConsoleQueue
+// runs on Prey's render thread, so a poisoned lock here would not merely fail --
+// it would freeze the game.
+std::timed_mutex gQueueMutex;
+constexpr auto kQueueLockTimeout = std::chrono::milliseconds(100);
 std::string gQueued;
 std::atomic<bool> gHasQueued{false};
 std::atomic<DWORD> gLastResult{static_cast<DWORD>(ConsoleBridgeResult::ok)};
@@ -106,8 +111,8 @@ DWORD QueueConsoleCommand(const char* command)
         return static_cast<DWORD>(ConsoleBridgeResult::denied);
     }
 
-    std::lock_guard lock(gQueueMutex);
-    if (gHasQueued.load(std::memory_order_acquire)) {
+    std::unique_lock lock(gQueueMutex, kQueueLockTimeout);
+    if (!lock.owns_lock() || gHasQueued.load(std::memory_order_acquire)) {
         return static_cast<DWORD>(ConsoleBridgeResult::busy);
     }
     gQueued = text;
@@ -133,7 +138,11 @@ void ServiceConsoleQueue()
 
     std::string command;
     {
-        std::lock_guard lock(gQueueMutex);
+        // The render thread never waits; a skipped service is picked up next frame.
+        std::unique_lock lock(gQueueMutex, std::try_to_lock);
+        if (!lock.owns_lock()) {
+            return;
+        }
         command = gQueued;
         gQueued.clear();
         gHasQueued.store(false, std::memory_order_release);

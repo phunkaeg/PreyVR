@@ -68,6 +68,13 @@ bool WriteDump(
         return false;
     }
 
+    // Created here rather than assumed. PREYVR_CAPTURE_DIR can name a directory
+    // that does not exist yet, and fopen will not make one -- which surfaced as
+    // `write_failed` on a live run with no hint that a missing directory was the
+    // whole story.
+    std::error_code directoryError;
+    std::filesystem::create_directories(path.parent_path(), directoryError);
+
     FILE* file = nullptr;
     if (_wfopen_s(&file, path.c_str(), L"wb") != 0 || file == nullptr) {
         return false;
