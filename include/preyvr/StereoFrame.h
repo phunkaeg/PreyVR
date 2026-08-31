@@ -67,6 +67,25 @@ struct EyeProjection {
 // wildly skewed image, and it keeps the numbers legible in a log.
 std::optional<EyeProjection> ProjectionFromTangents(const EyeView& view, float nearPlane);
 
+// The synthetic per-eye frustum used when there is no headset to report one.
+//
+// `asymmetryScale` scales the outer half-angle and shrinks the inner one by the
+// same amount, mirrored per eye the way a headset actually reports: 1.1 gives 55
+// degrees out and 45 in for a 50-degree half-FOV, and **1.0 gives both eyes an
+// identical frustum**.
+//
+// **This lives here, rather than inline in the hook, because that last property
+// is load-bearing and was previously only true by inspection.** A2b isolates the
+// eye offset by dialling the asymmetry to 1.0 so that translation is the only
+// difference between the two images; if this function quietly kept some per-eye
+// difference at 1.0, the sweep would measure that instead and the failure would
+// look like a bad IPD. It is cheap to pin with a test and expensive to get wrong,
+// so it is pinned -- see StereoFrameTests.
+//
+// The pose is left at identity: callers compose the eye offset onto the engine's
+// live camera, which this function knows nothing about.
+EyeView SyntheticEyeView(int eye, float halfFovDegrees, float asymmetryScale);
+
 // A finished camera, ready for UpdateFrustum and then a blit.
 struct EyeCamera {
     std::array<std::uint8_t, kCameraSize> bytes{};

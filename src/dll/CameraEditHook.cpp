@@ -61,6 +61,7 @@ std::atomic<float> gStereoHalfFov{50.0f};
 std::atomic<unsigned long long> gEyeCounter{0};
 std::atomic<int> gLastEye{-1};
 std::atomic<int> gEyeLock{-1};   // -1 = alternate
+std::atomic<float> gAsymmetry{1.1f};
 std::atomic<bool> gDoubleRender{false};
 std::atomic<unsigned int> gDoubleRenderBudget{0};
 std::atomic<unsigned long long> gDoubleRendered{0};
@@ -103,16 +104,12 @@ bool BuildSyntheticEye(
     // extends further than the inner one. Symmetric values here would leave the
     // shift path untested until a headset was attached, which is precisely when
     // an untested path is most expensive.
-    const float radians = halfFovDegrees * 3.14159265358979323846f / 180.0f;
-    const float outer = std::tan(radians * 1.1f);
-    const float inner = std::tan(radians * 0.9f);
-    const float vertical = std::tan(radians);
-
-    stereoframe::EyeView view{};
-    view.tanUp = vertical;
-    view.tanDown = -vertical;
-    view.tanLeft = eye == 0 ? -outer : -inner;
-    view.tanRight = eye == 0 ? inner : outer;
+    //
+    // Built by the pure layer rather than here so that the property A2b depends
+    // on -- scale 1.0 giving both eyes the same frustum -- is covered by a test
+    // instead of by inspection.
+    const stereoframe::EyeView view = stereoframe::SyntheticEyeView(
+        eye, halfFovDegrees, gAsymmetry.load(std::memory_order_acquire));
 
     const float nearPlane = stereoframe::NearPlaneOf(edited);
     const auto projection = stereoframe::ProjectionFromTangents(view, nearPlane);
@@ -508,6 +505,19 @@ DWORD SetDoubleRenderStereo(float ipdMetres, float halfFovDegrees, unsigned int 
 unsigned long long DoubleRenderedFrameCount()
 {
     return gDoubleRendered.load(std::memory_order_acquire);
+}
+
+DWORD SetStereoAsymmetry(float outerScale)
+{
+    if (!std::isfinite(outerScale) || outerScale < 1.0f || outerScale > 1.5f) {
+        lifecycle::Log("preyvr_camera_edit result=refused detail=asymmetry_out_of_bounds");
+        return static_cast<DWORD>(CameraEditStatus::failed);
+    }
+    gAsymmetry.store(outerScale, std::memory_order_release);
+    std::ostringstream line;
+    line << "preyvr_camera_edit result=0 detail=asymmetry outerScale=" << outerScale;
+    lifecycle::Log(line.str());
+    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
 }
 
 DWORD SetStereoEyeLock(unsigned int eye)

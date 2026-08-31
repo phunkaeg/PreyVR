@@ -61,6 +61,19 @@ DWORD SetCameraYawEdit(float degrees);
 // being left untested until a headset is attached.
 DWORD SetSyntheticStereo(float ipdMetres, float halfFovDegrees);
 
+// Scales how asymmetric the synthetic per-eye frustum is. 1.0 makes both eyes
+// symmetric, so the *only* difference between them is the eye offset.
+//
+// Needed because the first A2 run could not be judged. With the default 1.1 the
+// two eyes' frusta differ by ten degrees, which at 2560 px across a 100-degree
+// field is about 256 px of uniform sideways shear -- and that completely masked
+// the 64 mm eye separation it was supposed to be measuring. Two effects in one
+// image is one effect too many.
+//
+// Set 1.0 to measure the eye offset alone; restore 1.1 to exercise the asymmetry
+// path separately.
+DWORD SetStereoAsymmetry(float outerScale);
+
 // Locks synthetic stereo to one eye instead of alternating.
 //
 // **This replaces the per-frame tagging, which did not work.** The camera hook

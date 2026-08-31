@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <limits>
 
 namespace preyvr::framedump {
 namespace {
@@ -189,6 +190,85 @@ Difference Compare(
         difference.changedPixelRatio = static_cast<double>(changed) / static_cast<double>(pixels);
     }
     return difference;
+}
+
+
+ShiftScan FindHorizontalShift(
+    const Header& headerA,
+    std::span<const std::uint8_t> payloadA,
+    const Header& headerB,
+    std::span<const std::uint8_t> payloadB,
+    int maxShift,
+    int step)
+{
+    ShiftScan scan{};
+    if (headerA.width != headerB.width || headerA.height != headerB.height ||
+        headerA.dxgiFormat != headerB.dxgiFormat) {
+        return scan;
+    }
+    if (!HeaderIsSelfConsistent(headerA) || !HeaderIsSelfConsistent(headerB)) {
+        return scan;
+    }
+    if (step < 1) { step = 1; }
+    if (maxShift < 0) { maxShift = 0; }
+    if (maxShift > static_cast<int>(headerA.width) / 2) {
+        maxShift = static_cast<int>(headerA.width) / 2;
+    }
+
+    const std::uint64_t neededA =
+        static_cast<std::uint64_t>(headerA.rowPitch) * static_cast<std::uint64_t>(headerA.height);
+    const std::uint64_t neededB =
+        static_cast<std::uint64_t>(headerB.rowPitch) * static_cast<std::uint64_t>(headerB.height);
+    if (payloadA.size() < neededA || payloadB.size() < neededB) {
+        return scan;
+    }
+
+    // Residual for one candidate offset, over the region where both images
+    // actually have pixels. Comparing outside the overlap would reward large
+    // shifts for having less to disagree about.
+    const auto residualAt = [&](int shift) {
+        const std::uint32_t width = headerA.width;
+        const std::uint32_t xBegin = shift < 0 ? static_cast<std::uint32_t>(-shift) : 0u;
+        const std::uint32_t xEnd = shift > 0 ? width - static_cast<std::uint32_t>(shift) : width;
+        if (xEnd <= xBegin) {
+            return std::numeric_limits<double>::infinity();
+        }
+        std::uint64_t sum = 0;
+        std::uint64_t counted = 0;
+        for (std::uint32_t y = 0; y < headerA.height; y += static_cast<std::uint32_t>(step)) {
+            const std::uint8_t* rowA = payloadA.data() + static_cast<std::size_t>(y) * headerA.rowPitch;
+            const std::uint8_t* rowB = payloadB.data() + static_cast<std::size_t>(y) * headerB.rowPitch;
+            for (std::uint32_t x = xBegin; x < xEnd; x += static_cast<std::uint32_t>(step)) {
+                const std::uint8_t* pa = rowA + static_cast<std::size_t>(x) * 4u;
+                const std::uint8_t* pb = rowB + (static_cast<std::size_t>(x) + shift) * 4u;
+                for (int c = 0; c < 3; ++c) {
+                    const int delta = static_cast<int>(pa[c]) - static_cast<int>(pb[c]);
+                    sum += static_cast<std::uint64_t>(delta < 0 ? -delta : delta);
+                }
+                ++counted;
+            }
+        }
+        return counted == 0 ? std::numeric_limits<double>::infinity()
+                            : static_cast<double>(sum) / static_cast<double>(counted * 3ull);
+    };
+
+    scan.comparable = true;
+    scan.residualAtZero = residualAt(0);
+    scan.residualAtBest = scan.residualAtZero;
+    scan.bestShift = 0;
+
+    for (int shift = -maxShift; shift <= maxShift; ++shift) {
+        ++scan.shiftsTried;
+        const double r = residualAt(shift);
+        if (r < scan.residualAtBest) {
+            scan.residualAtBest = r;
+            scan.bestShift = shift;
+        }
+    }
+    scan.improvementRatio = scan.residualAtBest > 0.0
+        ? scan.residualAtZero / scan.residualAtBest
+        : std::numeric_limits<double>::infinity();
+    return scan;
 }
 
 } // namespace preyvr::framedump

@@ -177,15 +177,47 @@ frames of a moving scene are not a stereo pair, they are two different moments.
 ## Steps
 
 ```
+PreyVR_SetStereoAsymmetry(1.0)            ; symmetric frusta -- see below, this matters
 PreyVR_SetSyntheticStereo(0.064, 50.0)    ; 64mm IPD, 50-degree half-FOV -> 2 = armed
-PreyVR_RequestFrameCapture(0)             ; tag is overridden with the real eye index
-PreyVR_RequestFrameCapture(0)             ; the next frame renders the other eye
+PreyVR_SetStereoEyeLock(0)                ; hold the left eye
+   ... let several frames pass ...
+PreyVR_RequestFrameCapture(0)
+PreyVR_SetStereoEyeLock(1)                ; hold the right eye
+   ... let several frames pass ...
+PreyVR_RequestFrameCapture(1)
+PreyVR_SetStereoEyeLock(2)                ; back to alternating
 PreyVR_SetSyntheticStereo(0, 0)           ; disarm
 ```
 
-Captures are stamped with the eye the hook actually rendered, not with the tag
-passed in -- the requester cannot know which eye is next, and a silently swapped
-pair inverts depth while looking almost right.
+**The eye is locked rather than tagged.** Per-frame tagging was tried first and
+does not work: the camera hook runs on the game thread, the capture runs on the
+render thread, and the engine's MT/RT double buffer offsets them. Observed live
+2026-08-31, two captures reported as eye 1 then eye 0 both landed in files tagged
+1 -- exactly the silently-swapped pair the tagging existed to prevent. Locking the
+eye makes the signal far longer than the uncertainty, so no ordering assumption is
+needed at all.
+
+### Why the asymmetry is switched off first
+
+The default synthetic frustum is deliberately asymmetric per eye (outer 55
+degrees, inner 45) so that the asymmetry path gets exercised. Measuring it at the
+same time as the eye offset is what made the first two A2 runs unjudgeable.
+
+Run 2026-08-31 with the asymmetry left on: mean absolute difference 30.18, 81.7%
+of pixels changed -- and a shift scan found a single uniform offset of **-462 px**
+that dropped the residual to 9.34. So roughly 69% of the difference was frustum
+shear, and the 64 mm eye separation was buried underneath it.
+
+That magnitude was predicted from the geometry to within 2.4% before it was
+measured, which is the reason to trust the explanation. The frusta span
+`tan(55) + tan(45) = 2.428` tangent units across 2560 px, and the two eyes'
+centres differ by `tan(55) - tan(45) = 0.428` of that: `0.428 / 2.428 * 2560 =
+451 px` predicted against 462 px measured. The scan was re-run at `--max-shift`
+512, 640, 768 and 1024 and returned -462 every time, so it is an interior
+minimum rather than a clamped search.
+
+**Two effects in one image is one effect too many.** With `SetStereoAsymmetry(1.0)`
+the shear is zero by construction and whatever remains is the eye offset alone.
 
 Then check `PreyVR_GetCameraEditRestoreFailureCount()` is 0, and:
 
@@ -206,12 +238,77 @@ cull-versus-render divergence: the engine header marks the asymmetry shifts "not
 used for culling", so the render frustum is per-eye while the cull frustum stays
 symmetric. Expected, worth measuring, and not a reason to stop.
 
+## The prediction, written down before the run
+
+A test that can only be interpreted after the numbers arrive is not a test. With
+symmetric frusta the only difference between the eyes is a 64 mm sideways
+translation, and that has a closed-form signature.
+
+The horizontal span is `2 * tan(50) = 2.384` tangent units across 2560 px, so
+1074 px per tangent unit. A point at distance `d` metres shifts by `0.064 / d`
+tangent units, hence **`68.7 / d` pixels**:
+
+| distance | predicted disparity |
+| --- | --- |
+| 0.5 m | 137 px |
+| 1 m | 69 px |
+| 2 m | 34 px |
+| 5 m | 14 px |
+| 10 m | 7 px |
+| 30 m | 2 px |
+| infinity | 0 px |
+
+So, before running:
+
+1. `improvementRatio` **< 2.0**, verdict `no_single_shift_explains_it`. Disparity
+   varies with depth, so no single offset can align the pair. This is the load-
+   bearing prediction -- it is what separates a translation from a shear.
+2. `|bestShift|` **small, under ~140 px**, being the modal depth of whatever is on
+   screen rather than a property of the projection.
+3. `residualAtZero` far above the A1 noise floor of 0.0167, so the pair genuinely
+   differs.
+
+And the failure signatures, so a bad result says *which* thing broke:
+
+| observed | meaning |
+| --- | --- |
+| ratio >= 2 with a large `bestShift` | the offset is acting like a projection shift, not a translation -- either the asymmetry did not actually turn off, or the eye offset leaked into the frustum |
+| `residualAtZero` at the noise floor | the eye offset is not reaching the camera at all |
+| uniform fringing everywhere in the anaglyph | the eyes differ by a rotation rather than a translation |
+| reversed fringing | the pair is swapped or the IPD sign is inverted |
+
+## A2b — the IPD sweep, which is the actual acceptance test
+
+A single pair cannot distinguish "small depth-varying disparity" from "noise",
+because both produce a low ratio and a small shift. A sweep can: **the residual
+must scale with the IPD**, and at zero IPD with symmetric frusta the two eyes are
+the same camera, so the difference must collapse to the TAA noise floor.
+
+Four points, all inside the existing bounds (`SetSyntheticStereo` accepts 0 to
+disarm, then 0.045..0.085):
+
+| IPD | predicted `residualAtZero` |
+| --- | --- |
+| disarmed | the A1 noise floor, ~0.0167 |
+| 0.045 | some value `R45` well above the floor |
+| 0.064 | ~1.42x `R45` |
+| 0.085 | ~1.89x `R45` |
+
+Monotonic, and roughly proportional. **Proportionality is the weaker claim** --
+disparity saturates once it exceeds the local image structure, so the higher IPDs
+may come in under a straight line. Monotonicity is the one that must hold.
+
+The zero-IPD row is the control and the most important of the four: it is the row
+that fails if the difference is actually TAA, capture jitter, or the game not
+being as frozen as assumed.
+
 ## Acceptance
 
-A stereo pair whose disparity is consistent with the geometry, restore failures
-at zero, and no unexplained artefacts beyond the two predicted above. That
-result makes per-eye camera construction a solved problem and leaves the
-double-render as the only open question for native stereo.
+The sweep monotonic with the zero-IPD control at the noise floor, a shift scan
+verdict of `no_single_shift_explains_it`, restore failures at zero, and no
+unexplained artefacts beyond the two predicted above. That result makes per-eye
+camera construction a solved problem and leaves the double-render as the only
+open question for native stereo.
 
 ---
 

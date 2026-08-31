@@ -3,6 +3,7 @@
 #include <array>
 #include <cmath>
 #include <cstdlib>
+#include <functional>
 #include <iostream>
 #include <vector>
 
@@ -11,6 +12,7 @@ namespace {
 using preyvr::framedump::Compare;
 using preyvr::framedump::DecodeHeader;
 using preyvr::framedump::EncodeHeader;
+using preyvr::framedump::FindHorizontalShift;
 using preyvr::framedump::Header;
 using preyvr::framedump::kHeaderSize;
 
@@ -213,6 +215,120 @@ void TestShortPayloadIsRejected()
     Require(!difference.comparable, "a payload shorter than its header claims is not comparable");
 }
 
+// ---------------------------------------------------------------------------
+// Horizontal shift scan
+// ---------------------------------------------------------------------------
+
+// A wide, non-repeating column pattern. Non-repeating matters: a periodic image
+// would have many equally good shifts, and the test would then be measuring the
+// pattern rather than the search.
+std::uint8_t ColumnValue(int x)
+{
+    return static_cast<std::uint8_t>(((x * 37) + 11) % 251);
+}
+
+// Each row is shifted independently, which is what lets one helper build both
+// the shear case (every row shifted the same) and the parallax case (rows
+// shifted differently, standing in for near and far geometry).
+std::vector<std::uint8_t> MakeStripes(
+    std::uint32_t width,
+    std::uint32_t height,
+    const std::function<int(std::uint32_t)>& shiftForRow)
+{
+    std::vector<std::uint8_t> payload(static_cast<std::size_t>(width) * height * 4u, 0);
+    for (std::uint32_t y = 0; y < height; ++y) {
+        const int shift = shiftForRow(y);
+        for (std::uint32_t x = 0; x < width; ++x) {
+            const std::uint8_t value = ColumnValue(static_cast<int>(x) - shift);
+            std::uint8_t* pixel = payload.data() + (static_cast<std::size_t>(y) * width + x) * 4u;
+            pixel[0] = value;
+            pixel[1] = value;
+            pixel[2] = value;
+            pixel[3] = 255;
+        }
+    }
+    return payload;
+}
+
+Header MakeWideHeader(std::uint32_t width, std::uint32_t height)
+{
+    Header header{};
+    header.width = width;
+    header.height = height;
+    header.rowPitch = width * 4u;
+    return header;
+}
+
+void TestUniformShiftIsFound()
+{
+    // The synthetic frustum asymmetry case: every pixel moves by the same amount.
+    constexpr std::uint32_t kWidth = 256;
+    constexpr std::uint32_t kHeight = 16;
+    constexpr int kShift = 24;
+
+    const Header header = MakeWideHeader(kWidth, kHeight);
+    const auto a = MakeStripes(kWidth, kHeight, [](std::uint32_t) { return 0; });
+    const auto b = MakeStripes(kWidth, kHeight, [](std::uint32_t) { return kShift; });
+
+    const auto scan = FindHorizontalShift(header, a, header, b, 64, 1);
+    Require(scan.comparable, "matching headers are comparable");
+    Require(scan.residualAtZero > 0.0, "a shifted image differs from the original at zero offset");
+    // B is A moved right, so A[x] matches B[x + shift]: the sign convention in
+    // the header is the thing being pinned down here.
+    Require(scan.bestShift == kShift, "the scan recovers the exact shift that was applied");
+    Require(Near(scan.residualAtBest, 0.0), "at the true shift the images agree exactly");
+    Require(scan.improvementRatio > 2.0, "a pure shear is reported as explained by one shift");
+}
+
+void TestDepthVaryingShiftIsNotExplainedByOneOffset()
+{
+    // The parallax case, and the whole reason this function exists: near and far
+    // geometry move by different amounts, so no single offset re-aligns the pair.
+    constexpr std::uint32_t kWidth = 256;
+    constexpr std::uint32_t kHeight = 16;
+
+    const Header header = MakeWideHeader(kWidth, kHeight);
+    const auto a = MakeStripes(kWidth, kHeight, [](std::uint32_t) { return 0; });
+    const auto b = MakeStripes(kWidth, kHeight, [](std::uint32_t y) {
+        return y < kHeight / 2 ? 0 : 40; // half "near", half "far"
+    });
+
+    const auto scan = FindHorizontalShift(header, a, header, b, 64, 1);
+    Require(scan.comparable, "matching headers are comparable");
+    Require(scan.residualAtZero > 0.0, "the pair differs");
+    Require(scan.improvementRatio < 2.0,
+        "no single offset explains a depth-varying difference, so it is not called a shear");
+}
+
+void TestIdenticalImagesClaimNoShift()
+{
+    constexpr std::uint32_t kWidth = 256;
+    constexpr std::uint32_t kHeight = 16;
+
+    const Header header = MakeWideHeader(kWidth, kHeight);
+    const auto a = MakeStripes(kWidth, kHeight, [](std::uint32_t) { return 0; });
+
+    const auto scan = FindHorizontalShift(header, a, header, a, 64, 1);
+    Require(scan.comparable, "matching headers are comparable");
+    Require(Near(scan.residualAtZero, 0.0), "identical images agree at zero offset");
+    Require(scan.bestShift == 0,
+        "an already-aligned pair is not credited with a shift it does not have");
+}
+
+void TestShiftScanFailsClosedOnMismatch()
+{
+    // Same fail-closed rule as Compare: "we scanned the wrong two files" must
+    // never be readable as "no shift was found".
+    const Header wide = MakeWideHeader(256, 16);
+    const Header narrow = MakeWideHeader(128, 16);
+    const auto a = MakeStripes(256, 16, [](std::uint32_t) { return 0; });
+    const auto b = MakeStripes(128, 16, [](std::uint32_t) { return 0; });
+
+    const auto scan = FindHorizontalShift(wide, a, narrow, b, 64, 1);
+    Require(!scan.comparable, "frames of different widths are not comparable");
+    Require(scan.shiftsTried == 0, "an incomparable scan reports that it searched nothing");
+}
+
 } // namespace
 
 int main()
@@ -225,6 +341,10 @@ int main()
     TestDifferentRowPitchStillCompares();
     TestMismatchedFramesAreNotComparable();
     TestShortPayloadIsRejected();
+    TestUniformShiftIsFound();
+    TestDepthVaryingShiftIsNotExplainedByOneOffset();
+    TestIdenticalImagesClaimNoShift();
+    TestShiftScanFailsClosedOnMismatch();
     std::cout << "PreyVR frame dump tests passed\n";
     return 0;
 }

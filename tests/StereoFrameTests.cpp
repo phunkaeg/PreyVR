@@ -200,6 +200,70 @@ void TestNearPlaneIsReadFromTheLiveCamera()
     Require(Near(NearPlaneOf(tooSmall), 0.0f), "a short buffer reports zero rather than reading past");
 }
 
+// The property A2b rests on: with the asymmetry dialled out, the two eyes get
+// the same frustum, so a translation is the only thing left that can differ
+// between the images.
+//
+// This exists because the first two A2 runs were unjudgeable (F-011). A 10-degree
+// frustum asymmetry moved every pixel 462 px sideways and buried the 64 mm eye
+// separation the run was meant to measure. The fix is to be able to switch the
+// asymmetry off -- which is worth nothing unless "off" really is off.
+void TestSymmetricScaleMakesBothEyesIdentical()
+{
+    const EyeView left = SyntheticEyeView(0, 50.0f, 1.0f);
+    const EyeView right = SyntheticEyeView(1, 50.0f, 1.0f);
+
+    Require(Near(left.tanLeft, right.tanLeft), "at scale 1.0 the left edges match");
+    Require(Near(left.tanRight, right.tanRight), "at scale 1.0 the right edges match");
+    Require(Near(left.tanUp, right.tanUp), "the vertical extent never depends on the eye");
+    Require(Near(left.tanDown, right.tanDown), "the vertical extent never depends on the eye");
+    Require(Near(left.tanRight, -left.tanLeft), "a scale of 1.0 is genuinely symmetric");
+
+    // The tangents are only an intermediate. What reaches the engine is the
+    // projection, so that is what has to be identical -- a difference could
+    // otherwise be reintroduced by the conversion.
+    const auto leftProjection = ProjectionFromTangents(left, 0.1f);
+    const auto rightProjection = ProjectionFromTangents(right, 0.1f);
+    Require(leftProjection.has_value() && rightProjection.has_value(),
+        "a symmetric synthetic frustum converts");
+    Require(Near(leftProjection->fov, rightProjection->fov), "identical vertical FOV");
+    Require(Near(leftProjection->projectionRatio, rightProjection->projectionRatio),
+        "identical projection ratio");
+    Require(Near(leftProjection->asymmetry.left, 0.0f) &&
+            Near(leftProjection->asymmetry.right, 0.0f),
+        "no horizontal shift survives at scale 1.0, so nothing shears the image");
+    Require(Near(rightProjection->asymmetry.left, 0.0f) &&
+            Near(rightProjection->asymmetry.right, 0.0f),
+        "and the same for the other eye");
+}
+
+void TestAsymmetricScaleMirrorsTheEyes()
+{
+    // The default. Checked against the angles directly rather than against
+    // whatever the function returns, so a change to the formula has to be
+    // deliberate.
+    const float outer = std::tan(55.0f * 3.14159265358979323846f / 180.0f);
+    const float inner = std::tan(45.0f * 3.14159265358979323846f / 180.0f);
+
+    const EyeView left = SyntheticEyeView(0, 50.0f, 1.1f);
+    const EyeView right = SyntheticEyeView(1, 50.0f, 1.1f);
+
+    Require(Near(left.tanLeft, -outer), "the left eye extends outward to the left");
+    Require(Near(left.tanRight, inner), "and is narrower on the inside");
+    Require(Near(right.tanLeft, -inner), "the right eye is the mirror image");
+    Require(Near(right.tanRight, outer), "the right eye is the mirror image");
+    Require(Near(left.tanUp, right.tanUp), "the asymmetry is horizontal only");
+
+    // The 462 px measured live came from exactly this gap between the eyes'
+    // frustum centres, so it is worth stating in the test rather than leaving
+    // it to a document.
+    const float leftCentre = (left.tanLeft + left.tanRight) * 0.5f;
+    const float rightCentre = (right.tanLeft + right.tanRight) * 0.5f;
+    Require(Near(rightCentre - leftCentre, outer - inner),
+        "the eyes' frustum centres differ by tan(outer) - tan(inner), which is the shear");
+    Require(rightCentre > leftCentre, "and the right eye's frustum sits to the right");
+}
+
 } // namespace
 
 int main()
@@ -210,6 +274,8 @@ int main()
     TestStereoPlanBuildsBothEyes();
     TestStereoPlanIsAllOrNothing();
     TestNearPlaneIsReadFromTheLiveCamera();
+    TestSymmetricScaleMakesBothEyesIdentical();
+    TestAsymmetricScaleMirrorsTheEyes();
     std::cout << "PreyVR stereo frame tests passed\n";
     return 0;
 }

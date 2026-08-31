@@ -285,6 +285,80 @@ var PreyVR = (function () {
         return out;
     }
 
+    // One point of the A2b IPD sweep: symmetric frusta, eye held rather than
+    // tagged, one capture per eye.
+    //
+    // **Why one point per call.** The sweep needs each pair attributed to the IPD
+    // that produced it, and every capture lands in the same directory with a name
+    // that says only its frame index. Rather than guess the mapping afterwards
+    // from timestamps, the driver calls this once per IPD and moves the files out
+    // between calls. A step can then also be re-run on its own without redoing
+    // the sweep.
+    //
+    // An `ipd` of 0 disarms, which is the control point: with symmetric frusta and
+    // no eye offset the two "eyes" are literally the same camera, so the pair must
+    // come back at the noise floor. That row is what fails if the difference being
+    // measured is really temporal AA or a scene that is not as frozen as assumed.
+    function runA2bStep(ipd, halfFov, settleSeconds) {
+        var out = { ipd: ipd, halfFov: halfFov || 50.0 };
+        var settle = settleSeconds || 0.4;
+
+        // Symmetric: the whole point of the step is that the eye offset is the
+        // only difference between the two images. Takes no lock, so the F-009
+        // abort cannot poison anything if it fires.
+        out.asymmetry = callTolerant('PreyVR_SetStereoAsymmetry', 'uint32', ['float'], [1.0]);
+
+        if (ipd > 0) {
+            out.arm = callTolerant('PreyVR_SetSyntheticStereo', 'uint32', ['float', 'float'],
+                                   [ipd, out.halfFov]);
+            out.armStatus = Number(callTolerant('PreyVR_GetCameraEditStatus', 'uint32', []).value);
+            if (out.armStatus !== 2) {
+                out.aborted = 'synthetic stereo did not arm';
+                return out;
+            }
+        } else {
+            callTolerant('PreyVR_SetSyntheticStereo', 'uint32', ['float', 'float'], [0.0, 0.0]);
+            out.armStatus = Number(callTolerant('PreyVR_GetCameraEditStatus', 'uint32', []).value);
+        }
+
+        out.eyes = [];
+        for (var eye = 0; eye <= 1; eye++) {
+            var locked = act('PreyVR_SetStereoEyeLock', ptr(eye));
+            // Settle before capturing: the camera hook runs on the game thread and
+            // the capture on the render thread, so the lock needs to be older than
+            // the pipeline depth before a capture can be attributed to it.
+            Thread.sleep(settle);
+            var observed = Number(callTolerant('PreyVR_GetLastRenderedEye', 'int', []).value);
+            var shot = capture(eye);
+            out.eyes.push({
+                requested: eye,
+                lockResult: locked.ok ? locked.returned : locked.error,
+                // With the lock held every frame renders this eye, so unlike the
+                // per-frame tagging this comparison is meaningful.
+                observedBeforeCapture: observed,
+                lockHeld: ipd > 0 ? observed === eye : true,
+                capture: shot
+            });
+        }
+
+        act('PreyVR_SetStereoEyeLock', ptr(2)); // back to alternating
+        out.status = status();
+        out.bothCaptured = out.eyes.length === 2 && out.eyes[0].capture.ok && out.eyes[1].capture.ok;
+        out.locksHeld = out.eyes.every(function (e) { return e.lockHeld; });
+        out.verdict = (Number(out.status.restoreFailures) === 0 && out.bothCaptured && out.locksHeld)
+            ? 'step clean - move the two dumps out before the next IPD'
+            : 'DO NOT TRUST: restore failed, a capture was lost, or the eye lock did not hold';
+        return out;
+    }
+
+    // Puts the synthetic stereo back the way the rest of the protocol expects.
+    function endA2b() {
+        callTolerant('PreyVR_SetSyntheticStereo', 'uint32', ['float', 'float'], [0.0, 0.0]);
+        callTolerant('PreyVR_SetStereoAsymmetry', 'uint32', ['float'], [1.1]);
+        act('PreyVR_SetStereoEyeLock', ptr(2));
+        return status();
+    }
+
     return {
         status: status,
         enableObserver: enableObserver,
@@ -295,6 +369,8 @@ var PreyVR = (function () {
         runNoiseFloor: runNoiseFloor,
         runA1: runA1,
         runA2: runA2,
+        runA2bStep: runA2bStep,
+        endA2b: endA2b,
         runA3: runA3
     };
 })();

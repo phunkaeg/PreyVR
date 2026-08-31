@@ -445,6 +445,15 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetSyntheticStereo(float ipdMetres
     return preyvr::dll::SetSyntheticStereo(ipdMetres, halfFovDegrees);
 }
 
+// Scales the synthetic per-eye frustum asymmetry. 1.0 makes both eyes symmetric
+// so the only difference is the eye offset; 1.1 is the default and exercises the
+// asymmetry path. Measuring both at once is what made the first stereo pair
+// unjudgeable.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetStereoAsymmetry(float outerScale)
+{
+    return preyvr::dll::SetStereoAsymmetry(outerScale);
+}
+
 // Locks synthetic stereo to one eye: 0 left, 1 right, anything else alternates.
 // Replaces per-frame eye tagging, which cannot work across the engine's game and
 // render threads - they are offset by its MT/RT double buffer, so a tag written

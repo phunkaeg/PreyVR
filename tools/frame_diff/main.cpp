@@ -37,19 +37,42 @@ bool ReadFile(const std::string& path, std::vector<std::uint8_t>& out) {
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 3) {
-        std::cerr << "usage: preyvr_frame_diff <a.pvrframe> <b.pvrframe>\n";
+    // Optional trailing knobs on the shift search. They exist because the first
+    // live run came back with bestShift pinned at the default limit, and a
+    // clamped search reports a *floor* rather than a measurement. The only
+    // honest response is to be able to widen the window -- not to read the edge
+    // value as though it meant something.
+    int maxShift = 320;
+    int step = 4;
+    int positional = 0;
+    const char* paths[2] = {nullptr, nullptr};
+    for (int i = 1; i < argc; ++i) {
+        const std::string arg = argv[i];
+        if (arg == "--max-shift" && i + 1 < argc) {
+            maxShift = std::atoi(argv[++i]);
+        } else if (arg == "--step" && i + 1 < argc) {
+            step = std::atoi(argv[++i]);
+        } else if (positional < 2) {
+            paths[positional++] = argv[i];
+        } else {
+            std::cerr << "unexpected argument: " << arg << '\n';
+            return 2;
+        }
+    }
+    if (positional != 2) {
+        std::cerr << "usage: preyvr_frame_diff <a.pvrframe> <b.pvrframe> "
+                     "[--max-shift N] [--step N]\n";
         return 2;
     }
 
     std::vector<std::uint8_t> fileA;
     std::vector<std::uint8_t> fileB;
-    if (!ReadFile(argv[1], fileA)) {
-        std::printf("preyvr_frame_diff result=unreadable which=a path=%s\n", argv[1]);
+    if (!ReadFile(paths[0], fileA)) {
+        std::printf("preyvr_frame_diff result=unreadable which=a path=%s\n", paths[0]);
         return 3;
     }
-    if (!ReadFile(argv[2], fileB)) {
-        std::printf("preyvr_frame_diff result=unreadable which=b path=%s\n", argv[2]);
+    if (!ReadFile(paths[1], fileB)) {
+        std::printf("preyvr_frame_diff result=unreadable which=b path=%s\n", paths[1]);
         return 3;
     }
 
@@ -79,6 +102,31 @@ int main(int argc, char** argv) {
                     headerA->width, headerA->height, headerA->dxgiFormat,
                     headerB->width, headerB->height, headerB->dxgiFormat);
         return 5;
+    }
+
+    // A shear and real parallax both make a pair "differ"; only this tells them
+    // apart, so it is printed alongside rather than behind a flag.
+    const auto scan = preyvr::framedump::FindHorizontalShift(
+        *headerA,
+        std::span<const std::uint8_t>(fileA).subspan(offset),
+        *headerB,
+        std::span<const std::uint8_t>(fileB).subspan(offset),
+        maxShift,
+        step);
+    if (scan.comparable) {
+        // A best shift sitting exactly on the search boundary means the residual
+        // was still falling when the search ran out of room. That is reported as
+        // its own verdict rather than as a ratio, because the ratio in that case
+        // is a lower bound and reading it as a result is how a clamped search
+        // gets mistaken for a finding.
+        const bool clamped = scan.bestShift == maxShift || scan.bestShift == -maxShift;
+        std::printf("preyvr_frame_diff shiftscan bestShift=%d residualAtZero=%.6f "
+                    "residualAtBest=%.6f improvement=%.3fx maxShift=%d verdict=%s\n",
+                    scan.bestShift, scan.residualAtZero, scan.residualAtBest,
+                    scan.improvementRatio, maxShift,
+                    clamped ? "clamped_at_limit_widen_max_shift"
+                            : (scan.improvementRatio >= 2.0 ? "uniform_shear_dominates"
+                                                            : "no_single_shift_explains_it"));
     }
 
     std::printf("preyvr_frame_diff result=ok width=%u height=%u pixels=%llu "

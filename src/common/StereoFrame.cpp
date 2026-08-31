@@ -51,6 +51,24 @@ float NearPlaneOf(std::span<const std::uint8_t> camera)
     return ReadFloatAt(camera, engine::CameraLayout::edgeNearLeftTop + sizeof(float));
 }
 
+EyeView SyntheticEyeView(int eye, float halfFovDegrees, float asymmetryScale)
+{
+    const float radians = halfFovDegrees * 3.14159265358979323846f / 180.0f;
+    // Scaled symmetrically about the half-FOV: the outer edge grows by exactly
+    // as much as the inner one shrinks, so a scale of 1.0 collapses both to the
+    // same angle and the two eyes end up with identical frusta.
+    const float outer = std::tan(radians * asymmetryScale);
+    const float inner = std::tan(radians * (2.0f - asymmetryScale));
+    const float vertical = std::tan(radians);
+
+    EyeView view{};
+    view.tanUp = vertical;
+    view.tanDown = -vertical;
+    view.tanLeft = eye == 0 ? -outer : -inner;
+    view.tanRight = eye == 0 ? inner : outer;
+    return view;
+}
+
 std::optional<EyeProjection> ProjectionFromTangents(const EyeView& view, float nearPlane)
 {
     if (!TangentsAreSane(view) || !std::isfinite(nearPlane) || nearPlane <= 0.0f) {

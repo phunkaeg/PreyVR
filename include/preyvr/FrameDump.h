@@ -96,6 +96,48 @@ Difference Compare(
     std::span<const std::uint8_t> payloadB,
     std::uint32_t perPixelEpsilon = 8);
 
+// ---------------------------------------------------------------------------
+// Horizontal shift scan
+// ---------------------------------------------------------------------------
+
+// Distinguishes a *shear* from real *parallax*, which `Compare` cannot.
+//
+// Two very different things both make a stereo pair "differ a lot":
+//
+//   * an asymmetric per-eye frustum shifts the whole image sideways by a
+//     constant amount, so **one** horizontal shift re-aligns nearly everything;
+//   * a real eye separation moves near things more than far things, so **no**
+//     single shift aligns the image -- the residual stays high at every offset.
+//
+// Told apart, those are a passing projection and a passing IPD. Told together
+// they are just "the images differ", which is what the first A2 run reported and
+// why it could not be judged. Measured live 2026-08-31: a synthetic 10-degree
+// frustum asymmetry produced ~256 px of shear that completely masked a 64 mm IPD.
+//
+// `residualAtZero / residualAtBest` is the number to read. Near 1 means no single
+// shift helped, so the difference is parallax or noise. Much greater than 1 means
+// a uniform shift explains most of it, and `bestShift` is how many pixels.
+struct ShiftScan {
+    bool comparable = false;
+    int bestShift = 0;            // pixels; positive means B is shifted right of A
+    double residualAtBest = 0.0;
+    double residualAtZero = 0.0;
+    double improvementRatio = 1.0;
+    int shiftsTried = 0;
+};
+
+// Subsamples by `step` in both axes: this is a search over many candidate
+// offsets, and a shear large enough to matter is visible at any sane sampling.
+// `maxShift` bounds the search; beyond a few hundred pixels the overlap is too
+// small for the residual to mean anything.
+ShiftScan FindHorizontalShift(
+    const Header& headerA,
+    std::span<const std::uint8_t> payloadA,
+    const Header& headerB,
+    std::span<const std::uint8_t> payloadB,
+    int maxShift = 320,
+    int step = 4);
+
 // **No acceptance threshold is defined here, deliberately.**
 //
 // Two effects will move these numbers on a live host even with an unmodified
