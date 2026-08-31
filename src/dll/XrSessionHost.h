@@ -41,6 +41,28 @@ enum class XrSessionStatus : DWORD {
     stopped = 5,
 };
 
+// Points the OpenXR loader at a specific runtime manifest, **for this process
+// only**, by setting XR_RUNTIME_JSON before the loader is first used.
+//
+// This is not a test convenience, it is a requirement. Prey is launched by Steam,
+// which hands the game Steam's environment rather than ours -- launching
+// Prey.exe directly just exits under DRM. So a mod injected into that process
+// cannot inherit a runtime selection from whoever started it, and has to make
+// the choice itself.
+//
+// It works because `openxr_loader.dll` is delay-loaded: the loader is not even
+// in the process until StartXrSession brings it in, so the variable is read
+// fresh. Call this before StartXrSession; afterwards is too late.
+//
+// Passing null or an empty string clears the override and returns to the
+// machine's configured runtime.
+//
+// **The path is checked for existence**, because a wrong one does not fail --
+// the loader silently falls back to the registry runtime and the session runs
+// against VirtualDesktopXR while the transcript says xr-sim. That is precisely
+// the false pass this project keeps designing against.
+DWORD SetXrRuntimeManifest(const char* manifestPath);
+
 // Starts the session. Returns an XrSessionStatus.
 //
 // On adapterMismatch the log carries the index to set, and nothing is created --

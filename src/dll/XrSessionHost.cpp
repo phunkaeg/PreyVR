@@ -18,6 +18,7 @@
 #include <openxr/openxr_platform.h>
 
 #include <atomic>
+#include <chrono>
 #include <mutex>
 #include <string>
 #include <sstream>
@@ -26,7 +27,19 @@
 namespace preyvr::dll {
 namespace {
 
-std::mutex gMutex;
+// A **timed** mutex, and nothing ever blocks on it indefinitely.
+//
+// Diagnosed the hard way on 2026-08-31: a plain std::mutex here deadlocked. An
+// external tool calls a control export while the render thread services frames,
+// and a blocking lock between those two turns any mishap into a hang -- the
+// export never returns, the caller reports a vague error, and the real cause is
+// invisible. A hang is strictly worse than a failure, because a failure says
+// what happened.
+//
+// So the control path waits briefly and then *refuses*, and the render path uses
+// try_lock and simply skips the frame. Neither can ever wait on the other.
+std::timed_mutex gMutex;
+constexpr auto kControlLockTimeout = std::chrono::milliseconds(250);
 std::atomic<DWORD> gStatus{static_cast<DWORD>(XrSessionStatus::idle)};
 std::atomic<bool> gStopRequested{false};
 std::atomic<unsigned long long> gSubmitted{0};
@@ -384,9 +397,57 @@ void PumpEvents()
 
 } // namespace
 
+DWORD SetXrRuntimeManifest(const char* manifestPath)
+{
+    std::unique_lock lock(gMutex, kControlLockTimeout);
+    if (!lock.owns_lock()) {
+        Log("result=failed detail=busy step=set_runtime_manifest");
+        return static_cast<DWORD>(XrSessionStatus::failed);
+    }
+    if (gHost.started) {
+        // The loader has already resolved a runtime; changing the variable now
+        // would only mislead whoever reads the log later.
+        Log("result=refused detail=runtime_manifest_after_session_start");
+        return static_cast<DWORD>(XrSessionStatus::failed);
+    }
+
+    if (manifestPath == nullptr || *manifestPath == 0) {
+        SetEnvironmentVariableW(L"XR_RUNTIME_JSON", nullptr);
+        Log("runtime_manifest cleared detail=using_machine_runtime");
+        return static_cast<DWORD>(XrSessionStatus::idle);
+    }
+
+    const int needed = MultiByteToWideChar(CP_UTF8, 0, manifestPath, -1, nullptr, 0);
+    if (needed <= 1 || needed > MAX_PATH * 4) {
+        Log("result=refused detail=runtime_manifest_path_invalid");
+        return static_cast<DWORD>(XrSessionStatus::failed);
+    }
+    std::wstring wide(static_cast<std::size_t>(needed - 1), 0);
+    MultiByteToWideChar(CP_UTF8, 0, manifestPath, -1, wide.data(), needed);
+
+    // Checked, because a wrong path does not fail -- the loader falls back to the
+    // registry runtime and the session runs against something else entirely while
+    // the log claims otherwise.
+    if (GetFileAttributesW(wide.c_str()) == INVALID_FILE_ATTRIBUTES) {
+        Log(std::string("result=refused detail=runtime_manifest_not_found path=") + manifestPath);
+        return static_cast<DWORD>(XrSessionStatus::unavailable);
+    }
+
+    if (!SetEnvironmentVariableW(L"XR_RUNTIME_JSON", wide.c_str())) {
+        Log("result=failed detail=set_runtime_manifest_env");
+        return static_cast<DWORD>(XrSessionStatus::failed);
+    }
+    Log(std::string("runtime_manifest set path=") + manifestPath);
+    return static_cast<DWORD>(XrSessionStatus::idle);
+}
+
 DWORD StartXrSession()
 {
-    std::lock_guard lock(gMutex);
+    std::unique_lock lock(gMutex, kControlLockTimeout);
+    if (!lock.owns_lock()) {
+        Log("result=failed detail=busy step=start_session");
+        return static_cast<DWORD>(XrSessionStatus::failed);
+    }
     if (gHost.started) {
         return gStatus.load(std::memory_order_acquire);
     }
@@ -476,8 +537,10 @@ void ServiceXrFrame(void* renderer)
     if (gStatus.load(std::memory_order_acquire) != static_cast<DWORD>(XrSessionStatus::running)) {
         return; // the hot path
     }
-    std::lock_guard lock(gMutex);
-    if (!gHost.started) {
+    // The render thread never waits. Skipping a frame is free; blocking Prey's
+    // renderer on a control call is not.
+    std::unique_lock lock(gMutex, std::try_to_lock);
+    if (!lock.owns_lock() || !gHost.started) {
         return;
     }
 

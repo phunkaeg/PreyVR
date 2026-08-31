@@ -477,6 +477,16 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetDoubleRenderedFrameCount()
 // 5 stopped. On 2 the log names the r_overrideDXGIAdapter index to set **before
 // the next launch** - the cvar is read once during device creation, so it cannot
 // be fixed from here.
+// Selects the OpenXR runtime for this process, before the loader is first used.
+// Required rather than convenient: Prey is launched by Steam and inherits Steam's
+// environment, so an injected mod cannot be handed a runtime choice and must make
+// one itself. Pass null or "" to return to the machine's runtime. Must be called
+// before PreyVR_StartXrSession.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetXrRuntimeManifest(const char* manifestPath)
+{
+    return preyvr::dll::SetXrRuntimeManifest(manifestPath);
+}
+
 extern "C" __declspec(dllexport) DWORD PreyVR_StartXrSession()
 {
     return preyvr::dll::StartXrSession();
