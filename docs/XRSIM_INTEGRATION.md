@@ -350,3 +350,211 @@ submission ships, because the split is what keeps head-to-photon latency down.
 fail to load at all when the loader is absent — the landmark gate would never
 run and the failure would read as "the DLL is broken". Verified empirically by
 removing the loader and confirming the fail-closed load test still passes.
+
+---
+
+## Motion controllers, validated against commanded ground truth (2026-08-31)
+
+Until this run, nothing in the project had touched the OpenXR **action system**.
+`preyvr::controller` was well covered by unit tests, but every one of those fed
+it a pose we invented; the input plumbing itself -- action sets, suggested
+bindings, action spaces, `xrSyncActions`, `xrLocateSpace` -- had never executed.
+That was the last part of the goal (stereo, 6DoF, motion controllers) with no
+evidence behind it at all, and closing it needed neither a headset nor a person.
+
+`preyvr_xr_session_probe` now creates an action set with aim and grip poses,
+a trigger and a select, suggests bindings for **both** the Khronos simple
+controller and the Oculus Touch profile, attaches the set, and locates both hands
+each frame. Under xr-sim:
+
+```
+suggest_bindings profile=/interaction_profiles/khr/simple_controller  result=XR_SUCCESS
+suggest_bindings profile=/interaction_profiles/oculus/touch_controller result=XR_SUCCESS
+input result=ok profiles_accepted=2 detail=action_sets_attached
+interaction_profile hand=left path=/interaction_profiles/oculus/touch_controller
+controller hand=left active=1 valid=1 tracked=1
+```
+
+Binding the simple profile as well as Touch is the F-010 lesson applied ahead of
+time: simple controller is the profile every conformant runtime must support, so
+binding only to Touch would pass here and on an Oculus headset and fail
+everywhere else.
+
+### The invariants, and why they are the ones chosen
+
+Seven checks run against whatever the runtime reports, chosen so that **none of
+them depends on the pose being any particular value** -- a check that only holds
+for one input passes by luck:
+
+| invariant | what a failure would mean |
+| --- | --- |
+| `basis_change_preserves_distance` | the conversion is a scale or a mirror, not a rotation |
+| `basis_maps_right_to_right` / `basis_maps_up_to_up` | an axis is swapped or sign-flipped |
+| `aim_direction_unit_length` | every distance a trace reports is silently scaled |
+| `aim_matches_pose_forward` | the ray and the pose disagree about where the hand points |
+| `aim_ray_produced` | a tracked pose was refused |
+
+Measured live: hands at OpenXR `(-0.2, 1.3, -0.35)` and `(0.2, 1.3, -0.35)`
+convert to engine `(-0.2, 0.35, 1.3)` and `(0.2, 0.35, 1.3)` -- exactly the
+`(x, -z, y)` relabelling -- with the 0.400 m separation preserved to five decimal
+places.
+
+### Ground truth, which the invariants cannot supply
+
+Self-consistency is not correctness. The invariants prove the conversion is *a*
+rigid motion; they cannot prove it is the *right* one, because the probe converts
+whatever it is handed. `tools/Invoke-PreyVRAimCheck.ps1` supplies the missing
+half by commanding an exact aim and predicting the answer from geometry:
+
+| commanded | engine direction | expected |
+| --- | --- | --- |
+| yaw 0, pitch 0 | `0.0000, 1.0000, 0.0000` | pure engine forward |
+| yaw 45 | `-0.7071, 0.7071, 0.0000` | sin/cos 45, horizontal |
+| yaw 90 | `-1.0000, 0.0000, 0.0000` | pure engine X, horizontal |
+| pitch 30 | `0.0000, 0.8660, 0.5000` | cos/sin 30, vertical plane |
+
+Four cases, zero failures. **Magnitudes are asserted, signs are reported** --
+the magnitudes are trigonometry and must match, while the sign of a positive yaw
+is an xr-sim convention we had not measured. Now measured: a positive xr-sim yaw
+sends the ray toward engine **-X (left)**, and a positive pitch toward engine
+**+Z (up)**.
+
+This also explained a number that looked wrong. The default reading is
+`(0, 0.7660, -0.6428)`, a 40-degree downward tilt; commanding `point 0 0` gives
+exactly `(0, 1, 0)`, so that tilt is xr-sim's rest pose and not a pitch error.
+
+### It did not disturb the submission path
+
+Re-run with xr-tape attached: **19 checks passed, 0 failed, 1 skipped** (no depth
+layers submitted), including `submitted_fov_matches_located` and
+`submitted_pose_matches_located` at a maximum difference of 0.
+
+See F-012 for how the first version of this harness reported four failures while
+measuring nothing at all.
+
+---
+
+## The headset run, 2026-09-01: what only real hardware could answer
+
+A Quest 3 through VirtualDesktopXR, using the same unmodified probes. No Prey, no
+menus, no game launch -- these are standalone executables, which is the whole
+reason they were built that way.
+
+### The adapter question, answered
+
+```
+required luid=0x00000000:0x00015533
+adapter index=0 luid=0x00000000:0x00015533 required=yes "NVIDIA GeForce RTX 5070 Ti"
+result=matched enum_index=0 r_overrideDXGIAdapter=0 override_needed=no
+```
+
+VDXR requires **index 0**; xr-sim on the same machine requires **index 3**
+(`0x1EB8E`). Same physical GPU, different enumeration index per runtime.
+
+That is the justification for R-052 comparing **LUIDs and not indices**, and it
+could not have been established from either runtime alone. It is also why B1 was
+worth running against xr-sim inside real Prey: the mismatch path can only be
+exercised where the required adapter is *not* index 0, which on this machine is
+never true with the headset attached.
+
+F-010 re-confirmed on hardware in the same run: `1.1.60` rejected, `1.0.60`
+accepted.
+
+### Real optics, through our projection maths
+
+| | xr-sim | Quest 3 / VDXR |
+| --- | --- | --- |
+| swapchain | 2064x2208x2 | 2688x2880x2 |
+| IPD | 63.0 mm | 64.7 mm |
+| FOV l/r/u/d | -54 / 44 / 55 / -55 deg | -54.0 / +40.0 / +44.0 / -55.0 deg |
+
+The real frustum is genuinely asymmetric, which is the case
+`ProjectionFromTangents` exists for. It converted to
+`fov=1.919862 rad (110.0 deg), ratio=0.963753, asym=(0, -0.053728, 0, -0.046246)`,
+and xr-tape's `submitted_fov_matches_located` passed at a maximum difference of
+**0 rad** across 400 frames.
+
+**19 checks passed, 0 failed, 1 skipped** -- identical to the xr-sim result,
+including `eye_order`, `ipd_plausible`, `no_vertical_disparity` and
+`submitted_pose_matches_located`. The stereo submission path works on real
+hardware.
+
+### Two false alarms, both mine, both worth recording
+
+**"The head pose is frozen."** Two consecutive runs returned a byte-identical
+head pose across a recentre, which is the F-012 signature and looked like dead
+tracking. It was not. The pose was reported only on frame 0, and frame 0 is
+VDXR's uninitialised default -- identity orientation at
+`(-0.0324, -1.3298, 0)`. Sampled from frame 10 onward the pose is live and
+jitters frame to frame as tracking noise should. The probe now reports the head
+pose at every sample for exactly this reason.
+
+**"Only one controller reading."** `--input-every 100` never reached the probe:
+the flag was lost passing through bash to PowerShell to the launcher's array
+splatting, so it ran with `input_every=0` and sampled once. Nothing in the output
+said so -- the run looked entirely healthy. The probe now prints
+`input_every=` in its banner, and accepts the interval as a **second positional
+argument**, which no shell in that chain can mangle.
+
+Both were caught the same way: a number that could not change was changing, or a
+number that should have changed was not. Neither was a fault in the code under
+test, and both would have been reported as hardware findings if the sampling had
+not been checked first.
+
+### Controllers on real hardware
+
+Once both Touch controllers were awake and moving, 40 seconds sampled once per
+second:
+
+```
+interaction_profile  /interaction_profiles/oculus/touch_controller   73 samples
+hand=left   active=1 valid=1 tracked=1   36 samples
+hand=right  active=1 valid=1 tracked=1   37 samples
+
+aim_direction_unit_length          73 pass
+aim_matches_pose_forward           73 pass
+aim_ray_produced                   73 pass
+basis_change_preserves_distance    36 pass
+basis_maps_right_to_right          36 pass
+basis_maps_up_to_up                36 pass
+
+invariants checked=327 failed=0
+```
+
+The basis change now holds against **moving** real poses rather than a single
+static one -- `xr=(0.1469, -0.2235, -0.3706)` becomes
+`engine=(0.1469, 0.3706, -0.2235)`, the `(x, -z, y)` relabelling, sample after
+sample. Rigidity is the stronger result: hand separation is preserved to five
+decimal places across a *range* of separations produced by actually waving the
+controllers (0.11389, 0.11455, 0.11499, 0.11500, 0.11613, 0.11634 m), where
+xr-sim could only ever offer one fixed 0.4 m.
+
+Controllers sleep quickly when set down, and a run started before they are in
+hand reports `path=none` for both hands throughout. That is the runtime saying no
+controllers are connected -- not a binding failure -- and it is why the probe
+reports `invariants checked=0 detail=controllers_never_tracked` rather than
+letting an empty pass count read as success.
+
+### Eye order confirmed through the optics
+
+The probe clears array slice 0 red and slice 1 blue. Viewed through the headset:
+**red in the left eye, blue in the right**.
+
+Worth stating separately from xr-tape's `eye_order` check, which reads the trace
+metadata and confirms view 0 is the left view. Only a person looking through the
+lenses closes the last link -- that the array slice actually lands in the correct
+physical eye. A swapped stereo pair inverts depth while looking very nearly
+right, which is exactly the kind of bug that survives every automated check.
+
+### What real hardware taught that xr-sim could not
+
+**Valid is not tracked, and the difference is testable only here.** xr-sim always
+reports controllers as tracked. VDXR reports `active=1 valid=1 tracked=0` while
+it extrapolates from a controller's last known position -- readable numbers for a
+device it is no longer observing. `AimFromController` refuses such a pose by
+design, because a plausible wrong aim is worse than no aim: it fires.
+
+The first real-hardware run counted six of those correct refusals as **failures**,
+because the probe asserted that a valid pose must yield a ray. The probe now
+asserts the opposite for the untracked case -- `untracked_pose_yields_no_ray` --
+which turns a false alarm into a contract that only a real runtime can exercise.

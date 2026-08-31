@@ -330,3 +330,97 @@ a second runtime disagrees in the other direction. Had the probe been "fixed" by
 hardcoding 1.0 — the smaller change, and the tempting one — it would have worked
 on this machine's headset and been wrong the moment it met xr-sim. See
 `docs/XRSIM_INTEGRATION.md`.
+
+---
+
+## F-011 - Two effects measured in one image: the frustum shear buried the eye offset
+
+**Status:** understood and fixed. The bug was mine, in the test design, not in the code under test.
+
+The first two A2 runs produced a stereo pair that could not be judged. The numbers looked
+emphatic -- mean absolute difference 30.18, 81.7% of pixels changed, against an A1 noise floor of
+0.0167 -- and they were useless, because they measured two independent things at once and could not
+say how much of the difference came from either.
+
+`SetSyntheticStereo` builds a deliberately asymmetric per-eye frustum (outer 55 degrees, inner 45)
+so the asymmetry path gets exercised rather than sitting untested until a headset arrives. That is
+worth doing. Doing it *in the same image* as the 64 mm eye separation is not: the asymmetry moves
+every pixel sideways by a constant, and it swamped the thing the test existed to measure.
+
+**How much:** a horizontal shift scan finds a single uniform offset of **-462 px** that drops the
+residual from 30.18 to 9.34. Roughly 69% of the difference was shear.
+
+**The magnitude was predictable, which is what makes the explanation trustworthy.** The frusta span
+`tan(55) + tan(45) = 2.428` tangent units across 2560 px, and the eyes' centres differ by
+`tan(55) - tan(45) = 0.428` of that, so `0.428 / 2.428 * 2560 = 451 px` predicted against 462 px
+measured -- 2.4% off, from a calculation done before the scan was run.
+
+**Two fixes, and they are different in kind.**
+
+`SetStereoAsymmetry(outerScale)` lets the asymmetry be dialled to 1.0, making the frusta symmetric so
+the eye offset is the only difference between the images. That fixes *this* test.
+
+`FindHorizontalShift` in `preyvr::framedump` fixes the class. `Compare` answers "do these differ",
+which a shear and real parallax both satisfy loudly. The scan asks whether **one** offset re-aligns
+the pair: a shear says yes, parallax says no, because disparity varies with depth. Without that, the
+two are indistinguishable from the summary numbers, and "the images differ a lot" reads like success.
+
+**A first attempt at the arithmetic was also wrong, in a way worth recording.** The initial estimate
+of the shear was ~256 px, from `25.6 px/degree * 10 degrees`. That treats the projection as linear in
+angle; it is linear in *tangent*. The error is 45%, it is invisible unless the prediction is checked
+against a measurement, and it would have made the shear look like a partial explanation rather than
+the dominant one. The scan is what caught it.
+
+**Lesson.** A measurement that cannot attribute its result to a cause is not evidence, however large
+the number is. Both effects were expected, both were real, and the run still had to be thrown away.
+When two effects can appear in one instrument, either separate them in the experiment or build the
+instrument that can separate them afterwards -- and prefer the first, because it is cheaper and it
+does not depend on the second being correct.
+
+The zero-IPD control in A2b comes from the same reasoning: with symmetric frusta and no eye offset
+the two eyes are literally the same camera, so that row must collapse to the noise floor. It is the
+row that fails if the difference being measured is really temporal AA or a scene that is not as
+frozen as assumed.
+
+---
+
+## F-012 - A test harness that "failed" four times while measuring nothing
+
+**Status:** understood and fixed. Same class as F-011, caught faster because F-011 taught the shape.
+
+The first run of the controller aim check reported four failing cases. All four were real numbers, all
+four disagreed with the prediction, and not one of them measured anything: the commands that were
+supposed to establish the ground truth never reached the simulator, so every case read back xr-sim's
+untouched default pose.
+
+**The tell was in the output and is worth learning.** All four cases returned the *identical*
+direction `(0.0000, 0.7660, -0.6428)`. Four different commanded rotations cannot produce one identical
+result; a constant answer across varied inputs means the input never arrived. The harness now says so
+explicitly rather than leaving it to be noticed.
+
+**Two causes, both in the harness.**
+
+xr-sim logs `ignoring a command.txt written before this run started` -- it deliberately refuses stale
+commands, which is correct behaviour and defeats any scheme that writes the command file before
+launching.
+
+Worse, the liveness check was satisfied by a `state.json` **left behind by the previous case**. So the
+harness confirmed a live session, sent commands, and had them acknowledged by a directory rather than
+a process. Deleting the state file before launch is what makes its reappearance mean something.
+
+**Fixes.** `state.json` is removed before the run so staleness is impossible; all cases now run inside
+one session; and every controller reading is stamped with the frame it came from, so a reading taken
+before a command cannot be attributed to it. The correlation is by frame number, not by ordering.
+
+**A third thing this exposed, in the probe rather than the harness.** The first version filled only
+`positionTracked` and `orientationTracked` on `PoseValidity`, leaving `positionValid` and
+`orientationValid` false, so `AimFromController` refused every pose. That was the module behaving
+*correctly* -- it fail-closed on a pose that claimed to be untracked -- and it looked like a bug in the
+module for exactly as long as it took to read the four field names. Valid and tracked are different
+bits in OpenXR with different meanings, and the probe now maps all four from the runtime's own flags.
+
+**Lesson, and it is the F-011 lesson again from the other side.** F-011 was a measurement that could
+not attribute its result to a cause. This was a measurement with no cause at all. Both produced
+confident numbers. The defence is the same in both cases: know what the result should be *before*
+running, and make the harness prove it actually did the thing it claims to have done -- here, by
+stamping every reading with the frame that produced it.

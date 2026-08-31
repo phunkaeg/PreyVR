@@ -28,6 +28,7 @@
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
 
+#include "preyvr/MotionController.h"
 #include "preyvr/StereoCamera.h"
 #include "preyvr/StereoFrame.h"
 #include "preyvr/XrFrameContract.h"
@@ -94,15 +95,55 @@ struct Probe {
     std::uint32_t height = 0;
     XrViewConfigurationType viewConfig = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 
+    // --- input -------------------------------------------------------------
+    //
+    // The motion-controller half of the project has never touched a runtime.
+    // preyvr::controller is well covered by unit tests, but every one of those
+    // feeds it a pose we made up; nothing has ever checked that the action
+    // system can be set up at all, or that a pose which came out of a real
+    // xrLocateSpace survives the basis change intact.
+    //
+    // That gap is closable without a headset and without a human, which is why
+    // it is closed here rather than being left for a headset day.
+    XrActionSet actionSet = XR_NULL_HANDLE;
+    XrAction aimPoseAction = XR_NULL_HANDLE;
+    XrAction gripPoseAction = XR_NULL_HANDLE;
+    XrAction triggerAction = XR_NULL_HANDLE;
+    XrAction selectAction = XR_NULL_HANDLE;
+    XrPath handPath[2]{};                     // 0 = left, 1 = right
+    XrSpace aimSpace[2]{XR_NULL_HANDLE, XR_NULL_HANDLE};
+    XrSpace gripSpace[2]{XR_NULL_HANDLE, XR_NULL_HANDLE};
+    bool inputReady = false;
+    int invariantsChecked = 0;
+    int invariantsFailed = 0;
+
     preyvr::xrframe::FrameContract contract;
 
     bool CreateInstance();
     bool CreateDeviceOnRequiredAdapter();
     bool CreateSession();
+    bool CreateInput();
     bool CreateSwapchain();
     bool RunFrames(int count);
+    // How often the controllers are read. 0 means "on the last frame only",
+    // which is the cheap default; a driver that wants to command a pose and see
+    // the result sets this so there is a fresh reading after each command.
+    int inputEvery = 0;
+    void ReadInput(XrTime displayTime, int frameIndex);
+    void Expect(bool condition, const char* name, const char* detail);
     void Shutdown();
 };
+
+// One invariant, reported as its own line so a failure names itself rather than
+// being buried in a summary.
+void Probe::Expect(bool condition, const char* name, const char* detail)
+{
+    ++invariantsChecked;
+    if (!condition) {
+        ++invariantsFailed;
+    }
+    Fact("invariant name=%s result=%s detail=%s", name, condition ? "pass" : "FAIL", detail);
+}
 
 // Same newest-first policy the adapter probe uses. It is not defensive padding:
 // xr-sim accepts 1.1 and VirtualDesktopXR rejects it, so one binary works
@@ -294,6 +335,127 @@ bool Probe::CreateSession()
     return true;
 }
 
+// Sets up the OpenXR action system: an action set, pose/float/bool actions bound
+// for both hands, and an action space per pose.
+//
+// **Bindings are suggested for the simple controller as well as Touch.** The
+// simple controller profile is the one every conformant runtime must support, so
+// binding only to Touch would make this probe pass on hardware that happens to be
+// Oculus and fail everywhere else -- the same single-runtime trap that F-010
+// recorded for the API version.
+//
+// Failure here is reported but is **not fatal to the run**. A runtime that
+// declines the action system still has a valid stereo lifecycle worth measuring,
+// and collapsing the whole probe because input was unavailable would lose that.
+bool Probe::CreateInput()
+{
+    XrActionSetCreateInfo setInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
+    std::snprintf(setInfo.actionSetName, sizeof(setInfo.actionSetName), "preyvr");
+    std::snprintf(setInfo.localizedActionSetName, sizeof(setInfo.localizedActionSetName),
+                  "PreyVR");
+    setInfo.priority = 0;
+    REQUIRE(xrCreateActionSet(instance, &setInfo, &actionSet), "create_action_set");
+
+    REQUIRE(xrStringToPath(instance, "/user/hand/left", &handPath[0]), "path_left");
+    REQUIRE(xrStringToPath(instance, "/user/hand/right", &handPath[1]), "path_right");
+
+    const auto makeAction = [&](XrActionType type, const char* name, const char* localized,
+                                XrAction* out) -> XrResult {
+        XrActionCreateInfo info{XR_TYPE_ACTION_CREATE_INFO};
+        info.actionType = type;
+        // Subaction paths on every action, so one action serves both hands and
+        // the hand is chosen at query time. Two separate actions per input would
+        // work too, and would double the binding table for no gain.
+        info.countSubactionPaths = 2;
+        info.subactionPaths = handPath;
+        std::snprintf(info.actionName, sizeof(info.actionName), "%s", name);
+        std::snprintf(info.localizedActionName, sizeof(info.localizedActionName), "%s", localized);
+        return xrCreateAction(actionSet, &info, out);
+    };
+
+    REQUIRE(makeAction(XR_ACTION_TYPE_POSE_INPUT, "aim", "Aim", &aimPoseAction), "action_aim");
+    REQUIRE(makeAction(XR_ACTION_TYPE_POSE_INPUT, "grip", "Grip", &gripPoseAction), "action_grip");
+    REQUIRE(makeAction(XR_ACTION_TYPE_FLOAT_INPUT, "trigger", "Trigger", &triggerAction),
+            "action_trigger");
+    REQUIRE(makeAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "select", "Select", &selectAction),
+            "action_select");
+
+    const auto path = [&](const char* text) {
+        XrPath p{};
+        xrStringToPath(instance, text, &p);
+        return p;
+    };
+
+    // Suggested per profile. A runtime keeps whichever profiles it recognises and
+    // rejects the rest, so a profile it refuses must not stop the others being
+    // offered.
+    struct Profile {
+        const char* name;
+        const char* trigger;
+        const char* select;
+    };
+    const Profile profiles[] = {
+        {"/interaction_profiles/khr/simple_controller", nullptr,
+         "/input/select/click"},
+        {"/interaction_profiles/oculus/touch_controller", "/input/trigger/value",
+         "/input/trigger/value"},
+    };
+
+    int accepted = 0;
+    for (const Profile& profile : profiles) {
+        std::vector<XrActionSuggestedBinding> bindings;
+        for (int hand = 0; hand < 2; ++hand) {
+            const std::string base = hand == 0 ? "/user/hand/left" : "/user/hand/right";
+            bindings.push_back({aimPoseAction, path((base + "/input/aim/pose").c_str())});
+            bindings.push_back({gripPoseAction, path((base + "/input/grip/pose").c_str())});
+            if (profile.trigger != nullptr) {
+                bindings.push_back({triggerAction, path((base + profile.trigger).c_str())});
+            }
+            if (profile.select != nullptr) {
+                bindings.push_back({selectAction, path((base + profile.select).c_str())});
+            }
+        }
+
+        XrInteractionProfileSuggestedBinding suggested{
+            XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+        suggested.interactionProfile = path(profile.name);
+        suggested.countSuggestedBindings = static_cast<std::uint32_t>(bindings.size());
+        suggested.suggestedBindings = bindings.data();
+
+        const XrResult r = xrSuggestInteractionProfileBindings(instance, &suggested);
+        Fact("suggest_bindings profile=%s count=%zu result=%s", profile.name, bindings.size(),
+             ResultName(r));
+        if (XR_SUCCEEDED(r)) {
+            ++accepted;
+        }
+    }
+    if (accepted == 0) {
+        Fact("result=failed step=suggest_bindings detail=no_profile_accepted");
+        return false;
+    }
+
+    XrSessionActionSetsAttachInfo attach{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
+    attach.countActionSets = 1;
+    attach.actionSets = &actionSet;
+    REQUIRE(xrAttachSessionActionSets(session, &attach), "attach_action_sets");
+
+    for (int hand = 0; hand < 2; ++hand) {
+        XrActionSpaceCreateInfo aimInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
+        aimInfo.action = aimPoseAction;
+        aimInfo.subactionPath = handPath[hand];
+        aimInfo.poseInActionSpace.orientation.w = 1.0f;
+        REQUIRE(xrCreateActionSpace(session, &aimInfo, &aimSpace[hand]), "create_aim_space");
+
+        XrActionSpaceCreateInfo gripInfo = aimInfo;
+        gripInfo.action = gripPoseAction;
+        REQUIRE(xrCreateActionSpace(session, &gripInfo, &gripSpace[hand]), "create_grip_space");
+    }
+
+    inputReady = true;
+    Fact("input result=ok profiles_accepted=%d detail=action_sets_attached", accepted);
+    return true;
+}
+
 bool Probe::CreateSwapchain()
 {
     std::uint32_t formatCount = 0;
@@ -367,6 +529,204 @@ bool Probe::CreateSwapchain()
     return true;
 }
 
+// Reads the controllers and runs them through preyvr::controller, checking the
+// properties that must hold whatever the runtime happens to report.
+//
+// **The invariants are chosen to be independent of the commanded pose**, because
+// a check that only holds for one input is a check that passes by luck. A basis
+// change between two right-handed frames is a rigid motion, so it must preserve
+// distances and angles; if it did not, the failure would be a mirrored or scaled
+// world, which is exactly the bug that is hard to see and easy to ship.
+void Probe::ReadInput(XrTime displayTime, int frameIndex)
+{
+    if (!inputReady) {
+        return;
+    }
+
+    XrActiveActionSet active{actionSet, XR_NULL_PATH};
+    XrActionsSyncInfo sync{XR_TYPE_ACTIONS_SYNC_INFO};
+    sync.countActiveActionSets = 1;
+    sync.activeActionSets = &active;
+    const XrResult synced = xrSyncActions(session, &sync);
+    // XR_SESSION_NOT_FOCUSED is a success code, not an error: the session is
+    // running but not receiving input. Worth naming, because it produces
+    // untracked poses that would otherwise look like a conversion bug.
+    Fact("sync_actions result=%s", ResultName(synced));
+    if (XR_FAILED(synced)) {
+        return;
+    }
+
+    for (int hand = 0; hand < 2; ++hand) {
+        // Both hands, because the profile is per subaction path. Reporting only
+        // the left made a run look controller-less while the right hand was live
+        // and tracked.
+        const char* label = hand == 0 ? "left" : "right";
+        XrInteractionProfileState profileState{XR_TYPE_INTERACTION_PROFILE_STATE};
+        if (!XR_SUCCEEDED(xrGetCurrentInteractionProfile(session, handPath[hand], &profileState))) {
+            continue;
+        }
+        char name[XR_MAX_PATH_LENGTH]{};
+        std::uint32_t written = 0;
+        if (profileState.interactionProfile != XR_NULL_PATH &&
+            XR_SUCCEEDED(xrPathToString(instance, profileState.interactionProfile, sizeof(name),
+                                        &written, name))) {
+            Fact("interaction_profile hand=%s path=%s", label, name);
+        } else {
+            Fact("interaction_profile hand=%s path=none detail=no_profile_bound", label);
+        }
+    }
+
+    const preyvr::stereo::ReferenceFrame reference{};
+    preyvr::Vec3 xrOrigin[2]{};
+    preyvr::Vec3 engineOrigin[2]{};
+    bool tracked[2] = {false, false};
+
+    for (int hand = 0; hand < 2; ++hand) {
+        const char* label = hand == 0 ? "left" : "right";
+
+        XrActionStateGetInfo get{XR_TYPE_ACTION_STATE_GET_INFO};
+        get.action = aimPoseAction;
+        get.subactionPath = handPath[hand];
+        XrActionStatePose poseState{XR_TYPE_ACTION_STATE_POSE};
+        xrGetActionStatePose(session, &get, &poseState);
+
+        get.action = triggerAction;
+        XrActionStateFloat triggerState{XR_TYPE_ACTION_STATE_FLOAT};
+        xrGetActionStateFloat(session, &get, &triggerState);
+
+        get.action = selectAction;
+        XrActionStateBoolean selectState{XR_TYPE_ACTION_STATE_BOOLEAN};
+        xrGetActionStateBoolean(session, &get, &selectState);
+
+        XrSpaceLocation location{XR_TYPE_SPACE_LOCATION};
+        const XrResult located = xrLocateSpace(aimSpace[hand], space, displayTime, &location);
+
+        // **Valid and tracked are different bits and mean different things.**
+        // Valid says the pose field holds a number worth reading; tracked says
+        // the runtime is actually observing the device rather than extrapolating
+        // from its last known position. PoseValidity carries all four for that
+        // reason, and filling only half of it is how a coasting controller gets
+        // treated as a live one.
+        const auto flag = [&](XrSpaceLocationFlags bit) {
+            return XR_SUCCEEDED(located) && (location.locationFlags & bit) != 0;
+        };
+        preyvr::PoseValidity validity{};
+        validity.positionValid = flag(XR_SPACE_LOCATION_POSITION_VALID_BIT);
+        validity.orientationValid = flag(XR_SPACE_LOCATION_ORIENTATION_VALID_BIT);
+        validity.positionTracked = flag(XR_SPACE_LOCATION_POSITION_TRACKED_BIT);
+        validity.orientationTracked = flag(XR_SPACE_LOCATION_ORIENTATION_TRACKED_BIT);
+        const bool valid = validity.positionValid && validity.orientationValid;
+
+        Fact("controller frame=%d hand=%s active=%d valid=%d tracked=%d trigger=%.3f select=%d",
+             frameIndex, label, poseState.isActive ? 1 : 0, valid ? 1 : 0,
+             (validity.positionTracked && validity.orientationTracked) ? 1 : 0,
+             triggerState.currentState, selectState.currentState ? 1 : 0);
+        if (!valid) {
+            continue;
+        }
+        tracked[hand] = true;
+
+        const preyvr::Pose xrPose{
+            {location.pose.orientation.x, location.pose.orientation.y,
+             location.pose.orientation.z, location.pose.orientation.w},
+            {location.pose.position.x, location.pose.position.y, location.pose.position.z}};
+        xrOrigin[hand] = xrPose.position;
+
+        const preyvr::Pose enginePose =
+            preyvr::controller::ControllerPoseInWorld(reference, xrPose);
+        engineOrigin[hand] = enginePose.position;
+
+        Fact("controller_pose frame=%d hand=%s xr=%.4f,%.4f,%.4f engine=%.4f,%.4f,%.4f",
+             frameIndex, label,
+             xrPose.position.x, xrPose.position.y, xrPose.position.z,
+             enginePose.position.x, enginePose.position.y, enginePose.position.z);
+
+        // The whole point of the module: a tracked hand becoming an aim ray.
+        // The validity comes from the runtime's own flags above, not from an
+        // assertion here that the pose must be good.
+        const auto ray = preyvr::controller::AimFromController(reference, xrPose, validity, 0);
+
+        // **Valid but not tracked must yield nothing, and that is the contract
+        // being tested here -- not a failure.** A runtime reports this while it
+        // is extrapolating from a controller's last known position: the numbers
+        // are readable but the device is not being observed. AimFromController
+        // refuses such a pose on purpose, because a plausible wrong aim is worse
+        // than no aim -- it fires.
+        //
+        // The first version of this probe asserted a ray whenever the pose was
+        // valid, and so counted six correct refusals as failures on the first
+        // real-hardware run. xr-sim always reports tracked, so only a real
+        // runtime could surface it.
+        const bool fullyTracked = validity.positionTracked && validity.orientationTracked;
+        if (!fullyTracked) {
+            Expect(!ray.has_value(), "untracked_pose_yields_no_ray",
+                   "a coasting controller must not produce an aim the game would shoot along");
+            continue;
+        }
+        if (!ray) {
+            Expect(false, "aim_ray_produced", "a fully tracked pose yielded no ray");
+            continue;
+        }
+        Expect(true, "aim_ray_produced", "a tracked pose produced a ray");
+        Fact("aim_ray frame=%d hand=%s origin=%.4f,%.4f,%.4f direction=%.4f,%.4f,%.4f",
+             frameIndex, label,
+             ray->origin.x, ray->origin.y, ray->origin.z,
+             ray->direction.x, ray->direction.y, ray->direction.z);
+
+        const float length = std::sqrt(ray->direction.x * ray->direction.x +
+                                       ray->direction.y * ray->direction.y +
+                                       ray->direction.z * ray->direction.z);
+        Expect(std::fabs(length - 1.0f) < 1e-3f, "aim_direction_unit_length",
+               "a non-unit ray scales every distance the trace reports");
+
+        const preyvr::Vec3 forward = preyvr::controller::ForwardOf(enginePose);
+        const float agreement = forward.x * ray->direction.x + forward.y * ray->direction.y +
+                                forward.z * ray->direction.z;
+        Expect(agreement > 0.999f, "aim_matches_pose_forward",
+               "the ray must be the pose's own forward, not a second opinion");
+
+        // The basis change, stated as the axis images it is defined by. OpenXR is
+        // right-handed Y-up with -Z forward; CryEngine is right-handed Z-up with
+        // +Y forward. Rx(+90) is the only rotation that carries one to the other,
+        // and a sign slip here mirrors the world.
+        const preyvr::Vec3 xrRight = preyvr::Rotate(xrPose.orientation, {1.0f, 0.0f, 0.0f});
+        const preyvr::Vec3 xrUp = preyvr::Rotate(xrPose.orientation, {0.0f, 1.0f, 0.0f});
+        const preyvr::Vec3 engineRight =
+            preyvr::Rotate(enginePose.orientation, {1.0f, 0.0f, 0.0f});
+        const preyvr::Vec3 engineUp = preyvr::Rotate(enginePose.orientation, {0.0f, 0.0f, 1.0f});
+        if (hand == 0) {
+            // Compared component-wise under the expected relabelling: OpenXR
+            // (x, y, z) becomes engine (x, -z, y).
+            Expect(std::fabs(engineRight.x - xrRight.x) < 1e-3f &&
+                   std::fabs(engineRight.y + xrRight.z) < 1e-3f &&
+                   std::fabs(engineRight.z - xrRight.y) < 1e-3f,
+                   "basis_maps_right_to_right", "OpenXR +X must land on engine +X");
+            Expect(std::fabs(engineUp.x - xrUp.x) < 1e-3f &&
+                   std::fabs(engineUp.y + xrUp.z) < 1e-3f &&
+                   std::fabs(engineUp.z - xrUp.y) < 1e-3f,
+                   "basis_maps_up_to_up", "OpenXR +Y must land on engine +Z");
+        }
+    }
+
+    // Rigidity. This is the strongest check available without knowing what was
+    // commanded: a proper rotation preserves the distance between two points, so
+    // if the hands are further apart in engine space than in OpenXR space the
+    // conversion is not a rotation at all.
+    if (tracked[0] && tracked[1]) {
+        const auto distance = [](const preyvr::Vec3& a, const preyvr::Vec3& b) {
+            const float dx = a.x - b.x;
+            const float dy = a.y - b.y;
+            const float dz = a.z - b.z;
+            return std::sqrt(dx * dx + dy * dy + dz * dz);
+        };
+        const float xrGap = distance(xrOrigin[0], xrOrigin[1]);
+        const float engineGap = distance(engineOrigin[0], engineOrigin[1]);
+        Fact("hand_separation xr_m=%.5f engine_m=%.5f", xrGap, engineGap);
+        Expect(std::fabs(xrGap - engineGap) < 1e-3f, "basis_change_preserves_distance",
+               "a basis change that changes lengths is a scale or a mirror, not a rotation");
+    }
+}
+
 bool Probe::RunFrames(int count)
 {
     const std::uint32_t thisThread = GetCurrentThreadId();
@@ -430,6 +790,20 @@ bool Probe::RunFrames(int count)
             (viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) != 0 &&
             (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT) != 0;
         contract.OnViewsLocated(frameState.predictedDisplayTime, posesValid, posesValid);
+
+        // Read the controllers on the last frame only. Not for tidiness: a
+        // session takes a few frames to reach focus, and input read before then
+        // comes back untracked -- which would look exactly like a conversion bug.
+        const bool lastFrame = submitted + 1 >= count;
+        const bool periodic = inputEvery > 0 && (submitted % inputEvery) == 0;
+        if (lastFrame || periodic) {
+            Fact("head_pose frame=%d xr=%.4f,%.4f,%.4f quat=%.4f,%.4f,%.4f,%.4f valid=%d",
+                 submitted, xrViews[0].pose.position.x, xrViews[0].pose.position.y,
+                 xrViews[0].pose.position.z, xrViews[0].pose.orientation.x,
+                 xrViews[0].pose.orientation.y, xrViews[0].pose.orientation.z,
+                 xrViews[0].pose.orientation.w, posesValid ? 1 : 0);
+            ReadInput(frameState.predictedDisplayTime, submitted);
+        }
 
         XrFrameBeginInfo beginInfo{XR_TYPE_FRAME_BEGIN_INFO};
         REQUIRE(xrBeginFrame(session, &beginInfo), "begin_frame");
@@ -549,6 +923,13 @@ void Probe::Shutdown()
         if (rtv) rtv->Release();
     }
     rtvs.clear();
+    // Action spaces before the action set: they reference the actions the set
+    // owns, and destroying the set first leaves them dangling.
+    for (int hand = 0; hand < 2; ++hand) {
+        if (aimSpace[hand]) xrDestroySpace(aimSpace[hand]);
+        if (gripSpace[hand]) xrDestroySpace(gripSpace[hand]);
+    }
+    if (actionSet) xrDestroyActionSet(actionSet);
     if (swapchain) xrDestroySwapchain(swapchain);
     if (space) xrDestroySpace(space);
     if (session) xrDestroySession(session);
@@ -562,14 +943,33 @@ void Probe::Shutdown()
 int main(int argc, char** argv)
 {
     int frames = 30;
-    if (argc > 1) {
-        frames = std::atoi(argv[1]);
-        if (frames < 1) frames = 1;
+    int inputEvery = 0;
+    int positional = 0;
+    for (int i = 1; i < argc; ++i) {
+        const std::string arg = argv[i];
+        if (arg == "--input-every" && i + 1 < argc) {
+            inputEvery = std::atoi(argv[++i]);
+            if (inputEvery < 1) inputEvery = 1;
+        } else if (positional == 0) {
+            frames = std::atoi(argv[i]);
+            if (frames < 1) frames = 1;
+            ++positional;
+        } else {
+            // Second positional is the sampling interval. The dashed spelling
+            // above is kept, but this is the one to prefer: a flag that gets
+            // silently dropped in transit produces a run that looks fine and
+            // measures once.
+            inputEvery = std::atoi(argv[i]);
+            if (inputEvery < 1) inputEvery = 1;
+            ++positional;
+        }
     }
 
-    Fact("probe version=1 purpose=full_d3d11_session_lifecycle frames=%d", frames);
+    Fact("probe version=2 purpose=full_d3d11_session_lifecycle frames=%d input_every=%d",
+         frames, inputEvery);
 
     Probe probe;
+    probe.inputEvery = inputEvery;
     int code = 0;
     if (!probe.CreateInstance()) {
         code = 2;
@@ -579,10 +979,29 @@ int main(int argc, char** argv)
         code = 4;
     } else if (!probe.CreateSwapchain()) {
         code = 5;
+    } else if (!probe.CreateInput()) {
+        // Not fatal on its own. A runtime without the action system still has a
+        // stereo lifecycle worth measuring, and the input result is reported
+        // separately so a partial answer is not mistaken for a total failure.
+        Fact("input result=unavailable detail=continuing_without_controllers");
+        if (!probe.RunFrames(frames)) {
+            code = 6;
+        }
     } else if (!probe.RunFrames(frames)) {
         code = 6;
     } else {
         Fact("result=ok detail=session_lifecycle_complete");
+    }
+
+    if (probe.invariantsChecked > 0) {
+        Fact("invariants checked=%d failed=%d", probe.invariantsChecked, probe.invariantsFailed);
+        // A failed invariant is a failed run even if every OpenXR call succeeded.
+        // The calls succeeding is what makes a silent maths error dangerous.
+        if (probe.invariantsFailed > 0 && code == 0) {
+            code = 7;
+        }
+    } else if (probe.inputReady) {
+        Fact("invariants checked=0 detail=controllers_never_tracked");
     }
     if (code != 0) {
         Fact("result=failed exit=%d", code);
