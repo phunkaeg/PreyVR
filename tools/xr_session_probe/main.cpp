@@ -157,6 +157,27 @@ bool Probe::CreateInstance()
         return false;
     }
 
+    // Queried for two reasons. It tells xr-tape's `layer_budget` check what the
+    // system's maximum layer count is -- without it that check can only SKIP,
+    // and a SKIP is not a pass. And `maxSwapchainImageWidth/Height` is a real
+    // precondition: requesting a swapchain larger than the system allows fails
+    // at creation, and it is much easier to read that here than from an
+    // XR_ERROR_LIMIT_REACHED three calls later.
+    XrSystemProperties systemProps{XR_TYPE_SYSTEM_PROPERTIES};
+    if (XR_SUCCEEDED(xrGetSystemProperties(instance, systemId, &systemProps))) {
+        Fact("system name=\"%s\" vendor=%u maxLayers=%u maxSwapchain=%ux%u",
+             systemProps.systemName, systemProps.vendorId,
+             systemProps.graphicsProperties.maxLayerCount,
+             systemProps.graphicsProperties.maxSwapchainImageWidth,
+             systemProps.graphicsProperties.maxSwapchainImageHeight);
+    } else {
+        // Not fatal -- the session can still run -- but it is worth saying so,
+        // because a downstream "unknown" is otherwise indistinguishable from a
+        // value that happened to be fine.
+        Fact("system properties=unavailable detail=layer_budget_cannot_be_checked");
+        systemProps.graphicsProperties.maxSwapchainImageWidth = 0;
+    }
+
     // The recommended per-eye size is what the swapchain must be built at.
     std::uint32_t viewCount = 0;
     REQUIRE(xrEnumerateViewConfigurationViews(instance, systemId, viewConfig, 0, &viewCount, nullptr),
@@ -174,6 +195,17 @@ bool Probe::CreateInstance()
     height = views[0].recommendedImageRectHeight;
     Fact("views count=%u recommended=%ux%u samples=%u", viewCount, width, height,
          views[0].recommendedSwapchainSampleCount);
+
+    // A runtime is not obliged to keep its own recommendation inside its own
+    // limit, and the failure if it does not lands at swapchain creation rather
+    // than here.
+    const std::uint32_t maxWidth = systemProps.graphicsProperties.maxSwapchainImageWidth;
+    const std::uint32_t maxHeight = systemProps.graphicsProperties.maxSwapchainImageHeight;
+    if (maxWidth != 0 && (width > maxWidth || height > maxHeight)) {
+        Fact("result=failed step=swapchain_size detail=recommended_exceeds_system_max "
+             "recommended=%ux%u max=%ux%u", width, height, maxWidth, maxHeight);
+        return false;
+    }
     return true;
 }
 

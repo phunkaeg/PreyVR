@@ -182,3 +182,66 @@ cheap repeatable method — clear to a known colour, read the reported luma, com
 against both hypotheses — which should be run against VirtualDesktopXR before the
 format is fixed. If the two runtimes differ, the format must be chosen per runtime
 rather than once.
+
+---
+
+## xr-tape — an outside witness on what we submit
+
+`xr-tape` (`D:\Dev Debug\xr-tape`) is an OpenXR **API layer** that records what a
+client submits — both eye poses, both projections, the layer set, frame timing —
+into a versioned trace, then runs checks over it. It needs no code change here:
+it attaches at the loader, so it works on today's build.
+
+```bash
+./tools/Invoke-PreyVRUnderXrSim.ps1 -Executable build/headless/Release/preyvr_xr_session_probe.exe -Arguments 30 -Tape
+```
+
+Current baseline, 2026-08-31: **19 passed, 0 failed, 1 skipped**.
+
+### The two checks that are worth more than the other eighteen
+
+`submitted_fov_matches_located` and `submitted_pose_matches_located` compare what
+the runtime was *told* against what it *said*, from outside the process. Both
+report max difference **0**.
+
+That matters because of a limitation this project had already written down. The
+synthetic half of the render-camera residual test "is exactly zero because the
+test recomputes with the same formula on the same inputs" — self-referential by
+construction, and noted as such in `RuntimeSnapshot.h`. These two checks are the
+independent second opinion that comment was asking for, and no test running
+inside our own process could ever be one.
+
+### What it replaces
+
+`HEADLESS_TESTING.md` already states the principle: every runtime probe should
+emit a bounded fixture that can be replayed headlessly afterwards, so a live
+session becomes permanent coverage rather than a one-off observation. We have
+been hand-carving those one finding at a time — `aim_state_fixture`,
+`wrench_query_fixture`, `frame_dump`. A trace is that fixture, produced
+automatically, for every run.
+
+### `layer_budget` fixed, 2026-08-31
+
+It used to SKIP: the probe never called `xrGetSystemProperties`, so the system's
+maximum layer count was unknown, and **a SKIP is not a pass**. One call fixed it —
+now `peak 1 of 16 layers`. The same call surfaced `maxSwapchain 16384x16384`, and
+the probe now refuses a recommended size larger than the system's own maximum,
+because a runtime is not obliged to keep its recommendation inside its own limit
+and the failure would otherwise land three calls later at swapchain creation.
+
+### The gamma question is now a diff, not an experiment
+
+The open format-28 question — does VirtualDesktopXR encode the way xr-sim does —
+becomes: tape the same probe under both runtimes and compare the traces. That
+turns "must be measured before the format is fixed" into one command, run on
+headset day alongside the LUID.
+
+### Reading a stereo failure
+
+| result | means |
+| --- | --- |
+| a geometry check fails alone | the runtime reported a bad rig and we passed it through — look at the runtime |
+| geometry **and** submitted-vs-located both fail | we mangled a good rig — look at our code |
+
+And if a check fires and the check looks wrong rather than the code, that argument
+is settled by adding a fault case to `tools/xrtape_selftest.py`, not by arguing.

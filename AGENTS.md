@@ -8,6 +8,22 @@
 
 VR modding project for Prey (2017). Target: `Prey.exe` (64-bit, CryEngine/Arkane, D3D11).
 
+## xr-tape — record and check what this mod submits to OpenXR
+
+`D:\Dev Debug\xr-tape` is an OpenXR **API layer** that records both eye poses, both projections, the
+submitted layer set and frame timing to a trace, plus 20 checks over it. It needs **no code change in
+this repo**, and it is selected per process, so nothing machine-wide is touched.
+
+```powershell
+& 'D:\Dev Debug\xr-tape\tools\Install-XrTape.ps1' -Architecture x64
+& 'D:\Dev Debug\xr-tape\tools\Invoke-XrTape.ps1' -Executable <app.exe> -Check
+```
+
+It pairs with the RE MCPs by **localising**: a failing check names the frame and the value, and
+RenderDoc/apitrace/Ghidra then explain that one frame. See the `re-mcp-toolkit` skill.
+
+**Here specifically:** `preyvr_xr_session_probe` already passes **18 of 18 applicable checks** under xr-tape, so this is a working baseline today. `HEADLESS_TESTING.md` asks that every runtime probe emit a replayable fixture - a trace **is** that fixture, produced automatically. The open format-28 gamma question is a trace diff between xr-sim and VirtualDesktopXR.
+
 ## Reverse-engineering MCPs
 
 Ghidra, ReGenny, Frida, Cheat Engine, x64dbg/x32dbg and RenderDoc are all available as MCP tools.

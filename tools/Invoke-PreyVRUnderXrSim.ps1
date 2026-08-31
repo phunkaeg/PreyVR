@@ -34,7 +34,15 @@ param(
     [string[]]$Arguments = @(),
     [ValidateSet('x64', 'x86')][string]$Architecture = 'x64',
     [string]$StateName = 'preyvr',
-    [switch]$ShowState
+    [switch]$ShowState,
+    # Attach the xr-tape recording layer and verify the trace. Records both eye
+    # poses and projections, the submitted layer set and frame timing, then runs
+    # 20 checks over it. Two of them -- submitted_fov_matches_located and
+    # submitted_pose_matches_located -- compare what the runtime was told against
+    # what it said, from outside the process, which no in-process test can do to
+    # itself.
+    [switch]$Tape,
+    [string]$XrTapeRoot = 'D:\Dev Debug\xr-tape'
 )
 
 Set-StrictMode -Version Latest
@@ -74,11 +82,39 @@ try {
     $env:XRSIM_DIR = $stateDir
 
     Write-Output "preyvr_xrsim runtime=$manifest state=$stateDir arch=$Architecture"
-    Write-Output "preyvr_xrsim executable=$Executable"
+    Write-Output "preyvr_xrsim executable=$Executable tape=$($Tape.IsPresent)"
     Write-Output ''
 
-    & $Executable @Arguments
-    $exit = $LASTEXITCODE
+    if ($Tape) {
+        $invokeTape = Join-Path $XrTapeRoot 'tools\Invoke-XrTape.ps1'
+        if (-not (Test-Path -LiteralPath $invokeTape)) {
+            throw "xr-tape not found at $XrTapeRoot (expected tools\Invoke-XrTape.ps1). Pass -XrTapeRoot, or install it with tools\Install-XrTape.ps1 -Architecture $Architecture."
+        }
+        # -Check makes the run assert rather than merely print. xr-tape throws on
+        # an elevated shell, a bitness mismatch, or a missing trace -- all three
+        # of which otherwise leave the app running perfectly with nothing
+        # recorded, and every later conclusion attributed to a trace that was
+        # never written.
+        $result = @(& $invokeTape -Executable $Executable -Arguments $Arguments `
+            -Architecture $Architecture -RuntimeJson $manifest -Check -ExpectRuntime 'xr-sim')
+        $result | Out-String | Write-Output
+
+        # The script emits progress lines *and* a summary object, so $result is a
+        # mixed array. Picking the element that actually carries CheckExitCode is
+        # the difference between reporting the check's verdict and reporting
+        # nothing -- and a wrapper that swallows a FAIL is worse than no wrapper.
+        $summary = $result |
+            Where-Object { $_ -and $_.PSObject.Properties.Name -contains 'CheckExitCode' } |
+            Select-Object -Last 1
+        if ($null -eq $summary) {
+            throw 'xr-tape returned no summary object; treating the run as unverified rather than passed.'
+        }
+        $exit = [int]$summary.CheckExitCode
+    }
+    else {
+        & $Executable @Arguments
+        $exit = $LASTEXITCODE
+    }
 }
 finally {
     $env:XR_RUNTIME_JSON = $savedRuntime
