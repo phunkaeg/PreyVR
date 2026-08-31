@@ -10,13 +10,17 @@
 // The harness makes a protocol run reproducible and its acceptance criteria
 // non-optional.
 //
-// Two behaviours are worked around deliberately, both recorded as F-009:
+// Two behaviours are worked around deliberately:
 //
-//   * Some PreyVR exports raise a Frida `system error` even though the call
-//     takes effect -- most likely Frida's exception handler reacting to MinHook
-//     writing into PreyDll's .text. So every call goes through `callTolerant`,
-//     which swallows that and reports what the *status getters* say instead.
-//     Trusting the return value alone would report failures that did not happen.
+//   * **F-009 is not what it was recorded as.** It was attributed to Frida's
+//     exception handler reacting to MinHook writing into PreyDll's .text. That
+//     is wrong: exports touching no hook at all fail identically. What actually
+//     happens is that Frida's NativeFunction aborts the call with a bare "system
+//     error", and if the abort lands while our code holds a lock, that lock is
+//     never released -- poisoning every later control call. So anything that
+//     *does work* is invoked through `act`, on a real Windows thread, where Frida
+//     marshals nothing and the abort cannot happen. Getters stay on
+//     `callTolerant`; they take no locks, so an abort there costs nothing.
 //
 //   * The observer's disable path has never been observed restoring the target
 //     prologue on a live host, so nothing here depends on disabling it.
@@ -43,12 +47,61 @@ var PreyVR = (function () {
 
     // Calls through and reports whether the call itself threw, without letting a
     // throw abort the sequence -- see F-009.
+    //
+    // **Use this only for getters.** For anything that does work, use `act`.
     function callTolerant(name, ret, args, argv) {
         try {
             return { threw: false, value: bind(name, ret, args).apply(null, argv || []) };
         } catch (e) {
             return { threw: true, error: String(e.message || e) };
         }
+    }
+
+    // Runs an export on a **real Windows thread** instead of through Frida.
+    //
+    // This is the fix for F-009, and it is not cosmetic. Diagnosed live on
+    // 2026-08-31: Frida's NativeFunction aborts these calls with a bare "system
+    // error", and when the abort lands while our code holds a lock, that lock is
+    // never released -- so every later control call reports busy and the whole
+    // session is poisoned. The symptom that F-009 recorded as "raises an error
+    // but takes effect anyway" is that abort, and the damage it leaves behind is
+    // what made the next call look like a different bug.
+    //
+    // The control exports all match LPTHREAD_START_ROUTINE -- one pointer in, a
+    // DWORD out -- so a thread can call them directly with Frida marshalling
+    // nothing. The thread's exit code IS the return value.
+    var k32 = Process.getModuleByName('kernel32.dll');
+    var CreateThread = new NativeFunction(k32.getExportByName('CreateThread'),
+        'pointer', ['pointer', 'size_t', 'pointer', 'pointer', 'uint32', 'pointer']);
+    var GetExitCodeThread = new NativeFunction(k32.getExportByName('GetExitCodeThread'),
+        'int', ['pointer', 'pointer']);
+    var CloseHandle = new NativeFunction(k32.getExportByName('CloseHandle'), 'int', ['pointer']);
+    var STILL_ACTIVE = 259;
+
+    function act(name, param, timeoutSeconds) {
+        var handle = CreateThread(NULL, 0, module_().getExportByName(name),
+                                  param || NULL, 0, NULL);
+        if (handle.isNull()) {
+            return { ok: false, error: 'CreateThread failed for ' + name };
+        }
+        // Polled in short sleeps rather than WaitForSingleObject, because a long
+        // blocking wait inside a Frida call trips its RPC timeout and loses the
+        // result even when the call itself succeeded.
+        var code = Memory.alloc(4);
+        var waited = 0;
+        var limit = timeoutSeconds || 5;
+        do {
+            Thread.sleep(0.15);
+            waited += 0.15;
+            GetExitCodeThread(handle, code);
+        } while (code.readU32() === STILL_ACTIVE && waited < limit);
+
+        var value = code.readU32();
+        var running = value === STILL_ACTIVE;
+        CloseHandle(handle);
+        return running
+            ? { ok: false, name: name, error: 'still running after ' + limit + 's' }
+            : { ok: true, name: name, returned: value };
     }
 
     function status() {
@@ -71,7 +124,7 @@ var PreyVR = (function () {
     function enableObserver() {
         // The return value is unreliable here (F-009), so the *status* is the
         // answer. 2 == enabled.
-        callTolerant('PreyVR_SetFrameObserverEnabled', 'uint32', ['uint32'], [1]);
+        act('PreyVR_SetFrameObserverEnabled', ptr(1));
         Thread.sleep(0.1);
         var s = Number(callTolerant('PreyVR_GetFrameObserverStatus', 'uint32', []).value);
         return { observerStatus: s, enabled: s === 2 };
@@ -79,11 +132,11 @@ var PreyVR = (function () {
 
     function console_(command) {
         var text = Memory.allocUtf8String(command);
-        var r = callTolerant('PreyVR_QueueConsoleCommand', 'uint32', ['pointer'], [text]);
+        var r = act('PreyVR_QueueConsoleCommand', text);
         Thread.sleep(0.15); // let the observer service the queue and the engine drain it
         return {
             command: command,
-            queueResult: r.threw ? 'threw:' + r.error : Number(r.value),
+            queueResult: r.ok ? r.returned : r.error,
             lastResult: Number(callTolerant('PreyVR_GetLastConsoleResult', 'uint32', []).value),
             submitted: String(callTolerant('PreyVR_GetSubmittedConsoleCommandCount', 'uint64', []).value)
         };
@@ -94,7 +147,7 @@ var PreyVR = (function () {
     // reported, not silently treated as one that did.
     function capture(tag, timeoutSeconds) {
         var before = Number(callTolerant('PreyVR_GetCompletedFrameCaptureCount', 'uint32', []).value);
-        var armed = callTolerant('PreyVR_RequestFrameCapture', 'uint32', ['uint32'], [tag]);
+        var armed = act('PreyVR_RequestFrameCapture', ptr(tag));
 
         var waited = 0.0;
         var step = 0.05;
@@ -152,6 +205,8 @@ var PreyVR = (function () {
         var yaw = yawDegrees || 10.0;
         var out = { yawDegrees: yaw };
         out.before = capture(0);
+        // Float args cannot go through the thread route, so this one still uses
+        // NativeFunction -- it takes no lock, so an abort cannot poison anything.
         out.arm = callTolerant('PreyVR_SetCameraYawEdit', 'uint32', ['float'], [yaw]);
         out.armStatus = Number(callTolerant('PreyVR_GetCameraEditStatus', 'uint32', []).value);
         if (out.armStatus !== 2) {

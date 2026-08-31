@@ -88,22 +88,52 @@ std::filesystem::path LogPath()
     return CachedLogPath();
 }
 
+// The stream is opened **once** and held for the life of the process.
+//
+// Diagnosed live on 2026-08-31, and it had been breaking every in-game
+// diagnostic. The log lives under Documents, which is OneDrive-redirected on
+// this machine, and re-opening a synced file per line can **block
+// indefinitely**. Inside Prey that meant: bootstrap logged fine, then the next
+// Log call hung forever, its export never returned, and -- because that caller
+// was holding a lock -- every later control call reported busy. One blocking
+// open cascaded into what looked like three separate bugs.
+//
+// Worse, `Log` is called from Prey's *render thread* by the frame capture, the
+// XR service and the camera hook, where a blocking open freezes the game.
+//
+// Holding the handle removes the repetition entirely: one open, on whichever
+// thread logs first, then plain writes. The module is pinned until process exit,
+// so the handle's lifetime is exactly the process's.
+std::ofstream& LogStream()
+{
+    static std::ofstream stream(CachedLogPath(), std::ios::binary | std::ios::app);
+    return stream;
+}
+
 void ResetLog()
 {
     std::lock_guard lock(gLogMutex);
-    const auto& path = CachedLogPath();
-    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    // Truncated through the held stream rather than a second handle, so the two
+    // cannot disagree about where the write cursor is.
+    auto& stream = LogStream();
+    stream.close();
+    stream.open(CachedLogPath(), std::ios::binary | std::ios::trunc);
 }
 
 void Log(std::string_view message)
 {
     const std::string line = Timestamp() + " " + std::string(message) + "\n";
+    // Emitted first and unconditionally: it needs no file, so a debugger still
+    // sees the line even when the file side is unavailable.
     OutputDebugStringA(line.c_str());
 
     std::lock_guard lock(gLogMutex);
-    const auto& path = CachedLogPath();
-    std::ofstream output(path, std::ios::binary | std::ios::app);
-    output << line;
+    auto& stream = LogStream();
+    if (!stream) {
+        return; // never retry a failed open; retrying is how the hang got in
+    }
+    stream << line;
+    stream.flush(); // the log must be readable while the game is still running
 }
 
 } // namespace preyvr::lifecycle
