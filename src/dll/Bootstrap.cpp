@@ -445,6 +445,16 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetSyntheticStereo(float ipdMetres
     return preyvr::dll::SetSyntheticStereo(ipdMetres, halfFovDegrees);
 }
 
+// Locks synthetic stereo to one eye: 0 left, 1 right, anything else alternates.
+// Replaces per-frame eye tagging, which cannot work across the engine's game and
+// render threads - they are offset by its MT/RT double buffer, so a tag written
+// by one is not reliably read by the other for the same frame. Hold an eye, let a
+// few frames pass, capture; then hold the other.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetStereoEyeLock(unsigned int eye)
+{
+    return preyvr::dll::SetStereoEyeLock(eye);
+}
+
 // Which eye the most recent render used, or -1.
 extern "C" __declspec(dllexport) int PreyVR_GetLastRenderedEye()
 {

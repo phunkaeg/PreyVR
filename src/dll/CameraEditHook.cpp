@@ -60,6 +60,7 @@ std::atomic<float> gStereoIpd{0.0f};
 std::atomic<float> gStereoHalfFov{50.0f};
 std::atomic<unsigned long long> gEyeCounter{0};
 std::atomic<int> gLastEye{-1};
+std::atomic<int> gEyeLock{-1};   // -1 = alternate
 std::atomic<bool> gDoubleRender{false};
 std::atomic<unsigned int> gDoubleRenderBudget{0};
 std::atomic<unsigned long long> gDoubleRendered{0};
@@ -238,7 +239,14 @@ void __fastcall RenderWithCameraEdit(void* system)
     if (stereoArmed) {
         // Alternate every frame. With the simulation frozen, consecutive frames
         // differ only by the eye, which is exactly a stereo pair.
-        const int eye = static_cast<int>(gEyeCounter.fetch_add(1, std::memory_order_relaxed) & 1ull);
+        // A locked eye is held for as long as it is set, so a capture taken a
+        // few frames later is unambiguously that eye no matter how the game and
+        // render threads are phased. Alternating remains available, but nothing
+        // should depend on identifying which frame it produced.
+        const int locked = gEyeLock.load(std::memory_order_acquire);
+        const int eye = (locked == 0 || locked == 1)
+            ? locked
+            : static_cast<int>(gEyeCounter.fetch_add(1, std::memory_order_relaxed) & 1ull);
         built = BuildSyntheticEye(edited, eye,
                                   gStereoIpd.load(std::memory_order_acquire),
                                   gStereoHalfFov.load(std::memory_order_acquire));
@@ -500,6 +508,20 @@ DWORD SetDoubleRenderStereo(float ipdMetres, float halfFovDegrees, unsigned int 
 unsigned long long DoubleRenderedFrameCount()
 {
     return gDoubleRendered.load(std::memory_order_acquire);
+}
+
+DWORD SetStereoEyeLock(unsigned int eye)
+{
+    const int value = (eye == 0u || eye == 1u) ? static_cast<int>(eye) : -1;
+    gEyeLock.store(value, std::memory_order_release);
+    // The capture tag follows the lock, so it is correct again whenever one is
+    // held -- and meaningless, by design, when alternating.
+    SetFrameCaptureTagOverride(value);
+    std::ostringstream line;
+    line << "preyvr_camera_edit result=0 detail=eye_lock eye="
+         << (value < 0 ? "alternate" : (value == 0 ? "left" : "right"));
+    lifecycle::Log(line.str());
+    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
 }
 
 int LastRenderedEye()

@@ -61,9 +61,29 @@ DWORD SetCameraYawEdit(float degrees);
 // being left untested until a headset is attached.
 DWORD SetSyntheticStereo(float ipdMetres, float halfFovDegrees);
 
-// Which eye the most recent render used, or -1. The frame capture is stamped
-// with this automatically, so the two dumps of a pair cannot be confused -- a
-// silently swapped stereo pair inverts depth and looks almost right.
+// Locks synthetic stereo to one eye instead of alternating.
+//
+// **This replaces the per-frame tagging, which did not work.** The camera hook
+// runs on the game thread and the capture runs on the render thread, and the two
+// are offset by the engine's MT/RT double buffer -- so a tag written by one is
+// not reliably read by the other for the same frame. Observed live 2026-08-31:
+// two captures reported as eye 1 then eye 0 both landed in files tagged 1, which
+// is exactly the silently-swapped pair the tagging existed to prevent.
+//
+// Compensating for the offset would mean guessing at it. Locking the eye removes
+// it: hold one eye, let a few frames pass, capture, then hold the other. The
+// signal is now far longer than the uncertainty, so no ordering assumption is
+// needed at all.
+//
+// 0 locks left, 1 locks right, any other value returns to alternating.
+DWORD SetStereoEyeLock(unsigned int eye);
+
+// Which eye the most recent render used, or -1.
+//
+// **Reported for observation only -- do not identify a capture by it.** It is
+// written on the game thread and any capture reads it on the render thread, and
+// the two are a frame or so apart. Use SetStereoEyeLock instead; that is the
+// whole reason it exists.
 int LastRenderedEye();
 
 // **The double-render experiment: native stereo, or not.**
