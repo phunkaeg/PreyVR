@@ -32,6 +32,35 @@ is read and handed to both consumers, which makes wrapping it the smallest place
 the edit can live and still be seen. It is also the shape that generalises: to
 render two eyes, call the original twice with two cameras.
 
+## Getting Prey into a testable state
+
+Recorded because the first attempt at these protocols was run against a **menu**
+without realising it. The tell was `preyvr_snapshot view_camera pos=0.0000,0.0000,0.0000
+res=640x480` -- that is the default camera, not a real one, and every frame
+comparison against it would have been meaningless.
+
+Launch is four gated steps, none of which can be skipped:
+
+1. Logo videos, then a disclaimer screen.
+2. A "Prey" title screen that waits for **any key** before it will build the menu.
+3. The main menu. The first item is **Continue**, which loads the previous save.
+4. Once the save has loaded, **another key press** is needed to enter the game.
+
+Only after step 4 is the game actually running and the camera real.
+
+**And the game slips back to its in-game menu whenever it loses focus.** There is
+no cvar for this -- a string search finds `sys_no_crash_dialog` and a family of
+`Dof_Focus*` and audio-focus entries, but nothing that disables pause-on-focus-loss.
+So it has to be worked with rather than turned off:
+
+- Arm everything first (observer, scene freeze, the edit), *then* click into the
+  game. The camera edit applies every frame and the capture is serviced from the
+  render thread, so both act on whatever frames follow.
+- A capture taken while the window is unfocused shows the menu, not the scene. If
+  a dump looks like a menu, that is what happened -- discard it and retake.
+- `t_Scale 0` freezes the simulation but not the menu state, so the freeze does
+  not make focus loss harmless.
+
 ## Preconditions
 
 1. Prey running, `PreyVR.dll` injected, `preyvr_smoke_result status=verified`.
