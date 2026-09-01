@@ -14,7 +14,7 @@ STEREO-SAFETY).
 
 | rung | route | PreyVR | who shipped it in-house |
 | --- | --- | --- | --- |
-| 1 | native scene re-entry | **append-after shape refuted 3/3 (F-014); interpose shape untested** | *nobody* |
+| 1 | native scene re-entry | **interpose survives: 13 frames at full rate, then deadlocks (F-015)** | *nobody* |
 | 2 | per-draw replay | untried | BioshockVR, FarCry2-vr |
 | 3 | alternate-eye / AFR | **proven working (A2b)** | ss2vr-work, SOMAVR |
 | 4 | draw-stream reconstruction | untried | -- |

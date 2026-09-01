@@ -678,3 +678,51 @@ the render view and not the secondary flag, is what A4 has wrong.
 does **not** refute rung 1, because the shape prior art actually prescribes --
 interposing, so both eyes render before the HUD is drawn once -- has never been
 built or tested here.
+
+---
+
+## F-015 - A6 interpose: 13 clean double-rendered frames, then a deadlock in the second call
+
+**Status:** a real advance. The corruption is gone; what remains is a different and more tractable
+failure.
+
+A6 hooks `RenderWorld` (R-054) and calls the original twice from inside it, so the frame still
+contains one `CSystem::Render`, one HUD draw and one present. Both calls take the game's own
+unmodified pass info -- zero-delta at the correct layer.
+
+| | A4 (append after) | A6 (interpose) |
+| --- | --- | --- |
+| single frame | HUD wireframe, then fatal, 3/3 | **survives, 144 fps, HUD intact** |
+| sustained | n/a | **13 double-rendered frames at full rate, then hangs** |
+| failure mode | memory corruption, access violation | **deadlock, no crash, process alive** |
+| where | later frame, per-frame UI table | **inside the second `RenderWorld` call** |
+
+**The frame placement was the fault, and prior art called it.**
+`STEREO_RENDER_ARCHITECTURE.md` recorded from FEAR VR and FC2VR -- before any of these runs -- that
+the flow must be both eye world-renders, then HUD once, then present once. A4 violated that and was
+punished with UI-table corruption. A6 obeys it and the corruption disappears entirely.
+
+**Both instruments built the same day earned their keep.** The wall-clock watchdog fired at 14 s
+(`deadline_expired`) where a frame-counted budget could not, because frames had stopped. And the
+breadcrumb named the sub-step: `step=interpose:eye1`, meaning the **second** `original()` call did
+not return. F-013's investigation had neither and could say only that four frames had completed.
+
+**The reading.** Thirteen frames succeed, then the fourteenth blocks inside the second call. Working
+then failing at a fixed count is the signature of **resource exhaustion or backpressure**, not of a
+malformed argument -- a malformed argument fails on the first frame. Twenty-six world renders in
+thirteen frames plausibly fills a bounded in-flight pool, a command-list ring or a job queue that is
+sized for one render per frame, and the next call waits on something that will never be freed.
+
+**Why that is encouraging rather than discouraging.** A deadlock on exhaustion is a *sharing*
+problem, and the fix for sharing is the thing A4 already built and A6 currently does not use: give
+the second pass **its own** `SRenderingPassInfo` and **its own** recursive render view (R-071,
+R-072). A4 had those and the wrong frame position; A6 has the right frame position and shares
+everything. Neither has yet been tried with both.
+
+**Next experiment, and it is a combination rather than a new idea:** A6's interpose position with
+A4's own pass info and recursive view on the second call. If the deadlock is contention over
+per-frame render resources, that is exactly what separating them addresses.
+
+**The watchdog did not recover the hang**, as its own comment predicted. It cleared the flag; the
+render thread stayed blocked and the process needed killing. That remains honest and remains a
+limitation, not a bug.
