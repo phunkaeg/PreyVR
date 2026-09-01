@@ -793,3 +793,58 @@ interpose result suggests it may well be reachable -- but because the remaining
 work is unbounded and the alternative is already proven, already understood, and
 shares its entire downstream with rung 1 anyway: per-eye capture, submission,
 frustum declaration and world scale are the same problems either way.
+
+---
+
+## F-016 - The secondary-pass flag buys survival by removing the work
+
+**Status:** rung 1 characterised completely. The flag is not a route to a full-quality second eye,
+and the playbook predicted exactly this before we tested it.
+
+Five configurations, all measured live on 2026-09-01:
+
+| config | prepare runs | real work? | frames | failure |
+| --- | --- | --- | --- | --- |
+| flag off, shared view (A6 m0) | **2x** | yes | 13-19 | hang, exhaustion |
+| flag off + RenderBegin (A7) | **2x** | yes | **27** | hang, exhaustion |
+| flag off, own recursive view (A6 m1) | 2x | - | 1 | crash `0xFDEEB0` |
+| flag on, same camera (A6 m3) | **1x** | **no (7%)** | **600 stable** | none |
+| flag on, eye camera (A6 m4) | 1x | tries | 2 | crash `0xF00994` |
+
+**The trade is now exact.** `FUN_1802114D0`, the per-frame prepare, runs only when
+`SRenderingPassInfo+0x01 == 0`. Leave the flag clear and the second pass does real work but runs
+prepare twice -- allocate twice, free once -- which is the exhaustion. Set the flag and prepare runs
+once, the leak vanishes and 600 frames pass, but the second pass no longer traverses or culls: it
+costs **7% uncapped** (301 -> 280 fps), which no real world render can.
+
+**Mode 4 proves the hollowness rather than refuting it.** The only change from mode 3 was giving the
+second pass a genuine eye camera, registered through the engine's own `vtable[0x608]`. It went from
+600 stable frames to crashing in 2, at a **third distinct site**: `FUN_180F00850` (RVA `0xF00994`),
+a resource-binding function that does
+`FUN_180F725E0(handle, 9, **(ptr + 0x38), 0x31)` -- and the faulting instruction is that double
+dereference, with `*(ptr+0x38)` holding `-1`. So with the same camera the second pass does nothing
+and survives; give it a different camera and it does enough to reach resource binding, where it meets
+state the skipped prepare never set up.
+
+Three distinct crash signatures now, each naming its own condition:
+`0xED835D` UI colour table (append-after placement), `0xFDEEB0` render against unprepared per-frame
+state, `0xF00994` resource binding against unprepared per-frame state.
+
+**The playbook called this in advance.** `17-teardown-fc2vr-native-stereo.md` has a heading reading
+*"Proof is not a vehicle: the engine's repeat render is usually a **reduced** one."* That is precisely
+what `+0x01` selects. Prey's own repeat render -- Looking Glass -- is a reduced pass, and the flag is
+the mechanism that reduces it. It was never going to carry a full-quality eye, and the heading said so
+before we spent three experiments learning it.
+
+**What remains for rung 1, stated honestly.** A full second eye needs the full prepare; running the
+full prepare twice leaks; `RenderBegin` between the passes slows the leak markedly (4 -> 27 frames)
+without stopping it. So the open question is narrow and specific: **what does `FUN_1802114D0`
+allocate that is freed once per frame rather than once per prepare, and is there a narrower release
+for it?**
+
+That is answerable without crashing anything, and the method is already written down as step 3 of the
+RE workflow: breakpoint `FUN_1802114D0` under x64dbg and trigger a **native** Looking Glass frame, to
+watch how many times Prey itself runs prepare when it renders the world twice, and what `+0x01`
+holds while it does. If native runs prepare once for its second render, our model is right and the
+remaining work is finding the release. If native re-runs it, a whole-frame reset is mandatory and A7
+is the shape to perfect rather than abandon.
