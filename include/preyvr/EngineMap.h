@@ -160,6 +160,11 @@ struct SystemLayout {
     // C3DEngine's primary base and needs no pointer adjustment.
     static constexpr std::uintptr_t processPointer = 0xAB0;
     static constexpr std::uintptr_t vtableRenderWorld = 0x18;
+    // ISystem vtable slot 10. The frame-bracket reset Crysis VR calls BETWEEN the
+    // two eyes on CryEngine 2, with the comment "need to call RenderBegin to reset
+    // state, otherwise we get messed up object culling and other issues".
+    // See docs/SYSTEM_VTABLE.md and docs/STEREO_RENDER_ARCHITECTURE.md.
+    static constexpr std::uintptr_t vtableRenderBegin = 0x050;
     static constexpr std::uintptr_t vtableRva = 0x1D9B9C8;
     static constexpr std::uintptr_t pointerRva = 0x224DA60;  // gEnv->pSystem
     // ISystem vtable slots; full table in docs/SYSTEM_VTABLE.md.

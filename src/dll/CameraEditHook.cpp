@@ -139,6 +139,15 @@ std::atomic<unsigned int> gInterposeBudget{0};
 std::atomic<unsigned long long> gInterposeFrames{0};
 std::atomic<bool> gInterposeActive{false};
 std::atomic<bool> gLoggedFirstInterpose{false};
+
+// A7: the Crysis VR shape. CSystem::RenderBegin between the two full renders.
+constexpr std::uintptr_t kRenderBeginRva = 0xE0BD80;
+using RenderBeginFn = void(__fastcall*)(void* system);
+std::atomic<RenderBeginFn> gRenderBegin{nullptr};
+std::atomic<bool> gFrameShape{false};
+std::atomic<unsigned int> gFrameShapeBudget{0};
+std::atomic<unsigned long long> gFrameShapeFrames{0};
+std::atomic<bool> gLoggedFirstFrameShape{false};
 // 0 shares everything (A6 as first run); 1 gives the second render its own
 // recursive render view; 2 also marks it a secondary pass (R-073).
 std::atomic<unsigned int> gInterposeMode{0};
@@ -608,7 +617,8 @@ DWORD WINAPI DoubleRenderWatchdog(LPVOID)
     // see, which is the whole reason this thread exists.
     while (gDoubleRender.load(std::memory_order_acquire) ||
            gSecondPass.load(std::memory_order_acquire) ||
-           gInterpose.load(std::memory_order_acquire)) {
+           gInterpose.load(std::memory_order_acquire) ||
+           gFrameShape.load(std::memory_order_acquire)) {
         const unsigned long long deadline = gDoubleRenderDeadlineMs.load(std::memory_order_acquire);
         if (deadline != 0 && GetTickCount64() >= deadline) {
             gDoubleRender.store(false, std::memory_order_release);
@@ -617,6 +627,8 @@ DWORD WINAPI DoubleRenderWatchdog(LPVOID)
             gSecondPassBudget.store(0, std::memory_order_release);
             gInterpose.store(false, std::memory_order_release);
             gInterposeBudget.store(0, std::memory_order_release);
+            gFrameShape.store(false, std::memory_order_release);
+            gFrameShapeBudget.store(0, std::memory_order_release);
             gStereoIpd.store(0.0f, std::memory_order_release);
             SetFrameCaptureTagOverride(-1);
             std::ostringstream expiry;
@@ -639,6 +651,41 @@ void __fastcall RenderWithCameraEdit(void* system)
     // any edit -- it needs this thread, not an armed camera.
     if (gProbeRenderViews.exchange(false, std::memory_order_acq_rel)) {
         RunRenderViewProbe(system);
+    }
+
+    // A7: the Crysis VR shape. Two full renders with RenderBegin between them.
+    if (gFrameShape.load(std::memory_order_acquire)) {
+        const RenderBeginFn renderBegin = gRenderBegin.load(std::memory_order_acquire);
+        const unsigned int remaining = gFrameShapeBudget.load(std::memory_order_acquire);
+        if (remaining == 0 || renderBegin == nullptr || original == nullptr) {
+            gFrameShape.store(false, std::memory_order_release);
+            lifecycle::Log("preyvr_frame_shape result=0 detail=budget_exhausted");
+            if (original != nullptr) {
+                original(system);
+            }
+            return;
+        }
+        gFrameShapeBudget.store(remaining - 1, std::memory_order_release);
+
+        Step("frame_shape:eye0");
+        original(system);
+        // The line the Crysis VR source calls not optional. Without it the second
+        // pass inherits state the first left behind, and culling breaks first.
+        Step("frame_shape:render_begin");
+        renderBegin(system);
+        Step("frame_shape:eye1");
+        original(system);
+        Step("frame_shape:done");
+
+        const unsigned long long done =
+            gFrameShapeFrames.fetch_add(1, std::memory_order_relaxed) + 1;
+        bool expectedShape = false;
+        if (gLoggedFirstFrameShape.compare_exchange_strong(expectedShape, true)) {
+            std::ostringstream line;
+            line << "preyvr_frame_shape result=0 detail=first_frame done=" << done;
+            lifecycle::Log(line.str());
+        }
+        return;
     }
 
     // A4. Its own branch and its own early return, so it cannot interact with
@@ -1168,6 +1215,79 @@ bool EnsureRenderWorldHook()
          << kRenderWorldRva << " target=0x" << address;
     lifecycle::Log(line.str());
     return true;
+}
+
+DWORD SetFrameShapeStereo(unsigned int frameBudget)
+{
+    if (frameBudget == 0) {
+        gFrameShape.store(false, std::memory_order_release);
+        gFrameShapeBudget.store(0, std::memory_order_release);
+        lifecycle::Log("preyvr_frame_shape result=0 detail=disarmed");
+        return static_cast<DWORD>(CameraEditStatus::ready);
+    }
+    if (frameBudget > 600) {
+        lifecycle::Log("preyvr_frame_shape result=refused detail=budget_too_large");
+        return static_cast<DWORD>(CameraEditStatus::failed);
+    }
+    if (!EnsureHook()) {
+        return static_cast<DWORD>(CameraEditStatus::unavailable);
+    }
+
+    // RenderBegin behind its own byte gate, taken from the landmark table so
+    // there is one definition of what it should look like.
+    if (gRenderBegin.load(std::memory_order_acquire) == nullptr) {
+        const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+        if (preyDll == nullptr) {
+            return static_cast<DWORD>(CameraEditStatus::unavailable);
+        }
+        const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+        const engine::Landmark* landmark = nullptr;
+        for (const auto& candidate : engine::Landmarks()) {
+            if (candidate.id == "system.render_begin") {
+                landmark = &candidate;
+                break;
+            }
+        }
+        if (landmark == nullptr || landmark->rva != kRenderBeginRva) {
+            lifecycle::Log("preyvr_frame_shape result=unavailable detail=landmark_missing");
+            return static_cast<DWORD>(CameraEditStatus::unavailable);
+        }
+        const auto address = base + landmark->rva;
+        if (!PrologueMatches(address, landmark->expected.data(), landmark->expected.size())) {
+            lifecycle::Log("preyvr_frame_shape result=unavailable detail=render_begin_prologue");
+            return static_cast<DWORD>(CameraEditStatus::unavailable);
+        }
+        gRenderBegin.store(reinterpret_cast<RenderBeginFn>(address), std::memory_order_release);
+    }
+
+    gFrameShapeBudget.store(frameBudget, std::memory_order_release);
+    const unsigned long long allowanceMs =
+        2000ull + static_cast<unsigned long long>(frameBudget) * 40ull;
+    gDoubleRenderDeadlineMs.store(GetTickCount64() + allowanceMs, std::memory_order_release);
+    gFrameShape.store(true, std::memory_order_release);
+
+    bool expected = false;
+    if (gDoubleRenderWatchdogRunning.compare_exchange_strong(expected, true)) {
+        const HANDLE watchdog = CreateThread(nullptr, 0, DoubleRenderWatchdog, nullptr, 0, nullptr);
+        if (watchdog == nullptr) {
+            gDoubleRenderWatchdogRunning.store(false, std::memory_order_release);
+            gFrameShape.store(false, std::memory_order_release);
+            gFrameShapeBudget.store(0, std::memory_order_release);
+            lifecycle::Log("preyvr_frame_shape result=refused detail=watchdog_thread_failed");
+            return static_cast<DWORD>(CameraEditStatus::failed);
+        }
+        CloseHandle(watchdog);
+    }
+    std::ostringstream line;
+    line << "preyvr_frame_shape result=0 detail=armed frameBudget=" << frameBudget
+         << " deadlineMs=" << allowanceMs;
+    lifecycle::Log(line.str());
+    return static_cast<DWORD>(CameraEditStatus::armed);
+}
+
+unsigned long long FrameShapeFrameCount()
+{
+    return gFrameShapeFrames.load(std::memory_order_acquire);
 }
 
 DWORD SetInterposeStereo(unsigned int frameBudget, unsigned int mode)

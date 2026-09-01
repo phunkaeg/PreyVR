@@ -257,6 +257,36 @@ DWORD SetInterposeStereo(unsigned int frameBudget, unsigned int mode);
 
 unsigned long long InterposeFrameCount();
 
+// **A7 -- the faithful Crysis VR shape, and the one thing every attempt so far
+// has been missing.**
+//
+// Crysis VR (fholger) renders the world twice per frame on CryEngine 2 -- the
+// same lineage as Prey -- with this loop:
+//
+//     RenderSingleEye(0, renderFunc, pSystem);
+//     pSystem->RenderBegin();          // <-- BETWEEN THE EYES
+//     RenderSingleEye(1, renderFunc, pSystem);
+//
+// The comment on that middle line reads: "need to call RenderBegin to reset
+// state, otherwise we get messed up object culling and other issues."
+//
+// A3 was this shape **minus** that call, and it wedged. A6 mode 0 was the same
+// omission one layer down: two world renders with nothing between them, which ran
+// 13-19 clean frames and then exhausted -- and A4 crashed inside a per-frame
+// *culling* structure, which is the exact symptom that comment names.
+//
+// CSystem::RenderBegin is ISystem vtable slot 10 (+0x050), RVA 0xE0BD80, and had
+// been sitting in docs/SYSTEM_VTABLE.md unused since that table was built. It is
+// now landmark 33, system.render_begin, and shares the cmp byte [rcx+0x9D7] guard
+// with CSystem::Render, which is what confirms it is the sibling frame-bracket
+// function on the same object.
+//
+// The first test is zero-delta: both renders use the game camera unmodified, so
+// the only variable is whether the reset makes repetition survivable.
+DWORD SetFrameShapeStereo(unsigned int frameBudget);
+
+unsigned long long FrameShapeFrameCount();
+
 DWORD CameraEditStatusValue();
 
 // Counts frames on which the edit was actually applied and the restore verified

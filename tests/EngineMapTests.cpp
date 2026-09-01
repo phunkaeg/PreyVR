@@ -39,7 +39,7 @@ int main()
     using preyvr::engine::ArkPlayerLayout;
     using preyvr::engine::ArkPlayerTargetSelectorLayout;
 
-    Require(preyvr::engine::Landmarks().size() == 32, "all promoted runtime landmarks are typed");
+    Require(preyvr::engine::Landmarks().size() == 33, "all promoted runtime landmarks are typed");
 
     // The camera layouts are load-bearing for the per-eye lane, so assert the
     // relationships that a transcription slip would break -- not just the values.

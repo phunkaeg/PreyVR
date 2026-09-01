@@ -559,6 +559,20 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetInterposeFrameCount()
     return preyvr::dll::InterposeFrameCount();
 }
 
+// A7: the Crysis VR shape -- two full CSystem::Render calls with
+// CSystem::RenderBegin between them. That middle call is the one thing A3 and A6
+// were both missing, and the Crysis VR source names its absence as "messed up
+// object culling", which is exactly the symptom A4 crashed inside.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetFrameShapeStereo(unsigned int frameBudget)
+{
+    return preyvr::dll::SetFrameShapeStereo(frameBudget);
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetFrameShapeFrameCount()
+{
+    return preyvr::dll::FrameShapeFrameCount();
+}
+
 // The sub-step the stereo path was last in.
 //
 // **Exported because F-014 proved a breadcrumb readable on only one failure path

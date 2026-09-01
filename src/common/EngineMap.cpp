@@ -192,6 +192,14 @@ constexpr std::array<std::uint8_t, 23> kRenderWorld = {
     0x48, 0x81, 0xEC, 0x80, 0x00, 0x00, 0x00, 0x44, 0x8B, 0xFA,
     0x48, 0x8B, 0xF1,
 };
+// R-074 CSystem::RenderBegin, ISystem vtable slot 10 (+0x050). Stops before the
+// jne's rel32, exactly as the CSystem::Render prologue does. The `cmp byte
+// [rcx+0x9D7]` is the same guard CSystem::Render carries, which is what confirms
+// this is the sibling frame-bracket function on the same object.
+constexpr std::array<std::uint8_t, 16> kSystemRenderBegin = {
+    0x40, 0x53, 0x48, 0x83, 0xEC, 0x20, 0x80, 0xB9,
+    0xD7, 0x09, 0x00, 0x00, 0x00, 0x48, 0x8B, 0xD9,
+};
 // R-034 CRenderView::CollectLookingGlassInformation. Gated on
 // m_bLookingGlassEnabled at +0xFC0. Stops before a RIP-relative operand.
 constexpr std::array<std::uint8_t, 31> kCollectLookingGlassInfo = {
@@ -231,7 +239,7 @@ constexpr std::array<std::uint8_t, 7> kSystemSetViewCamera = {
     0x48, 0x81, 0xC1, 0x88, 0x07, 0x00, 0x00,
 };
 
-const std::array<Landmark, 32> kLandmarks = {{
+const std::array<Landmark, 33> kLandmarks = {{
     {"renderer.begin", "CD3D9Renderer::RT_BeginFrame", 0xF7D710, kBeginRendererScene},
     {"renderer.end", "CD3D9Renderer::RT_EndFrame", 0xF7E210, kEndRendererScene},
     {"renderer.present", "RT_EndFrame Present dispatch", 0xF7E48A, kPresentDispatch},
@@ -263,6 +271,7 @@ const std::array<Landmark, 32> kLandmarks = {{
     {"pass.create_general", "SRenderingPassInfo::CreateGeneralPassRenderingInfo",
      0x1E5B30, kCreateGeneralPassRenderingInfo},
     {"world.render_world", "C3DEngine::RenderWorld", 0x21F520, kRenderWorld},
+    {"system.render_begin", "CSystem::RenderBegin", 0xE0BD80, kSystemRenderBegin},
     {"system.get_view_camera", "CSystem::GetViewCamera", 0xDF2BB0, kSystemGetViewCamera},
     {"system.set_view_camera", "CSystem::SetViewCamera", 0xDF4560, kSystemSetViewCamera},
 }};
