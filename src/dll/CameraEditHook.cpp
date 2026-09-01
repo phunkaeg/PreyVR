@@ -657,6 +657,16 @@ DWORD SetDoubleRenderStereo(float ipdMetres, float halfFovDegrees, unsigned int 
 
 DWORD ProbeRenderViews()
 {
+    // The probe runs inside the render hook, so the hook has to exist. Arming it
+    // without this left the flag set and the status stuck at notRun on a live
+    // host -- indistinguishable from "ran and found nothing" until the log showed
+    // the hook had never been installed.
+    if (!EnsureHook()) {
+        gRenderViewProbeStatus.store(static_cast<DWORD>(RenderViewProbeStatus::unresolved),
+                                     std::memory_order_release);
+        lifecycle::Log("preyvr_render_view_probe result=unresolved detail=hook_unavailable");
+        return static_cast<DWORD>(CameraEditStatus::unavailable);
+    }
     gRenderViewProbeStatus.store(static_cast<DWORD>(RenderViewProbeStatus::notRun),
                                  std::memory_order_release);
     gProbeRenderViews.store(true, std::memory_order_release);
