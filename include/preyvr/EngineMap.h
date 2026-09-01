@@ -125,6 +125,19 @@ struct CameraLayout {
 struct PassInfoLayout {
     static constexpr std::size_t size = 0x40;
     static constexpr std::uintptr_t threadSlot = 0x00;       // byte
+    // R-073: the engine's own "this is a secondary pass" flag.
+    //
+    // CreateGeneralPassRenderingInfo zeroes it as its first statement, and
+    // RenderWorld (R-054) plus its dispatch guard roughly nine sites on it being
+    // zero -- the frame counter at C3DEngine+0xC6C, UpdateRenderingCamera
+    // (R-057), the default-material setup, the CVar snapshot, the occlusion and
+    // bounding-box update, and more. The only work outside those guards is the
+    // world render dispatch itself.
+    //
+    // **Setting it is how a second pass avoids advancing once-per-frame state.**
+    // That is the engine's own answer to BN-SFX-001, and it is better than any
+    // gate we could bolt on: the skipping is the engine's, not ours.
+    static constexpr std::uintptr_t secondaryPassFlag = 0x01;   // byte
     static constexpr std::uintptr_t flags = 0x04;
     static constexpr std::uintptr_t zoom = 0x08;
     static constexpr std::uintptr_t frameId = 0x0C;

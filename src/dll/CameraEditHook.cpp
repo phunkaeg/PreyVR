@@ -381,6 +381,16 @@ bool RunSecondPass(void* system)
     // Swapping the pointer alone would leave the pass carrying state derived
     // from a view it no longer references, so both are re-driven on the
     // recursive view.
+    // **Mark it secondary before anything else (R-073).** RenderWorld and its
+    // dispatch guard about nine once-per-frame sites on this byte being zero:
+    // the frame counter, UpdateRenderingCamera, the default-material setup, the
+    // CVar snapshot, the occlusion and bbox update. Setting it makes the engine
+    // skip its own per-frame work and render only the world -- which is exactly
+    // what a second eye needs, and is the engine's own mechanism rather than a
+    // gate we invented.
+    Step("second_pass:mark_secondary");
+    passInfo[engine::PassInfoLayout::secondaryPassFlag] = 1;
+
     Step("second_pass:swap_render_view");
     std::memcpy(passInfo.data() + engine::PassInfoLayout::renderView, &recursiveView,
                 sizeof(recursiveView));

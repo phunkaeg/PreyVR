@@ -102,6 +102,18 @@ Separate from this project's own `graphify-out/`. Use it for **"has another proj
 graphify query "<question>" --graph "D:\Dev Debug\VR Modding\cross-engine-graph\graphify-out\reconciled-graph.json" --budget 900
 ```
 
+> **⚠ An empty result from this graph is NOT a negative result. Verified 2026-09-01:**
+> it contains **1,328 nodes and ZERO edges**, and covers **SS2VR, BioshockVR and SOMAVR only**.
+> `Swat4-VR`, `FarCry2-vr`, `PreyVR`, `DishonoredVR` and `Sims4VR` return **zero hits because they
+> are not indexed** — as do `9On12`, `D3D12`, `adapterLuid` and `xr-sim`. A DishonoredVR session spent
+> five days on an architecture argument that Swat4-VR had already settled by experiment, and the query
+> that would have found it returns nothing here.
+>
+> **So: silence from this graph means "not indexed", never "nobody hit this."** When it comes back
+> empty, fall through to `D:\Dev Debug\VR Modding\docs\symptom-index.md` and
+> `cross-project-index.md`, and then to the sibling project's own `docs/FAILURE_REGISTRY.md` — which
+> is where the answers actually live.
+
 Rules:
 
 - **It tells you WHERE a problem was solved, never what the answer was.** Every node carries the document
