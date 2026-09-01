@@ -465,6 +465,22 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetStereoEyeLock(unsigned int eye)
     return preyvr::dll::SetStereoEyeLock(eye);
 }
 
+// Rung 3: build each eye by translation alone and keep Prey's own projection,
+// so the frustum we declare to OpenXR is the frustum the game actually drew.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetNativeProjection(unsigned int enabled)
+{
+    return preyvr::dll::SetNativeProjection(enabled);
+}
+
+// Pointer-taking variant, per F-009 - Frida's NativeFunction aborts calls into
+// this DLL, so anything that must be driven from a probe needs a thread-callable
+// shape.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetNativeProjectionPtr(void* enabled)
+{
+    return preyvr::dll::SetNativeProjection(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
 // Which eye the most recent render used, or -1.
 extern "C" __declspec(dllexport) int PreyVR_GetLastRenderedEye()
 {

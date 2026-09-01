@@ -96,3 +96,53 @@ So each MT/RT slot owns its own Default *and* its own Recursive view -- four vie
 | R-073 | `PreyDll.dll` | `SRenderingPassInfo+0x01` | The engine's own **secondary-pass flag**: when non-zero, `RenderWorld` (R-054) and its dispatch skip essentially all once-per-frame work and perform only the world render | `CreateGeneralPassRenderingInfo` (R-071) zeroes it as its first statement (`mov byte [rcx+1],0`, part of the `pass.create_general` landmark bytes); `RenderWorld` and `FUN_18021E170` then test `*(char*)(passInfo+1) == 0` at roughly nine sites | Ghidra decompilation of R-054 (`0x21F520`) and its dispatch (`0x21E170`), 2026-09-01 | static-only | **This is the engine's own answer to BN-SFX-001, and it is better than any gate we could add, because the skipping is the engine's rather than ours.** Guarded on the flag being zero: the frame counter at `C3DEngine+0xC6C`; `UpdateRenderingCamera` (R-057) -- so a secondary pass does **not** write the global rendering camera (R-060) or call `SetCamera`; the default-material setup; the CVar snapshot into `C3DEngine+0x2F/+0x17C/+0x30/+0x184`; an occlusion/bounding-box update and `FUN_1801FF450`; `FUN_1802114D0`; and a flag clear at `+0xBD1`. The **only** work outside those guards is `C3DEngine->vtable[0x688](nRenderFlags, passInfo)`, the world render dispatch itself. So a second pass marked secondary renders the world from the camera at `+0x18` into the view at `+0x20` while advancing none of the per-frame state whose reuse wedged the engine in F-013. Corroborates the reading of `e_Recursion` in R-063 as dormant-but-present recursion machinery. **`static-only`:** the control flow is read, not executed. A4 now sets this byte, and the A5 zero-delta control is what turns it into `reproduced`. |
 
 Confidence values: `observed`, `reproduced`, `static-only`, `hypothesis`, or `invalidated`.
+
+## R-074 -- the renderer vtable, and the end of the RT_RenderScene hunt
+
+**RVA `0x1dd2e08`** is `CD3D9Renderer`'s vtable. Found by searching for what
+*points at* `GetRenderViewForThread` (R-032, RVA `0xFE5620`, slot `+0x198`) rather
+than by walking objects, and confirmed two independent ways that agree exactly:
+
+- Ghidra's static xrefs: `181dd2fa0` and `181dd7cb0` [DATA]
+- a live `Memory.scanSync` of the loaded image: the same two, at the same RVAs
+
+Two tables carry that pointer. `0x1dd2e08` is the real one -- every neighbouring
+slot is a distinct function. `0x1dd7b18` is a stub table where most slots share
+`0x1b9ae62`, which is the shape of a null renderer or an unimplemented base.
+
+Neighbouring slots on the real table, for whoever picks this up:
+
+| slot | RVA | |
+| --- | --- | --- |
+| +0x180 | `0xf0c850` | |
+| +0x188 | `0xf7fe70` | |
+| +0x190 | `0xf0b250` | |
+| **+0x198** | **`0xfe5620`** | `GetRenderViewForThread` (R-032) |
+| +0x1a0 | `0xf53e70` | |
+| +0x1a8 | `0xf53760` | |
+| +0x1b0 | `0x16d2100` | |
+| +0x1b8 | `0xf77810` | |
+| +0x1c0 | `0xfe70f0` | |
+| +0x1c8 | `0xfe57a0` | |
+
+### The hunt is stopped, not finished
+
+`RT_RenderScene` was **not** found, and the routes that would normally find it are
+closed rather than merely untried:
+
+- **Symbols: none.** All 76,922 functions are `FUN_`.
+- **Strings: none.** `RenderScene` does not appear anywhere in the binary, so
+  Arkane's build kept no profile labels for it.
+- **Sampling: too sparse to converge.** Sampling thread PCs across the live
+  process (a pure read -- no hooks in a hot path) put nearly all PreyDll time in
+  two threads, but yielded 29 samples over 153 threads, almost all singletons.
+  Enumerating thread contexts suspends the process, so this cannot simply be run
+  harder without stuttering the game.
+
+One incidental result is worth keeping: the hottest renderer site sampled,
+`0xf00b80`, is inside the same function as the mode-4 crash at `0xF00994` (F-016).
+That is one sample and proves nothing on its own, but it is a place to look first
+if that crash is revisited.
+
+**This blocks only rung 1b**, which needs a submission seam to double. It does not
+block rung 3, which is the selected route and needs no part of it.

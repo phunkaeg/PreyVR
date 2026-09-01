@@ -289,9 +289,13 @@ std::vector<std::uint8_t> MakeCameraBlock(
 
 void TestSymmetricCameraGivesSymmetricTangents()
 {
-    // Prey's live world camera: 88 degrees horizontal at 2560x1440. The stored
-    // fov is VERTICAL, so the expected values are computed from the engine's own
-    // construction rather than from the function under test.
+    // A synthetic 55-degree vertical camera. The stored fov is VERTICAL, so the
+    // expected values are computed from the engine's own construction rather
+    // than from the function under test.
+    //
+    // (This comment used to describe these numbers as Prey's live camera at "88
+    // degrees horizontal". They are not Prey's, and 88 is not horizontal -- see
+    // TestLiveMeasuredCameraDeclaresTheSliderValue for the real ones.)
     const float fov = 0.9599311f;            // ~55 degrees vertical
     const float ratio = 1.7777778f;          // 16:9
     const auto camera = MakeCameraBlock(fov, ratio, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -389,6 +393,73 @@ void TestCameraConversionFailsClosed()
         "a frustum whose edges have crossed is refused");
 }
 
+// The live camera, measured 2026-09-02 with the in-game FOV slider at 120.
+//
+// **This is the one test here whose numbers are ground truth rather than
+// construction.** Every other case builds a camera from chosen fields and checks
+// the maths round-trips, which cannot catch a wrong convention -- if we read the
+// vertical fov as horizontal, a self-consistent test still passes. These fields
+// were read out of Prey's live CSystem::m_ViewCamera, and the horizontal angle
+// they produce is checked against a number the engine never told us: what the
+// player's settings menu says.
+//
+// That is what makes it a real check. 120.000 falling out of fields that never
+// contain 120 is only possible if the convention is right.
+void TestLiveMeasuredCameraDeclaresTheSliderValue()
+{
+    const float fov = 1.5447415f;    // 88.507 degrees, VERTICAL
+    const float ratio = 1.7777778f;  // 2560x1440
+    const auto camera = MakeCameraBlock(fov, ratio, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f);
+
+    const auto view = TangentsFromCamera(camera);
+    Require(view.has_value(), "the live camera converts");
+
+    // tan(60 degrees) is the square root of 3, which is what a 120-degree
+    // horizontal field gives. Checked as a tangent because that is what the
+    // submission path carries.
+    Require(Near(view->tanRight, 1.7320508f, 1e-4f), "the right edge is tan(60)");
+    Require(Near(view->tanLeft, -1.7320508f, 1e-4f), "the left edge mirrors it");
+    Require(Near(view->tanUp, 0.9742790f, 1e-4f), "the top edge matches the live read");
+    Require(Near(view->tanDown, -0.9742790f, 1e-4f), "the bottom edge mirrors it");
+
+    const auto angles = AnglesFromTangents(*view);
+    const float toDegrees = 57.29577951f;
+    Require(Near((angles.angleRight - angles.angleLeft) * toDegrees, 120.0f, 1e-2f),
+        "the declared horizontal field is the 120 the player's slider reads");
+    Require(Near((angles.angleUp - angles.angleDown) * toDegrees, 88.507f, 1e-2f),
+        "and the vertical is the 88.5 the engine stores");
+}
+
+// Rung 3's load-bearing invariant: the frustum does not depend on where the
+// camera is.
+//
+// Rung 3 builds each eye by translating the game's camera and leaving its
+// projection alone, then declares one frustum for both eyes. That is only honest
+// if moving the camera cannot change the frustum it declares -- otherwise the two
+// eyes would need two declarations and sharing one would be a lie about the
+// right eye.
+//
+// It holds because TangentsFromCamera reads only projection fields and never the
+// pose. Cheap to pin, and expensive to discover broken from inside a headset,
+// which is the only place the symptom would show.
+void TestFrustumIsIndependentOfCameraPose()
+{
+    auto atOrigin = MakeCameraBlock(1.5447415f, 1.7777778f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f);
+    auto translated = atOrigin;
+    // Half a 64 mm IPD along the camera's right axis, plus a large world offset,
+    // written into the matrix' translation columns.
+    const stereo::Matrix34 moved = stereo::MatrixFromPose(
+        Pose{Quaternion{0.0f, 0.0f, 0.0f, 1.0f}, Vec3{0.032f, 1200.0f, -450.0f}});
+    Require(stereo::WriteMatrix(translated, moved), "the moved camera is writable");
+
+    const auto a = TangentsFromCamera(atOrigin);
+    const auto b = TangentsFromCamera(translated);
+    Require(a.has_value() && b.has_value(), "both poses convert");
+    Require(a->tanLeft == b->tanLeft && a->tanRight == b->tanRight &&
+            a->tanDown == b->tanDown && a->tanUp == b->tanUp,
+        "translating the camera leaves the declared frustum bit-identical");
+}
+
 void TestAnglesAreArctangents()
 {
     EyeView view{};
@@ -418,6 +489,8 @@ int main()
     TestNearPlaneScalesTheAsymmetry();
     TestRoundTripThroughTheEngineFormula();
     TestCameraConversionFailsClosed();
+    TestLiveMeasuredCameraDeclaresTheSliderValue();
+    TestFrustumIsIndependentOfCameraPose();
     TestAnglesAreArctangents();
     TestSymmetricScaleMakesBothEyesIdentical();
     TestAsymmetricScaleMirrorsTheEyes();

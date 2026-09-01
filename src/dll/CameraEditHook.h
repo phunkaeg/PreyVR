@@ -91,6 +91,24 @@ DWORD SetStereoAsymmetry(float outerScale);
 // 0 locks left, 1 locks right, any other value returns to alternating.
 DWORD SetStereoEyeLock(unsigned int eye);
 
+// Builds the per-eye camera by translation alone, inheriting Prey's own
+// projection rather than overwriting it with a synthetic one.
+//
+// **This is what makes the declared frustum honest.** PreyVR cannot change what
+// Prey renders, so the frustum it declares to OpenXR has to be the one Prey drew
+// with -- measured 2026-09-02 as 120 degrees horizontal by 88.507 vertical, zero
+// asymmetry, confirmed against the player's FOV slider. Overwriting the eye
+// camera's projection with a synthetic half-FOV breaks that correspondence, and
+// breaks it invisibly: on a monitor the image merely looks a little wide, and it
+// is only in a headset that it reads as wrong depth.
+//
+// Both eyes therefore share one frustum and differ by translation, which is also
+// the only difference A2b ever measured.
+//
+// Off by default, so every measurement taken before this existed still means what
+// it meant when it was taken.
+DWORD SetNativeProjection(unsigned int enabled);
+
 // Which eye the most recent render used, or -1.
 //
 // **Reported for observation only -- do not identify a capture by it.** It is

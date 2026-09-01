@@ -62,6 +62,33 @@ std::atomic<unsigned long long> gEyeCounter{0};
 std::atomic<int> gLastEye{-1};
 std::atomic<int> gEyeLock{-1};   // -1 = alternate
 std::atomic<float> gAsymmetry{1.1f};
+
+// Rung 3: inherit Prey's own projection instead of overwriting it.
+//
+// **Why this exists.** Every eye camera below this point was built by replacing
+// the engine's fov, projection ratio and asymmetry with synthetic values. That
+// was the right thing to do while the real frustum was unmeasured -- a synthetic
+// half-FOV exercises the asymmetry path, which is exactly what A2b needed.
+//
+// It is the wrong thing to do once the frustum is known, and as of 2026-09-02 it
+// is known: Prey renders at tangents -1.732051/+1.732051 horizontally and
+// -0.974279/+0.974279 vertically with all four asymmetry fields zero, confirmed
+// against the player's own 120-degree FOV slider.
+//
+// PreyVR is injected and cannot change what Prey renders. Its pixels come from
+// the game's frustum, so that frustum is what must be declared to OpenXR. If the
+// eye camera's projection has been overwritten with a synthetic one, **the image
+// no longer matches the declaration** -- and a mismatch between what is drawn and
+// what is claimed is not visible on a monitor, only inside a headset, where it
+// reads as warped depth rather than as a bug.
+//
+// So when this is set the eye camera differs from the engine's by translation
+// alone. Parallax comes from the eye offset, which is the only thing A2b actually
+// measured, and the projection is left exactly as the engine built it.
+//
+// Off by default: leaving it off keeps every prior measurement meaning what it
+// meant when it was taken.
+std::atomic<bool> gNativeProjection{false};
 std::atomic<bool> gDoubleRender{false};
 std::atomic<unsigned int> gDoubleRenderBudget{0};
 
@@ -195,6 +222,13 @@ bool BuildSyntheticEye(
     const Pose eyePose = stereo::OffsetInLocalFrame(basePose, offset);
     if (!stereo::WriteMatrix(edited, stereo::MatrixFromPose(eyePose))) {
         return false;
+    }
+
+    // Translation only, and nothing else touched. The engine's fov, projection
+    // ratio and asymmetry stay exactly as it built them, so the rendered frustum
+    // is still the one TangentsFromCamera reads and declares.
+    if (gNativeProjection.load(std::memory_order_acquire)) {
+        return true;
     }
 
     // Mirrored asymmetry, the way a headset actually reports it: the outer edge
@@ -1532,6 +1566,17 @@ DWORD SetStereoEyeLock(unsigned int eye)
     std::ostringstream line;
     line << "preyvr_camera_edit result=0 detail=eye_lock eye="
          << (value < 0 ? "alternate" : (value == 0 ? "left" : "right"));
+    lifecycle::Log(line.str());
+    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+
+DWORD SetNativeProjection(unsigned int enabled)
+{
+    const bool on = enabled != 0u;
+    gNativeProjection.store(on, std::memory_order_release);
+    std::ostringstream line;
+    line << "preyvr_camera_edit result=0 detail=native_projection enabled="
+         << (on ? "1" : "0");
     lifecycle::Log(line.str());
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
 }
