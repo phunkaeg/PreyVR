@@ -592,3 +592,43 @@ next crash of this kind will name its sub-step.
 no restore ever failed. The failure is in what the recursive view needs before it can be rendered
 into -- which is a narrower and more tractable question than A3's silent wedge, and it is the first
 time this class of failure has come with a function, a structure offset and a call stack.
+
+### F-014 addendum — the visible symptom, and what the caller says
+
+The user captured the frame *before* the crash: coloured bounding boxes and white
+wireframe quads drawn over the scene. Not driver garbage -- **debug/parameter
+geometry drawn with wrong colours**, which is the same fault one stage earlier
+than the access violation.
+
+The caller confirms it. `FUN_180F20390`, the frame directly above the crash:
+
+```c
+if ((DAT_182b29588 != -0x90) && (*(short *)(DAT_182b29588 + 0x110) != -1)) {
+    if ((*(byte *)(DAT_182b29588 + 0x88) & 2) == 0) {
+        FUN_180ed82d0(&DAT_182b24e80, *(short *)(DAT_182b29588 + 0x110), &local_18);
+    } else { /* four floats read inline */ }
+    fVar1 = 1.0 - local_c;
+    param_1[3] = local_c;                  // alpha
+    param_1[1] = fVar1 * local_14;         // premultiplied g
+    *param_1  = fVar1 * local_18;          // premultiplied r
+    param_1[2] = fVar1 * local_10;         // premultiplied b
+```
+
+So the crashing function is a **colour lookup by 16-bit index into a per-frame
+table**, and the caller already guards the *index* against `-1`. The `-1` that
+kills it is therefore **inside** the lookup -- the chunk-chain pointer -- exactly
+as the earlier reading proposed, and not a bad index handed in.
+
+**The refined diagnosis.** Appending a second `RenderWorld` desynchronises a
+per-frame indexed table selected by the render slot at `+0x499C`. The visible
+consequence is wrong colours on debug/parameter geometry; the fatal one is a walk
+off the end of its chunk chain. Damage is therefore **cumulative and visible
+before it is fatal**, which is worth knowing: a run that "looks like it worked"
+for a second is already corrupt.
+
+**This tightens the connection to R-073 rather than loosening it.** The secondary
+-pass flag makes the engine skip its per-frame setup. If any of that setup is what
+populates or resets this table for the current slot, then a pass marked secondary
+renders against a table nothing prepared for it. That remains a hypothesis -- the
+specific function that fills this table has not been identified -- but it is now a
+hypothesis about one named table rather than about "engine state" in general.
