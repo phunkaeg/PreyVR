@@ -1523,3 +1523,42 @@ rejects that outright.
 **Verification:** clean build with no warnings, 19/19 tests. Nothing has been run
 against a live Prey today — the game was closed before the session began, so
 every protocol here is written and unexercised.
+
+## 2026-09-01 - The renderer RT-function vtable, and the RT_RenderScene hunt
+
+**Why this matters:** `CRYENGINE_SOURCE_FINDINGS.md` establishes that Crytek's own
+stereo traverses the world once and submits the render view twice. That makes
+`CD3D9Renderer::RT_RenderScene` the seam for rung 1b, and it is the target this log
+named on 2026-08-15 and never followed.
+
+**Found: the vtable it lives in.** `RT_EndFrame` (`0xF7E210`) has four DATA xrefs
+and no code callers, because it is virtually dispatched. One xref, `0x181DD36D8`,
+is a vtable slot. Reading around it resolves cleanly:
+
+| slot address | target | identity |
+| --- | --- | --- |
+| `0x181DD36D0` | `0x180F7D710` | **`RT_BeginFrame`** (R-002, already gated) |
+| `0x181DD36D8` | `0x180F7E210` | **`RT_EndFrame`** (R-004, already gated) |
+| `0x181DD36E0` | `0x180F7DF50` | unidentified |
+| `0x181DD36E8` | `0x180F7E820` | unidentified |
+| `0x181DD36F0` | `0x180F7EB20` | **eliminated** -- resolution/viewport change |
+| `0x181DD3700` | `0x180F532A0` | unidentified |
+| `0x181DD3710` | `0x180F7E9E0` | unidentified |
+| (nearby) | `0x180F7E920` | **eliminated** -- swapchain (`+0xAE88`), bumps a per-frame counter at `frameSlot*0x328 + 0x4C94` |
+
+Two known-good anchors in one vtable is the systematic path: walk the remaining
+slots and identify by **shape**, never by declaration order -- the FEAR VR prior art
+records a case where slot 17 was a one-argument alias forwarding to the real
+implementation in slot 19.
+
+**The shape to match.** 5.x declares `RT_RenderScene(CRenderView*)`, one argument.
+But this log already recorded Prey's as
+`RT_RenderScene(CRenderView*, int, SThreadInfo&, void(*)())`, which is the **CE3.8**
+form -- consistent with Prey being a CE3/4-era fork, and another instance of the
+rule that the version gap moves symbols, not concepts. So the target is a function
+of roughly five parameters (including `this`) that **calls one of its own
+arguments** -- the `RenderFunc` callback. That callback invocation is the most
+distinctive signature available and is what to grep the decompilations for.
+
+**Not yet found.** Two of the eight adjacent slots eliminated. Left here rather
+than guessed at, and the remaining work is mechanical rather than uncertain.
