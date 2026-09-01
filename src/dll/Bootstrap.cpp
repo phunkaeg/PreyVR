@@ -538,9 +538,20 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetSecondPassStatus()
 //
 // The first test is zero-delta: both calls take the game's own unmodified pass
 // info, so the only variable is whether the call can be repeated at this point.
-extern "C" __declspec(dllexport) DWORD PreyVR_SetInterposeStereo(unsigned int frameBudget)
+// args[0] = frame budget, args[1] = mode (0 share all, 1 own recursive view,
+// 2 own view plus secondary flag). Pointer-taking so it runs on a real thread.
+struct PreyVRInterposeArgs {
+    unsigned int frameBudget;
+    unsigned int mode;
+};
+
+extern "C" __declspec(dllexport) DWORD PreyVR_SetInterposeStereoPtr(
+    const PreyVRInterposeArgs* args)
 {
-    return preyvr::dll::SetInterposeStereo(frameBudget);
+    if (args == nullptr) {
+        return static_cast<DWORD>(preyvr::dll::CameraEditStatus::failed);
+    }
+    return preyvr::dll::SetInterposeStereo(args->frameBudget, args->mode);
 }
 
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetInterposeFrameCount()

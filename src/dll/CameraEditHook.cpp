@@ -139,6 +139,10 @@ std::atomic<unsigned int> gInterposeBudget{0};
 std::atomic<unsigned long long> gInterposeFrames{0};
 std::atomic<bool> gInterposeActive{false};
 std::atomic<bool> gLoggedFirstInterpose{false};
+// 0 shares everything (A6 as first run); 1 gives the second render its own
+// recursive render view; 2 also marks it a secondary pass (R-073).
+std::atomic<unsigned int> gInterposeMode{0};
+std::atomic<std::uintptr_t> gPreyBase{0};
 
 // CRenderView vtable slots that CreateGeneralPassRenderingInfo drives on the view
 // it selected. They have to be re-driven on the recursive view after the swap,
@@ -514,19 +518,79 @@ void __fastcall RenderWorldInterpose(void* process, int flags, void* passInfo,
     }
     gInterposeBudget.store(remaining - 1, std::memory_order_release);
 
-    // Zero-delta: both calls take the game's own pass info unmodified, so the
-    // only variable is whether this call can be repeated at this point.
     Step("interpose:eye0");
     original(process, flags, passInfo, debugName);
+
+    // Mode 0 repeats the call with the game's own pass info -- the first A6 run,
+    // which reached 13 frames and then deadlocked inside this second call.
+    //
+    // Modes 1 and 2 test the exhaustion hypothesis from F-015: if the deadlock is
+    // contention over per-frame render resources, giving the second render its
+    // **own** view is what separates them. The pass info is copied byte for byte
+    // from the game's and only the view pointer is changed, so exactly one
+    // variable moves. Mode 2 additionally marks it secondary (R-073).
+    const unsigned int mode = gInterposeMode.load(std::memory_order_acquire);
+    std::array<std::uint8_t, engine::PassInfoLayout::size> ownPass{};
+    void* secondPassInfo = passInfo;
+    if (mode > 0 && passInfo != nullptr) {
+        Step("interpose:build_own_pass");
+        std::memcpy(ownPass.data(), passInfo, engine::PassInfoLayout::size);
+
+        const std::uintptr_t base = gPreyBase.load(std::memory_order_acquire);
+        auto* const renderer = base != 0
+            ? *reinterpret_cast<std::uint8_t**>(
+                  base + engine::GlobalEnvironmentLayout::baseRva +
+                  engine::GlobalEnvironmentLayout::renderer)
+            : nullptr;
+        auto* const rendererVtable = renderer != nullptr
+            ? *reinterpret_cast<std::uint8_t**>(renderer) : nullptr;
+        if (rendererVtable != nullptr) {
+            const auto getView = *reinterpret_cast<GetRenderViewFn*>(
+                rendererVtable + engine::RendererLayout::vtableGetRenderViewForThread);
+            const int slot = ownPass[engine::PassInfoLayout::threadSlot];
+            void* const recursiveView = getView != nullptr
+                ? getView(renderer, slot, engine::RendererLayout::viewTypeRecursive) : nullptr;
+            if (recursiveView != nullptr) {
+                std::memcpy(ownPass.data() + engine::PassInfoLayout::renderView, &recursiveView,
+                            sizeof(recursiveView));
+                // Re-drive what the constructor drove on the view it picked.
+                auto* const viewVtable = *reinterpret_cast<std::uint8_t**>(recursiveView);
+                if (viewVtable != nullptr) {
+                    std::uint32_t passFlags = 0;
+                    std::memcpy(&passFlags, ownPass.data() + engine::PassInfoLayout::flags,
+                                sizeof(passFlags));
+                    const auto setFlags = *reinterpret_cast<RenderViewSetFlagsFn*>(
+                        viewVtable + kRenderViewSetFlagsSlot);
+                    if (setFlags != nullptr) {
+                        setFlags(recursiveView, passFlags);
+                    }
+                    const auto derived = *reinterpret_cast<RenderViewDerivedFn*>(
+                        viewVtable + kRenderViewDerivedSlot);
+                    if (derived != nullptr) {
+                        void* const value = derived(recursiveView);
+                        std::memcpy(ownPass.data() + engine::PassInfoLayout::renderViewDerived,
+                                    &value, sizeof(value));
+                    }
+                }
+                if (mode >= 2) {
+                    ownPass[engine::PassInfoLayout::secondaryPassFlag] = 1;
+                }
+                secondPassInfo = ownPass.data();
+            }
+        }
+    }
+
     Step("interpose:eye1");
-    original(process, flags, passInfo, debugName);
+    original(process, flags, secondPassInfo,
+             secondPassInfo == passInfo ? debugName : "PreyVR::Eye1");
     Step("interpose:done");
 
     const unsigned long long done = gInterposeFrames.fetch_add(1, std::memory_order_relaxed) + 1;
     bool expected = false;
     if (gLoggedFirstInterpose.compare_exchange_strong(expected, true)) {
         std::ostringstream line;
-        line << "preyvr_interpose result=0 detail=first_frame flags=" << flags
+        line << "preyvr_interpose result=0 detail=first_frame mode=" << mode
+             << " ownView=" << (secondPassInfo == passInfo ? 0 : 1) << " flags=" << flags
              << " debugName=\"" << (debugName != nullptr ? debugName : "?") << "\""
              << " done=" << done;
         lifecycle::Log(line.str());
@@ -1106,7 +1170,7 @@ bool EnsureRenderWorldHook()
     return true;
 }
 
-DWORD SetInterposeStereo(unsigned int frameBudget)
+DWORD SetInterposeStereo(unsigned int frameBudget, unsigned int mode)
 {
     if (frameBudget == 0) {
         gInterpose.store(false, std::memory_order_release);
@@ -1123,6 +1187,9 @@ DWORD SetInterposeStereo(unsigned int frameBudget)
     }
 
     gInterposeBudget.store(frameBudget, std::memory_order_release);
+    gInterposeMode.store(mode, std::memory_order_release);
+    gPreyBase.store(reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll")),
+                    std::memory_order_release);
     const unsigned long long allowanceMs =
         2000ull + static_cast<unsigned long long>(frameBudget) * 40ull;
     gDoubleRenderDeadlineMs.store(GetTickCount64() + allowanceMs, std::memory_order_release);
@@ -1142,7 +1209,7 @@ DWORD SetInterposeStereo(unsigned int frameBudget)
     }
     std::ostringstream line;
     line << "preyvr_interpose result=0 detail=armed frameBudget=" << frameBudget
-         << " deadlineMs=" << allowanceMs;
+         << " mode=" << mode << " deadlineMs=" << allowanceMs;
     lifecycle::Log(line.str());
     return static_cast<DWORD>(CameraEditStatus::armed);
 }

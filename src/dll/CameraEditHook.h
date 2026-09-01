@@ -245,7 +245,15 @@ DWORD SecondPassStatusValue();
 // unmodified pass info, so the only variable is "can this call be repeated
 // here". That separates it from every question about our pass construction --
 // which is what F-011 taught and what A4 conflated.
-DWORD SetInterposeStereo(unsigned int frameBudget);
+// `mode` selects how much the second render shares with the first:
+//   0  everything -- the first A6 run: 13 frames, then a deadlock inside the
+//      second call (F-015), which reads as resource exhaustion
+//   1  its own recursive render view, pass info otherwise copied byte for byte
+//   2  as 1, and marked a secondary pass (R-073)
+//
+// The ladder exists because F-015's failure is a *sharing* problem, and each rung
+// separates one more thing the two renders currently share.
+DWORD SetInterposeStereo(unsigned int frameBudget, unsigned int mode);
 
 unsigned long long InterposeFrameCount();
 
