@@ -482,8 +482,38 @@ entirely in the engine's own per-frame state.
 
 ## F-014 - A5's control crashed the render thread; cause CONFOUNDED, n=1
 
-**Status:** one crash, localised to a function and a structure, **not reproduced, and taken on a
-machine running other games under other agents at the same time.** Cause is not established.
+**Status:** **REPRODUCED 2/2, the second on a quiet machine. Cause is ours.** Localised to one
+function and one structure.
+
+> **Attribution history, because the arc matters more than the conclusion.** This was first written
+> as a causal claim; withdrawn when the user pointed out other agents had games running during the
+> run, which made it n=1 under unquantified GPU load; then restored when it reproduced on a machine
+> with no games and nothing submitting to the headset. The withdrawal was correct at the time and
+> the restoration is not a reversal of it -- one confounded run genuinely was not evidence.
+>
+> **The reproduction, 2026-09-01 13:50:18, quiet machine:**
+>
+> | | run 1 | run 2 |
+> | --- | --- | --- |
+> | module base | `0x7FFB819A0000` | `0x7FFB7FC30000` |
+> | crash address | `0x7FFB8287835D` | `0x7FFB80B0835D` |
+> | **crash RVA** | **`0xED835D`** | **`0xED835D`** |
+> | render slot used | 0 | 1 |
+> | thread | RenderThread | RenderThread |
+> | read address | `0xFFFFFFFFFFFFFFFF` | `0xFFFFFFFFFFFFFFFF` |
+>
+> Identical RVA on different module bases, and a *different* render slot, so the fault is neither
+> address-dependent nor specific to one slot of the pool.
+>
+> **The breadcrumb paid for itself.** `PreyVR_GetStereoStep()` read `second_pass:done`, which means
+> `RenderWorld` **returned normally** -- our pass completes in full. The fault is therefore not
+> inside the second pass; it is on a later frame, in engine state the pass left behind. Frame rate
+> confirms the shape: 144 fps in the second before arming, roughly 19 frames over the next 3.2 s,
+> then zero.
+>
+> This is exactly what the F-013 investigation lacked, and it narrows the question sharply: not
+> "what did we do wrong during the pass" but "what did the pass leave in a state the next frame
+> cannot survive".
 
 > **Read the confounder first.** Several other games were started by other agents during this run.
 > That is unquantified concurrent GPU and VRAM load, and it is the second time in one session it has
@@ -534,12 +564,12 @@ uVar3 = (longlong)*(int *)((longlong)plVar4 + 0xc) + uVar3;      // read its cou
 
 A chain pointer of `-1` produces exactly the observed read of `0xFFFFFFFFFFFFFFFF`.
 
-**The reading, IF the cause is ours.** R-072 established that the recursive render view is a *distinct allocated object*.
+**The reading.** R-072 established that the recursive render view is a *distinct allocated object*.
 It did not establish that anything ever *prepares* it. R-063 called the recursive views "allocated
 and idle", and idle appears to mean genuinely unprepared -- its per-frame chunk chains still hold
 uninitialised sentinels. Rendering into it walks them.
 
-**R-073 may have made this worse rather than better -- conditional on the cause being ours.** Setting
+**R-073 may have made this worse rather than better, and that is the uncomfortable part.** Setting
 the secondary-pass flag is what makes the engine skip `UpdateRenderingCamera`, the CVar snapshot,
 `FUN_1802114D0` and the occlusion update. Some of that skipped work is plausibly what would have
 prepared the very structures this crash walks. The flag is real and its guards are real; the

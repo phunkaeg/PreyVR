@@ -14,7 +14,7 @@ STEREO-SAFETY).
 
 | rung | route | PreyVR | who shipped it in-house |
 | --- | --- | --- | --- |
-| 1 | native scene re-entry | one crash, **confounded and unreproduced** (F-014) | *nobody* |
+| 1 | native scene re-entry | **blocked: reproduced crash 2/2 (F-014)** | *nobody* |
 | 2 | per-draw replay | untried | BioshockVR, FarCry2-vr |
 | 3 | alternate-eye / AFR | **proven working (A2b)** | ss2vr-work, SOMAVR |
 | 4 | draw-stream reconstruction | untried | -- |
@@ -35,7 +35,16 @@ and the **render thread crashed about a second later with nothing armed** --
 reading `0xFFFFFFFFFFFFFFFF` inside `FUN_180ED82D0`, which walks the renderer's
 per-frame pooled chunk chain indexed at `+0x499C`. See F-014.
 
-**This run does not move rung 1 either way.** Other games were running under
+**Reproduced 2/2 on 2026-09-01, the second run on a quiet machine with no games
+and nothing submitting to the headset.** Identical crash RVA `0xED835D` on
+different module bases and a different render slot. The contention hypothesis is
+refuted and the cause is ours.
+
+The breadcrumb read `second_pass:done`, so `RenderWorld` returned normally and
+our pass completes in full. **The fault is on a later frame, in state the pass
+left behind** -- which is a much narrower question than A3's wedge.
+
+*(Superseded paragraph, kept for the record:)* **This run does not move rung 1 either way.** Other games were running under
 other agents at the time -- unquantified concurrent GPU and VRAM load -- so a
 single crash cannot be attributed to our pass. No display-driver reset, TDR or
 other application crash appears in the event log for that window, which removes
