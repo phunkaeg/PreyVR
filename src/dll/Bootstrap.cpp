@@ -517,6 +517,13 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetSecondPassFrameCount()
 
 // 0 idle, 1 armed, 2 ran at least once, 3 refused because something could not be
 // resolved.
+// Non-zero means a second pass advanced renderer frame bookkeeping: a positive
+// side-effect detection, and a failure of BN-SFX-001's gate.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetSecondPassFrameIdMovedCount()
+{
+    return preyvr::dll::SecondPassFrameIdMovedCount();
+}
+
 extern "C" __declspec(dllexport) DWORD PreyVR_GetSecondPassStatus()
 {
     return preyvr::dll::SecondPassStatusValue();

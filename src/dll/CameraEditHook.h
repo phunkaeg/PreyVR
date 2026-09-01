@@ -202,6 +202,11 @@ DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int fr
 
 unsigned long long SecondPassFrameCount();
 
+// How many second passes advanced the renderer's own frame ids. **Non-zero is a
+// positive detection of a per-frame side effect** and fails BN-SFX-001's gate;
+// zero is necessary but not sufficient, since it sees renderer bookkeeping only.
+unsigned long long SecondPassFrameIdMovedCount();
+
 enum class SecondPassStatus : DWORD {
     idle = 0,
     armed = 1,

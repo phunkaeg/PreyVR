@@ -95,6 +95,8 @@ std::atomic<unsigned long long> gSecondPassFrames{0};
 std::atomic<DWORD> gSecondPassStatus{static_cast<DWORD>(SecondPassStatus::idle)};
 std::atomic<bool> gLoggedFirstSecondPass{false};
 std::atomic<bool> gSecondPassZeroDelta{false};
+std::atomic<unsigned long long> gSecondPassFrameIdMoved{0};
+std::atomic<bool> gLoggedFrameIdMove{false};
 
 // **A breadcrumb naming the sub-step in flight.**
 //
@@ -206,6 +208,7 @@ constexpr int kRenderThreadListQuery = 6;
 
 using EfQueryFn = void(__fastcall*)(void*, int, void*, int, int, int);
 using GetRenderViewFn = void*(__fastcall*)(void*, int, int);
+using GetFrameIdFn = std::uint32_t(__fastcall*)(void*, int);
 
 // Asks the renderer for the Default and Recursive render views and compares them.
 // See the header for why this decides whether native stereo is reachable.
@@ -402,10 +405,41 @@ bool RunSecondPass(void* system)
     std::memcpy(passInfo.data() + engine::PassInfoLayout::renderViewDerived, &derivedValue,
                 sizeof(derivedValue));
 
+    // **The side-effect counter (BN-SFX-001).** Read the renderer's own frame ids
+    // either side of the call. If issuing a second RenderWorld advances
+    // renderer-side per-frame bookkeeping, these move -- and a pass that advances
+    // bookkeeping is a pass that may be advancing simulation, particles and audio
+    // with it. Zero deltas do not prove the absence of every side effect, but a
+    // non-zero delta is a positive detection, which is what a gate needs.
+    const auto getFrameId =
+        *reinterpret_cast<GetFrameIdFn*>(rendererVtable + engine::RendererLayout::vtableGetFrameId);
+    std::uint32_t beforeA = 0;
+    std::uint32_t beforeB = 0;
+    if (getFrameId != nullptr) {
+        beforeA = getFrameId(renderer, 1);
+        beforeB = getFrameId(renderer, 0);
+    }
+
     Step("second_pass:render_world");
     renderWorld(process, engine::PassInfoLayout::renderWorldFlags, passInfo.data(),
                 "PreyVR::SecondPass");
     Step("second_pass:done");
+
+    if (getFrameId != nullptr) {
+        const std::uint32_t afterA = getFrameId(renderer, 1);
+        const std::uint32_t afterB = getFrameId(renderer, 0);
+        if (afterA != beforeA || afterB != beforeB) {
+            gSecondPassFrameIdMoved.fetch_add(1, std::memory_order_relaxed);
+            bool loggedMove = false;
+            if (gLoggedFrameIdMove.compare_exchange_strong(loggedMove, true)) {
+                std::ostringstream moved;
+                moved << "preyvr_second_pass result=0 detail=frame_id_advanced"
+                      << " a=" << beforeA << "->" << afterA
+                      << " b=" << beforeB << "->" << afterB;
+                lifecycle::Log(moved.str());
+            }
+        }
+    }
 
     const unsigned long long done = gSecondPassFrames.fetch_add(1, std::memory_order_relaxed) + 1;
     bool expected = false;
@@ -1002,6 +1036,11 @@ DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int fr
 unsigned long long SecondPassFrameCount()
 {
     return gSecondPassFrames.load(std::memory_order_acquire);
+}
+
+unsigned long long SecondPassFrameIdMovedCount()
+{
+    return gSecondPassFrameIdMoved.load(std::memory_order_acquire);
 }
 
 DWORD SecondPassStatusValue()

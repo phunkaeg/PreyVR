@@ -54,6 +54,11 @@ struct RendererLayout {
     // indexed load and a ret -- no allocation, so calling it has no side effect.
     static constexpr std::uintptr_t vtableGetRenderViewForThread = 0x198;
     static constexpr std::uintptr_t vtableQuery = 0x888;
+    // Returns a renderer frame id; CreateGeneralPassRenderingInfo (R-071) calls
+    // it with 1 for SRenderingPassInfo+0x0C and 0 for +0x10. Reading it either
+    // side of a second RenderWorld is the cheapest available side-effect counter:
+    // if repeating the pass advances renderer frame bookkeeping, this moves.
+    static constexpr std::uintptr_t vtableGetFrameId = 0x548;
     // Selector the engine passes to the query above to obtain the fill slot.
     static constexpr int queryRenderThreadList = 6;
     // IRenderView::EViewType, per the pool's [nThreadID][bRecursive] indexing.

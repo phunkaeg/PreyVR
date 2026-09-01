@@ -52,6 +52,36 @@ view matrix, FOV and player structs. Load it when you are deciding *what to look
 6. Target is `Prey.exe` (Prey 2017, CryEngine-derived, **64-bit** -> use **x64dbg**).
 7. RenderDoc works here — Prey renders via **Direct3D 11**.
 
+## Blocked? Read the fleet playbook FIRST (added 2026-09-01)
+
+**`D:\Dev Debug\VR Modding\docs` — start at `bottleneck-map.md`.**
+
+PreyVR **is** a tracked project in that playbook, by name, with a per-project row
+and named bottleneck classes. Its `bottlenecks.yml` gives every class a
+`fast_test` (the cheapest experiment that classifies it) and an `exit_proof`
+(what is required to close it), plus the state of the same class on every sibling
+project.
+
+Its own agent protocol, condensed:
+
+1. Read the project row for this target.
+2. Read **only** the bottleneck definition and route for the current gate.
+3. State hypothesis, control, test variable and decision rule **before code**.
+4. Preserve ambiguous outcomes as ambiguous.
+5. Update project evidence and fleet routing when the critical path changes.
+
+It exists to stop two agent failures, and on 2026-09-01 this project committed
+the second: **repeating an experiment another project already paid for.** A4 was
+built on the native-scene-re-entry rung without checking BN-STE-001, which
+records that three of the four shipped in-house projects priced that rung and
+deliberately chose a lower one. The `bottleneck-map.md` + `bottlenecks.yml` read
+that would have surfaced it costs about two thousand tokens.
+
+The cross-engine graph below is a **different and narrower** resource. Read the
+playbook first; use the graph second, for "which document minted this fact".
+Note the wording below -- "this project is not in that graph" -- is true of the
+*graph* and must not be read as "PreyVR is not in the fleet docs". It is.
+
 ## Cross-engine docs graph (added 2026-08-27)
 
 > **Blocker? Search for prior art with ripgrep, not by reading candidate docs (or an agent).**
