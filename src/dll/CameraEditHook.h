@@ -250,6 +250,13 @@ DWORD SecondPassStatusValue();
 //      second call (F-015), which reads as resource exhaustion
 //   1  its own recursive render view, pass info otherwise copied byte for byte
 //   2  as 1, and marked a secondary pass (R-073)
+//   3  **shares the PRIMARY view and marks the pass secondary** -- the
+//      combination none of the earlier runs tried. The dispatch calls the
+//      per-frame prepare FUN_1802114D0 only when +0x01 == 0, so mode 0 ran it
+//      TWICE per frame (allocate twice, free once) which is the 13-19 frame
+//      exhaustion; mode 3 runs it once. Sharing the primary view is deliberate:
+//      it is the view that prepare just prepared, where mode 1's own recursive
+//      view had nothing prepare it and crashed on frame one.
 //
 // The ladder exists because F-015's failure is a *sharing* problem, and each rung
 // separates one more thing the two renders currently share.

@@ -545,7 +545,21 @@ void __fastcall RenderWorldInterpose(void* process, int flags, void* passInfo,
         Step("interpose:build_own_pass");
         std::memcpy(ownPass.data(), passInfo, engine::PassInfoLayout::size);
 
-        const std::uintptr_t base = gPreyBase.load(std::memory_order_acquire);
+        // Mode 3 keeps the primary view deliberately: the workflow's decompilation
+        // of the dispatch shows the per-frame prepare FUN_1802114D0 runs only when
+        // +0x01 == 0, so marking the SECOND pass secondary makes prepare run once
+        // per frame instead of twice -- which is the 13-19 frame leak -- while the
+        // shared primary view is the one that prepare just prepared. Mode 1 failed
+        // precisely because its own recursive view had nothing prepare it.
+        const bool wantRecursiveView = (mode == 1 || mode == 2);
+        const bool wantSecondaryFlag = (mode == 2 || mode == 3);
+        if (wantSecondaryFlag) {
+            ownPass[engine::PassInfoLayout::secondaryPassFlag] = 1;
+        }
+        secondPassInfo = ownPass.data();
+
+        const std::uintptr_t base = wantRecursiveView
+            ? gPreyBase.load(std::memory_order_acquire) : 0;
         auto* const renderer = base != 0
             ? *reinterpret_cast<std::uint8_t**>(
                   base + engine::GlobalEnvironmentLayout::baseRva +
@@ -581,10 +595,6 @@ void __fastcall RenderWorldInterpose(void* process, int flags, void* passInfo,
                                     &value, sizeof(value));
                     }
                 }
-                if (mode >= 2) {
-                    ownPass[engine::PassInfoLayout::secondaryPassFlag] = 1;
-                }
-                secondPassInfo = ownPass.data();
             }
         }
     }
