@@ -146,3 +146,59 @@ value is an afternoon of someone's headset time.
 outstanding.** One frustum error presents as three unrelated bugs -- "zoomed in",
 "near objects separate too much", and "the resolution is terrible" -- and any
 world-scale reading taken under one is unusable.
+
+---
+
+## Prior art: witcher3-vr, and what transfers
+
+From `D:\Dev Debug\other VR mods\witcher3-vr`. The closest analogue available: an
+**injected** mod for a modern engine it does not own, with a DXGI proxy, an
+OpenXR eye-geometry module and its own scheduler. `INFERENCE` for Prey under the
+cross-engine rule -- a lead and a vocabulary, not a result.
+
+**It ships both stereo strategies, which settles a question we had open.** Its
+status table lists *Same-tick geometry stereo* as working alongside an
+alternate-eye path (`aer_scheduler`, and the `AER + AFW` mode combinations). So
+alternate-eye is a **shipping strategy in a mature mod**, not merely the stopgap
+this project had it filed as. That materially raises the value of the
+alternating-eye mode A2b already proved, if A4 does not pan out.
+
+**Eye identity comes from the present ordinal, not from a tag or a guess:**
+
+> REDengine builds one real frame between consecutive Present calls. The render
+> ordinal therefore owns the eye identity; both adjacent ordinals share one
+> nonzero stereo pair id. Present count is incremented before the just-rendered
+> backbuffer is captured.
+
+Two things follow. It independently corroborates the skill's *copy each eye's
+pixels at its own present*. And it corroborates, from a different engine, the
+conclusion this project reached the expensive way: per-frame **tagging** of an
+eye across a thread boundary does not work, which is why `SetStereoEyeLock`
+replaced it after two unusable A2 runs. Their answer is better than ours for
+production -- identity derived from an ordinal that is authoritative on the
+render thread, plus an explicit pair id, rather than holding one eye still.
+
+Their render-target join carries the same discipline in a stricter form: *"this
+latch never invents an identity from timing"* -- identity is recovered from the
+camera that created the pass, and timing is never allowed to stand in for it.
+The surrounding machinery is D3D12/RTX command-list plumbing and does **not**
+transfer to Prey's D3D11; the principle does.
+
+**They work in tangent space.** `AsymmetricProjectionDescriptor` carries
+`horizontal_tangent_span` and `vertical_tangent_span` alongside the engine's
+native fields, which is the skill's rule implemented rather than merely stated.
+
+**Both of our open non-stereo problems are solved there**, which is evidence they
+are tractable rather than fundamental:
+
+| our blocker | their status line |
+| --- | --- |
+| HUD picks up per-eye disparity | "Headset-aware HUD convergence -- derived automatically from OpenXR eye geometry for parallel and canted displays" |
+| viewmodel does not follow the per-eye camera (R-069) | "Near-camera view -- Working" |
+
+**One difference in our favour.** REDengine expresses a view as a symmetric
+vertical FOV plus a *pixel-space projection-centre offset*, so that mod has to
+transport asymmetry through a centre-offset. Prey's `CCamera` carries genuine
+asymmetry fields (`m_asymL/R/B/T`), which `ProjectionFromTangents` already
+writes. We can express a canted per-eye frustum directly, where they must
+encode it.
