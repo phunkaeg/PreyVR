@@ -532,6 +532,22 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetSecondPassStatus()
     return preyvr::dll::SecondPassStatusValue();
 }
 
+// A6: the interpose shape. Hooks RenderWorld and calls the original twice from
+// inside it, so the frame still contains one CSystem::Render, one HUD draw and
+// one present -- which is what A4 got wrong and F-014 charged us for.
+//
+// The first test is zero-delta: both calls take the game's own unmodified pass
+// info, so the only variable is whether the call can be repeated at this point.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetInterposeStereo(unsigned int frameBudget)
+{
+    return preyvr::dll::SetInterposeStereo(frameBudget);
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetInterposeFrameCount()
+{
+    return preyvr::dll::InterposeFrameCount();
+}
+
 // The sub-step the stereo path was last in.
 //
 // **Exported because F-014 proved a breadcrumb readable on only one failure path

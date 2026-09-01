@@ -225,6 +225,30 @@ enum class SecondPassStatus : DWORD {
 
 DWORD SecondPassStatusValue();
 
+// **A6 -- the interpose shape. What A4 should have been.**
+//
+// A4 appended a second `RenderWorld` *after* the original `CSystem::Render` had
+// already drawn the HUD and presented. F-014 showed the cost: the second pass
+// consumes per-frame UI table state that the next frame's HUD draw then reads,
+// so the health bar renders as wireframe and the render thread later walks a
+// chunk chain into -1. Three fatal runs out of three, with the R-073 flag both
+// on and off.
+//
+// Prior art prescribes the other shape (`docs/STEREO_RENDER_ARCHITECTURE.md`,
+// from FEAR VR and FC2VR): repeat **only** the world-render call per eye, so
+// simulation, HUD and present still happen exactly once per frame. This hooks
+// `RenderWorld` (R-054) itself and calls the original twice from inside it, so
+// `CSystem::Render` sees a single world-render call and proceeds to HUD and
+// present having had both eyes drawn already.
+//
+// **The first test is zero-delta on purpose.** Both calls get the game's own,
+// unmodified pass info, so the only variable is "can this call be repeated
+// here". That separates it from every question about our pass construction --
+// which is what F-011 taught and what A4 conflated.
+DWORD SetInterposeStereo(unsigned int frameBudget);
+
+unsigned long long InterposeFrameCount();
+
 DWORD CameraEditStatusValue();
 
 // Counts frames on which the edit was actually applied and the restore verified

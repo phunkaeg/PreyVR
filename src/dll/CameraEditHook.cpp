@@ -96,6 +96,7 @@ std::atomic<DWORD> gSecondPassStatus{static_cast<DWORD>(SecondPassStatus::idle)}
 std::atomic<bool> gLoggedFirstSecondPass{false};
 std::atomic<bool> gSecondPassZeroDelta{false};
 std::atomic<bool> gSecondPassMarkSecondary{true};
+
 std::atomic<unsigned long long> gSecondPassFrameIdMoved{0};
 std::atomic<bool> gLoggedFrameIdMove{false};
 
@@ -127,6 +128,17 @@ std::atomic<CreatePassInfoFn> gCreatePassInfo{nullptr};
 // RenderWorld, reached through CSystem::m_pProcess's vtable (R-054/R-059).
 using RenderWorldFn = void(__fastcall*)(void* process, int flags, void* passInfo,
                                         const char* debugName);
+// A6: the interpose shape. Hooks RenderWorld itself rather than appending after
+// CSystem::Render, so both eyes are drawn before the HUD and present.
+constexpr std::uintptr_t kRenderWorldRva = 0x21F520;
+std::atomic<RenderWorldFn> gRenderWorldOriginal{nullptr};
+void* gRenderWorldTarget = nullptr;
+bool gRenderWorldHookCreated = false;
+std::atomic<bool> gInterpose{false};
+std::atomic<unsigned int> gInterposeBudget{0};
+std::atomic<unsigned long long> gInterposeFrames{0};
+std::atomic<bool> gInterposeActive{false};
+std::atomic<bool> gLoggedFirstInterpose{false};
 
 // CRenderView vtable slots that CreateGeneralPassRenderingInfo drives on the view
 // it selected. They have to be re-driven on the recursive view after the swap,
@@ -470,6 +482,58 @@ bool RunSecondPass(void* system)
     return true;
 }
 
+// The A6 hook. Calls the original world render twice from inside itself, so the
+// frame still contains exactly one CSystem::Render, one HUD draw and one present.
+void __fastcall RenderWorldInterpose(void* process, int flags, void* passInfo,
+                                     const char* debugName)
+{
+    const RenderWorldFn original = gRenderWorldOriginal.load(std::memory_order_acquire);
+    if (original == nullptr) {
+        return;
+    }
+    if (!gInterpose.load(std::memory_order_acquire)) {
+        original(process, flags, passInfo, debugName);
+        return;
+    }
+
+    // Re-entrancy guard, per the StereoRenderGuard prior art. The trampoline
+    // does not route back through this hook, but a nested world render inside
+    // the engine would, and doubling that would be unbounded.
+    if (gInterposeActive.exchange(true, std::memory_order_acq_rel)) {
+        original(process, flags, passInfo, debugName);
+        return;
+    }
+
+    const unsigned int remaining = gInterposeBudget.load(std::memory_order_acquire);
+    if (remaining == 0) {
+        gInterpose.store(false, std::memory_order_release);
+        gInterposeActive.store(false, std::memory_order_release);
+        lifecycle::Log("preyvr_interpose result=0 detail=budget_exhausted");
+        original(process, flags, passInfo, debugName);
+        return;
+    }
+    gInterposeBudget.store(remaining - 1, std::memory_order_release);
+
+    // Zero-delta: both calls take the game's own pass info unmodified, so the
+    // only variable is whether this call can be repeated at this point.
+    Step("interpose:eye0");
+    original(process, flags, passInfo, debugName);
+    Step("interpose:eye1");
+    original(process, flags, passInfo, debugName);
+    Step("interpose:done");
+
+    const unsigned long long done = gInterposeFrames.fetch_add(1, std::memory_order_relaxed) + 1;
+    bool expected = false;
+    if (gLoggedFirstInterpose.compare_exchange_strong(expected, true)) {
+        std::ostringstream line;
+        line << "preyvr_interpose result=0 detail=first_frame flags=" << flags
+             << " debugName=\"" << (debugName != nullptr ? debugName : "?") << "\""
+             << " done=" << done;
+        lifecycle::Log(line.str());
+    }
+    gInterposeActive.store(false, std::memory_order_release);
+}
+
 // Wall-clock stop for the double render, run off the render thread so it still
 // fires when that thread is the thing that is stuck. See the deadline note above
 // for what this does and does not bound.
@@ -479,13 +543,16 @@ DWORD WINAPI DoubleRenderWatchdog(LPVOID)
     // one stopping the frame loop is exactly the case the in-band budgets cannot
     // see, which is the whole reason this thread exists.
     while (gDoubleRender.load(std::memory_order_acquire) ||
-           gSecondPass.load(std::memory_order_acquire)) {
+           gSecondPass.load(std::memory_order_acquire) ||
+           gInterpose.load(std::memory_order_acquire)) {
         const unsigned long long deadline = gDoubleRenderDeadlineMs.load(std::memory_order_acquire);
         if (deadline != 0 && GetTickCount64() >= deadline) {
             gDoubleRender.store(false, std::memory_order_release);
             gDoubleRenderBudget.store(0, std::memory_order_release);
             gSecondPass.store(false, std::memory_order_release);
             gSecondPassBudget.store(0, std::memory_order_release);
+            gInterpose.store(false, std::memory_order_release);
+            gInterposeBudget.store(0, std::memory_order_release);
             gStereoIpd.store(0.0f, std::memory_order_release);
             SetFrameCaptureTagOverride(-1);
             std::ostringstream expiry;
@@ -978,6 +1045,111 @@ bool EnsureSecondPassTargets()
     }
     lifecycle::Log("preyvr_second_pass result=unavailable detail=landmark_missing");
     return false;
+}
+
+// Installs the RenderWorld hook behind its own byte gate, separately from the
+// CSystem::Render hook so a mismatch blocks only A6.
+bool EnsureRenderWorldHook()
+{
+    if (gRenderWorldHookCreated) {
+        return true;
+    }
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) {
+        return false;
+    }
+    const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+
+    const engine::Landmark* landmark = nullptr;
+    for (const auto& candidate : engine::Landmarks()) {
+        if (candidate.id == "world.render_world") {
+            landmark = &candidate;
+            break;
+        }
+    }
+    if (landmark == nullptr || landmark->rva != kRenderWorldRva) {
+        lifecycle::Log("preyvr_interpose result=unavailable detail=landmark_missing");
+        return false;
+    }
+    const auto address = base + landmark->rva;
+    if (!PrologueMatches(address, landmark->expected.data(), landmark->expected.size())) {
+        lifecycle::Log("preyvr_interpose result=unavailable detail=render_world_prologue");
+        return false;
+    }
+
+    gRenderWorldTarget = reinterpret_cast<void*>(address);
+    RenderWorldFn original = nullptr;
+    MH_STATUS status = MH_CreateHook(gRenderWorldTarget,
+                                     reinterpret_cast<void*>(&RenderWorldInterpose),
+                                     reinterpret_cast<void**>(&original));
+    if (status != MH_OK) {
+        std::ostringstream line;
+        line << "preyvr_interpose result=failed detail=create_hook minhook="
+             << MH_StatusToString(status);
+        lifecycle::Log(line.str());
+        return false;
+    }
+    gRenderWorldOriginal.store(original, std::memory_order_release);
+    status = MH_EnableHook(gRenderWorldTarget);
+    if (status != MH_OK) {
+        std::ostringstream line;
+        line << "preyvr_interpose result=failed detail=enable_hook minhook="
+             << MH_StatusToString(status);
+        lifecycle::Log(line.str());
+        return false;
+    }
+    gRenderWorldHookCreated = true;
+    std::ostringstream line;
+    line << "preyvr_interpose result=ready targetRva=0x" << std::hex << std::uppercase
+         << kRenderWorldRva << " target=0x" << address;
+    lifecycle::Log(line.str());
+    return true;
+}
+
+DWORD SetInterposeStereo(unsigned int frameBudget)
+{
+    if (frameBudget == 0) {
+        gInterpose.store(false, std::memory_order_release);
+        gInterposeBudget.store(0, std::memory_order_release);
+        lifecycle::Log("preyvr_interpose result=0 detail=disarmed");
+        return static_cast<DWORD>(CameraEditStatus::ready);
+    }
+    if (frameBudget > 600) {
+        lifecycle::Log("preyvr_interpose result=refused detail=budget_too_large");
+        return static_cast<DWORD>(CameraEditStatus::failed);
+    }
+    if (!EnsureRenderWorldHook()) {
+        return static_cast<DWORD>(CameraEditStatus::unavailable);
+    }
+
+    gInterposeBudget.store(frameBudget, std::memory_order_release);
+    const unsigned long long allowanceMs =
+        2000ull + static_cast<unsigned long long>(frameBudget) * 40ull;
+    gDoubleRenderDeadlineMs.store(GetTickCount64() + allowanceMs, std::memory_order_release);
+    gInterpose.store(true, std::memory_order_release);
+
+    bool expected = false;
+    if (gDoubleRenderWatchdogRunning.compare_exchange_strong(expected, true)) {
+        const HANDLE watchdog = CreateThread(nullptr, 0, DoubleRenderWatchdog, nullptr, 0, nullptr);
+        if (watchdog == nullptr) {
+            gDoubleRenderWatchdogRunning.store(false, std::memory_order_release);
+            gInterpose.store(false, std::memory_order_release);
+            gInterposeBudget.store(0, std::memory_order_release);
+            lifecycle::Log("preyvr_interpose result=refused detail=watchdog_thread_failed");
+            return static_cast<DWORD>(CameraEditStatus::failed);
+        }
+        CloseHandle(watchdog);
+    }
+    std::ostringstream line;
+    line << "preyvr_interpose result=0 detail=armed frameBudget=" << frameBudget
+         << " deadlineMs=" << allowanceMs;
+    lifecycle::Log(line.str());
+    return static_cast<DWORD>(CameraEditStatus::armed);
+}
+
+unsigned long long InterposeFrameCount()
+{
+    return gInterposeFrames.load(std::memory_order_acquire);
 }
 
 DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int frameBudget,
