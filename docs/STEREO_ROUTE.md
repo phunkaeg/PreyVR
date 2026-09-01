@@ -14,7 +14,7 @@ STEREO-SAFETY).
 
 | rung | route | PreyVR | who shipped it in-house |
 | --- | --- | --- | --- |
-| 1 | native scene re-entry | **live crash, F-014** | *nobody* |
+| 1 | native scene re-entry | one crash, **confounded and unreproduced** (F-014) | *nobody* |
 | 2 | per-draw replay | untried | BioshockVR, FarCry2-vr |
 | 3 | alternate-eye / AFR | **proven working (A2b)** | ss2vr-work, SOMAVR |
 | 4 | draw-stream reconstruction | untried | -- |
@@ -35,15 +35,23 @@ and the **render thread crashed about a second later with nothing armed** --
 reading `0xFFFFFFFFFFFFFFFF` inside `FUN_180ED82D0`, which walks the renderer's
 per-frame pooled chunk chain indexed at `+0x499C`. See F-014.
 
-**Rung 1 is not cleared and its odds are now worse than R-073 suggested.** The
-recursive view is allocated and distinct (R-072) but nothing prepares it, and
-setting the secondary-pass flag (R-073) makes the engine skip work that plausibly
-would have. That the fleet has never shipped this rung now reads as a warning
-rather than an accident.
+**This run does not move rung 1 either way.** Other games were running under
+other agents at the time -- unquantified concurrent GPU and VRAM load -- so a
+single crash cannot be attributed to our pass. No display-driver reset, TDR or
+other application crash appears in the event log for that window, which removes
+the two most plausible external causes as *observed* events without clearing
+contention that fails inside Prey silently.
 
-**Not yet a refutation.** The failure is one specific unprepared structure with a
-named function and offset, not a general "it cannot be done". The open question
-is narrow: what initialises a recursive render view, and can it be invoked?
+An earlier version of this section asserted rung 1's odds were now worse. That
+promoted an ambiguous n=1 outcome to a verdict, which is precisely what the
+playbook's agent protocol forbids, and it is withdrawn.
+
+**The next step is repetition, not redesign.** Re-run the same single zero-delta
+pass on a quiet machine, several times, with a liveness check that waits and
+re-reads rather than sampling immediately. Only then is there a result to reason
+from. What survives regardless is the localisation: the faulting function, the
+`+0x499C` frame-slot index and the chunk-chain walk are facts from the dump and
+do not depend on what caused the dump.
 
 Two method faults this exposed, both recorded in F-014: a liveness check read
 immediately after the event it judges is not a liveness check, and a breadcrumb

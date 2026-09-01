@@ -480,9 +480,32 @@ entirely in the engine's own per-frame state.
 
 ---
 
-## F-014 - The recursive render view is idle because nothing has prepared it
+## F-014 - A5's control crashed the render thread; cause CONFOUNDED, n=1
 
-**Status:** diagnosed to a function and a structure. Rung 1 is not cleared; A5's control failed.
+**Status:** one crash, localised to a function and a structure, **not reproduced, and taken on a
+machine running other games under other agents at the same time.** Cause is not established.
+
+> **Read the confounder first.** Several other games were started by other agents during this run.
+> That is unquantified concurrent GPU and VRAM load, and it is the second time in one session it has
+> confounded a live result -- the earlier "VDXR reports no controllers" reading was also taken while
+> SWAT4 held the runtime. A single crash under that condition is a lead, not a finding.
+>
+> What the evidence does and does not say, checked afterwards:
+> - **No** System events at all between 13:39 and 13:45 -- no display-driver reset, no TDR, no
+>   kernel-power event coincident with the crash.
+> - **No** Application Error events in the window; no other application crashed alongside Prey.
+> - So the two most plausible external explanations show no positive evidence. That removes them as
+>   *observed* causes; it does not clear GPU or VRAM pressure that fails inside Prey without
+>   producing a system-level event. Prey's own report said `Out of Memory: 0`, which is Prey's
+>   opinion of Prey, not of the machine.
+>
+> **The honest state is ambiguous, and the playbook is explicit that ambiguous outcomes must not be
+> promoted.** The first version of this entry promoted it -- it moved rung 1 to "live crash" and
+> asserted the odds were now worse. That went beyond one confounded run and has been withdrawn.
+>
+> **Disambiguating test, and it is cheap:** re-run the same single zero-delta pass on a quiet
+> machine, several times, with a wait-and-re-read liveness check. If it crashes every time with
+> nothing else running, the cause is ours. If it does not, this entry is about contention.
 
 The A5 zero-camera-delta control ran **one** second pass, reported clean, self-disarmed 4 ms later,
 and the render thread died about a second afterwards with nothing armed.
@@ -511,12 +534,12 @@ uVar3 = (longlong)*(int *)((longlong)plVar4 + 0xc) + uVar3;      // read its cou
 
 A chain pointer of `-1` produces exactly the observed read of `0xFFFFFFFFFFFFFFFF`.
 
-**The reading.** R-072 established that the recursive render view is a *distinct allocated object*.
+**The reading, IF the cause is ours.** R-072 established that the recursive render view is a *distinct allocated object*.
 It did not establish that anything ever *prepares* it. R-063 called the recursive views "allocated
 and idle", and idle appears to mean genuinely unprepared -- its per-frame chunk chains still hold
 uninitialised sentinels. Rendering into it walks them.
 
-**R-073 may have made this worse rather than better, and that is the uncomfortable part.** Setting
+**R-073 may have made this worse rather than better -- conditional on the cause being ours.** Setting
 the secondary-pass flag is what makes the engine skip `UpdateRenderingCamera`, the CVar snapshot,
 `FUN_1802114D0` and the occlusion update. Some of that skipped work is plausibly what would have
 prepared the very structures this crash walks. The flag is real and its guards are real; the
