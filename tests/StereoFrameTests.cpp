@@ -264,6 +264,145 @@ void TestAsymmetricScaleMirrorsTheEyes()
     Require(rightCentre > leftCentre, "and the right eye's frustum sits to the right");
 }
 
+// ---------------------------------------------------------------------------
+// Declaring the frustum we actually rendered
+// ---------------------------------------------------------------------------
+
+// Builds a CCamera block with the four fields TangentsFromCamera reads.
+std::vector<std::uint8_t> MakeCameraBlock(
+    float fov, float projectionRatio, float nearPlane,
+    float asymL, float asymR, float asymB, float asymT)
+{
+    std::vector<std::uint8_t> camera(preyvr::engine::CameraLayout::size, 0);
+    const auto put = [&camera](std::size_t offset, float value) {
+        std::memcpy(camera.data() + offset, &value, sizeof(value));
+    };
+    put(preyvr::engine::CameraLayout::fov, fov);
+    put(preyvr::engine::CameraLayout::projectionRatio, projectionRatio);
+    put(preyvr::engine::CameraLayout::edgeNearLeftTop + 4, nearPlane);  // GetNearPlane is .y
+    put(preyvr::engine::CameraLayout::asymLeft, asymL);
+    put(preyvr::engine::CameraLayout::asymRight, asymR);
+    put(preyvr::engine::CameraLayout::asymBottom, asymB);
+    put(preyvr::engine::CameraLayout::asymTop, asymT);
+    return camera;
+}
+
+void TestSymmetricCameraGivesSymmetricTangents()
+{
+    // Prey's live world camera: 88 degrees horizontal at 2560x1440. The stored
+    // fov is VERTICAL, so the expected values are computed from the engine's own
+    // construction rather than from the function under test.
+    const float fov = 0.9599311f;            // ~55 degrees vertical
+    const float ratio = 1.7777778f;          // 16:9
+    const auto camera = MakeCameraBlock(fov, ratio, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f);
+
+    const auto view = TangentsFromCamera(camera);
+    Require(view.has_value(), "a plain symmetric camera converts");
+
+    const float expectedV = std::tan(fov * 0.5f);
+    const float expectedH = expectedV * ratio;
+    Require(Near(view->tanUp, expectedV), "vertical half-extent is tan(fov/2)");
+    Require(Near(view->tanDown, -expectedV), "and symmetric below");
+    Require(Near(view->tanRight, expectedH), "horizontal is the vertical times the projection ratio");
+    Require(Near(view->tanLeft, -expectedH), "and symmetric to the left");
+}
+
+void TestAsymmetryIsANearPlaneEdgeOffset()
+{
+    // **The semantics CryEngine's own source supplies**: the asymmetry fields are
+    // frustum-edge offsets in NEAR-PLANE UNITS added to the computed edges, not
+    // angles. So a shift of `asym` moves the tangent by exactly asym/nearPlane --
+    // and that is what makes this test independent of our own recomputation, which
+    // the previous asymmetry test was not.
+    const float fov = 0.9599311f;
+    const float ratio = 1.7777778f;
+    const float nearPlane = 0.25f;
+    const float shift = 0.05f;               // near-plane units
+
+    const auto plain = MakeCameraBlock(fov, ratio, nearPlane, 0, 0, 0, 0);
+    const auto shifted = MakeCameraBlock(fov, ratio, nearPlane, 0, shift, 0, 0);
+
+    const auto a = TangentsFromCamera(plain);
+    const auto b = TangentsFromCamera(shifted);
+    Require(a.has_value() && b.has_value(), "both cameras convert");
+    Require(Near(b->tanRight - a->tanRight, shift / nearPlane),
+        "a right-edge offset moves the tangent by offset/nearPlane, not by an angle");
+    Require(Near(b->tanLeft, a->tanLeft), "and leaves the opposite edge alone");
+    Require(Near(b->tanUp, a->tanUp), "and does not touch the vertical");
+}
+
+void TestNearPlaneScalesTheAsymmetry()
+{
+    // The same stored offset means a DIFFERENT angle at a different near plane.
+    // Getting this backwards is the tangent-space trap F-011 recorded, and it is
+    // silent: both answers look plausible.
+    const float fov = 0.9599311f, ratio = 1.7777778f, shift = 0.05f;
+    const auto shallow = TangentsFromCamera(MakeCameraBlock(fov, ratio, 0.1f, 0, shift, 0, 0));
+    const auto deep = TangentsFromCamera(MakeCameraBlock(fov, ratio, 0.5f, 0, shift, 0, 0));
+    Require(shallow.has_value() && deep.has_value(), "both convert");
+    const auto base = TangentsFromCamera(MakeCameraBlock(fov, ratio, 1.0f, 0, 0, 0, 0));
+    Require(base.has_value(), "baseline converts");
+    Require(shallow->tanRight > deep->tanRight,
+        "the same edge offset is a larger tangent shift at a nearer plane");
+}
+
+void TestRoundTripThroughTheEngineFormula()
+{
+    // Tangents -> the engine's camera fields -> back to tangents. This crosses
+    // both directions rather than recomputing one, so it catches a sign or ratio
+    // error that a single-direction check would agree with.
+    EyeView original{};
+    original.tanLeft = -1.4281480f;   // tan(55 degrees)
+    original.tanRight = 1.0f;         // tan(45 degrees)
+    original.tanDown = -1.1917536f;   // tan(50 degrees)
+    original.tanUp = 1.1917536f;
+
+    const float nearPlane = 0.1f;
+    const auto projection = ProjectionFromTangents(original, nearPlane);
+    Require(projection.has_value(), "the asymmetric frustum converts to engine fields");
+
+    auto camera = MakeCameraBlock(projection->fov, projection->projectionRatio, nearPlane,
+                                  projection->asymmetry.left, projection->asymmetry.right,
+                                  projection->asymmetry.bottom, projection->asymmetry.top);
+    const auto recovered = TangentsFromCamera(camera);
+    Require(recovered.has_value(), "and back again");
+    Require(Near(recovered->tanLeft, original.tanLeft, 1e-3f), "left edge survives the round trip");
+    Require(Near(recovered->tanRight, original.tanRight, 1e-3f), "right edge survives");
+    Require(Near(recovered->tanDown, original.tanDown, 1e-3f), "bottom edge survives");
+    Require(Near(recovered->tanUp, original.tanUp, 1e-3f), "top edge survives");
+}
+
+void TestCameraConversionFailsClosed()
+{
+    // Submitting a frustum derived from an unreadable camera is worse than
+    // dropping the frame: it is wrong in a way the runtime cannot detect.
+    Require(!TangentsFromCamera(MakeCameraBlock(0.96f, 1.78f, 0.0f, 0, 0, 0, 0)).has_value(),
+        "a zero near plane is refused rather than dividing by it");
+    Require(!TangentsFromCamera(MakeCameraBlock(0.0f, 1.78f, 0.1f, 0, 0, 0, 0)).has_value(),
+        "a zero FOV is not a frustum");
+    Require(!TangentsFromCamera(MakeCameraBlock(0.96f, 0.0f, 0.1f, 0, 0, 0, 0)).has_value(),
+        "a zero projection ratio is not a frustum");
+    const std::vector<std::uint8_t> tooSmall(16, 0);
+    Require(!TangentsFromCamera(tooSmall).has_value(), "a short buffer is refused");
+    // An asymmetry large enough to cross the edges over.
+    Require(!TangentsFromCamera(MakeCameraBlock(0.96f, 1.78f, 0.1f, 0, -1.0f, 0, 0)).has_value(),
+        "a frustum whose edges have crossed is refused");
+}
+
+void TestAnglesAreArctangents()
+{
+    EyeView view{};
+    view.tanLeft = -1.0f;
+    view.tanRight = 1.0f;
+    view.tanDown = -0.5f;
+    view.tanUp = 2.0f;
+    const auto angles = AnglesFromTangents(view);
+    Require(Near(angles.angleLeft, -0.7853982f), "atan(-1) is -45 degrees");
+    Require(Near(angles.angleRight, 0.7853982f), "atan(1) is 45 degrees");
+    Require(Near(angles.angleDown, std::atan(-0.5f)), "down is the arctangent of its tangent");
+    Require(Near(angles.angleUp, std::atan(2.0f)), "up likewise");
+}
+
 } // namespace
 
 int main()
@@ -274,6 +413,12 @@ int main()
     TestStereoPlanBuildsBothEyes();
     TestStereoPlanIsAllOrNothing();
     TestNearPlaneIsReadFromTheLiveCamera();
+    TestSymmetricCameraGivesSymmetricTangents();
+    TestAsymmetryIsANearPlaneEdgeOffset();
+    TestNearPlaneScalesTheAsymmetry();
+    TestRoundTripThroughTheEngineFormula();
+    TestCameraConversionFailsClosed();
+    TestAnglesAreArctangents();
     TestSymmetricScaleMakesBothEyesIdentical();
     TestAsymmetricScaleMirrorsTheEyes();
     std::cout << "PreyVR stereo frame tests passed\n";

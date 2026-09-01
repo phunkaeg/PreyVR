@@ -67,6 +67,49 @@ struct EyeProjection {
 // wildly skewed image, and it keeps the numbers legible in a log.
 std::optional<EyeProjection> ProjectionFromTangents(const EyeView& view, float nearPlane);
 
+// ---------------------------------------------------------------------------
+// The other direction: what we must DECLARE to OpenXR
+// ---------------------------------------------------------------------------
+
+// Reads a live Prey CCamera and returns the frustum it actually renders with, as
+// tangent half-extents.
+//
+// **This is the function the submission path needs, and its absence is why
+// docs/SUBMISSION_CONTRACT.md records that we have been reading
+// `submitted_fov_matches_located` backwards.** PreyVR is an injected mod: it
+// cannot change Prey's projection, so its pixels come from the game's frustum.
+// Declaring the runtime's FOV over them is a lie about the image. What must be
+// declared is *this*.
+//
+// **The asymmetry semantics come from CryEngine's own source**, not from our
+// recomputation -- `DriverD3D.cpp` builds the projection from `wL/wR/wB/wT`, the
+// same four fields this project reverse-engineered as `fWL/fWR/fWB/fWT`, and they
+// are **frustum-edge offsets in near-plane units added to the computed edges**,
+// not angles. So converting an edge offset to a tangent is a division by the near
+// plane. That independence matters: our own asymmetry test was self-referential,
+// recomputing with the same formula on the same inputs, and this is the first
+// outside confirmation of the shape. See docs/CRYENGINE_SOURCE_FINDINGS.md.
+//
+// Returns nothing if the camera is not usable -- a zero or negative near plane, a
+// non-finite field, or a degenerate FOV. **Fail closed**: submitting a frustum
+// derived from a camera we could not read is worse than dropping the frame,
+// because it is wrong in a way the runtime cannot detect.
+std::optional<EyeView> TangentsFromCamera(std::span<const std::uint8_t> camera);
+
+// Tangents to the angles an XrFovf carries. Kept separate from the read above so
+// the trigonometry is testable without a camera block, and so callers work in
+// tangents for as long as possible -- every correct operation on a frustum is
+// linear in tangents and not in angles, which this project has already paid for
+// once in F-011.
+struct EyeFovAngles {
+    float angleLeft = 0.0f;   // radians, negative
+    float angleRight = 0.0f;
+    float angleDown = 0.0f;   // radians, negative
+    float angleUp = 0.0f;
+};
+
+EyeFovAngles AnglesFromTangents(const EyeView& view);
+
 // The synthetic per-eye frustum used when there is no headset to report one.
 //
 // `asymmetryScale` scales the outer half-angle and shrinks the inner one by the

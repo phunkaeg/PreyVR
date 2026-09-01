@@ -69,6 +69,67 @@ EyeView SyntheticEyeView(int eye, float halfFovDegrees, float asymmetryScale)
     return view;
 }
 
+std::optional<EyeView> TangentsFromCamera(std::span<const std::uint8_t> camera)
+{
+    if (camera.size() < engine::CameraLayout::size) {
+        return std::nullopt;
+    }
+    const auto readFloat = [&camera](std::size_t offset) {
+        float value = 0.0f;
+        std::memcpy(&value, camera.data() + offset, sizeof(value));
+        return value;
+    };
+
+    const float fov = readFloat(engine::CameraLayout::fov);
+    const float projectionRatio = readFloat(engine::CameraLayout::projectionRatio);
+    // GetNearPlane() is the .y component of the near edge vector -- see R-048.
+    const float nearPlane = readFloat(engine::CameraLayout::edgeNearLeftTop + 4);
+    const float asymL = readFloat(engine::CameraLayout::asymLeft);
+    const float asymR = readFloat(engine::CameraLayout::asymRight);
+    const float asymB = readFloat(engine::CameraLayout::asymBottom);
+    const float asymT = readFloat(engine::CameraLayout::asymTop);
+
+    const auto finite = [](float v) { return std::isfinite(v); };
+    if (!finite(fov) || !finite(projectionRatio) || !finite(nearPlane) ||
+        !finite(asymL) || !finite(asymR) || !finite(asymB) || !finite(asymT)) {
+        return std::nullopt;
+    }
+    // A zero near plane would make the edge-offset conversion a division by zero,
+    // and a non-positive FOV or ratio is not a frustum.
+    if (nearPlane <= 0.0f || fov <= 0.0f || fov >= 3.14159265358979323846f ||
+        projectionRatio <= 0.0f) {
+        return std::nullopt;
+    }
+
+    // The engine's construction, inverted. Vertical half-extent from the FOV,
+    // horizontal from that times the projection ratio, then the asymmetry edge
+    // offsets converted from near-plane units into tangents.
+    const float halfVertical = std::tan(fov * 0.5f);
+    const float halfHorizontal = halfVertical * projectionRatio;
+
+    EyeView view{};
+    view.tanLeft = -halfHorizontal + asymL / nearPlane;
+    view.tanRight = halfHorizontal + asymR / nearPlane;
+    view.tanDown = -halfVertical + asymB / nearPlane;
+    view.tanUp = halfVertical + asymT / nearPlane;
+
+    // A frustum whose edges have crossed is not one we can honestly declare.
+    if (!(view.tanRight > view.tanLeft) || !(view.tanUp > view.tanDown)) {
+        return std::nullopt;
+    }
+    return view;
+}
+
+EyeFovAngles AnglesFromTangents(const EyeView& view)
+{
+    EyeFovAngles angles{};
+    angles.angleLeft = std::atan(view.tanLeft);
+    angles.angleRight = std::atan(view.tanRight);
+    angles.angleDown = std::atan(view.tanDown);
+    angles.angleUp = std::atan(view.tanUp);
+    return angles;
+}
+
 std::optional<EyeProjection> ProjectionFromTangents(const EyeView& view, float nearPlane)
 {
     if (!TangentsAreSane(view) || !std::isfinite(nearPlane) || nearPlane <= 0.0f) {
