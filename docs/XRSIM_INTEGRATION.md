@@ -474,6 +474,14 @@ The real frustum is genuinely asymmetric, which is the case
 and xr-tape's `submitted_fov_matches_located` passed at a maximum difference of
 **0 rad** across 400 frames.
 
+> **Read `submitted_fov_matches_located` with care from here on.** It passing is
+> honest *for this probe*, which owns its rendering and therefore renders with
+> the frustum it declares. For the injected mod it would be a **failure**
+> signal: PreyVR cannot change Prey's projection, so declaring the runtime's FOV
+> over the game's pixels is a lie about the image. Expect that check to fail,
+> by roughly 20 degrees, once the mod is actually correct. See
+> `docs/SUBMISSION_CONTRACT.md`.
+
 **19 checks passed, 0 failed, 1 skipped** -- identical to the xr-sim result,
 including `eye_order`, `ipd_plausible`, `no_vertical_disparity` and
 `submitted_pose_matches_located`. The stereo submission path works on real
