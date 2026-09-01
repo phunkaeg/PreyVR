@@ -1,8 +1,10 @@
 # Stereo production route
 
-The artifact `BN-STE-001` names as its exit proof. **It does not yet close that
-bottleneck**: no rung has been selected on evidence. This records the ladder, the
-state of each rung, and the test that decides.
+The artifact `BN-STE-001` names as its exit proof.
+
+**Rung 3, alternate-eye, is selected on evidence as of 2026-09-01.** Rung 1 was
+priced first, as the fast_test requires, across four experiments (A3, A4, A5, A6)
+and is parked rather than refuted -- see below and F-013/F-014/F-015.
 
 Playbook: `D:\Dev Debug\VR Modding\docs` -- `bottleneck-map.md`, then
 `bottlenecks.yml` classes `BN-STE-001` (gate STEREO-ARCH) and `BN-SFX-001` (gate
@@ -14,9 +16,9 @@ STEREO-SAFETY).
 
 | rung | route | PreyVR | who shipped it in-house |
 | --- | --- | --- | --- |
-| 1 | native scene re-entry | **interpose survives: 13 frames at full rate, then deadlocks (F-015)** | *nobody* |
+| 1 | native scene re-entry | **parked: interpose removes corruption but deadlocks; shared view 13-19 frames, own view 1 (F-015)** | *nobody* |
 | 2 | per-draw replay | untried | BioshockVR, FarCry2-vr |
-| 3 | alternate-eye / AFR | **proven working (A2b)** | ss2vr-work, SOMAVR |
+| 3 | alternate-eye / AFR | **SELECTED -- proven working (A2b)** | ss2vr-work, SOMAVR |
 | 4 | draw-stream reconstruction | untried | -- |
 
 **Three of the four shipped in-house projects chose a rung below the one we are

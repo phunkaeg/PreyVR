@@ -726,3 +726,54 @@ per-frame render resources, that is exactly what separating them addresses.
 **The watchdog did not recover the hang**, as its own comment predicted. It cleared the flag; the
 render thread stayed blocked and the process needed killing. That remains honest and remains a
 limitation, not a bug.
+
+### F-015 addendum — the recursive view makes it worse, and rung 1 is out of cheap moves
+
+The mode ladder ran back to back on fresh launches, mode 0 first so the baseline
+could not be run-to-run variance:
+
+| mode | second render's view | frames before deadlock | fps during |
+| --- | --- | --- | --- |
+| 0 | shared with the first | **19** (13 on the prior launch) | 144 -> 7 -> 0 |
+| 1 | **its own recursive view** | **1** | 144 -> 0 |
+
+Both hang at `interpose:eye1`, so the second `RenderWorld` call does not return in
+either case. **Giving the second render its own recursive view made it fail
+immediately rather than after nineteen frames** -- the opposite of the prediction.
+
+That is consistent with F-014 rather than a surprise: R-072 proved the recursive
+view is a distinct allocated object, and F-014 concluded nothing prepares it.
+Rendering into it blocks on the first attempt. R-063's "allocated and idle" means
+idle.
+
+**Mode 2 was not run.** It marks the same unprepared view as a secondary pass,
+and the flag cannot prepare a view. Spending a live session to confirm that would
+be theatre.
+
+**Where this leaves rung 1.** The interpose position is a genuine and large
+advance -- it removed the UI-table corruption entirely and bought 19 clean
+double-rendered frames at full frame rate, where the append-after shape was fatal
+on frame one, three times out of three. But both available ways to satisfy the
+second render now fail:
+
+- share the first render's view -> exhaustion after 13-19 frames
+- give it the recursive view -> blocks on frame one, unprepared
+
+What remains is not a small change. It means finding what the engine does per
+frame to make a render view usable, and either invoking it for the recursive view
+or finding what mode 0 exhausts and resetting that. That is open-ended reverse
+engineering against a subsystem we have no seam into, with no guarantee of an
+answer.
+
+**The fleet evidence now reads as a warning rather than a curiosity.** BN-STE-001
+records that ss2vr, BioshockVR, SOMAVR and FarCry2-vr all priced this rung and
+chose a lower one, and that nobody has shipped it. This project has now spent
+A3, A4, A5 and A6 on it, produced four registry entries, and cost several game
+sessions. Rung 3 has been proven here since A2b, against predictions written
+beforehand, and is what two of those projects ship.
+
+**Recommendation: switch to rung 3.** Not because rung 1 is impossible -- the
+interpose result suggests it may well be reachable -- but because the remaining
+work is unbounded and the alternative is already proven, already understood, and
+shares its entire downstream with rung 1 anyway: per-eye capture, submission,
+frustum declaration and world scale are the same problems either way.
