@@ -14,7 +14,7 @@ STEREO-SAFETY).
 
 | rung | route | PreyVR | who shipped it in-house |
 | --- | --- | --- | --- |
-| 1 | native scene re-entry | **under test (A4)** | *nobody* |
+| 1 | native scene re-entry | **live crash, F-014** | *nobody* |
 | 2 | per-draw replay | untried | BioshockVR, FarCry2-vr |
 | 3 | alternate-eye / AFR | **proven working (A2b)** | ss2vr-work, SOMAVR |
 | 4 | draw-stream reconstruction | untried | -- |
@@ -27,6 +27,27 @@ project should have had before building A4.
 
 Rung 3 is not a consolation. It is proven here (A2b passed against predictions
 written beforehand) and it is what two shipped projects run.
+
+## A5 result, 2026-09-01: the control failed
+
+One zero-camera-delta pass ran, reported `frameIdMoved=0`, self-disarmed cleanly,
+and the **render thread crashed about a second later with nothing armed** --
+reading `0xFFFFFFFFFFFFFFFF` inside `FUN_180ED82D0`, which walks the renderer's
+per-frame pooled chunk chain indexed at `+0x499C`. See F-014.
+
+**Rung 1 is not cleared and its odds are now worse than R-073 suggested.** The
+recursive view is allocated and distinct (R-072) but nothing prepares it, and
+setting the secondary-pass flag (R-073) makes the engine skip work that plausibly
+would have. That the fleet has never shipped this rung now reads as a warning
+rather than an accident.
+
+**Not yet a refutation.** The failure is one specific unprepared structure with a
+named function and offset, not a general "it cannot be done". The open question
+is narrow: what initialises a recursive render view, and can it be invoked?
+
+Two method faults this exposed, both recorded in F-014: a liveness check read
+immediately after the event it judges is not a liveness check, and a breadcrumb
+readable on only one failure path is not a breadcrumb. Both are fixed.
 
 ## Rung 1: what is established and what is not
 

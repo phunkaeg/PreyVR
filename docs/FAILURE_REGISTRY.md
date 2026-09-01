@@ -477,3 +477,65 @@ next.
 **Cost:** one hung game session, killed from outside. No writes to the installed game, and
 `restoreFailures` stayed 0 throughout -- the camera was always restored byte for byte. The damage was
 entirely in the engine's own per-frame state.
+
+---
+
+## F-014 - The recursive render view is idle because nothing has prepared it
+
+**Status:** diagnosed to a function and a structure. Rung 1 is not cleared; A5's control failed.
+
+The A5 zero-camera-delta control ran **one** second pass, reported clean, self-disarmed 4 ms later,
+and the render thread died about a second afterwards with nothing armed.
+
+```
+03:41:31.665  preyvr_second_pass first_frame zeroDelta=1 slot=0 recursiveView=0x29deb0eb5a0 done=1
+03:41:31.669  preyvr_second_pass budget_exhausted            <- clean self-disarm
+13:41:32      Prey: EXCEPTION_ACCESS_VIOLATION on RenderThread,
+              read from 0xFFFFFFFFFFFFFFFF at 0x7FFB8287835D
+```
+
+(The log timestamps are UTC and Prey's are local; they are the same second.)
+
+**The crash names the structure.** `module_base` was `0x7FFB819A0000`, so the faulting address is
+**RVA 0xED835D**, inside `FUN_180ED82D0`. That function indexes on `param_1 + 0x499C`, which is
+already in our engine map as `RendererLayout::frameSlotIndex` -- "R-026: per-frame render view
+block, two slots of stride 0x328 selected by the index at +0x499C". So `param_1` is the
+`CD3D9Renderer` and this is a lookup into a **per-frame pooled chunk chain**:
+
+```c
+plVar4 = (longlong *)(((longlong)*(int *)(param_1 + 0x499c) + 0xa7) * 0x80 + param_1);
+...
+plVar4 = (longlong *)*plVar4;                                   // walk to next chunk
+uVar3 = (longlong)*(int *)((longlong)plVar4 + 0xc) + uVar3;      // read its count
+```
+
+A chain pointer of `-1` produces exactly the observed read of `0xFFFFFFFFFFFFFFFF`.
+
+**The reading.** R-072 established that the recursive render view is a *distinct allocated object*.
+It did not establish that anything ever *prepares* it. R-063 called the recursive views "allocated
+and idle", and idle appears to mean genuinely unprepared -- its per-frame chunk chains still hold
+uninitialised sentinels. Rendering into it walks them.
+
+**R-073 may have made this worse rather than better, and that is the uncomfortable part.** Setting
+the secondary-pass flag is what makes the engine skip `UpdateRenderingCamera`, the CVar snapshot,
+`FUN_1802114D0` and the occlusion update. Some of that skipped work is plausibly what would have
+prepared the very structures this crash walks. The flag is real and its guards are real; the
+inference that setting it is *sufficient* was mine, and it was wrong.
+
+**Two corrections to how this was reported.**
+
+`frameIdMoved=0` and "alive: true" were both true at the instant they were read and worthless as a
+verdict, because the process died a second later. **A liveness check taken immediately after the
+event it is meant to judge is not a liveness check.** The A2b protocol already knew this -- it waits
+and re-reads -- and the A5 script did not.
+
+**The breadcrumb did not fire, and that is a design gap, not bad luck.** `gStereoStep` is printed
+only by the watchdog on deadline expiry. Here the mode disarmed cleanly *before* the deadline, so
+nothing printed it, and the crash took the process with it. A breadcrumb that can only be read on one
+specific failure path is not a breadcrumb. It is now exported so it can be read at any time, and the
+next crash of this kind will name its sub-step.
+
+**What is still true.** The single pass did execute, `frameIdMoved` was genuinely 0 while it ran, and
+no restore ever failed. The failure is in what the recursive view needs before it can be rendered
+into -- which is a narrower and more tractable question than A3's silent wedge, and it is the first
+time this class of failure has come with a function, a structure offset and a call stack.

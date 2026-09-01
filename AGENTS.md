@@ -7,6 +7,32 @@
 
 VR modding project for Prey (2017). Target: `Prey.exe` (64-bit, CryEngine/Arkane, D3D11).
 
+## Your full MCP roster — 12 servers
+
+Codex cannot load a skill, so the complete list lives here rather than only in `re-mcp-toolkit`.
+**Preflight before use; if a server is not live, say so rather than working around it silently.**
+
+| Server | Prefix | Reach for it when |
+|---|---|---|
+| Ghidra | `mcp__ghidra__` | static analysis, decompilation, signatures, struct layouts |
+| ReGenny | `mcp__regenny__` | live struct layout against a running process |
+| Frida | `mcp__frida__` | prove a function fires, hook without a debugger, in-process scripting |
+| Cheat Engine | `mcp__cheatengine__` | find a value live, pointer chains, AOB scans |
+| x64dbg / x32dbg | `mcp__x64dbg__` | breakpoints, stepping, register/stack inspection |
+| RenderDoc | `mcp__renderdoc__` | one deep frame: draws, cbuffers, pipeline state |
+| apitrace | `mcp__apitrace__` | the whole run's call stream; D3D8/9, legacy GL |
+| ILSpy | `mcp__ilspy__` | .NET assemblies |
+| **local-llm** | `mcp__local-llm__` | offload bounded grunt work — ranking grep hits, digesting decompiler output, boilerplate. Probe `local_status` first; fall back silently |
+| **codex** | `mcp__codex__` | a second, independent opinion on a bounded question |
+| 3ds Max | `mcp__3dsmax-mcp__` | asset work — meshes, rigs, materials |
+| After Effects | `mcp__after-effects__` | release or comparison video |
+
+Non-MCP fleet tooling: **xr-sim** (`D:\Dev Debug\xr-sim`, headset-free OpenXR runtime) and
+**xr-tape** (`D:\Dev Debug\xr-tape`, records and checks what this mod submits).
+
+**Two tools beat one.** A capture localises, a debugger explains; a static finding is a hypothesis until
+something live confirms it. See the `re-mcp-toolkit` skill's pairing table.
+
 ## xr-tape — record and check what this mod submits to OpenXR
 
 `D:\Dev Debug\xr-tape` is an OpenXR **API layer** that records both eye poses, both projections, the

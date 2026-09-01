@@ -1077,6 +1077,11 @@ DWORD ProbeRenderViews()
     return gStatus.load(std::memory_order_acquire);
 }
 
+const char* StereoStepName()
+{
+    return gStereoStep.load(std::memory_order_acquire);
+}
+
 DWORD RenderViewProbeStatusValue()
 {
     return gRenderViewProbeStatus.load(std::memory_order_acquire);

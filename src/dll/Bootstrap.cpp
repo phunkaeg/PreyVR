@@ -529,6 +529,18 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetSecondPassStatus()
     return preyvr::dll::SecondPassStatusValue();
 }
 
+// The sub-step the stereo path was last in.
+//
+// **Exported because F-014 proved a breadcrumb readable on only one failure path
+// is not a breadcrumb.** It was previously printed by the watchdog on deadline
+// expiry alone, so a mode that disarmed cleanly and then crashed the render
+// thread a second later left no trace of where it had been. Readable at any time,
+// including after the fact from a surviving process.
+extern "C" __declspec(dllexport) const char* PreyVR_GetStereoStep()
+{
+    return preyvr::dll::StereoStepName();
+}
+
 // Arms the one-shot render-view probe. It runs on the next rendered frame and
 // nothing needs to be armed for it to work.
 //

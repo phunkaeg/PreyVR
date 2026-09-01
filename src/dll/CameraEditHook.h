@@ -148,6 +148,9 @@ enum class RenderViewProbeStatus : DWORD {
 
 DWORD RenderViewProbeStatusValue();
 
+// The sub-step the stereo path was last in, as a string literal. See F-014.
+const char* StereoStepName();
+
 // **A4 -- the recursive second pass. The successor to A3, at the right layer.**
 //
 // A3 re-entered `CSystem::Render`, which forced both eyes through one
