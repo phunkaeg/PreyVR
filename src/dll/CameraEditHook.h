@@ -200,8 +200,14 @@ const char* StereoStepName();
 // second image should equal the first. Anything that changes is a side effect of
 // repeating the pass rather than stereo -- which is the only way to tell those
 // two apart. Run it before the eye-delta test, not after.
+// `markSecondary` sets SRenderingPassInfo+0x01 (R-073), which makes the engine
+// skip its once-per-frame work. **It is a variable rather than a constant because
+// of F-014**: the crash may be caused by that very skipping, if some of the work
+// it skips is what prepares the per-frame colour table the crash walks. Running
+// with it off changes exactly one bit and separates the two hypotheses --
+// "a second RenderWorld is fatal" from "marking it secondary is fatal".
 DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int frameBudget,
-                          bool zeroCameraDelta);
+                          bool zeroCameraDelta, bool markSecondary);
 
 unsigned long long SecondPassFrameCount();
 

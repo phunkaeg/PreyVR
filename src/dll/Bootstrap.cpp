@@ -497,6 +497,9 @@ struct PreyVRSecondPassArgs {
     // Non-zero runs the zero-camera-delta control: identical pass, identical
     // view, zero eye offset. Whatever changes is a side effect, not stereo.
     unsigned int zeroCameraDelta;
+    // Non-zero sets the R-073 secondary-pass flag. Off is the F-014 A/B: it
+    // separates "a second RenderWorld is fatal" from "marking it secondary is".
+    unsigned int markSecondary;
 };
 
 extern "C" __declspec(dllexport) DWORD PreyVR_SetSecondPassStereoPtr(
@@ -507,7 +510,7 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetSecondPassStereoPtr(
     }
     return preyvr::dll::SetSecondPassStereo(
         args->ipdMetres, args->halfFovDegrees, args->frameBudget,
-        args->zeroCameraDelta != 0);
+        args->zeroCameraDelta != 0, args->markSecondary != 0);
 }
 
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetSecondPassFrameCount()

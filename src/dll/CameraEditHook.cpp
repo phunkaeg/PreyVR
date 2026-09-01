@@ -95,6 +95,7 @@ std::atomic<unsigned long long> gSecondPassFrames{0};
 std::atomic<DWORD> gSecondPassStatus{static_cast<DWORD>(SecondPassStatus::idle)};
 std::atomic<bool> gLoggedFirstSecondPass{false};
 std::atomic<bool> gSecondPassZeroDelta{false};
+std::atomic<bool> gSecondPassMarkSecondary{true};
 std::atomic<unsigned long long> gSecondPassFrameIdMoved{0};
 std::atomic<bool> gLoggedFrameIdMove{false};
 
@@ -389,7 +390,10 @@ bool RunSecondPass(void* system)
     // what a second eye needs, and is the engine's own mechanism rather than a
     // gate we invented.
     Step("second_pass:mark_secondary");
-    passInfo[engine::PassInfoLayout::secondaryPassFlag] = 1;
+    const bool markSecondary = gSecondPassMarkSecondary.load(std::memory_order_acquire);
+    if (markSecondary) {
+        passInfo[engine::PassInfoLayout::secondaryPassFlag] = 1;
+    }
 
     Step("second_pass:swap_render_view");
     std::memcpy(passInfo.data() + engine::PassInfoLayout::renderView, &recursiveView,
@@ -456,7 +460,8 @@ bool RunSecondPass(void* system)
     if (gLoggedFirstSecondPass.compare_exchange_strong(expected, true)) {
         std::ostringstream line;
         line << "preyvr_second_pass result=0 detail=first_frame"
-             << " zeroDelta=" << (zeroDelta ? 1 : 0) << " slot=" << slot
+             << " zeroDelta=" << (zeroDelta ? 1 : 0)
+             << " markSecondary=" << (markSecondary ? 1 : 0) << " slot=" << slot
              << " recursiveView=0x" << std::hex
              << reinterpret_cast<std::uintptr_t>(recursiveView) << std::dec
              << " done=" << done;
@@ -976,7 +981,7 @@ bool EnsureSecondPassTargets()
 }
 
 DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int frameBudget,
-                          bool zeroCameraDelta)
+                          bool zeroCameraDelta, bool markSecondary)
 {
     if (ipdMetres == 0.0f || frameBudget == 0) {
         std::unique_lock lock(gMutex, kControlLockTimeout);
@@ -1013,6 +1018,7 @@ DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int fr
     }
     gSecondPassBudget.store(frameBudget, std::memory_order_release);
     gSecondPassZeroDelta.store(zeroCameraDelta, std::memory_order_release);
+    gSecondPassMarkSecondary.store(markSecondary, std::memory_order_release);
 
     // Same wall-clock stop as the double render, for the same F-013 reason.
     const unsigned long long allowanceMs =
@@ -1038,6 +1044,7 @@ DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int fr
     std::ostringstream line;
     line << "preyvr_second_pass result=0 detail=armed frameBudget=" << frameBudget
          << " zeroCameraDelta=" << (zeroCameraDelta ? 1 : 0)
+         << " markSecondary=" << (markSecondary ? 1 : 0)
          << " deadlineMs=" << allowanceMs << " ipd=" << ipdMetres;
     lifecycle::Log(line.str());
     return static_cast<DWORD>(CameraEditStatus::armed);
