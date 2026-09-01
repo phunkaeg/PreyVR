@@ -148,6 +148,51 @@ enum class RenderViewProbeStatus : DWORD {
 
 DWORD RenderViewProbeStatusValue();
 
+// **A4 -- the recursive second pass. The successor to A3, at the right layer.**
+//
+// A3 re-entered `CSystem::Render`, which forced both eyes through one
+// `SRenderingPassInfo` and one `CRenderView`. The second pass then culled against
+// state the first had already consumed, the world vanished leaving only skybox,
+// and the engine wedged (F-013).
+//
+// This does not re-enter anything. The original `CSystem::Render` runs untouched
+// with the game's own camera, and *afterwards* one extra `RenderWorld` (R-054) is
+// issued with:
+//
+//   * our own 64-byte `SRenderingPassInfo`, built by the engine's own
+//     `CreateGeneralPassRenderingInfo` (R-071, byte-gated as `pass.create_general`)
+//   * an eye-offset camera in our own memory, never the game's
+//   * **the recursive render view** rather than the default one (R-072), so the
+//     two passes share no per-frame view state
+//
+// That last point is the whole hypothesis. R-072 measured the recursive view as a
+// distinct object on both thread slots, and `CRenderer::GetRenderViewForThread`
+// disassembles to a plain indexed load with no allocation, so obtaining it is
+// free of side effects.
+//
+// **What this answers and what it does not.** It answers whether the engine
+// survives a second world render given its own view -- which is the last
+// architectural unknown. It does *not* yet composite or submit anything: the
+// second pass renders over the first in the same backbuffer, so the presented
+// image is the second eye. Making a submittable pair is the next problem, and
+// bundling it into this one would make a failure uninterpretable.
+//
+// Bounded by both a frame budget and the wall-clock watchdog, because F-013's
+// lesson was that a budget in frames cannot bound a failure that stops frames.
+// Pass ipd 0 or budget 0 to disarm.
+DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int frameBudget);
+
+unsigned long long SecondPassFrameCount();
+
+enum class SecondPassStatus : DWORD {
+    idle = 0,
+    armed = 1,
+    ranAtLeastOnce = 2,
+    refusedUnresolved = 3,  // renderer, process or pass creator could not be reached
+};
+
+DWORD SecondPassStatusValue();
+
 DWORD CameraEditStatusValue();
 
 // Counts frames on which the edit was actually applied and the restore verified

@@ -55,6 +55,14 @@ view matrix, FOV and player structs. Load it when you are deciding *what to look
 
 ## Cross-engine docs graph (added 2026-08-27)
 
+> **Blocker? Delegate the search to the AI box — don't burn cloud tokens reading candidate docs here.**
+> `opencode run --dir "D:\Dev Debug\VR Modding" --auto -m llamabox/coder-next "<blocker, with the exact
+> symbol/value/symptom>; search this graph AND grep the SS2VR/BioshockVR/SOMAVR docs+code; return ONLY
+> <file path> - <one-line why>, no solutions"` — then open just the files it names and grade them here.
+> **Pointers, not answers:** the local model fabricates specifics, and a cross-project hit is INFERENCE
+> until confirmed against these bytes. (Claude: full recipe in the `local-delegation` skill §3c.)
+
+
 This project is **not** in that graph. It covers SS2VR, BioshockVR and SOMAVR — Dark/KEX,
 Unreal 2.5 Vengeance and HPL3, across D3D11 and OpenGL — so query it as **prior art**, for
 problems those three already hit.

@@ -169,6 +169,20 @@ constexpr std::array<std::uint8_t, 20> kGetRenderViewForThread = {
     0x8D, 0x04, 0x50, 0x48, 0x8B, 0x84, 0xC1, 0x38,
     0x6F, 0x00, 0x00, 0xC3,
 };
+// R-071 SRenderingPassInfo::CreateGeneralPassRenderingInfo. The prologue alone
+// is a generic MSVC frame, so the gate runs on through the first two field
+// writes -- `mov byte [rcx+1],0` and `mov [rcx+4],r14` -- which are this
+// function's own initialisation of the pass info and are what make the match
+// distinctive. Ends on an instruction boundary.
+//
+// Harvested with `preyvr_engine_map_probe --dump 0x1E5B30 30` against the
+// installed binary rather than transcribed by eye, because a prologue copied by
+// hand is one the gate would then certify as correct.
+constexpr std::array<std::uint8_t, 29> kCreateGeneralPassRenderingInfo = {
+    0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x6C, 0x24, 0x10,
+    0x56, 0x57, 0x41, 0x56, 0x48, 0x83, 0xEC, 0x30, 0x45, 0x33,
+    0xF6, 0xC6, 0x41, 0x01, 0x00, 0x4C, 0x89, 0x71, 0x04,
+};
 // R-034 CRenderView::CollectLookingGlassInformation. Gated on
 // m_bLookingGlassEnabled at +0xFC0. Stops before a RIP-relative operand.
 constexpr std::array<std::uint8_t, 31> kCollectLookingGlassInfo = {
@@ -208,7 +222,7 @@ constexpr std::array<std::uint8_t, 7> kSystemSetViewCamera = {
     0x48, 0x81, 0xC1, 0x88, 0x07, 0x00, 0x00,
 };
 
-const std::array<Landmark, 30> kLandmarks = {{
+const std::array<Landmark, 31> kLandmarks = {{
     {"renderer.begin", "CD3D9Renderer::RT_BeginFrame", 0xF7D710, kBeginRendererScene},
     {"renderer.end", "CD3D9Renderer::RT_EndFrame", 0xF7E210, kEndRendererScene},
     {"renderer.present", "RT_EndFrame Present dispatch", 0xF7E48A, kPresentDispatch},
@@ -237,6 +251,8 @@ const std::array<Landmark, 30> kLandmarks = {{
     {"view.collect_looking_glass", "CRenderView::CollectLookingGlassInformation", 0xEE44D0, kCollectLookingGlassInfo},
     {"view.enable_looking_glass", "CRenderView::EnableLookingGlass", 0xEE4B00, kEnableLookingGlass},
     {"view.job_post_write", "CRenderView::Job_PostWrite", 0xEE63C0, kRenderViewJobPostWrite},
+    {"pass.create_general", "SRenderingPassInfo::CreateGeneralPassRenderingInfo",
+     0x1E5B30, kCreateGeneralPassRenderingInfo},
     {"system.get_view_camera", "CSystem::GetViewCamera", 0xDF2BB0, kSystemGetViewCamera},
     {"system.set_view_camera", "CSystem::SetViewCamera", 0xDF4560, kSystemSetViewCamera},
 }};

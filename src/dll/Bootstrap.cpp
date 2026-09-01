@@ -482,6 +482,42 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetDoubleRenderStereo(
     return preyvr::dll::SetDoubleRenderStereo(ipdMetres, halfFovDegrees, frameBudget);
 }
 
+// A4: one extra RenderWorld per frame for the second eye, with its own pass info
+// and the recursive render view. The successor to the double render (A3), which
+// wedged the engine by re-entering CSystem::Render and forcing both eyes through
+// one pass info and one view (F-013).
+//
+// The game's own frame renders first and untouched, so this path never writes the
+// game's camera. Bounded by a frame budget and by the wall-clock watchdog.
+// args[0] = IPD metres, args[1] = half-FOV degrees, args[2] = frame budget.
+struct PreyVRSecondPassArgs {
+    float ipdMetres;
+    float halfFovDegrees;
+    unsigned int frameBudget;
+};
+
+extern "C" __declspec(dllexport) DWORD PreyVR_SetSecondPassStereoPtr(
+    const PreyVRSecondPassArgs* args)
+{
+    if (args == nullptr) {
+        return static_cast<DWORD>(preyvr::dll::CameraEditStatus::failed);
+    }
+    return preyvr::dll::SetSecondPassStereo(
+        args->ipdMetres, args->halfFovDegrees, args->frameBudget);
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetSecondPassFrameCount()
+{
+    return preyvr::dll::SecondPassFrameCount();
+}
+
+// 0 idle, 1 armed, 2 ran at least once, 3 refused because something could not be
+// resolved.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetSecondPassStatus()
+{
+    return preyvr::dll::SecondPassStatusValue();
+}
+
 // Arms the one-shot render-view probe. It runs on the next rendered frame and
 // nothing needs to be armed for it to work.
 //

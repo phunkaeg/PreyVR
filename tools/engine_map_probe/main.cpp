@@ -55,12 +55,32 @@ int wmain(int argc, wchar_t** argv)
         std::cout << preyvr::engine::Landmarks().size() << '\n';
         return 0;
     }
-    if (argc != 2) {
-        std::cerr << "usage: preyvr_engine_map_probe <PreyDll.dll> | --count\n";
+    // `--dump <rva> <count>` prints the bytes at an RVA as a C++ initialiser.
+    //
+    // Adding a landmark means transcribing a prologue by hand, and a prologue
+    // transcribed by hand is a prologue that can be wrong in a way the gate then
+    // certifies as correct. This reads them out of the same image the gate
+    // validates against, through the same mapping, so the bytes cannot drift
+    // between harvesting and checking.
+    bool dumpMode = false;
+    std::uintptr_t dumpRva = 0;
+    std::size_t dumpCount = 0;
+    if (argc == 5 && std::wstring_view(argv[1]) == L"--dump") {
+        dumpMode = true;
+        dumpRva = static_cast<std::uintptr_t>(std::wcstoull(argv[2], nullptr, 0));
+        dumpCount = static_cast<std::size_t>(std::wcstoull(argv[3], nullptr, 0));
+        if (dumpCount == 0 || dumpCount > 256) {
+            std::cerr << "engine_map_probe result=failed reason=dump_count_out_of_range\n";
+            return 2;
+        }
+    } else if (argc != 2) {
+        std::cerr << "usage: preyvr_engine_map_probe <PreyDll.dll> | --count"
+                     " | --dump <rva> <count> <PreyDll.dll>\n";
         return 2;
     }
 
-    const std::filesystem::path path = std::filesystem::absolute(argv[1]);
+    const std::filesystem::path path =
+        std::filesystem::absolute(dumpMode ? argv[4] : argv[1]);
     Handle file(CreateFileW(
         path.c_str(),
         GENERIC_READ,
@@ -102,6 +122,29 @@ int wmain(int argc, wchar_t** argv)
 
     const auto image = std::span<const std::uint8_t>(
         view.bytes(), static_cast<std::size_t>(nt->OptionalHeader.SizeOfImage));
+
+    if (dumpMode) {
+        if (dumpRva >= image.size() || dumpCount > image.size() - dumpRva) {
+            std::cerr << "engine_map_probe result=failed reason=dump_out_of_range\n";
+            return 1;
+        }
+        std::cout << "engine_map_dump rva=0x" << std::hex << std::uppercase << dumpRva
+                  << " count=" << std::dec << dumpCount << '\n';
+        for (std::size_t i = 0; i < dumpCount; ++i) {
+            if (i % 10 == 0) {
+                std::cout << (i == 0 ? "    " : "\n    ");
+            }
+            std::cout << "0x" << std::hex << std::uppercase
+                      << (image[dumpRva + i] < 0x10 ? "0" : "")
+                      << static_cast<unsigned>(image[dumpRva + i]) << std::dec << ",";
+            if (i + 1 < dumpCount) {
+                std::cout << ' ';
+            }
+        }
+        std::cout << '\n';
+        return 0;
+    }
+
     const auto results = preyvr::engine::ValidateLandmarks(image);
     for (const auto& result : results) {
         std::cout << "engine_map_landmark id=" << result.landmark->id

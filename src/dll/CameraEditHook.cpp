@@ -87,6 +87,33 @@ std::atomic<unsigned long long> gDoubleRenderDeadlineMs{0};
 std::atomic<bool> gProbeRenderViews{false};
 std::atomic<DWORD> gRenderViewProbeStatus{
     static_cast<DWORD>(RenderViewProbeStatus::notRun)};
+
+// A4: the recursive second pass. See the header for why this replaces A3.
+std::atomic<bool> gSecondPass{false};
+std::atomic<unsigned int> gSecondPassBudget{0};
+std::atomic<unsigned long long> gSecondPassFrames{0};
+std::atomic<DWORD> gSecondPassStatus{static_cast<DWORD>(SecondPassStatus::idle)};
+std::atomic<bool> gLoggedFirstSecondPass{false};
+
+// SRenderingPassInfo::CreateGeneralPassRenderingInfo (R-071), byte-gated as the
+// landmark `pass.create_general`. Signature from its decompilation: it fills a
+// caller-supplied buffer and returns it.
+constexpr std::uintptr_t kCreatePassInfoRva = 0x1E5B30;
+using CreatePassInfoFn = void*(__fastcall*)(void* out, const void* camera, std::uint32_t flags,
+                                            int auxWindow);
+std::atomic<CreatePassInfoFn> gCreatePassInfo{nullptr};
+
+// RenderWorld, reached through CSystem::m_pProcess's vtable (R-054/R-059).
+using RenderWorldFn = void(__fastcall*)(void* process, int flags, void* passInfo,
+                                        const char* debugName);
+
+// CRenderView vtable slots that CreateGeneralPassRenderingInfo drives on the view
+// it selected. They have to be re-driven on the recursive view after the swap,
+// or the pass would carry state derived from the default view instead.
+constexpr std::uintptr_t kRenderViewSetFlagsSlot = 0x20;
+constexpr std::uintptr_t kRenderViewDerivedSlot = 0x58;
+using RenderViewSetFlagsFn = void(__fastcall*)(void* view, std::uint32_t flags);
+using RenderViewDerivedFn = void*(__fastcall*)(void* view);
 std::atomic<unsigned long long> gDoubleRendered{0};
 void* gTarget = nullptr;
 bool gHookCreated = false;
@@ -230,19 +257,154 @@ void RunRenderViewProbe(void* system)
     lifecycle::Log(line.str());
 }
 
+// Issues one extra RenderWorld for the second eye, with its own pass info and
+// the recursive render view. See the header for why this is not A3.
+//
+// Everything it needs is resolved fresh each call and every step is null-checked,
+// because this runs on the render thread and a wrong pointer here is a crash
+// rather than a wrong number.
+bool RunSecondPass(void* system)
+{
+    const auto createPass = gCreatePassInfo.load(std::memory_order_acquire);
+    const UpdateFrustumFn updateFrustum = gUpdateFrustum.load(std::memory_order_acquire);
+    if (system == nullptr || createPass == nullptr || updateFrustum == nullptr) {
+        return false;
+    }
+
+    auto* const gEnv = *reinterpret_cast<std::uint8_t**>(
+        reinterpret_cast<std::uintptr_t>(system) + engine::SystemLayout::gEnvPointer);
+    if (gEnv == nullptr) {
+        return false;
+    }
+    auto* const renderer = *reinterpret_cast<std::uint8_t**>(
+        gEnv + engine::GlobalEnvironmentLayout::renderer);
+    if (renderer == nullptr) {
+        return false;
+    }
+    auto* const rendererVtable = *reinterpret_cast<std::uint8_t**>(renderer);
+    if (rendererVtable == nullptr) {
+        return false;
+    }
+
+    // RenderWorld is dispatched through CSystem::m_pProcess, not through
+    // gEnv->p3DEngine, even though R-059 measured them as the same object.
+    auto* const process = *reinterpret_cast<std::uint8_t**>(
+        reinterpret_cast<std::uintptr_t>(system) + engine::SystemLayout::processPointer);
+    if (process == nullptr) {
+        return false;
+    }
+    auto* const processVtable = *reinterpret_cast<std::uint8_t**>(process);
+    if (processVtable == nullptr) {
+        return false;
+    }
+    const auto renderWorld = *reinterpret_cast<RenderWorldFn*>(
+        processVtable + engine::SystemLayout::vtableRenderWorld);
+    if (renderWorld == nullptr) {
+        return false;
+    }
+
+    const auto query = *reinterpret_cast<EfQueryFn*>(
+        rendererVtable + engine::RendererLayout::vtableQuery);
+    const auto getView = *reinterpret_cast<GetRenderViewFn*>(
+        rendererVtable + engine::RendererLayout::vtableGetRenderViewForThread);
+    if (query == nullptr || getView == nullptr) {
+        return false;
+    }
+
+    int queried = 0;
+    query(renderer, engine::RendererLayout::queryRenderThreadList, &queried,
+          static_cast<int>(sizeof(queried)), 0, 0);
+    const int slot = queried & 0xFF;
+    void* const recursiveView =
+        getView(renderer, slot, engine::RendererLayout::viewTypeRecursive);
+    if (recursiveView == nullptr) {
+        return false;
+    }
+
+    // The eye camera is built in our own memory from the game's live camera and
+    // is never written back -- the game's camera is not touched by this path at
+    // all, which is why there is no restore point here.
+    auto* const liveCamera = reinterpret_cast<const std::uint8_t*>(
+        reinterpret_cast<std::uintptr_t>(system) + engine::SystemLayout::viewCamera);
+    std::array<std::uint8_t, cameraedit::kCameraSize> eyeCamera{};
+    std::memcpy(eyeCamera.data(), liveCamera, cameraedit::kCameraSize);
+    if (!BuildSyntheticEye(eyeCamera, 1, gStereoIpd.load(std::memory_order_acquire),
+                           gStereoHalfFov.load(std::memory_order_acquire))) {
+        return false;
+    }
+    updateFrustum(eyeCamera.data());
+    if (!cameraedit::RotationIsSafeToWrite(eyeCamera)) {
+        return false;
+    }
+
+    // Built by the engine's own constructor into our buffer, so every field it
+    // derives -- frame ids, zoom, the camera registration at +0x18 -- is derived
+    // the way the engine derives it rather than guessed at here.
+    std::array<std::uint8_t, engine::PassInfoLayout::size> passInfo{};
+    createPass(passInfo.data(), eyeCamera.data(), engine::PassInfoLayout::generalPassFlags, 0);
+
+    // The constructor selected the *default* view and drove two calls on it.
+    // Swapping the pointer alone would leave the pass carrying state derived
+    // from a view it no longer references, so both are re-driven on the
+    // recursive view.
+    std::memcpy(passInfo.data() + engine::PassInfoLayout::renderView, &recursiveView,
+                sizeof(recursiveView));
+    auto* const viewVtable = *reinterpret_cast<std::uint8_t**>(recursiveView);
+    if (viewVtable == nullptr) {
+        return false;
+    }
+    std::uint32_t passFlags = 0;
+    std::memcpy(&passFlags, passInfo.data() + engine::PassInfoLayout::flags, sizeof(passFlags));
+    const auto setFlags =
+        *reinterpret_cast<RenderViewSetFlagsFn*>(viewVtable + kRenderViewSetFlagsSlot);
+    if (setFlags == nullptr) {
+        return false;
+    }
+    setFlags(recursiveView, passFlags);
+    const auto derived =
+        *reinterpret_cast<RenderViewDerivedFn*>(viewVtable + kRenderViewDerivedSlot);
+    if (derived == nullptr) {
+        return false;
+    }
+    void* const derivedValue = derived(recursiveView);
+    std::memcpy(passInfo.data() + engine::PassInfoLayout::renderViewDerived, &derivedValue,
+                sizeof(derivedValue));
+
+    renderWorld(process, engine::PassInfoLayout::renderWorldFlags, passInfo.data(),
+                "PreyVR::SecondPass");
+
+    const unsigned long long done = gSecondPassFrames.fetch_add(1, std::memory_order_relaxed) + 1;
+    bool expected = false;
+    if (gLoggedFirstSecondPass.compare_exchange_strong(expected, true)) {
+        std::ostringstream line;
+        line << "preyvr_second_pass result=0 detail=first_frame slot=" << slot
+             << " recursiveView=0x" << std::hex
+             << reinterpret_cast<std::uintptr_t>(recursiveView) << std::dec
+             << " done=" << done;
+        lifecycle::Log(line.str());
+    }
+    return true;
+}
+
 // Wall-clock stop for the double render, run off the render thread so it still
 // fires when that thread is the thing that is stuck. See the deadline note above
 // for what this does and does not bound.
 DWORD WINAPI DoubleRenderWatchdog(LPVOID)
 {
-    while (gDoubleRender.load(std::memory_order_acquire)) {
+    // Covers both risky modes: A3's double render and A4's second pass. Either
+    // one stopping the frame loop is exactly the case the in-band budgets cannot
+    // see, which is the whole reason this thread exists.
+    while (gDoubleRender.load(std::memory_order_acquire) ||
+           gSecondPass.load(std::memory_order_acquire)) {
         const unsigned long long deadline = gDoubleRenderDeadlineMs.load(std::memory_order_acquire);
         if (deadline != 0 && GetTickCount64() >= deadline) {
             gDoubleRender.store(false, std::memory_order_release);
             gDoubleRenderBudget.store(0, std::memory_order_release);
+            gSecondPass.store(false, std::memory_order_release);
+            gSecondPassBudget.store(0, std::memory_order_release);
             gStereoIpd.store(0.0f, std::memory_order_release);
             SetFrameCaptureTagOverride(-1);
-            lifecycle::Log("preyvr_camera_edit result=0 detail=double_render_deadline_expired");
+            lifecycle::Log("preyvr_camera_edit result=0 detail=deadline_expired");
             break;
         }
         Sleep(50);
@@ -259,6 +421,44 @@ void __fastcall RenderWithCameraEdit(void* system)
     // any edit -- it needs this thread, not an armed camera.
     if (gProbeRenderViews.exchange(false, std::memory_order_acq_rel)) {
         RunRenderViewProbe(system);
+    }
+
+    // A4. Its own branch and its own early return, so it cannot interact with
+    // the camera-edit or alternating-stereo modes below. The game's frame is
+    // rendered first and untouched -- that is the first eye, and it is why this
+    // path never writes the game's camera and needs no restore point.
+    if (gSecondPass.load(std::memory_order_acquire)) {
+        const unsigned int remaining = gSecondPassBudget.load(std::memory_order_acquire);
+        if (remaining == 0) {
+            gSecondPass.store(false, std::memory_order_release);
+            gStereoIpd.store(0.0f, std::memory_order_release);
+            lifecycle::Log("preyvr_second_pass result=0 detail=budget_exhausted");
+            if (original != nullptr) {
+                original(system);
+            }
+            return;
+        }
+        // Decremented before the work, so a call that never returns still costs
+        // exactly one frame of the allowance.
+        gSecondPassBudget.store(remaining - 1, std::memory_order_release);
+
+        if (original != nullptr) {
+            original(system);
+        }
+        if (RunSecondPass(system)) {
+            gSecondPassStatus.store(static_cast<DWORD>(SecondPassStatus::ranAtLeastOnce),
+                                    std::memory_order_release);
+        } else {
+            // Disarm on the first refusal rather than retrying every frame: if a
+            // pointer could not be resolved once it will not resolve next frame,
+            // and a log line per frame would bury the reason.
+            gSecondPass.store(false, std::memory_order_release);
+            gStereoIpd.store(0.0f, std::memory_order_release);
+            gSecondPassStatus.store(static_cast<DWORD>(SecondPassStatus::refusedUnresolved),
+                                    std::memory_order_release);
+            lifecycle::Log("preyvr_second_pass result=refused detail=unresolved");
+        }
+        return;
     }
 
     const bool stereoArmed = gStereoIpd.load(std::memory_order_acquire) > 0.0f;
@@ -653,6 +853,119 @@ DWORD SetDoubleRenderStereo(float ipdMetres, float halfFovDegrees, unsigned int 
          << " deadlineMs=" << allowanceMs;
     lifecycle::Log(line.str());
     return static_cast<DWORD>(CameraEditStatus::armed);
+}
+
+// Resolves the pass constructor behind its own gate, separately from EnsureHook.
+//
+// Deliberately not folded into EnsureHook: a mismatch here must block only A4,
+// not the camera edit and alternating stereo that already work. The bytes come
+// from the landmark table rather than a second copy in this file, so there is one
+// definition of what this function is expected to look like.
+bool EnsureSecondPassTargets()
+{
+    if (gCreatePassInfo.load(std::memory_order_acquire) != nullptr) {
+        return true;
+    }
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) {
+        return false;
+    }
+    const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+
+    for (const auto& landmark : engine::Landmarks()) {
+        if (landmark.id != "pass.create_general") {
+            continue;
+        }
+        if (landmark.rva != kCreatePassInfoRva) {
+            lifecycle::Log("preyvr_second_pass result=unavailable detail=landmark_rva_disagrees");
+            return false;
+        }
+        const auto address = base + landmark.rva;
+        if (!PrologueMatches(address, landmark.expected.data(), landmark.expected.size())) {
+            lifecycle::Log("preyvr_second_pass result=unavailable detail=create_pass_prologue");
+            return false;
+        }
+        gCreatePassInfo.store(reinterpret_cast<CreatePassInfoFn>(address),
+                              std::memory_order_release);
+        return true;
+    }
+    lifecycle::Log("preyvr_second_pass result=unavailable detail=landmark_missing");
+    return false;
+}
+
+DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int frameBudget)
+{
+    if (ipdMetres == 0.0f || frameBudget == 0) {
+        std::unique_lock lock(gMutex, kControlLockTimeout);
+        gSecondPass.store(false, std::memory_order_release);
+        gSecondPassBudget.store(0, std::memory_order_release);
+        gStereoIpd.store(0.0f, std::memory_order_release);
+        gSecondPassStatus.store(static_cast<DWORD>(SecondPassStatus::idle),
+                                std::memory_order_release);
+        lifecycle::Log("preyvr_second_pass result=0 detail=disarmed");
+        return gStatus.load(std::memory_order_acquire);
+    }
+
+    if (frameBudget > 600) {
+        lifecycle::Log("preyvr_second_pass result=refused detail=budget_too_large");
+        return static_cast<DWORD>(CameraEditStatus::failed);
+    }
+
+    // Reuses the synthetic-stereo bounds check, which also installs the hook.
+    const DWORD armed = SetSyntheticStereo(ipdMetres, halfFovDegrees);
+    if (armed != static_cast<DWORD>(CameraEditStatus::armed)) {
+        return armed;
+    }
+    if (!EnsureSecondPassTargets()) {
+        gStereoIpd.store(0.0f, std::memory_order_release);
+        gSecondPassStatus.store(static_cast<DWORD>(SecondPassStatus::refusedUnresolved),
+                                std::memory_order_release);
+        return static_cast<DWORD>(CameraEditStatus::unavailable);
+    }
+
+    std::unique_lock lock(gMutex, kControlLockTimeout);
+    if (!lock.owns_lock()) {
+        lifecycle::Log("preyvr_second_pass result=refused detail=busy");
+        return static_cast<DWORD>(CameraEditStatus::failed);
+    }
+    gSecondPassBudget.store(frameBudget, std::memory_order_release);
+
+    // Same wall-clock stop as the double render, for the same F-013 reason.
+    const unsigned long long allowanceMs =
+        2000ull + static_cast<unsigned long long>(frameBudget) * 40ull;
+    gDoubleRenderDeadlineMs.store(GetTickCount64() + allowanceMs, std::memory_order_release);
+    gSecondPass.store(true, std::memory_order_release);
+    gSecondPassStatus.store(static_cast<DWORD>(SecondPassStatus::armed), std::memory_order_release);
+
+    bool expected = false;
+    if (gDoubleRenderWatchdogRunning.compare_exchange_strong(expected, true)) {
+        const HANDLE watchdog = CreateThread(nullptr, 0, DoubleRenderWatchdog, nullptr, 0, nullptr);
+        if (watchdog == nullptr) {
+            gDoubleRenderWatchdogRunning.store(false, std::memory_order_release);
+            gSecondPass.store(false, std::memory_order_release);
+            gSecondPassBudget.store(0, std::memory_order_release);
+            gStereoIpd.store(0.0f, std::memory_order_release);
+            lifecycle::Log("preyvr_second_pass result=refused detail=watchdog_thread_failed");
+            return static_cast<DWORD>(CameraEditStatus::failed);
+        }
+        CloseHandle(watchdog);
+    }
+
+    std::ostringstream line;
+    line << "preyvr_second_pass result=0 detail=armed frameBudget=" << frameBudget
+         << " deadlineMs=" << allowanceMs << " ipd=" << ipdMetres;
+    lifecycle::Log(line.str());
+    return static_cast<DWORD>(CameraEditStatus::armed);
+}
+
+unsigned long long SecondPassFrameCount()
+{
+    return gSecondPassFrames.load(std::memory_order_acquire);
+}
+
+DWORD SecondPassStatusValue()
+{
+    return gSecondPassStatus.load(std::memory_order_acquire);
 }
 
 DWORD ProbeRenderViews()

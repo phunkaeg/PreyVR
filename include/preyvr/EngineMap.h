@@ -47,6 +47,19 @@ struct RendererLayout {
     static constexpr std::uintptr_t renderViewPool = 0x6F38;
     static constexpr std::size_t renderViewPoolCount = 4;
 
+    // Vtable slots used by CreateGeneralPassRenderingInfo (R-071), read out of
+    // its decompilation. `getRenderViewForThread` is the virtual entry to the
+    // pool above; its concrete target is the already-gated landmark
+    // `view.get_for_thread` at RVA 0xFE5620, which disassembles to a plain
+    // indexed load and a ret -- no allocation, so calling it has no side effect.
+    static constexpr std::uintptr_t vtableGetRenderViewForThread = 0x198;
+    static constexpr std::uintptr_t vtableQuery = 0x888;
+    // Selector the engine passes to the query above to obtain the fill slot.
+    static constexpr int queryRenderThreadList = 6;
+    // IRenderView::EViewType, per the pool's [nThreadID][bRecursive] indexing.
+    static constexpr int viewTypeDefault = 0;
+    static constexpr int viewTypeRecursive = 1;
+
     // R-026: per-frame render view block, live-verified by ReGenny probe.
     // Two slots of stride 0x328 selected by the index at +0x499C, with a
     // CRenderCamera at +0x240 within each block.
@@ -96,9 +109,39 @@ struct CameraLayout {
 
 // CSystem. GetViewCamera() is `LEA RAX,[RCX+0x788]; RET`, so the global view
 // camera is a member by value rather than a pointer.
+// R-061: SRenderingPassInfo, the argument RenderWorld (R-054) takes its camera
+// from. Built by CreateGeneralPassRenderingInfo (R-071) into a **caller-supplied
+// 64-byte buffer** -- `undefined1 local_58[64]` on CSystem::Render's stack -- so
+// it is a value type constructed per call rather than a shared singleton.
+//
+// **That is what makes native stereo possible.** A second pass gets its own
+// buffer, its own camera at +0x18 and its own render view at +0x20, so the two
+// eyes never share the per-frame state whose reuse wedged the engine in F-013.
+struct PassInfoLayout {
+    static constexpr std::size_t size = 0x40;
+    static constexpr std::uintptr_t threadSlot = 0x00;       // byte
+    static constexpr std::uintptr_t flags = 0x04;
+    static constexpr std::uintptr_t zoom = 0x08;
+    static constexpr std::uintptr_t frameId = 0x0C;
+    static constexpr std::uintptr_t previousFrameId = 0x10;
+    static constexpr std::uintptr_t camera = 0x18;           // const CCamera*
+    static constexpr std::uintptr_t renderView = 0x20;       // CRenderView*
+    static constexpr std::uintptr_t renderViewDerived = 0x38;
+
+    // The constant CSystem::Render passes as nRenderingFlags, and the one
+    // RenderWorld is called with alongside it.
+    static constexpr std::uint32_t generalPassFlags = 0x2E5DF;
+    static constexpr int renderWorldFlags = 0xF;
+};
+
 struct SystemLayout {
     static constexpr std::uintptr_t gEnvPointer = 0x28;
     static constexpr std::uintptr_t viewCamera = 0x788;
+    // R-059: CSystem::m_pProcess, the IProcess whose vtable slot 3 (+0x18) is
+    // RenderWorld. Live-read equal to gEnv->p3DEngine, so IProcess is
+    // C3DEngine's primary base and needs no pointer adjustment.
+    static constexpr std::uintptr_t processPointer = 0xAB0;
+    static constexpr std::uintptr_t vtableRenderWorld = 0x18;
     static constexpr std::uintptr_t vtableRva = 0x1D9B9C8;
     static constexpr std::uintptr_t pointerRva = 0x224DA60;  // gEnv->pSystem
     // ISystem vtable slots; full table in docs/SYSTEM_VTABLE.md.
