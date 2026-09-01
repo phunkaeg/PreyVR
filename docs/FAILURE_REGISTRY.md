@@ -732,14 +732,30 @@ limitation, not a bug.
 The mode ladder ran back to back on fresh launches, mode 0 first so the baseline
 could not be run-to-run variance:
 
-| mode | second render's view | frames before deadlock | fps during |
-| --- | --- | --- | --- |
-| 0 | shared with the first | **19** (13 on the prior launch) | 144 -> 7 -> 0 |
-| 1 | **its own recursive view** | **1** | 144 -> 0 |
+| mode | second render's view | frames | failure | where |
+| --- | --- | --- | --- | --- |
+| 0 | shared with the first | **19** (13 on the prior launch) | **hang**, no crash, process alive | inside the 2nd call |
+| 1 | **its own recursive view** | **1** | **crash**, access violation | inside the 2nd call |
 
-Both hang at `interpose:eye1`, so the second `RenderWorld` call does not return in
-either case. **Giving the second render its own recursive view made it fail
-immediately rather than after nineteen frames** -- the opposite of the prediction.
+Both stop at `interpose:eye1`, so the second `RenderWorld` does not return either
+way -- but **they fail differently, and that matters.** Mode 0 hangs; the
+watchdog fires and the process survives until killed. Mode 1 *crashes*, on the
+first frame, reading `0xFFFFFFFFFFFFFFFF` on the **Main** thread at **RVA
+0xFDEEB0**.
+
+**That RVA is not new.** It is exactly where A4 died when run with
+`markSecondary = 0` (F-014's A/B table). Two structurally different experiments
+now fault at the same address, and the thing they share is that the second render
+proceeds **without the per-frame preparation the engine normally does**: A4
+skipped it by not marking the pass secondary, A6 mode 1 skipped it by handing the
+render a view nothing had prepared.
+
+So `0xFDEEB0` is becoming the signature of *"a world render against unprepared
+per-frame state"*, distinct from `0xED835D`, which is the UI colour-table walk
+that A4's append-after placement produced.
+
+**Giving the second render its own recursive view made it fail immediately rather
+than after nineteen frames** -- the opposite of the prediction.
 
 That is consistent with F-014 rather than a surprise: R-072 proved the recursive
 view is a distinct allocated object, and F-014 concluded nothing prepares it.
