@@ -123,6 +123,31 @@ DWORD SetDoubleRenderStereo(float ipdMetres, float halfFovDegrees, unsigned int 
 
 unsigned long long DoubleRenderedFrameCount();
 
+// **Settles R-072, which decides whether native stereo is possible at all.**
+//
+// `SRenderingPassInfo`'s render view comes from `pRenderer->vtable[0x198](slot,
+// type)` (R-071), and every pass Prey builds asks for type 0. CryEngine's
+// `EViewType` puts Recursive at 1. If type 1 hands back a *different* view, a
+// second per-eye pass can own its own view and `RenderWorld` can be called twice
+// without the re-entry that wedged the engine in F-013. If it hands back the same
+// pointer, that whole approach is dead and we need another one.
+//
+// Runs **once, inside the render hook**, because that is the thread the engine
+// itself calls this from; calling a renderer method from an arbitrary thread is
+// how a probe becomes the bug it was looking for. Nothing is written and no pass
+// is built -- it asks for two pointers and compares them.
+DWORD ProbeRenderViews();
+
+enum class RenderViewProbeStatus : DWORD {
+    notRun = 0,
+    viewsDiffer = 1,     // recursive view is distinct -- R-072 holds
+    viewsIdentical = 2,  // one view for both types -- R-072 refuted
+    unresolved = 3,      // renderer or vtable could not be reached; nothing was called
+    recursiveUnavailable = 4, // type 1 returned null; distinct from "same view"
+};
+
+DWORD RenderViewProbeStatusValue();
+
 DWORD CameraEditStatusValue();
 
 // Counts frames on which the edit was actually applied and the restore verified

@@ -482,6 +482,25 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetDoubleRenderStereo(
     return preyvr::dll::SetDoubleRenderStereo(ipdMetres, halfFovDegrees, frameBudget);
 }
 
+// Arms the one-shot render-view probe. It runs on the next rendered frame and
+// nothing needs to be armed for it to work.
+//
+// Settles R-072: whether `pRenderer->GetRenderViewForThread(slot, 1)` hands back
+// a render view distinct from the type-0 one every Prey pass uses. That decides
+// whether a second per-eye pass can own its own view -- which is the whole
+// question left open by F-013.
+extern "C" __declspec(dllexport) DWORD PreyVR_ProbeRenderViews()
+{
+    return preyvr::dll::ProbeRenderViews();
+}
+
+// 0 not run, 1 views differ (R-072 holds), 2 same view (refuted), 3 unresolved,
+// 4 recursive view was null.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetRenderViewProbeStatus()
+{
+    return preyvr::dll::RenderViewProbeStatusValue();
+}
+
 // ---------------------------------------------------------------------------
 // Pointer-argument variants, for automation
 // ---------------------------------------------------------------------------

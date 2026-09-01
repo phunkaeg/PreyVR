@@ -64,6 +64,29 @@ std::atomic<int> gEyeLock{-1};   // -1 = alternate
 std::atomic<float> gAsymmetry{1.1f};
 std::atomic<bool> gDoubleRender{false};
 std::atomic<unsigned int> gDoubleRenderBudget{0};
+
+// **A deadline, because the frame budget did not contain F-013.**
+//
+// The budget counts frames and disarms when it reaches zero, which assumes frames
+// keep completing. On 2026-09-01 the engine wedged at roughly frame 4 of 300, so
+// no further frames completed, the budget never drained, and the mode stayed
+// armed until the process was killed from outside.
+//
+// A budget expressed in frames cannot bound a failure that stops frames. This one
+// is wall-clock and is enforced by a watchdog thread, so it still fires when the
+// render thread is stuck.
+//
+// **What it does and does not buy.** It bounds *exposure* -- how long the mode
+// can keep attempting double renders -- and it is honest that it cannot bound
+// *damage*: a render thread already stuck inside the original function is not
+// freed by clearing a flag. It would not have saved the A3 session. It does mean
+// the next experiment cannot run away while somebody reaches for the keyboard.
+std::atomic<bool> gDoubleRenderWatchdogRunning{false};
+std::atomic<unsigned long long> gDoubleRenderDeadlineMs{0};
+
+std::atomic<bool> gProbeRenderViews{false};
+std::atomic<DWORD> gRenderViewProbeStatus{
+    static_cast<DWORD>(RenderViewProbeStatus::notRun)};
 std::atomic<unsigned long long> gDoubleRendered{0};
 void* gTarget = nullptr;
 bool gHookCreated = false;
@@ -129,9 +152,114 @@ bool BuildSyntheticEye(
     return true;
 }
 
+// Renderer vtable slots, read straight out of CreateGeneralPassRenderingInfo
+// (R-071). Both are called there in exactly this shape, so this replicates the
+// engine's own usage rather than inventing a call.
+constexpr std::uintptr_t kRendererQuerySlot = 0x888;          // EF_Query
+constexpr std::uintptr_t kRendererGetRenderViewSlot = 0x198;  // GetRenderViewForThread
+constexpr int kRenderThreadListQuery = 6;
+
+using EfQueryFn = void(__fastcall*)(void*, int, void*, int, int, int);
+using GetRenderViewFn = void*(__fastcall*)(void*, int, int);
+
+// Asks the renderer for the Default and Recursive render views and compares them.
+// See the header for why this decides whether native stereo is reachable.
+void RunRenderViewProbe(void* system)
+{
+    const auto unresolved = [](const char* detail) {
+        gRenderViewProbeStatus.store(static_cast<DWORD>(RenderViewProbeStatus::unresolved),
+                                     std::memory_order_release);
+        std::ostringstream line;
+        line << "preyvr_render_view_probe result=unresolved detail=" << detail;
+        lifecycle::Log(line.str());
+    };
+
+    if (system == nullptr) {
+        unresolved("null_system");
+        return;
+    }
+    auto* const gEnv = *reinterpret_cast<std::uint8_t**>(
+        reinterpret_cast<std::uintptr_t>(system) + engine::SystemLayout::gEnvPointer);
+    if (gEnv == nullptr) {
+        unresolved("null_genv");
+        return;
+    }
+    auto* const renderer = *reinterpret_cast<std::uint8_t**>(
+        gEnv + engine::GlobalEnvironmentLayout::renderer);
+    if (renderer == nullptr) {
+        unresolved("null_renderer");
+        return;
+    }
+    auto* const vtable = *reinterpret_cast<std::uint8_t**>(renderer);
+    if (vtable == nullptr) {
+        unresolved("null_renderer_vtable");
+        return;
+    }
+
+    const auto query = *reinterpret_cast<EfQueryFn*>(vtable + kRendererQuerySlot);
+    const auto getView = *reinterpret_cast<GetRenderViewFn*>(vtable + kRendererGetRenderViewSlot);
+    if (query == nullptr || getView == nullptr) {
+        unresolved("null_vtable_slot");
+        return;
+    }
+
+    // The engine writes four bytes here and then keeps only the low one, so the
+    // slot is masked to a byte to match its own usage exactly.
+    int queried = 0;
+    query(renderer, kRenderThreadListQuery, &queried, static_cast<int>(sizeof(queried)), 0, 0);
+    const int slot = queried & 0xFF;
+
+    void* const defaultView = getView(renderer, slot, 0);
+    void* const recursiveView = getView(renderer, slot, 1);
+
+    RenderViewProbeStatus status = RenderViewProbeStatus::viewsIdentical;
+    if (recursiveView == nullptr) {
+        status = RenderViewProbeStatus::recursiveUnavailable;
+    } else if (recursiveView != defaultView) {
+        status = RenderViewProbeStatus::viewsDiffer;
+    }
+    gRenderViewProbeStatus.store(static_cast<DWORD>(status), std::memory_order_release);
+
+    std::ostringstream line;
+    line << "preyvr_render_view_probe result=0 slot=" << slot
+         << " defaultView=0x" << std::hex << reinterpret_cast<std::uintptr_t>(defaultView)
+         << " recursiveView=0x" << reinterpret_cast<std::uintptr_t>(recursiveView) << std::dec
+         << " verdict=" << (status == RenderViewProbeStatus::viewsDiffer ? "distinct"
+                            : status == RenderViewProbeStatus::recursiveUnavailable ? "recursive_null"
+                                                                                    : "same_view");
+    lifecycle::Log(line.str());
+}
+
+// Wall-clock stop for the double render, run off the render thread so it still
+// fires when that thread is the thing that is stuck. See the deadline note above
+// for what this does and does not bound.
+DWORD WINAPI DoubleRenderWatchdog(LPVOID)
+{
+    while (gDoubleRender.load(std::memory_order_acquire)) {
+        const unsigned long long deadline = gDoubleRenderDeadlineMs.load(std::memory_order_acquire);
+        if (deadline != 0 && GetTickCount64() >= deadline) {
+            gDoubleRender.store(false, std::memory_order_release);
+            gDoubleRenderBudget.store(0, std::memory_order_release);
+            gStereoIpd.store(0.0f, std::memory_order_release);
+            SetFrameCaptureTagOverride(-1);
+            lifecycle::Log("preyvr_camera_edit result=0 detail=double_render_deadline_expired");
+            break;
+        }
+        Sleep(50);
+    }
+    gDoubleRenderWatchdogRunning.store(false, std::memory_order_release);
+    return 0;
+}
+
 void __fastcall RenderWithCameraEdit(void* system)
 {
     const SystemRenderFn original = gOriginal.load(std::memory_order_acquire);
+
+    // One-shot, and ahead of the armed check because the probe is independent of
+    // any edit -- it needs this thread, not an armed camera.
+    if (gProbeRenderViews.exchange(false, std::memory_order_acq_rel)) {
+        RunRenderViewProbe(system);
+    }
 
     const bool stereoArmed = gStereoIpd.load(std::memory_order_acquire) > 0.0f;
     if ((!gArmed.load(std::memory_order_acquire) && !stereoArmed) || system == nullptr) {
@@ -495,11 +623,50 @@ DWORD SetDoubleRenderStereo(float ipdMetres, float halfFovDegrees, unsigned int 
         return static_cast<DWORD>(CameraEditStatus::failed);
     }
     gDoubleRenderBudget.store(frameBudget, std::memory_order_release);
+
+    // Wall-clock stop alongside the frame budget, whichever comes first. Sized
+    // generously against the budget so it only fires when frames have stopped
+    // arriving, which is precisely the case the frame budget cannot see.
+    const unsigned long long allowanceMs =
+        2000ull + static_cast<unsigned long long>(frameBudget) * 40ull;
+    gDoubleRenderDeadlineMs.store(GetTickCount64() + allowanceMs, std::memory_order_release);
     gDoubleRender.store(true, std::memory_order_release);
+
+    bool expected = false;
+    if (gDoubleRenderWatchdogRunning.compare_exchange_strong(expected, true)) {
+        const HANDLE watchdog = CreateThread(nullptr, 0, DoubleRenderWatchdog, nullptr, 0, nullptr);
+        if (watchdog == nullptr) {
+            // Refuse to arm rather than run the risky mode with no stop. The
+            // whole point of F-013 is that the in-band budget is not enough.
+            gDoubleRenderWatchdogRunning.store(false, std::memory_order_release);
+            gDoubleRender.store(false, std::memory_order_release);
+            gDoubleRenderBudget.store(0, std::memory_order_release);
+            gStereoIpd.store(0.0f, std::memory_order_release);
+            lifecycle::Log("preyvr_camera_edit result=refused detail=watchdog_thread_failed");
+            return static_cast<DWORD>(CameraEditStatus::failed);
+        }
+        CloseHandle(watchdog);
+    }
+
     std::ostringstream line;
-    line << "preyvr_camera_edit result=0 detail=double_render_armed frameBudget=" << frameBudget;
+    line << "preyvr_camera_edit result=0 detail=double_render_armed frameBudget=" << frameBudget
+         << " deadlineMs=" << allowanceMs;
     lifecycle::Log(line.str());
     return static_cast<DWORD>(CameraEditStatus::armed);
+}
+
+DWORD ProbeRenderViews()
+{
+    gRenderViewProbeStatus.store(static_cast<DWORD>(RenderViewProbeStatus::notRun),
+                                 std::memory_order_release);
+    gProbeRenderViews.store(true, std::memory_order_release);
+    lifecycle::Log("preyvr_render_view_probe result=0 detail=armed");
+    return gStatus.load(std::memory_order_acquire);
+}
+
+DWORD RenderViewProbeStatusValue()
+{
+    return gRenderViewProbeStatus.load(std::memory_order_acquire);
 }
 
 unsigned long long DoubleRenderedFrameCount()
