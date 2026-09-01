@@ -71,7 +71,55 @@ so nothing can be assumed from ours being the wider one:
 | --- | --- | --- |
 | BioShock (UE2.5) | 75 | 60 |
 | SWAT 4 + SEF (UE2.5) | 85 | 120 |
-| **Prey (CryEngine)** | **88** | **54** |
+| **Prey (CryEngine)** | **88.5 vertical / 120 horizontal** | `r_DrawNearFoV` **54** |
+
+> **Correction, measured live 2026-09-02.** This row previously read "88", tabled
+> against the others as though it were horizontal. It is not. CryEngine stores the
+> **vertical** FOV and scales by `projectionRatio` to reach horizontal, so Prey's
+> 88.507 degrees is vertical and the horizontal is **120.000**. Confirmed three
+> ways: the shipped `TangentsFromCamera`, an independent re-derivation agreeing to
+> 4e-8, and the player's own in-game FOV slider reading 120. Prey's slider is
+> horizontal and its maximum is 120.
+>
+> The `r_DrawNearFoV` 54 alongside it has **not** been established as vertical or
+> horizontal, so the two are not yet safe to compare. Establish that before using
+> the pair for anything.
+
+## The number we must actually declare, measured
+
+Live at 2560x1440 with the slider at 120, asymmetry fields all zero:
+
+| | tangent | angle |
+| --- | --- | --- |
+| left | -1.732051 | **-60.000** |
+| right | +1.732051 | **+60.000** |
+| down | -0.974279 | **-44.254** |
+| up | +0.974279 | **+44.254** |
+
+`tan(60 degrees)` is exactly the square root of 3, which is what a 120-degree
+horizontal field gives, and it falls out of the engine's fields rather than being
+put in by hand.
+
+**All four asymmetry fields read zero**, so Prey renders one symmetric view and
+**both eyes declare the same fov**. That is the contract's stated correct case
+rather than a shortcut, now confirmed rather than assumed.
+
+### The predicted xr-tape failure, with a magnitude
+
+Against the Quest 3 values measured 2026-09-01
+(`l -54.0, r +40.0, u +44.0, d -55.0`), declaring what we actually render gives:
+
+| edge | Prey declares | Quest reports | difference |
+| --- | --- | --- | --- |
+| left | -60.00 | -54.0 | 6.0 |
+| **right** | **+60.00** | **+40.0** | **20.0** |
+| up | +44.25 | +44.0 | 0.25 |
+| down | -44.25 | -55.0 | 10.75 |
+
+The right edge differs by **20 degrees**, which is exactly the magnitude this
+document predicted before any of it was measured. So when
+`submitted_fov_matches_located` fails, that is the expected reading and the size
+is already known -- it is not a regression to investigate.
 
 Selection rule that needs no per-build offset: the world is drawn before the
 foreground, so take the **first** player-camera projection of each pass -- then

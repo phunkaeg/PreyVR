@@ -11,6 +11,7 @@
 #include "RuntimeSnapshotWin32.h"
 #include "Version.h"
 #include "preyvr/EngineMap.h"
+#include "preyvr/StereoFrame.h"
 
 #include <bcrypt.h>
 #include <Psapi.h>
@@ -571,6 +572,78 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetFrameShapeStereo(unsigned int f
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetFrameShapeFrameCount()
 {
     return preyvr::dll::FrameShapeFrameCount();
+}
+
+// Reads Prey's live view camera and returns the frustum PreyVR must DECLARE to
+// OpenXR, through the shipped code path rather than a re-derivation.
+//
+// **Why this exists as an export at all.** The live values were first checked by
+// reading the camera from a Frida script and doing the arithmetic there. That
+// confirms the fields are readable, but it tests a re-implementation rather than
+// `TangentsFromCamera` itself -- and a re-derivation that agrees with itself is
+// exactly the self-referential check this project has already been caught by
+// once, in the asymmetry test. This calls the real function so the numbers that
+// come back are the ones the mod would actually submit.
+//
+// Pure read: nothing is armed, nothing is written, no hook is required.
+//
+// Pointer-taking so it matches LPTHREAD_START_ROUTINE and can be driven on a real
+// thread, per F-009 -- Frida's NativeFunction aborts calls into this DLL.
+struct PreyVRDeclaredFov {
+    unsigned int valid;          // 0 if the camera could not be read or was refused
+    float tanLeft, tanRight, tanDown, tanUp;
+    float angleLeft, angleRight, angleDown, angleUp;   // radians
+    // The source fields, echoed so the derivation can be audited rather than
+    // trusted -- and so a convention error shows up as a wrong input, not just a
+    // wrong answer.
+    float fov, projectionRatio, nearPlane;
+};
+
+extern "C" __declspec(dllexport) DWORD PreyVR_ReadDeclaredFovPtr(PreyVRDeclaredFov* out)
+{
+    if (out == nullptr) {
+        return 0;
+    }
+    *out = PreyVRDeclaredFov{};
+
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) {
+        return 0;
+    }
+    const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+    auto* const systemPtr = *reinterpret_cast<std::uint8_t**>(
+        base + preyvr::engine::SystemLayout::pointerRva);
+    if (systemPtr == nullptr) {
+        return 0;
+    }
+    const auto* const camera = reinterpret_cast<const std::uint8_t*>(
+        reinterpret_cast<std::uintptr_t>(systemPtr) + preyvr::engine::SystemLayout::viewCamera);
+    const auto span = std::span<const std::uint8_t>(camera, preyvr::engine::CameraLayout::size);
+
+    const auto readFloat = [camera](std::size_t offset) {
+        float value = 0.0f;
+        std::memcpy(&value, camera + offset, sizeof(value));
+        return value;
+    };
+    out->fov = readFloat(preyvr::engine::CameraLayout::fov);
+    out->projectionRatio = readFloat(preyvr::engine::CameraLayout::projectionRatio);
+    out->nearPlane = readFloat(preyvr::engine::CameraLayout::edgeNearLeftTop + sizeof(float));
+
+    const auto view = preyvr::stereoframe::TangentsFromCamera(span);
+    if (!view) {
+        return 0;
+    }
+    const auto angles = preyvr::stereoframe::AnglesFromTangents(*view);
+    out->tanLeft = view->tanLeft;
+    out->tanRight = view->tanRight;
+    out->tanDown = view->tanDown;
+    out->tanUp = view->tanUp;
+    out->angleLeft = angles.angleLeft;
+    out->angleRight = angles.angleRight;
+    out->angleDown = angles.angleDown;
+    out->angleUp = angles.angleUp;
+    out->valid = 1;
+    return 1;
 }
 
 // The sub-step the stereo path was last in.
