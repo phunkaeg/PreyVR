@@ -7,6 +7,10 @@
 
 VR modding project for Prey (2017). Target: `Prey.exe` (64-bit, CryEngine/Arkane, D3D11).
 
+## Engine source for this target
+
+**CryEngine source is on this machine:** `D:\Dev Debug\source code\CRYENGINE`. Four CryEngine trees are on this machine; **`CryGame` is CryEngine 3 and closest to Prey**. `CCamera::SetAsymmetry` gives the engine native asymmetric frusta, and `IStereoRenderer.h`/`D3DStereo.cpp` show how Crytek did per-eye rendering. Prey is an Arkane fork, so this is structure and vocabulary, never offsets. See playbook ch00 `#local-engine-sources`. **Read ch00 `#cryengine-asymmetry-contract` first:** the source builds the projection as `Frustum(wL + GetAsymL(), ...)` - the same `wL/wR/wB/wT` your RE named `fWL/fWR/fWB/fWT`. It also shows the near/viewmodel pass rescaling every shift by `DRAW_NEAREST_MIN / nearPlane`, and `CD3D9Renderer::RT_EndFrame` - the function you hook - is declared in `RenderDll/Common/Renderer.h`.
+
 ## Your full MCP roster — 12 servers
 
 Codex cannot load a skill, so the complete list lives here rather than only in `re-mcp-toolkit`.

@@ -2,7 +2,16 @@
 
 The artifact `BN-STE-001` names as its exit proof.
 
-**Rung 3, alternate-eye, is selected on evidence as of 2026-09-01.** Rung 1 was
+**Rung 1b has been opened by the CryEngine source and is not yet priced.** See
+`CRYENGINE_SOURCE_FINDINGS.md`: `CD3DStereoRenderer::RenderScene` traverses the
+world **once** and submits the resulting render view **twice**, switching the eye
+between. Every rung-1 attempt here doubled the *traversal*, which is what
+allocates -- so F-016's leak was the engine indicating the wrong seam rather than
+an obstacle to route around. Rung 1b costs no traversal and therefore cannot leak
+the same way. It is blocked only on locating `CD3D9Renderer::RT_RenderScene`.
+
+**Rung 3, alternate-eye, remains selected as of 2026-09-01** and is the thing to
+build while 1b is priced, since their downstream is identical. Rung 1 was
 priced first, as the fast_test requires, across four experiments (A3, A4, A5, A6)
 and is parked rather than refuted -- see below and F-013/F-014/F-015.
 
@@ -16,7 +25,8 @@ STEREO-SAFETY).
 
 | rung | route | PreyVR | who shipped it in-house |
 | --- | --- | --- | --- |
-| 1 | native scene re-entry | **parked: interpose removes corruption but deadlocks; shared view 13-19 frames, own view 1 (F-015)** | *nobody* |
+| 1a | native scene re-entry, **doubling the traversal** | **refuted: leaks by construction (F-016)** | *nobody* |
+| 1b | native stereo, **doubling the submission** | **NEW -- Crytek's own shape, untried** | Crytek ships it |
 | 2 | per-draw replay | untried | BioshockVR, FarCry2-vr |
 | 3 | alternate-eye / AFR | **SELECTED -- proven working (A2b)** | ss2vr-work, SOMAVR |
 | 4 | draw-stream reconstruction | untried | -- |
