@@ -494,6 +494,9 @@ struct PreyVRSecondPassArgs {
     float ipdMetres;
     float halfFovDegrees;
     unsigned int frameBudget;
+    // Non-zero runs the zero-camera-delta control: identical pass, identical
+    // view, zero eye offset. Whatever changes is a side effect, not stereo.
+    unsigned int zeroCameraDelta;
 };
 
 extern "C" __declspec(dllexport) DWORD PreyVR_SetSecondPassStereoPtr(
@@ -503,7 +506,8 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetSecondPassStereoPtr(
         return static_cast<DWORD>(preyvr::dll::CameraEditStatus::failed);
     }
     return preyvr::dll::SetSecondPassStereo(
-        args->ipdMetres, args->halfFovDegrees, args->frameBudget);
+        args->ipdMetres, args->halfFovDegrees, args->frameBudget,
+        args->zeroCameraDelta != 0);
 }
 
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetSecondPassFrameCount()

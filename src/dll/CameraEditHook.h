@@ -192,7 +192,13 @@ DWORD RenderViewProbeStatusValue();
 // Bounded by both a frame budget and the wall-clock watchdog, because F-013's
 // lesson was that a budget in frames cannot bound a failure that stops frames.
 // Pass ipd 0 or budget 0 to disarm.
-DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int frameBudget);
+// `zeroCameraDelta` runs the control from BN-SFX-001's fast_test: the second
+// pass is built and dispatched identically, but with a zero eye offset, so the
+// second image should equal the first. Anything that changes is a side effect of
+// repeating the pass rather than stereo -- which is the only way to tell those
+// two apart. Run it before the eye-delta test, not after.
+DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int frameBudget,
+                          bool zeroCameraDelta);
 
 unsigned long long SecondPassFrameCount();
 

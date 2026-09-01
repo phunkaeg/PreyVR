@@ -94,6 +94,24 @@ std::atomic<unsigned int> gSecondPassBudget{0};
 std::atomic<unsigned long long> gSecondPassFrames{0};
 std::atomic<DWORD> gSecondPassStatus{static_cast<DWORD>(SecondPassStatus::idle)};
 std::atomic<bool> gLoggedFirstSecondPass{false};
+std::atomic<bool> gSecondPassZeroDelta{false};
+
+// **A breadcrumb naming the sub-step in flight.**
+//
+// F-013 is the argument for it: when A3 wedged we knew four frames had completed
+// and nothing about which step of the fifth killed it. Prior art (FEAR VR, via
+// ss2vr-work/docs/UEVR_STEREO_LESSONS.md) sets a string before every sub-step so
+// a crash or hang names the step in the log. One pointer store per step, and the
+// watchdog prints it on expiry -- which is exactly the moment it is worth having.
+//
+// A string literal only, so the pointer is always valid to read from the
+// watchdog thread without any lifetime question.
+std::atomic<const char*> gStereoStep{"idle"};
+
+void Step(const char* name)
+{
+    gStereoStep.store(name, std::memory_order_release);
+}
 
 // SRenderingPassInfo::CreateGeneralPassRenderingInfo (R-071), byte-gated as the
 // landmark `pass.create_general`. Signature from its decompilation: it fills a
@@ -265,6 +283,7 @@ void RunRenderViewProbe(void* system)
 // rather than a wrong number.
 bool RunSecondPass(void* system)
 {
+    Step("second_pass:resolve");
     const auto createPass = gCreatePassInfo.load(std::memory_order_acquire);
     const UpdateFrustumFn updateFrustum = gUpdateFrustum.load(std::memory_order_acquire);
     if (system == nullptr || createPass == nullptr || updateFrustum == nullptr) {
@@ -311,6 +330,7 @@ bool RunSecondPass(void* system)
         return false;
     }
 
+    Step("second_pass:query_slot");
     int queried = 0;
     query(renderer, engine::RendererLayout::queryRenderThreadList, &queried,
           static_cast<int>(sizeof(queried)), 0, 0);
@@ -324,11 +344,21 @@ bool RunSecondPass(void* system)
     // The eye camera is built in our own memory from the game's live camera and
     // is never written back -- the game's camera is not touched by this path at
     // all, which is why there is no restore point here.
+    Step("second_pass:build_eye_camera");
     auto* const liveCamera = reinterpret_cast<const std::uint8_t*>(
         reinterpret_cast<std::uintptr_t>(system) + engine::SystemLayout::viewCamera);
     std::array<std::uint8_t, cameraedit::kCameraSize> eyeCamera{};
     std::memcpy(eyeCamera.data(), liveCamera, cameraedit::kCameraSize);
-    if (!BuildSyntheticEye(eyeCamera, 1, gStereoIpd.load(std::memory_order_acquire),
+    // **The zero-delta control (BN-SFX-001).** Everything on this path runs
+    // identically -- same pass info, same recursive view, same RenderWorld call --
+    // and only the eye offset is zero, so the second image should be the first
+    // image. Anything that changes is therefore a *side effect* of repeating the
+    // pass, not stereo. That is the discriminator the playbook's fast_test names,
+    // and without it "the second pass changed the picture" cannot be told from
+    // "the second pass advanced something that runs once per frame".
+    const bool zeroDelta = gSecondPassZeroDelta.load(std::memory_order_acquire);
+    const float eyeIpd = zeroDelta ? 0.0f : gStereoIpd.load(std::memory_order_acquire);
+    if (!BuildSyntheticEye(eyeCamera, 1, eyeIpd,
                            gStereoHalfFov.load(std::memory_order_acquire))) {
         return false;
     }
@@ -340,6 +370,7 @@ bool RunSecondPass(void* system)
     // Built by the engine's own constructor into our buffer, so every field it
     // derives -- frame ids, zoom, the camera registration at +0x18 -- is derived
     // the way the engine derives it rather than guessed at here.
+    Step("second_pass:create_pass_info");
     std::array<std::uint8_t, engine::PassInfoLayout::size> passInfo{};
     createPass(passInfo.data(), eyeCamera.data(), engine::PassInfoLayout::generalPassFlags, 0);
 
@@ -347,6 +378,7 @@ bool RunSecondPass(void* system)
     // Swapping the pointer alone would leave the pass carrying state derived
     // from a view it no longer references, so both are re-driven on the
     // recursive view.
+    Step("second_pass:swap_render_view");
     std::memcpy(passInfo.data() + engine::PassInfoLayout::renderView, &recursiveView,
                 sizeof(recursiveView));
     auto* const viewVtable = *reinterpret_cast<std::uint8_t**>(recursiveView);
@@ -370,14 +402,17 @@ bool RunSecondPass(void* system)
     std::memcpy(passInfo.data() + engine::PassInfoLayout::renderViewDerived, &derivedValue,
                 sizeof(derivedValue));
 
+    Step("second_pass:render_world");
     renderWorld(process, engine::PassInfoLayout::renderWorldFlags, passInfo.data(),
                 "PreyVR::SecondPass");
+    Step("second_pass:done");
 
     const unsigned long long done = gSecondPassFrames.fetch_add(1, std::memory_order_relaxed) + 1;
     bool expected = false;
     if (gLoggedFirstSecondPass.compare_exchange_strong(expected, true)) {
         std::ostringstream line;
-        line << "preyvr_second_pass result=0 detail=first_frame slot=" << slot
+        line << "preyvr_second_pass result=0 detail=first_frame"
+             << " zeroDelta=" << (zeroDelta ? 1 : 0) << " slot=" << slot
              << " recursiveView=0x" << std::hex
              << reinterpret_cast<std::uintptr_t>(recursiveView) << std::dec
              << " done=" << done;
@@ -404,7 +439,10 @@ DWORD WINAPI DoubleRenderWatchdog(LPVOID)
             gSecondPassBudget.store(0, std::memory_order_release);
             gStereoIpd.store(0.0f, std::memory_order_release);
             SetFrameCaptureTagOverride(-1);
-            lifecycle::Log("preyvr_camera_edit result=0 detail=deadline_expired");
+            std::ostringstream expiry;
+            expiry << "preyvr_camera_edit result=0 detail=deadline_expired step="
+                   << gStereoStep.load(std::memory_order_acquire);
+            lifecycle::Log(expiry.str());
             break;
         }
         Sleep(50);
@@ -893,7 +931,8 @@ bool EnsureSecondPassTargets()
     return false;
 }
 
-DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int frameBudget)
+DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int frameBudget,
+                          bool zeroCameraDelta)
 {
     if (ipdMetres == 0.0f || frameBudget == 0) {
         std::unique_lock lock(gMutex, kControlLockTimeout);
@@ -929,6 +968,7 @@ DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int fr
         return static_cast<DWORD>(CameraEditStatus::failed);
     }
     gSecondPassBudget.store(frameBudget, std::memory_order_release);
+    gSecondPassZeroDelta.store(zeroCameraDelta, std::memory_order_release);
 
     // Same wall-clock stop as the double render, for the same F-013 reason.
     const unsigned long long allowanceMs =
@@ -953,6 +993,7 @@ DWORD SetSecondPassStereo(float ipdMetres, float halfFovDegrees, unsigned int fr
 
     std::ostringstream line;
     line << "preyvr_second_pass result=0 detail=armed frameBudget=" << frameBudget
+         << " zeroCameraDelta=" << (zeroCameraDelta ? 1 : 0)
          << " deadlineMs=" << allowanceMs << " ipd=" << ipdMetres;
     lifecycle::Log(line.str());
     return static_cast<DWORD>(CameraEditStatus::armed);
