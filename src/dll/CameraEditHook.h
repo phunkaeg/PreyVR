@@ -257,6 +257,11 @@ DWORD SecondPassStatusValue();
 //      exhaustion; mode 3 runs it once. Sharing the primary view is deliberate:
 //      it is the view that prepare just prepared, where mode 1's own recursive
 //      view had nothing prepare it and crashed on frame one.
+//   4  as 3, plus a real per-eye camera registered through the same
+//      C3DEngine slot the pass constructor uses. Mode 3 survived 600 frames at
+//      a 7% cost uncapped, which is far too cheap for a real world render, but
+//      both its passes shared one camera so the image could not tell us whether
+//      the second pass drew anything. Mode 4 makes the image the evidence.
 //
 // The ladder exists because F-015's failure is a *sharing* problem, and each rung
 // separates one more thing the two renders currently share.

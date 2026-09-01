@@ -152,6 +152,17 @@ struct PassInfoLayout {
     static constexpr int renderWorldFlags = 0xF;
 };
 
+// C3DEngine vtable slot that CreateGeneralPassRenderingInfo (R-071) calls to turn
+// a CCamera* into the value it stores at SRenderingPassInfo+0x18:
+//     uVar4 = p3DEngine->vtable[0x608](p3DEngine, camera);
+//     *(undefined8 *)(passInfo + 0x18) = uVar4;
+// A second pass that wants its own camera must go through the same call rather
+// than writing a raw CCamera* into +0x18, or it stores something structurally
+// different from what every reader expects.
+struct ThreeDEngineLayout {
+    static constexpr std::uintptr_t vtableRegisterPassCamera = 0x608;
+};
+
 struct SystemLayout {
     static constexpr std::uintptr_t gEnvPointer = 0x28;
     static constexpr std::uintptr_t viewCamera = 0x788;

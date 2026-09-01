@@ -160,6 +160,7 @@ constexpr std::uintptr_t kRenderViewSetFlagsSlot = 0x20;
 constexpr std::uintptr_t kRenderViewDerivedSlot = 0x58;
 using RenderViewSetFlagsFn = void(__fastcall*)(void* view, std::uint32_t flags);
 using RenderViewDerivedFn = void*(__fastcall*)(void* view);
+using RegisterPassCameraFn = void*(__fastcall*)(void* engine, const void* camera);
 std::atomic<unsigned long long> gDoubleRendered{0};
 void* gTarget = nullptr;
 bool gHookCreated = false;
@@ -552,11 +553,51 @@ void __fastcall RenderWorldInterpose(void* process, int flags, void* passInfo,
         // shared primary view is the one that prepare just prepared. Mode 1 failed
         // precisely because its own recursive view had nothing prepare it.
         const bool wantRecursiveView = (mode == 1 || mode == 2);
-        const bool wantSecondaryFlag = (mode == 2 || mode == 3);
+        const bool wantSecondaryFlag = (mode == 2 || mode == 3 || mode == 4);
+        // Mode 4 = mode 3 plus a real per-eye camera on the second pass.
+        //
+        // **This is the test that mode 3 could not be.** Mode 3 ran 600 frames
+        // and cost 7% uncapped (301 -> 280 fps), which is far too cheap for a
+        // real world render -- but both its passes used an identical camera, so
+        // the picture looked the same whether the second pass drew or not. Give
+        // the second pass a different camera and the image itself answers it:
+        // changed means it renders, identical means it is hollow.
+        const bool wantEyeCamera = (mode == 4);
         if (wantSecondaryFlag) {
             ownPass[engine::PassInfoLayout::secondaryPassFlag] = 1;
         }
         secondPassInfo = ownPass.data();
+
+        if (wantEyeCamera) {
+            Step("interpose:build_eye_camera");
+            const std::uintptr_t preyBase = gPreyBase.load(std::memory_order_acquire);
+            const UpdateFrustumFn updateFrustum = gUpdateFrustum.load(std::memory_order_acquire);
+            auto* const systemPtr = preyBase != 0
+                ? *reinterpret_cast<std::uint8_t**>(preyBase + engine::SystemLayout::pointerRva)
+                : nullptr;
+            // process IS gEnv->p3DEngine: R-059 measured CSystem::m_pProcess equal
+            // to it, so IProcess is C3DEngine's primary base and needs no adjust.
+            auto* const engineVtable = *reinterpret_cast<std::uint8_t**>(process);
+            if (systemPtr != nullptr && updateFrustum != nullptr && engineVtable != nullptr) {
+                const auto* const liveCamera = reinterpret_cast<const std::uint8_t*>(
+                    reinterpret_cast<std::uintptr_t>(systemPtr) + engine::SystemLayout::viewCamera);
+                static thread_local std::array<std::uint8_t, cameraedit::kCameraSize> eyeCamera{};
+                std::memcpy(eyeCamera.data(), liveCamera, cameraedit::kCameraSize);
+                if (BuildSyntheticEye(eyeCamera, 1, gStereoIpd.load(std::memory_order_acquire),
+                                      gStereoHalfFov.load(std::memory_order_acquire))) {
+                    updateFrustum(eyeCamera.data());
+                    if (cameraedit::RotationIsSafeToWrite(eyeCamera)) {
+                        const auto registerCamera = *reinterpret_cast<RegisterPassCameraFn*>(
+                            engineVtable + engine::ThreeDEngineLayout::vtableRegisterPassCamera);
+                        if (registerCamera != nullptr) {
+                            void* const registered = registerCamera(process, eyeCamera.data());
+                            std::memcpy(ownPass.data() + engine::PassInfoLayout::camera,
+                                        &registered, sizeof(registered));
+                        }
+                    }
+                }
+            }
+        }
 
         const std::uintptr_t base = wantRecursiveView
             ? gPreyBase.load(std::memory_order_acquire) : 0;
