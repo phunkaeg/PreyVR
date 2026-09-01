@@ -632,3 +632,49 @@ populates or resets this table for the current slot, then a pass marked secondar
 renders against a table nothing prepared for it. That remains a hypothesis -- the
 specific function that fills this table has not been identified -- but it is now a
 hypothesis about one named table rather than about "engine state" in general.
+
+### F-014 addendum 2 — it is the HUD, and the frame placement predicted it
+
+**The A/B is done and the R-073 flag is exonerated.** Running the identical single
+zero-delta pass with `markSecondary = 0` changed one bit and still killed the
+game -- but *differently*:
+
+| | `markSecondary = 1` | `markSecondary = 0` |
+| --- | --- | --- |
+| runs | 2 of 2 fatal | 1 of 1 fatal |
+| thread | RenderThread | **Main** |
+| crash RVA | `0xED835D` (`FUN_180ED82D0`) | `0xFDEEB0` (`FUN_180FDEE80`) |
+| read | `0xFFFFFFFFFFFFFFFF` | `0xFFFFFFFFFFFFFFFF` |
+| breadcrumb | `second_pass:done` | `second_pass:done` |
+
+**The flag changes where it dies, not whether.** So the cause is not R-073's
+skipping; it is the second `RenderWorld` itself, as this mod currently issues it.
+Three fatal runs out of three.
+
+**The visible casualty names the subsystem: the HUD health bar renders as
+wireframe.** Together with `FUN_180F20390` computing a premultiplied-alpha colour
+from 16-byte RGBA entries indexed by a 16-bit index with a `-1` sentinel, the
+corrupted per-frame table is a **UI/HUD colour table**, not world geometry.
+
+**And that is exactly what the frame placement predicts.**
+`docs/STEREO_RENDER_ARCHITECTURE.md` recorded, from FEAR VR and FC2VR and *before
+this test ran*, that the correct flow is:
+
+> both eye world-renders -> **HUD exactly once** -> present exactly once
+
+A4 does not do that. It lets the original `CSystem::Render` run in full -- world,
+HUD **and** present -- and appends a second `RenderWorld` afterwards. So the
+second pass runs *after* the HUD has been drawn and consumes or advances the very
+per-frame table the next frame's HUD draw will read. The next frame draws the
+health bar from a desynchronised table, which is the wireframe; shortly after,
+the chain walks into `-1`, which is the crash.
+
+The prior art called this before the experiment, and the experiment landed on the
+predicted casualty. That is the strongest evidence yet that the frame flow, not
+the render view and not the secondary flag, is what A4 has wrong.
+
+**What this does and does not settle.** It refutes *appending* a second
+`RenderWorld` after the original -- decisively, 3/3, with a named mechanism. It
+does **not** refute rung 1, because the shape prior art actually prescribes --
+interposing, so both eyes render before the HUD is drawn once -- has never been
+built or tested here.
