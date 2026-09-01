@@ -177,6 +177,18 @@ DWORD RenderViewProbeStatusValue();
 // image is the second eye. Making a submittable pair is the next problem, and
 // bundling it into this one would make a failure uninterpretable.
 //
+// **KNOWN WRONG IN ITS FRAME PLACEMENT -- see docs/STEREO_RENDER_ARCHITECTURE.md.**
+// Prior art from two injected native-stereo mods gives the frame flow as: both
+// eye world-renders, then HUD exactly once, then present exactly once. This runs
+// the original in full -- world, HUD and present -- and appends a second world
+// render afterwards, so the second eye lands after the HUD and after the present,
+// and composites over a finished frame instead of a cleared target.
+//
+// It is still worth running as the architectural probe it was built to be: it
+// answers whether the engine survives a second RenderWorld given its own view,
+// which is the A3 question at the right layer. It is **not** a stereo path, and
+// must not be treated as one or submitted from.
+//
 // Bounded by both a frame budget and the wall-clock watchdog, because F-013's
 // lesson was that a budget in frames cannot bound a failure that stops frames.
 // Pass ipd 0 or budget 0 to disarm.

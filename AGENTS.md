@@ -1,6 +1,5 @@
 # PreyVR
 
-
 > Also read `CLAUDE.md` in this folder — it carries project rules that are **not** repeated here,
 > and they apply whichever tool you are. Claude Code auto-loads `CLAUDE.md` and Codex auto-loads
 > this file, so neither sees the other's unless it goes and reads it. Treat the pair as one
@@ -55,13 +54,13 @@ view matrix, FOV and player structs. Load it when you are deciding *what to look
 
 ## Cross-engine docs graph (added 2026-08-27)
 
-> **Blocker? Delegate the search to the AI box — don't burn cloud tokens reading candidate docs here.**
-> `opencode run --dir "D:\Dev Debug\VR Modding" --auto -m llamabox/coder-next "<blocker, with the exact
-> symbol/value/symptom>; search this graph AND grep the SS2VR/BioshockVR/SOMAVR docs+code; return ONLY
-> <file path> - <one-line why>, no solutions"` — then open just the files it names and grade them here.
-> **Pointers, not answers:** the local model fabricates specifics, and a cross-project hit is INFERENCE
-> until confirmed against these bytes. (Claude: full recipe in the `local-delegation` skill §3c.)
-
+> **Blocker? Search for prior art with ripgrep, not by reading candidate docs (or an agent).**
+> `rg -i -c -e 'signalA|signalB|concept' "D:\Dev Debug\ss2vr-work" "D:\Dev Debug\somavr" "D:\Dev Debug\BioshockVR" | sort -t: -k2 -rn`
+> (and `rg` the graph JSON explicitly — it is under a gitignored dir). Use the blocker's *real signals*
+> — API/identifier names, error codes, concept words. Optionally hand the small hit-list to `coder-next`
+> (MCP `local_ask`, `model="coder-next"`) to rank `<path> - <why>`; then open only the top 1-2 here.
+> **Pointers, not answers** — a cross-project hit is INFERENCE until confirmed against these bytes.
+> (Claude: full recipe in the `local-delegation` skill §3c.)
 
 This project is **not** in that graph. It covers SS2VR, BioshockVR and SOMAVR — Dark/KEX,
 Unreal 2.5 Vengeance and HPL3, across D3D11 and OpenGL — so query it as **prior art**, for
