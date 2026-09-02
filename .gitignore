@@ -36,3 +36,9 @@
 # release binaries and source clone are large and are not project artifacts.
 /tools/Chairloader-*/
 /tools/Chairloader-*.zip
+
+# Frame dumps: 14.7 MB each at 2560x1440. Kept on disk for comparison across
+# sessions, never in the repo -- the numbers that matter are in the protocol docs.
+*.pvrframe
+captures/
+captures_archive/

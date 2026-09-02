@@ -171,3 +171,69 @@ The counter is readable either way; the image comparison is not.
 `gStereoStep` names the sub-step in flight and the watchdog prints it on expiry.
 F-013 is the argument: when A3 wedged we knew four frames had completed and
 nothing about which step of the fifth killed the engine.
+
+
+## Rung 3 with native projection -- run 2026-09-02, PASSED
+
+The first test of `SetNativeProjection`: build each eye by translation alone and
+leave Prey's own projection untouched. Predictions were written before the run.
+
+| comparison | mean abs | reading |
+| --- | --- | --- |
+| left vs left, adjacent (**control**) | **0.0123** | below A1's 0.0167 noise floor |
+| left vs left, **12,000 frames apart** | **0.0152** | still noise -- frozen and deterministic |
+| left vs right (**test**) | **10.287** | parallax |
+| native vs synthetic, same eye (**flag control**) | **25.399** | the flag really changes the image |
+
+The test result reproduced against two independent left-eye baselines, agreeing
+to four decimal places (10.287439 and 10.286634).
+
+`no_single_shift_explains_it` holds on the parallax test with only a 1.04x
+improvement at the best shift. That is the result that matters: a uniform 2D
+image shift would be explained by a single offset, and this is not. Near geometry
+moved further than far geometry, which is what stereo is.
+
+### The control had to be redesigned mid-run, and the reason is worth keeping
+
+The obvious control -- zero IPD -- **is not a control here.**
+`SetSyntheticStereo` treats `ipdMetres == 0` as *disarm*. Two captures at zero IPD
+would be identical because the stereo path was never armed, and that would have
+read as a clean control while proving nothing.
+
+The control used instead is **the same eye captured twice at full IPD**:
+everything identical including the stereo path being live, so the difference is
+noise and nothing else. It is the stronger control regardless.
+
+### A check that looked like confirmation and was not
+
+The first attempt to prove the projection was *inherited* read the declared FOV
+with each eye locked, expecting both to report Prey's frustum. They did -- and so
+did the negative control with the flag **off**, which should have shown the
+synthetic 50-degree half-FOV instead.
+
+`ReadDeclaredFovPtr` reads `CSystem::m_ViewCamera`, which the engine rewrites from
+its own camera every frame. An asynchronous read therefore always sees the
+*unedited* camera and can never observe the hook's edit. **The check cannot
+distinguish the two states and confirms nothing.** It was discarded rather than
+reported.
+
+What replaced it is the flag control in the table above: same eye, same frozen
+scene, only the flag changed, 72% of pixels different. That is a direct
+observation of the flag changing the rendered image rather than an inference from
+a value that turned out not to be readable.
+
+This is the third time on this project that a self-consistent check has produced
+a confident wrong answer -- after the asymmetry test and the JS FOV
+re-derivation. **The negative control is what caught it each time**, and running
+one is not optional.
+
+### State restored
+
+Stereo disarmed, eye lock returned to alternating, native projection off,
+`t_Scale 1`, `r_AntialiasingMode 3`, `r_MotionBlur 2`, observer off. Camera edit
+status back to `ready` with **zero restore failures**.
+
+### What this does not establish
+
+Only that the image is correct *relative to itself*. Whether 120 degrees declared
+to OpenXR actually reads as correct depth is a headset question and is untested.
