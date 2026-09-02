@@ -319,3 +319,62 @@ moves the camera between frames just as alternate-eye does. `e_CameraFrustumSize
 was probed as a possible cull-widening lever and **refused by the console
 allowlist**, which is the fail-closed design working; it is also the wrong fix,
 per the quote above.
+
+
+## Upstream rotation, 2026-09-03: the view tracks, the cull frustum does not
+
+Rotation moved to the upstream camera edit, on `CSystem::m_ViewCamera`. Applied
+8500 times at 90/sec, zero refusals, zero restore failures, pose age ~4.2 ms.
+
+**The view tracks the headset. The cull frustum follows the mouse.** Reported
+directly: geometry appears and disappears according to where the *player* is
+aiming, not where the headset is looking.
+
+So there is a **third camera**. Our edit moves the camera the image is rendered
+through, and something else decides what is submitted in the first place.
+
+### Why this is surprising, and what it rules out
+
+CryEngine's own source makes the pass camera the camera it is handed:
+
+```cpp
+const CCamera& rCameraToSet = (pCameraFreeze && pCameraFreeze->GetIVal() != 0)
+    ? gEnv->p3DEngine->GetRenderingCamera() : rCamera;
+passInfo.SetCamera(rCameraToSet);
+```
+
+`e_CameraFreeze` is off, so the pass camera should be `rCamera` -- and R-061
+records that `CSystem::Render` hands `m_ViewCamera` to
+`CreateGeneralPassRenderingInfo`. On that reading our edit should reach culling.
+
+It does not, so one of these is true and they are distinguishable by experiment:
+
+1. `CreateGeneralPassRenderingInfo` is called with a camera that is **not**
+   `m_ViewCamera`.
+2. Something rewrites `m_ViewCamera` between our write and that call -- our hook
+   wraps `CSystem::Render`, so anything inside it that calls `SetViewCamera` wins.
+3. Culling does not use the pass camera at all, and Prey's visibility runs from a
+   separate camera the way SS2VR's did.
+
+**This is the playbook's pattern, not a Prey oddity.** SS2VR: *cell/portal
+visibility computed from the body-anchored cull camera*, with a single dedicated
+writer. SOMAVR hooks frustum ownership so every non-player camera returns its
+native frustum. The general rule from the same section is that the visibility pass
+runs from the engine's camera, not yours, and cannot be fixed downstream.
+
+### The next test distinguishes all three, and needs no headset
+
+Hook `CreateGeneralPassRenderingInfo` (R-071, landmark `pass.create_general`) and
+read the forward vector of the camera it is actually handed, alongside the forward
+vector we wrote. Same, and the problem is downstream of the pass camera. Different,
+and our write is being lost or bypassed -- and the value tells us which.
+
+That is a read-only observation of an existing landmark, so it costs one launch
+and no arming.
+
+### Also fixed
+
+Head rotation was not an arming condition in the camera edit's guard, so the first
+upstream run armed successfully and never executed -- applied and refused both
+zero. It cost a test cycle to spot, because "armed" and "applied" were only
+distinguishable by reading a counter. The guard now includes it.

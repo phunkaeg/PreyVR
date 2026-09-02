@@ -896,7 +896,12 @@ void __fastcall RenderWithCameraEdit(void* system)
     }
 
     const bool stereoArmed = gStereoIpd.load(std::memory_order_acquire) > 0.0f;
-    if ((!gArmed.load(std::memory_order_acquire) && !stereoArmed) || system == nullptr) {
+    // Head rotation is an arming condition in its own right. Without it here the
+    // edit is armed, reports success, and never runs -- which is exactly what
+    // happened on the first upstream run, and cost a test cycle to find because
+    // "armed" and "applied" were only distinguishable by a counter.
+    if ((!gArmed.load(std::memory_order_acquire) && !stereoArmed &&
+         !gHeadRotationArmed.load(std::memory_order_acquire)) || system == nullptr) {
         if (original != nullptr) {
             original(system);
         }
