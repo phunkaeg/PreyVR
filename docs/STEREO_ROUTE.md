@@ -237,3 +237,65 @@ status back to `ready` with **zero restore failures**.
 
 Only that the image is correct *relative to itself*. Whether 120 degrees declared
 to OpenXR actually reads as correct depth is a headset question and is untested.
+
+
+## Eye handoff verified offline -- run 2026-09-02, PASSED
+
+The dwell was replaced by carrying the eye with the frame. Verified on a monitor,
+before a headset, because the failure mode is swapped eyes and that is miserable
+to diagnose from inside one.
+
+| check | result | |
+| --- | --- | --- |
+| publishes per rendered frame | **1.0019** over 514 frames | no double-publish; ordering assumption holds |
+| eye histogram, 400 samples | **193 / 207 / 0 other**, 259 transitions | genuinely alternating, not stuck |
+| starved / dropped | **0 / 0** | |
+| scene guard, unfrozen | 5.534 | the scene is live |
+| control, same eye frozen | **0.0226** | noise floor |
+| test, locked left vs right | **4.637** | parallax, `no_single_shift_explains_it` |
+
+Control-to-test separation is **205:1**.
+
+### The decisive result came from an instrument failure
+
+Six consecutive captures all landed on a frame stride of exactly 28. Even stride,
+same parity, same eye -- six identical images and no alternation visible. The
+capture request-to-completion round trip is quantised, so it **cannot** sample
+both eyes at its natural cadence.
+
+Re-running with deliberately staggered delays turned that into the experiment:
+
+| stride | parity | mean abs |
+| --- | --- | --- |
+| 30 | even | 0.031 |
+| 32 | even | 0.038 |
+| **33** | **odd** | **4.672** |
+| 34 | even | 0.036 |
+
+Frame-stride parity predicts the eye change, four for four. That is exactly what
+per-frame alternation implies and nothing else explains it. The 4.672 also agrees
+with the independently measured locked left-vs-right value of 4.637 on the same
+scene, to within 1%.
+
+**Absolute parallax is not comparable between scenes.** This scene gives 4.6 where
+an earlier one gave 10.3; the magnitude depends on how much near geometry is in
+frame. The control-to-test ratio is the comparable quantity, not the number.
+
+### Twice frozen on a menu
+
+Two runs were wasted freezing while Prey sat on its menu background, which the
+game renders blurred and dimmed by design. That produces near-zero diffs and a
+tiny cross-eye difference -- a blurred, depthless backdrop has almost no parallax
+to show -- and it reads convincingly as a broken stereo path.
+
+The protocol now opens with a **scene-content guard**: two unfrozen captures a
+moment apart, which must differ before anything is frozen. A live scene animates
+and a menu backdrop does not, so the guard costs one capture and removes the
+whole failure class.
+
+### Not yet established
+
+The **consume** side has not run against a live session. Publishing is verified at
+1:1 and alternation is verified, but lag stability with an actual consumer
+attached -- the render thread keeping up under submission load -- needs a headset
+and is the next thing to watch. `PreyVR_GetEyeHandoffLag` is the instrument.
