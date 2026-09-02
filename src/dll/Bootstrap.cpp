@@ -7,6 +7,7 @@
 
 #include "FrameObserverHook.h"
 #include "Logger.h"
+#include "AimRayProbe.h"
 #include "HotkeyBridge.h"
 #include "OpenXRPreflightWin32.h"
 #include "RuntimeSnapshotWin32.h"
@@ -853,6 +854,38 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetHotkeyEyeSwap()
 extern "C" __declspec(dllexport) DWORD PreyVR_GetHotkeyPressCount()
 {
     return preyvr::dll::HotkeyPressCount();
+}
+
+// Measures whether per-eye stereo is contaminating Prey's cached aim ray -- the
+// acceptance check H-008 called required and that has never been run.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetAimRayProbeEnabledPtr(void* enabled)
+{
+    return preyvr::dll::SetAimRayProbeEnabled(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetAimRaySampleCount()
+{
+    return preyvr::dll::AimRaySampleCount();
+}
+
+// A high count means the probe measured nothing, which must not be read as a
+// clean result.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetAimRayUnreadableCount()
+{
+    return preyvr::dll::AimRayUnreadableCount();
+}
+
+// The headline number: the largest jump in ray origin between consecutive
+// frames, in micrometres. Near the IPD (about 64000) means contaminated.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetAimRayMaxOriginGapMicrometres()
+{
+    return preyvr::dll::AimRayMaxOriginGapMicrometres();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetAimRayMaxAngleGapMillidegrees()
+{
+    return preyvr::dll::AimRayMaxAngleGapMillidegrees();
 }
 
 // Eye-handoff diagnostics. The lag is pushes minus pops -- the pipeline depth in

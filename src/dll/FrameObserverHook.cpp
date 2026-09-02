@@ -1,5 +1,7 @@
 #include "FrameObserverHook.h"
 
+#include "AimRayProbe.h"
+
 #include "Bootstrap.h"
 #include "ConsoleBridgeWin32.h"
 #include "FrameCaptureWin32.h"
@@ -58,6 +60,10 @@ void __fastcall ObserveEndRendererScene(void* renderer)
     // place Prey's backbuffer is valid. Returns on one atomic load when no
     // session is running.
     ServiceXrFrame(renderer);
+    // Sampled here because this runs once per rendered frame on the render
+    // thread, which is the cadence the contamination would appear at. Returns on
+    // one atomic load when disarmed.
+    SampleAimRay();
 
     const EndRendererSceneFn original = gOriginal.load(std::memory_order_acquire);
     if (original != nullptr) {

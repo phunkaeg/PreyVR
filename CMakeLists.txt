@@ -117,6 +117,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
     preyvr_enable_warnings(preyvr_win32_bootstrap)
 
     add_library(preyvr SHARED
+        src/dll/AimRayProbe.cpp
         src/dll/Bootstrap.cpp
         src/dll/CameraEditHook.cpp
         src/dll/ConsoleBridgeWin32.cpp
