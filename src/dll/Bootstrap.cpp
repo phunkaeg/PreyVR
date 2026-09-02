@@ -7,6 +7,7 @@
 
 #include "FrameObserverHook.h"
 #include "Logger.h"
+#include "HotkeyBridge.h"
 #include "OpenXRPreflightWin32.h"
 #include "RuntimeSnapshotWin32.h"
 #include "Version.h"
@@ -821,6 +822,37 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetXrSwapEyesPtr(void* enabled)
 {
     return preyvr::dll::SetXrSwapEyes(
         static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+// In-headset A/B. Cycles the eye offset and antialiasing mode from Ctrl+Alt
+// chords so two values can be compared seconds apart instead of minutes apart.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetHotkeysEnabledPtr(void* enabled)
+{
+    return preyvr::dll::SetHotkeysEnabled(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+// Eye offset in tenths of a millimetre: 640 is 0.064 m.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetHotkeyIpdTenthsMm()
+{
+    return preyvr::dll::HotkeyIpdTenthsMm();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetHotkeyAaMode()
+{
+    return preyvr::dll::HotkeyAaMode();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetHotkeyEyeSwap()
+{
+    return preyvr::dll::HotkeyEyeSwap();
+}
+
+// Zero while the wearer is pressing keys means the poll is not seeing them,
+// which is a different problem from a setting that does nothing.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetHotkeyPressCount()
+{
+    return preyvr::dll::HotkeyPressCount();
 }
 
 // Eye-handoff diagnostics. The lag is pushes minus pops -- the pipeline depth in
