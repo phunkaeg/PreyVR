@@ -815,11 +815,22 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetXrPreferSrgbFormatPtr(void* ena
         static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
 }
 
-// Frames to hold one eye before taking its image. 2 to 60, default 4.
-extern "C" __declspec(dllexport) DWORD PreyVR_SetXrSubmissionDwellPtr(void* frames)
+// Eye-handoff diagnostics. The lag is pushes minus pops -- the pipeline depth in
+// frames -- and is how the ordering assumption is checked rather than trusted: it
+// should sit at a small constant, and drift means eye identity is no longer safe.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetEyeHandoffLag()
 {
-    return preyvr::dll::SetXrSubmissionDwell(
-        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(frames)));
+    return preyvr::dll::EyeHandoffLag();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetEyeHandoffStarvedCount()
+{
+    return preyvr::dll::EyeHandoffStarvedCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetEyeHandoffDroppedCount()
+{
+    return preyvr::dll::EyeHandoffDroppedCount();
 }
 
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetXrSubmittedFrameCount()

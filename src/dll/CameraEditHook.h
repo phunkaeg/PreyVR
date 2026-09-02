@@ -91,6 +91,37 @@ DWORD SetStereoAsymmetry(float outerScale);
 // 0 locks left, 1 locks right, any other value returns to alternating.
 DWORD SetStereoEyeLock(unsigned int eye);
 
+// Which eye is in the frame the render thread has just finished, or -1 if the
+// game thread has not published one yet.
+//
+// The camera hook publishes the eye it built alongside each frame, and this pops
+// them in order. The engine's MT/RT double buffer delays work without reordering
+// it, so the eye arrives with its frame and submission never has to wait to find
+// out which one it has -- which is what let the dwell go, and with it the 11 Hz
+// per-eye refresh that made the first stereo test judder.
+//
+// Call exactly once per finished frame. Consuming twice would advance past a
+// frame and swap the eyes from then on.
+int ConsumeRenderedEye();
+
+// Clears the queue. Call when arming, so a stale backlog from a previous run
+// cannot decide the first few frames' eyes.
+void ResetEyeHandoff();
+
+// Pushes minus pops -- the pipeline depth in frames.
+//
+// **This is the check that the ordering assumption is holding.** It should sit
+// at a small constant. Drift means the 1:1 correspondence between built cameras
+// and rendered frames has broken, and the eye identity can no longer be trusted.
+unsigned long long EyeHandoffLag();
+
+// Frames finished with nothing queued -- the render thread ran ahead.
+unsigned long long EyeHandoffStarvedCount();
+
+// Entries discarded because the queue ran long. A stale eye is a frame from a
+// different camera position, so it is dropped rather than shown.
+unsigned long long EyeHandoffDroppedCount();
+
 // Sets the eye lock from inside the render loop, without taking the control
 // mutex. For the stereo submission path only; everything else should use
 // SetStereoEyeLock, which also keeps the capture tag correct.

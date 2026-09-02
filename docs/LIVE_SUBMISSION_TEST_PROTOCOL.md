@@ -42,7 +42,7 @@ r_AntialiasingMode 0 ; r_MotionBlur 0
 
 PreyVR_SetNativeProjectionPtr(1)         ; inherit Prey's projection
 PreyVR_SetSyntheticStereoPtr(0.064, 50)  ; 64 mm; the half-FOV is now unused
-PreyVR_SetXrSubmissionDwellPtr(4)
+PreyVR_SetXrPreferSrgbFormatPtr(1)        ; FAIL-STR-033 gamma fix
 PreyVR_StartXrSession()                  ; wait for status = running
 PreyVR_SetXrStereoSubmissionPtr(1)       ; arm -- the image should go stereo here
 ```
@@ -50,13 +50,37 @@ PreyVR_SetXrStereoSubmissionPtr(1)       ; arm -- the image should go stereo her
 Disarm is `PreyVR_SetXrStereoSubmissionPtr(0)`, which reverts to the flat mirror
 without ending the session, then `PreyVR_StopXrSession()`.
 
-### Why the scene must be frozen for the first run
+### Why the scene was frozen for the first run
 
-Alternate-eye means each eye refreshes every `2 * dwell` frames -- at dwell 4,
-roughly every 8. In a moving scene that is judder, and judder is a **confound**:
-it produces exactly the discomfort that a wrong frustum produces, and the two
-cannot be told apart by feel. Freezing removes it completely. The first run asks
-one question and should have one variable.
+Alternate-eye originally refreshed each eye every `2 * dwell` frames -- at dwell
+4, roughly every 8, which at 90 fps is about **11 Hz per eye**. In a moving scene
+that is judder, and judder is a **confound**: it produces exactly the discomfort
+that a wrong frustum produces, and the two cannot be told apart by feel. Freezing
+removed it so the first run had one variable.
+
+**The dwell is gone as of the eye handoff.** The eye is now published by the game
+thread alongside the frame it belongs to and popped by the render thread, so
+every rendered frame updates an eye and a pair refreshes every 2 frames -- about
+45 Hz per eye at 90 fps. Freezing is no longer needed to remove the confound,
+though it is still the cleanest way to judge depth and scale on their own.
+
+### Run 1 result, 2026-09-02
+
+Depth solid, scale believable, ~90 fps, zero restore failures. Judder present and
+attributed to the dwell, which is what the handoff then removed.
+
+The gamma was washed out. That was **not** caused by this work: reverting to the
+flat mirror in the same session, on the same swapchain, changing only the copy
+path, was washed out too. The log gave `format=28` with `colour_conversion=no`,
+which is FAIL-STR-033 -- sRGB-encoded bytes handed to a swapchain the compositor
+treats as linear, and encoded a second time. Fixed by
+`PreyVR_SetXrPreferSrgbFormatPtr(1)`, which must be set **before**
+`StartXrSession` because the format is chosen once when the swapchain is built.
+That fix is built but **not yet confirmed through the headset**.
+
+Freezing while the game sat on a menu background also cost a confusing first
+look: Prey renders that background blurred and dimmed by design, which reads
+exactly like a rendering fault. Check what is on screen before freezing.
 
 ## Predictions, written before the run
 

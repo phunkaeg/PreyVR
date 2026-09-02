@@ -94,8 +94,6 @@ DWORD SetXrStereoSubmission(unsigned int enabled);
 // nothing.
 DWORD SetXrPreferSrgbFormat(unsigned int enabled);
 
-// How many frames to hold one eye before taking its image. 2 to 60, default 4.
-DWORD SetXrSubmissionDwell(unsigned int frames);
 
 // Called from the frame observer, on the render thread. Returns immediately when
 // no session is running.

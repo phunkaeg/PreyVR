@@ -207,6 +207,83 @@ bool PrologueMatches(std::uintptr_t address, const std::uint8_t* expected, std::
 
 // Produces the edited camera for a synthetic stereo eye, composed onto whatever
 // camera the engine was about to render with.
+// ---------------------------------------------------------------------------
+// Eye handoff: which eye is in the frame the render thread is finishing
+// ---------------------------------------------------------------------------
+//
+// **The problem this replaces.** The submission path used to identify the eye by
+// asking and waiting: set the lock, hold it for N frames so the game thread's
+// camera edit could reach the render thread, then take the image. That works,
+// and it is why the first stereo test was unambiguous -- but the wait is the
+// whole cost. A full left-right cycle took 2*N rendered frames, so at a dwell of
+// 4 each eye refreshed at about 11 Hz. That is the slideshow.
+//
+// **Why a queue is correct here.** The engine's MT/RT double buffer *delays*
+// work but does not *reorder* it: the camera built for frame N is rendered
+// before the camera built for frame N+1. So the eye does not need to be
+// searched for or waited on -- it only needs to be carried alongside the frame.
+// The game thread pushes the eye it just built, the render thread pops one per
+// finished frame, and identity is exact with no dwell at all. Each eye then
+// refreshes every 2 frames instead of every 2*N.
+//
+// **Order is an assumption, so it is measured rather than trusted.** `Lag()` is
+// pushes minus pops, which is the pipeline depth in frames. It should sit at a
+// small constant. If it drifts, the 1:1 correspondence this relies on is not
+// holding, and the caller can say so instead of quietly rendering the wrong eye
+// into the wrong socket -- which looks like broken stereo rather than like a bug
+// in a queue, and would be miserable to diagnose from inside a headset.
+namespace eyehandoff {
+
+constexpr std::size_t kSlots = 64;   // power of two, so the wrap is a mask
+std::array<std::atomic<int>, kSlots> gSlots{};
+std::atomic<unsigned long long> gPushed{0};
+std::atomic<unsigned long long> gPopped{0};
+std::atomic<unsigned long long> gStarved{0};
+std::atomic<unsigned long long> gDropped{0};
+
+void Publish(int eye)
+{
+    const unsigned long long seq = gPushed.load(std::memory_order_relaxed);
+    gSlots[seq & (kSlots - 1)].store(eye, std::memory_order_relaxed);
+    gPushed.store(seq + 1, std::memory_order_release);
+}
+
+// Returns the eye for the frame just finished, or -1 if nothing is queued.
+//
+// If the queue has run long -- the render thread fell behind and the game thread
+// kept going -- the stale entries are discarded rather than shown. An old eye is
+// worse than a repeated one: it is a frame from a different camera position, so
+// it reads as a jolt rather than as a dropped update.
+int Consume()
+{
+    const unsigned long long pushed = gPushed.load(std::memory_order_acquire);
+    unsigned long long popped = gPopped.load(std::memory_order_relaxed);
+    if (popped >= pushed) {
+        gStarved.fetch_add(1, std::memory_order_relaxed);
+        return -1;
+    }
+    // Keep at most a couple of frames of slack; skip the rest.
+    constexpr unsigned long long kMaxLag = 4;
+    if (pushed - popped > kMaxLag) {
+        const unsigned long long skip = (pushed - popped) - kMaxLag;
+        gDropped.fetch_add(skip, std::memory_order_relaxed);
+        popped += skip;
+    }
+    const int eye = gSlots[popped & (kSlots - 1)].load(std::memory_order_relaxed);
+    gPopped.store(popped + 1, std::memory_order_release);
+    return eye;
+}
+
+void Reset()
+{
+    gPushed.store(0, std::memory_order_relaxed);
+    gPopped.store(0, std::memory_order_relaxed);
+    gStarved.store(0, std::memory_order_relaxed);
+    gDropped.store(0, std::memory_order_relaxed);
+}
+
+} // namespace eyehandoff
+
 bool BuildSyntheticEye(
     std::array<std::uint8_t, cameraedit::kCameraSize>& edited,
     int eye,
@@ -929,6 +1006,9 @@ void __fastcall RenderWithCameraEdit(void* system)
             gLastEye.store(eye, std::memory_order_release);
             // Stamp the capture so the two dumps of a pair cannot be confused.
             SetFrameCaptureTagOverride(eye);
+            // Hand the eye to the render thread alongside the frame it belongs
+            // to, so submission never has to wait to find out which one it got.
+            eyehandoff::Publish(eye);
         }
     } else {
         const cameraedit::YawEdit edit{gYawDegrees.load(std::memory_order_acquire)};
@@ -1568,6 +1648,33 @@ DWORD SetStereoEyeLock(unsigned int eye)
          << (value < 0 ? "alternate" : (value == 0 ? "left" : "right"));
     lifecycle::Log(line.str());
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+
+int ConsumeRenderedEye()
+{
+    return eyehandoff::Consume();
+}
+
+void ResetEyeHandoff()
+{
+    eyehandoff::Reset();
+}
+
+unsigned long long EyeHandoffLag()
+{
+    const unsigned long long pushed = eyehandoff::gPushed.load(std::memory_order_acquire);
+    const unsigned long long popped = eyehandoff::gPopped.load(std::memory_order_acquire);
+    return pushed >= popped ? pushed - popped : 0;
+}
+
+unsigned long long EyeHandoffStarvedCount()
+{
+    return eyehandoff::gStarved.load(std::memory_order_relaxed);
+}
+
+unsigned long long EyeHandoffDroppedCount()
+{
+    return eyehandoff::gDropped.load(std::memory_order_relaxed);
 }
 
 void SetStereoEyeLockFromRenderThread(int eye)

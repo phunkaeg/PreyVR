@@ -71,9 +71,6 @@ struct Host {
     // a frozen scene, which is how the first depth test is run.
     ID3D11Texture2D* eyeImage[2] = {nullptr, nullptr};
     bool eyeImageValid[2] = {false, false};
-    int submissionEye = 0;        // the eye currently being asked for
-    unsigned int dwellFrames = 0; // frames held since the last switch
-
     xrframe::FrameContract contract;
 };
 
@@ -86,19 +83,6 @@ Host gHost;
 // declaration, but it is a *known* one that proved the plumbing, and it stays
 // reachable so a regression here can be bisected against it.
 std::atomic<bool> gStereoSubmission{false};
-
-// How many frames to hold one eye before taking its image.
-//
-// Prey's camera edit happens on the game thread and the backbuffer is read on the
-// render thread, and the two are offset by the engine's MT/RT double buffer -- so
-// an eye asked for on one thread is not on screen for the other until a frame or
-// so later. Holding for several frames makes the request unambiguous, which is
-// the same reasoning that made the eye *lock* the right tool for offline captures
-// and per-frame tagging the wrong one.
-//
-// The cost is that each eye refreshes every 2*dwell frames. In a frozen scene,
-// which is how the first depth test is run, that costs nothing at all.
-std::atomic<unsigned int> gDwellFrames{4};
 
 // Ask for the sRGB swapchain format instead of the exact match -- FAIL-STR-033.
 // Read once when the swapchain is created, so it must be set before StartXrSession.
@@ -498,18 +482,18 @@ bool SubmitStereoPair(
         }
     }
 
-    // Take the image only once the requested eye has had time to reach the
-    // screen, then ask for the other one.
-    const unsigned int dwell = gDwellFrames.load(std::memory_order_acquire);
-    if (gHost.dwellFrames >= dwell) {
-        const int eye = gHost.submissionEye;
+    // **The eye arrives with the frame.** No dwell, no lock, no waiting: the
+    // camera hook published which eye it built and this pops the one belonging
+    // to the frame just finished. Every rendered frame therefore updates an eye,
+    // so a pair refreshes every 2 frames rather than every 2*dwell.
+    //
+    // -1 means the game thread has not published yet -- starting up, or the
+    // render thread ran ahead. Hold the existing pair for a frame rather than
+    // copying a backbuffer whose eye is unknown, which would be a coin flip.
+    const int eye = dll::ConsumeRenderedEye();
+    if (eye == 0 || eye == 1) {
         context->CopyResource(gHost.eyeImage[eye], backBuffer);
         gHost.eyeImageValid[eye] = true;
-        gHost.submissionEye = 1 - eye;
-        gHost.dwellFrames = 0;
-        dll::SetStereoEyeLockFromRenderThread(gHost.submissionEye);
-    } else {
-        ++gHost.dwellFrames;
     }
 
     if (!gHost.eyeImageValid[0] || !gHost.eyeImageValid[1]) {
@@ -860,6 +844,14 @@ void ServiceXrFrame(void* renderer)
 DWORD SetXrStereoSubmission(unsigned int enabled)
 {
     const bool on = enabled != 0u;
+    if (on) {
+        // A backlog from a previous arm would decide the first frames' eyes.
+        dll::ResetEyeHandoff();
+        // The handoff only ever sees both eyes if the camera hook is free-running.
+        // A lock left set from an offline capture would publish one eye forever,
+        // and the pair would never complete.
+        dll::SetStereoEyeLockFromRenderThread(-1);
+    }
     gStereoSubmission.store(on, std::memory_order_release);
     std::ostringstream line;
     line << "result=0 detail=stereo_submission enabled=" << (on ? "1" : "0");
@@ -880,23 +872,6 @@ DWORD SetXrPreferSrgbFormat(unsigned int enabled)
     gPreferSrgb.store(on, std::memory_order_release);
     std::ostringstream line;
     line << "result=0 detail=prefer_srgb enabled=" << (on ? "1" : "0");
-    Log(line.str());
-    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
-}
-
-DWORD SetXrSubmissionDwell(unsigned int frames)
-{
-    // Below two there is no point holding at all -- the game and render threads
-    // are already about a frame apart, so a shorter hold cannot make the eye
-    // request unambiguous, which is the only reason the hold exists. The upper
-    // bound just keeps a typo from stopping the image updating altogether.
-    if (frames < 2u || frames > 60u) {
-        Log("result=refused detail=dwell_out_of_bounds");
-        return static_cast<DWORD>(XrSessionStatus::failed);
-    }
-    gDwellFrames.store(frames, std::memory_order_release);
-    std::ostringstream line;
-    line << "result=0 detail=dwell frames=" << frames;
     Log(line.str());
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
 }
