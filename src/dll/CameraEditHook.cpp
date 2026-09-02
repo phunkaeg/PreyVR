@@ -1,5 +1,7 @@
 #include "CameraEditHook.h"
 
+#include "HeadTrackingHook.h"
+
 #include "FrameCaptureWin32.h"
 #include "Logger.h"
 #include "preyvr/CameraEdit.h"
@@ -89,6 +91,11 @@ std::atomic<float> gAsymmetry{1.1f};
 // Off by default: leaving it off keeps every prior measurement meaning what it
 // meant when it was taken.
 std::atomic<bool> gNativeProjection{false};
+
+// Head rotation on the upstream camera -- the one culling reads from.
+std::atomic<bool> gHeadRotationArmed{false};
+std::atomic<unsigned long long> gHeadRotationApplied{0};
+std::atomic<unsigned long long> gHeadRotationRefused{0};
 std::atomic<bool> gDoubleRender{false};
 std::atomic<unsigned int> gDoubleRenderBudget{0};
 
@@ -987,7 +994,32 @@ void __fastcall RenderWithCameraEdit(void* system)
         return;
     }
 
-    bool built = false;
+    // **Head rotation goes here, upstream, because this is the camera the engine
+    // culls from.** Driving it from CRenderView::SetCamera was measured on
+    // 2026-09-03 and broke level culling: that seam is downstream of visibility,
+    // so the engine culled against an unrotated camera and then rendered through
+    // a rotated one. The playbook's rule is to keep the RenderView override for
+    // stereo and projection and never for CPU culling.
+    //
+    // Applied **before** the eye offset, so the offset is taken along the head's
+    // own right axis rather than the body's. Reversed, the eyes would separate
+    // along a fixed world axis and the stereo would shear as the player looked
+    // around.
+    //
+    // A refusal here is not fatal: the camera is simply left as the engine built
+    // it for this frame, which is a frame without head tracking rather than a
+    // broken one.
+    bool headRotationApplied = false;
+    if (gHeadRotationArmed.load(std::memory_order_acquire)) {
+        headRotationApplied = ApplyHeadRotation(edited.data(), edited.size());
+        if (!headRotationApplied) {
+            gHeadRotationRefused.fetch_add(1, std::memory_order_relaxed);
+        } else {
+            gHeadRotationApplied.fetch_add(1, std::memory_order_relaxed);
+        }
+    }
+
+    bool built = headRotationApplied;
     if (stereoArmed) {
         // Alternate every frame. With the simulation frozen, consecutive frames
         // differ only by the eye, which is exactly a stereo pair.
@@ -1010,7 +1042,12 @@ void __fastcall RenderWithCameraEdit(void* system)
             // to, so submission never has to wait to find out which one it got.
             eyehandoff::Publish(eye);
         }
-    } else {
+    } else if (!headRotationApplied) {
+        // The research yaw edit is an *alternative* to head tracking, not
+        // something to compose with it. ApplyYaw rotates the matrix in place, so
+        // running it here would add a fixed offset on top of the live head
+        // orientation -- harmless while the yaw is zero, and a slowly-rotating
+        // world the moment it is not.
         const cameraedit::YawEdit edit{gYawDegrees.load(std::memory_order_acquire)};
         built = cameraedit::ApplyYaw(edited, edit);
     }
@@ -1691,6 +1728,37 @@ void SetStereoEyeLockFromRenderThread(int eye)
     // offline dumps from being confused with each other, which is a debugging
     // concern; submission has its own eye identity and does not read it.
     gEyeLock.store((eye == 0 || eye == 1) ? eye : -1, std::memory_order_release);
+}
+
+DWORD SetUpstreamHeadRotation(unsigned int enabled)
+{
+    const bool on = enabled != 0u;
+    if (on) {
+        // The hook has to exist for the edit to run at all. Arming without it
+        // would report success and change nothing.
+        if (!EnsureHook()) {
+            lifecycle::Log("preyvr_camera_edit result=refused detail=head_rotation_no_hook");
+            return static_cast<DWORD>(CameraEditStatus::unavailable);
+        }
+        gHeadRotationApplied.store(0, std::memory_order_relaxed);
+        gHeadRotationRefused.store(0, std::memory_order_relaxed);
+    }
+    gHeadRotationArmed.store(on, std::memory_order_release);
+    std::ostringstream line;
+    line << "preyvr_camera_edit result=0 detail=upstream_head_rotation enabled="
+         << (on ? "1" : "0");
+    lifecycle::Log(line.str());
+    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+
+unsigned long long UpstreamHeadRotationApplied()
+{
+    return gHeadRotationApplied.load(std::memory_order_relaxed);
+}
+
+unsigned long long UpstreamHeadRotationRefused()
+{
+    return gHeadRotationRefused.load(std::memory_order_relaxed);
 }
 
 DWORD SetNativeProjection(unsigned int enabled)

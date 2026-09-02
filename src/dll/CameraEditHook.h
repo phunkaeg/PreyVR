@@ -127,6 +127,31 @@ unsigned long long EyeHandoffDroppedCount();
 // SetStereoEyeLock, which also keeps the capture tag correct.
 void SetStereoEyeLockFromRenderThread(int eye);
 
+// Applies the tracked head rotation to the upstream camera -- the one the engine
+// culls from.
+//
+// **This is where rotation has to happen.** Driving it from
+// CRenderView::SetCamera was measured on 2026-09-03 and broke level culling,
+// because that seam sits downstream of visibility: the engine culled against an
+// unrotated camera and rendered through a rotated one, so anything outside the
+// original frustum was already gone. Being downstream is what makes that seam
+// contamination-safe and what makes it wrong for rotation.
+//
+// The contamination concern does not transfer. It was about a per-eye *offset* --
+// a transient alternating camera no engine expects. A rotated view camera is what
+// every reader of the global camera sees each time the player turns with a mouse.
+//
+// Requires a recenter reference; refuses if the hook cannot be installed.
+DWORD SetUpstreamHeadRotation(unsigned int enabled);
+
+unsigned long long UpstreamHeadRotationApplied();
+
+// Frames where rotation was armed but not applied -- no pose yet, no reference,
+// or a matrix that failed the orthonormality gate. The frame is left as the
+// engine built it, so this counts frames without head tracking rather than
+// broken ones.
+unsigned long long UpstreamHeadRotationRefused();
+
 // Builds the per-eye camera by translation alone, inheriting Prey's own
 // projection rather than overwriting it with a synthetic one.
 //

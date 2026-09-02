@@ -4,6 +4,9 @@
 
 #include <windows.h>
 
+#include <cstddef>
+#include <cstdint>
+
 // M1 head tracking: the world responds to head rotation.
 //
 // **On a different seam from the stereo camera edit, deliberately.** The stereo
@@ -40,6 +43,23 @@ namespace preyvr::dll {
 // pose is simply a worse answer to the same question, so the newest available is
 // always the right one to use and a backlog would be pure latency.
 void PublishHeadPose(const Pose& openXrHeadPose);
+
+// Reads the latest published head pose, and how old it is in microseconds.
+//
+// Exposed because **rotation belongs upstream**, on the camera the engine culls
+// from, while this file owns the pose slot. Measured 2026-09-03: driving rotation
+// from CRenderView::SetCamera renders through a rotated camera that the engine
+// already culled against an unrotated one, so geometry outside the original
+// frustum is gone before the rewrite happens. The playbook's rule is to keep the
+// RenderView override for stereo and projection and never for CPU culling.
+bool TryReadHeadPose(Pose& out, unsigned long long& ageMicroseconds);
+
+// Composes the recentered reference with a live head pose, orientation only,
+// keeping whatever position the camera already has.
+//
+// Shared rather than duplicated, so the upstream rotation and anything later
+// cannot drift apart in how they build the same camera.
+bool ApplyHeadRotation(std::uint8_t* camera, std::size_t size);
 
 // Arms the camera edit. Off by default.
 //

@@ -857,6 +857,24 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetHotkeyPressCount()
     return preyvr::dll::HotkeyPressCount();
 }
 
+// Head rotation on the upstream camera, which is the one the engine culls from.
+// Recenter first.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetUpstreamHeadRotationPtr(void* enabled)
+{
+    return preyvr::dll::SetUpstreamHeadRotation(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetUpstreamHeadRotationApplied()
+{
+    return preyvr::dll::UpstreamHeadRotationApplied();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetUpstreamHeadRotationRefused()
+{
+    return preyvr::dll::UpstreamHeadRotationRefused();
+}
+
 // M1 head tracking, on the CRenderView::SetCamera seam. Recenter first: arming
 // without a reference is refused rather than snapping the world to engine north.
 extern "C" __declspec(dllexport) DWORD PreyVR_RecenterHeadTracking()

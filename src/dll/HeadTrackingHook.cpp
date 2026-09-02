@@ -11,6 +11,7 @@
 #include <atomic>
 #include <cstring>
 #include <optional>
+#include <span>
 #include <sstream>
 
 namespace preyvr::dll {
@@ -127,45 +128,6 @@ bool PrologueMatches(std::uintptr_t address)
 // and it scales position rather than rotation -- and free of the head-versus-wall
 // collision problem, since a head that cannot translate cannot lean through
 // geometry.
-bool BuildTrackedCamera(std::array<std::uint8_t, cameraedit::kCameraSize>& camera)
-{
-    Pose headPose{};
-    std::int64_t publishedQpc = 0;
-    if (!ReadPose(headPose, publishedQpc)) {
-        return false;
-    }
-    if (!gHaveReference.load(std::memory_order_acquire)) {
-        return false;
-    }
-
-    const auto age = static_cast<unsigned long long>(
-        ((QpcNow() - publishedQpc) * 1000000ll) / QpcFrequency());
-    gLastPoseAgeMicroseconds.store(age, std::memory_order_relaxed);
-    unsigned long long previousMax = gMaxPoseAgeMicroseconds.load(std::memory_order_relaxed);
-    while (age > previousMax &&
-           !gMaxPoseAgeMicroseconds.compare_exchange_weak(previousMax, age)) {
-    }
-
-    // The engine's own eye point stays the engine's business, so walking,
-    // collision and scripted movement are untouched.
-    const stereo::Matrix34 existing = stereo::ReadMatrix(camera);
-    stereo::ReferenceFrame reference{};
-    reference.worldPosition = stereo::PoseFromMatrix(existing).position;
-    reference.yawRadians = gReferenceYaw.load(std::memory_order_acquire);
-
-    Pose orientationOnly = headPose;
-    orientationOnly.position = Vec3{};
-    const Pose world = stereo::EyePoseInWorld(reference, orientationOnly);
-
-    if (!stereo::WriteMatrix(camera, stereo::MatrixFromPose(world))) {
-        return false;
-    }
-    // The same gate the stereo path uses. A non-orthonormal matrix makes the
-    // engine negate its own plane normals, which is a genuinely confusing thing
-    // to debug from inside a headset.
-    return cameraedit::RotationIsSafeToWrite(camera);
-}
-
 void __fastcall SetCameraWithHeadTracking(void* renderView, const std::uint8_t* camera)
 {
     const SetCameraFn original = gOriginal.load(std::memory_order_acquire);
@@ -176,27 +138,18 @@ void __fastcall SetCameraWithHeadTracking(void* renderView, const std::uint8_t* 
         return;
     }
 
-    std::array<std::uint8_t, cameraedit::kCameraSize> edited{};
-    std::memcpy(edited.data(), camera, cameraedit::kCameraSize);
-
-    if (!BuildTrackedCamera(edited)) {
-        gRefused.fetch_add(1, std::memory_order_relaxed);
-        // Hand the engine its own camera unchanged. Nothing global was written,
-        // so there is nothing to restore -- which is the whole point of this seam.
-        if (original != nullptr) {
-            original(renderView, camera);
-        }
-        return;
-    }
-
-    const UpdateFrustumFn updateFrustum = gUpdateFrustum.load(std::memory_order_acquire);
-    if (updateFrustum != nullptr) {
-        updateFrustum(edited.data());
-    }
-
-    gApplied.fetch_add(1, std::memory_order_relaxed);
+    // **Rotation deliberately does not happen here any more.** Measured
+    // 2026-09-03: this seam is downstream of visibility, so a rotated camera
+    // renders geometry the engine already culled against an unrotated one. That
+    // is what makes it safe from contamination and what makes it wrong for
+    // rotation. Rotation now happens upstream, on the camera culling reads.
+    //
+    // The hook stays installed and inert rather than removed, because the per-eye
+    // offset belongs here -- downstream, where no restore is needed and nothing
+    // can alias the global camera.
+    gRefused.fetch_add(1, std::memory_order_relaxed);
     if (original != nullptr) {
-        original(renderView, edited.data());
+        original(renderView, camera);
     }
 }
 
@@ -252,6 +205,59 @@ bool EnsureHook()
 }
 
 } // namespace
+
+bool TryReadHeadPose(Pose& out, unsigned long long& ageMicroseconds)
+{
+    Pose pose{};
+    std::int64_t publishedQpc = 0;
+    if (!ReadPose(pose, publishedQpc)) {
+        return false;
+    }
+    const auto age = static_cast<unsigned long long>(
+        ((QpcNow() - publishedQpc) * 1000000ll) / QpcFrequency());
+    gLastPoseAgeMicroseconds.store(age, std::memory_order_relaxed);
+    unsigned long long previousMax = gMaxPoseAgeMicroseconds.load(std::memory_order_relaxed);
+    while (age > previousMax &&
+           !gMaxPoseAgeMicroseconds.compare_exchange_weak(previousMax, age)) {
+    }
+    out = pose;
+    ageMicroseconds = age;
+    return true;
+}
+
+bool ApplyHeadRotation(std::uint8_t* camera, std::size_t size)
+{
+    if (camera == nullptr || size < cameraedit::kCameraSize) {
+        return false;
+    }
+    if (!gHaveReference.load(std::memory_order_acquire)) {
+        return false;
+    }
+    Pose headPose{};
+    unsigned long long age = 0;
+    if (!TryReadHeadPose(headPose, age)) {
+        return false;
+    }
+    const auto span = std::span<std::uint8_t>(camera, cameraedit::kCameraSize);
+
+    // The engine's own eye point stays the engine's business, so walking,
+    // collision and scripted movement are untouched. Only the orientation is ours.
+    const stereo::Matrix34 existing = stereo::ReadMatrix(span);
+    stereo::ReferenceFrame reference{};
+    reference.worldPosition = stereo::PoseFromMatrix(existing).position;
+    reference.yawRadians = gReferenceYaw.load(std::memory_order_acquire);
+
+    Pose orientationOnly = headPose;
+    orientationOnly.position = Vec3{};
+    const Pose world = stereo::EyePoseInWorld(reference, orientationOnly);
+
+    if (!stereo::WriteMatrix(span, stereo::MatrixFromPose(world))) {
+        return false;
+    }
+    // A non-orthonormal matrix makes the engine negate its own plane normals,
+    // which is a confusing thing to debug from inside a headset.
+    return cameraedit::RotationIsSafeToWrite(span);
+}
 
 void PublishHeadPose(const Pose& openXrHeadPose)
 {
