@@ -186,19 +186,29 @@ H-008's feared failure does not happen on this path.
 | --- | --- | --- | --- |
 | control — still, no stereo | 1454 | **0 um** | 0 |
 | test — still, stereo armed | 1511 | **0 um** | 0 |
-| **positive control — looking around** | 1486 | **480 um** | 216 mdeg |
+| ~~positive control — looking around~~ **VOID** | 1486 | 480 um | 216 mdeg |
 
 The camera edit was demonstrably live during the test: 1464 applications, eyes
 alternating, zero restore failures. Contamination would have shown as roughly one
 IPD, **64000 um**.
 
-**The positive control is what makes the zero mean anything.** Control and test
-both read exactly 0, which on its own is equally consistent with "no
-contamination" and "the probe is broken". Asking the player to look around
-produced 480 um — so the instrument resolves real motion, and a signal 133 times
-larger could not have been missed. Without that third run the result would have
-been worthless, and this project has been caught by exactly that shape three
-times.
+**CORRECTION 2026-09-03 — the third run was not a positive control.** The player
+did not see the request in time and did not look around, so that run was the
+*same condition as the test*: still, stereo armed. It is void as a control, and
+the claim built on it — "the instrument resolves real motion" — was not
+established by it.
+
+Two things follow. The 480 um has an **unknown cause**, most likely an idle
+animation moving the eye point, and it is not evidence of probe sensitivity. And
+the same condition produced 0 um in one window and 480 um in another, so the
+test's 0 is not a stable property of the condition.
+
+What does survive: the probe is **not** hard-stuck at zero, since it reported a
+non-zero value. And across roughly 22 seconds of stereo-armed sampling the
+largest gap seen was 480 um. Real contamination would put ~64000 um on
+essentially **every** frame pair, not as a rare maximum, so its absence over 2965
+samples is still strong. The conclusion is probably right; the evidence
+originally cited for it was not.
 
 480 um and 216 millidegrees are the right magnitudes for a *per-frame* gap: at 90
 fps even a brisk turn moves the ray a fraction of a degree between consecutive
