@@ -86,6 +86,13 @@ unsigned long long XrSubmittedFrameCount();
 // so a regression can be bisected against a known state.
 DWORD SetXrStereoSubmission(unsigned int enabled);
 
+// Sends each eye's image to the other eye's socket. Safe to toggle live.
+//
+// Insurance against inverted stereo, which does not look broken so much as
+// subtly wrong -- depth that will not settle, easily misattributed to judder or
+// to the frustum. One call settles it rather than a rebuild.
+DWORD SetXrSwapEyes(unsigned int enabled);
+
 // Asks for the sRGB swapchain format rather than the exact match -- the
 // FAIL-STR-033 double-encoded-gamma fix.
 //

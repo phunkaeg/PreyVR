@@ -815,6 +815,14 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetXrPreferSrgbFormatPtr(void* ena
         static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
 }
 
+// Sends each eye's image to the other eye's socket. Safe to toggle live, and the
+// only way to settle inverted stereo without a rebuild. Pointer-taking per F-009.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetXrSwapEyesPtr(void* enabled)
+{
+    return preyvr::dll::SetXrSwapEyes(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
 // Eye-handoff diagnostics. The lag is pushes minus pops -- the pipeline depth in
 // frames -- and is how the ordering assumption is checked rather than trusted: it
 // should sit at a small constant, and drift means eye identity is no longer safe.

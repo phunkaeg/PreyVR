@@ -84,6 +84,17 @@ Host gHost;
 // reachable so a regression here can be bisected against it.
 std::atomic<bool> gStereoSubmission{false};
 
+// Sends each eye's image to the other eye's socket.
+//
+// **Insurance, not a feature.** Everything says the mapping is already right --
+// eye 0 takes the negative offset in BuildSyntheticEye, and the red-left /
+// blue-right check through the optics confirmed slice 0 is the left eye. But
+// inverted stereo does not look broken, it looks subtly wrong: depth that will
+// not settle, and discomfort that is easy to blame on judder or on the frustum.
+// If that is what a session reports, this settles it in one call instead of
+// costing a rebuild -- and a rebuild is not always available.
+std::atomic<bool> gSwapEyes{false};
+
 // Ask for the sRGB swapchain format instead of the exact match -- FAIL-STR-033.
 // Read once when the swapchain is created, so it must be set before StartXrSession.
 std::atomic<bool> gPreferSrgb{false};
@@ -492,8 +503,9 @@ bool SubmitStereoPair(
     // copying a backbuffer whose eye is unknown, which would be a coin flip.
     const int eye = dll::ConsumeRenderedEye();
     if (eye == 0 || eye == 1) {
-        context->CopyResource(gHost.eyeImage[eye], backBuffer);
-        gHost.eyeImageValid[eye] = true;
+        const int target = gSwapEyes.load(std::memory_order_acquire) ? (1 - eye) : eye;
+        context->CopyResource(gHost.eyeImage[target], backBuffer);
+        gHost.eyeImageValid[target] = true;
     }
 
     if (!gHost.eyeImageValid[0] || !gHost.eyeImageValid[1]) {
@@ -855,6 +867,16 @@ DWORD SetXrStereoSubmission(unsigned int enabled)
     gStereoSubmission.store(on, std::memory_order_release);
     std::ostringstream line;
     line << "result=0 detail=stereo_submission enabled=" << (on ? "1" : "0");
+    Log(line.str());
+    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+
+DWORD SetXrSwapEyes(unsigned int enabled)
+{
+    const bool on = enabled != 0u;
+    gSwapEyes.store(on, std::memory_order_release);
+    std::ostringstream line;
+    line << "result=0 detail=swap_eyes enabled=" << (on ? "1" : "0");
     Log(line.str());
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
 }
