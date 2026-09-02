@@ -174,3 +174,65 @@ Whether the contamination is actually occurring. `CArkUIHUD::OnPreRender` is
 vtable-dispatched with no static callers, so whether it lands inside the window is
 a live-timing question, not a structural one — H-008 said the same. The aim-ray
 probe turns it into a number and is the next test.
+
+
+---
+
+## Aim-ray contamination: measured 2026-09-03, NOT occurring
+
+H-008's feared failure does not happen on this path.
+
+| run | samples | max origin gap | max angle gap |
+| --- | --- | --- | --- |
+| control — still, no stereo | 1454 | **0 um** | 0 |
+| test — still, stereo armed | 1511 | **0 um** | 0 |
+| **positive control — looking around** | 1486 | **480 um** | 216 mdeg |
+
+The camera edit was demonstrably live during the test: 1464 applications, eyes
+alternating, zero restore failures. Contamination would have shown as roughly one
+IPD, **64000 um**.
+
+**The positive control is what makes the zero mean anything.** Control and test
+both read exactly 0, which on its own is equally consistent with "no
+contamination" and "the probe is broken". Asking the player to look around
+produced 480 um — so the instrument resolves real motion, and a signal 133 times
+larger could not have been missed. Without that third run the result would have
+been worthless, and this project has been caught by exactly that shape three
+times.
+
+480 um and 216 millidegrees are the right magnitudes for a *per-frame* gap: at 90
+fps even a brisk turn moves the ray a fraction of a degree between consecutive
+frames.
+
+**So `CArkUIHUD::OnPreRender` does not run inside the window where our eye camera
+is live.** H-008 could not settle this statically because `OnPreRender` is
+vtable-dispatched; it is now settled empirically, in the direction that costs us
+nothing.
+
+### This does not make the current seam safe for head tracking
+
+The measurement covers the aim ray only. H-008's other finding stands untouched:
+**84+ sites read the global view camera per frame**, spanning rendering,
+gameplay, UI and 3D-engine code. The aim ray was the one consumer we could name
+and instrument; the rest were never enumerated.
+
+Under stereo the exposure is one IPD. Under head tracking the eye camera carries
+the player's whole look rotation, so anything reading it mid-render sees a
+different world orientation. **The seam should still move**, on the strength of
+the unenumerated readers rather than on the aim ray.
+
+## R-030 observed executing, 2026-09-03 — the seam is unblocked
+
+The registry recorded `CRenderView::SetCamera` as *never observed executing*,
+with an explicit instruction that it must not be hooked until a live entry was
+captured. Captured: **230 entries in 5 seconds (46/sec) on thread 21092**, with
+the 16-byte prologue verified against the registry signature before attaching.
+
+The observation used a counting-only Frida `Interceptor` attached and detached
+within one script, so nothing in the shipped DLL was modified to obtain it.
+
+**M1 can now be built on R-030.** It is the better seam for a reason independent
+of the aim result: R-049 shows it copies the camera by value into
+`CRenderView::m_camera` at `+0x11A0`, so a camera written there provably cannot
+alias `CSystem::m_ViewCamera` — structurally immune rather than correctly
+ordered, and it never touches the global those 84+ sites read.
