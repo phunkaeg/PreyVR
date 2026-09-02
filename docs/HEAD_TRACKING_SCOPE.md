@@ -119,8 +119,8 @@ popping at the edges, which is easy to misread as an LOD problem.
 
 ## Open questions to settle before writing code
 
-1. Does Prey's aim come from the camera or from player state? (`AimState` and
-   `WrenchQuery` exist; they may already answer this.)
+1. ~~Does Prey's aim come from the camera or from player state?~~ **Answered
+   2026-09-02: from the camera, and it changes the seam decision.** See below.
 2. Is `unitsPerMetre` 1? Not needed for M1, blocking for M2.
 3. What is the actual end-to-end pose latency? Measurable in M1.
 4. Which camera effects does Prey apply after `UpdateRenderingCamera`?
@@ -130,3 +130,47 @@ popping at the edges, which is easy to misread as an LOD problem.
 Motion controllers, locomotion, and HUD reprojection. `MotionController.cpp`
 already takes a `ReferenceFrame`, so it is waiting on M1 rather than on new
 design, but it is separate work.
+
+
+---
+
+## The aim question, answered — and it moves the seam
+
+`ArkPlayer::UpdateCachedReticleViewPosAndDir` (R-011) rebuilds the cached aim ray
+by unprojecting through `ISystem::GetViewCamera()` — the **global** view camera,
+not ArkPlayer's own — and its only caller is `CArkUIHUD::OnPreRender`, which runs
+during render preparation.
+
+**Our camera edit writes that exact camera.** It puts the eye camera into
+`CSystem::m_ViewCamera`, calls the whole of `CSystem::Render`, and restores
+afterwards, so an eye-specific camera is live for the entire render.
+
+H-008 predicted this in advance and named the mitigation: inject at
+`CRenderView::SetCamera` (R-030) instead, which is downstream of
+`GetViewCamera()` and leaves R-011 untouched. R-049 makes that structural rather
+than a matter of ordering — `CRenderView::SetCamera` copies the camera **by
+value** into `CRenderView::m_camera` at `+0x11A0`, so a camera written there
+provably cannot alias `CSystem::m_ViewCamera`.
+
+### Why this matters more for head tracking than for stereo
+
+Under stereo alone the contamination is one IPD — 64 mm of lateral jitter on the
+aim ray. Measurable, probably not very visible.
+
+**Head tracking makes it a different quantity.** Once the camera carries head
+orientation, a ray unprojected from it swings through the player's entire look
+range. Every consumer of that ray — weapon firing (R-014), target selection
+(R-022), wrench hits (R-020) — would follow the head, which is precisely the
+coupling the playbook warns about under "camera view is not aim ownership", and
+precisely what this project's detached-aim lane (H-004) exists to avoid.
+
+So the seam decision is no longer a stereo detail. **M1 should move the camera
+write to `CRenderView::SetCamera` before adding head orientation**, or head
+tracking will be built on top of a known aim defect.
+
+### What is not yet known
+
+Whether the contamination is actually occurring. `CArkUIHUD::OnPreRender` is
+vtable-dispatched with no static callers, so whether it lands inside the window is
+a live-timing question, not a structural one — H-008 said the same. The aim-ray
+probe turns it into a number and is the next test.
