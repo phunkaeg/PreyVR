@@ -299,3 +299,44 @@ The **consume** side has not run against a live session. Publishing is verified 
 1:1 and alternation is verified, but lag stability with an actual consumer
 attached -- the render thread keeping up under submission load -- needs a headset
 and is the next thing to watch. `PreyVR_GetEyeHandoffLag` is the instrument.
+
+
+## Working configuration, confirmed in headset 2026-09-02
+
+The first settings a wearer has looked at, compared against alternatives, and
+chosen -- rather than values that merely produced no complaint.
+
+| setting | value | |
+| --- | --- | --- |
+| eye offset | **0.064 m** | chosen after sweeping 0.045 to 0.085 live |
+| `r_AntialiasingMode` | **3** | temporal, and **fine** -- see below |
+| `r_MotionBlur` | **0** | a requirement, not a preference |
+| eye swap | **off** | the original order is correct |
+| swapchain format | **29**, `colour_conversion=yes` | FAIL-STR-033 fix |
+
+Health over 14,104 submitted frames: handoff lag **0**, dropped **0**, restore
+failures **0**, 69 hotkey presses all seen.
+
+### Two corrections to things this document previously implied
+
+**Temporal AA is fine.** It was flagged as the same class of hazard as motion blur
+-- an effect that accumulates across frames which are now different eyes -- and
+warned about on that reasoning. A wearer cycled all four modes and chose mode 3.
+With motion blur off it does not soften near geometry. The reasoning was sound
+and the conclusion was wrong; **motion blur was the whole problem**, and TAA
+should not be disabled on the strength of the earlier warning.
+
+**The eye order is confirmed, not inferred.** It rested on the red-left /
+blue-right check through the optics plus reading `BuildSyntheticEye`. A wearer has
+now swapped the eyes, found it worse, and swapped back.
+
+### What "best for now" does not cover
+
+These were judged with the image locked to Prey's own camera -- looking around
+does not move the world yet. Eye offset in particular is a **provisional** choice:
+it is the value that looked right on a static view, and comfort under real head
+motion is a different question. It is expected to need revisiting once head
+tracking lands, and the wearer said so at the time.
+
+`unitsPerMetre` therefore remains **assumed 1 and unmeasured**. That 0.064 looked
+correct is weak evidence for the assumption, not a measurement of it.
