@@ -2,6 +2,7 @@
 #include "preyvr/StereoCamera.h"
 
 #include <cmath>
+#include <limits>
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -262,8 +263,127 @@ void TestWriteMatrixRefusesNonFinite()
 
 } // namespace
 
+// ---------------------------------------------------------------------------
+// Recenter: the yaw-only reference
+// ---------------------------------------------------------------------------
+
+Quaternion HeadAxisAngle(Vec3 axis, float radians)
+{
+    const float half = radians * 0.5f;
+    const float sine = std::sin(half);
+    return Normalize(Quaternion{axis.x * sine, axis.y * sine, axis.z * sine, std::cos(half)});
+}
+
+// OpenXR is Y-up with -Z forward, so yaw turns about +Y, pitch about +X and
+// roll about the forward axis.
+Pose HeadPose(float yaw, float pitch, float roll)
+{
+    Quaternion q = HeadAxisAngle(Vec3{0.0f, 1.0f, 0.0f}, yaw);
+    q = Multiply(q, HeadAxisAngle(Vec3{1.0f, 0.0f, 0.0f}, pitch));
+    q = Multiply(q, HeadAxisAngle(Vec3{0.0f, 0.0f, -1.0f}, roll));
+    return Pose{Normalize(q), Vec3{}};
+}
+
+void TestRecenterYawTracksYaw()
+{
+    const float angles[] = {0.0f, 0.5f, 1.5f, -0.9f, 3.0f};
+    for (const float yaw : angles) {
+        const auto extracted = RecenterYawFromHeadPose(HeadPose(yaw, 0.0f, 0.0f));
+        Require(extracted.has_value(), "a level head pose yields a yaw");
+        Require(Near(*extracted, yaw, 1e-3f), "the extracted yaw is the yaw applied");
+    }
+}
+
+// **FAIL-CAM-019.** A headset that was crooked when recenter was pressed -- on a
+// desk, or sitting askew on the player's head -- must not bake that tilt into the
+// reference, because a reference holding the whole head orientation applies it as
+// a permanent offset to every later frame and the world stays tilted forever.
+//
+// The extraction is immune by construction rather than by a stripping step: roll
+// turns about the forward axis and so cannot move it, and pitch moves it within
+// the vertical plane that already contains it. Neither changes its horizontal
+// direction. This test exists so that a later rewrite to Euler decomposition --
+// which would leak both -- fails loudly instead of shipping.
+void TestRecenterYawIgnoresRollAndPitch()
+{
+    const float yaw = 0.7f;
+    const auto level = RecenterYawFromHeadPose(HeadPose(yaw, 0.0f, 0.0f));
+    Require(level.has_value(), "the level reference extracts");
+
+    const float rolls[] = {0.3f, -0.6f, 1.0f};
+    for (const float roll : rolls) {
+        const auto tilted = RecenterYawFromHeadPose(HeadPose(yaw, 0.0f, roll));
+        Require(tilted.has_value(), "a rolled head pose still yields a yaw");
+        Require(Near(*tilted, *level, 1e-3f), "roll does not leak into the stored yaw");
+    }
+
+    const float pitches[] = {0.4f, -0.8f, 1.1f};
+    for (const float pitch : pitches) {
+        const auto tilted = RecenterYawFromHeadPose(HeadPose(yaw, pitch, 0.0f));
+        Require(tilted.has_value(), "a pitched head pose still yields a yaw");
+        Require(Near(*tilted, *level, 1e-3f), "pitch does not leak into the stored yaw");
+    }
+
+    const auto both = RecenterYawFromHeadPose(HeadPose(yaw, 0.5f, -0.7f));
+    Require(both.has_value() && Near(*both, *level, 1e-3f),
+        "roll and pitch together still leave the yaw alone");
+}
+
+// The playbook's rule is reject, don't invent: looking straight up or down leaves
+// almost no horizontal component, so any yaw returned would be noise amplified by
+// atan2. A caller must keep the reference it has.
+void TestNearVerticalHeadPoseIsRefused()
+{
+    const float straightUp = 1.5707963f;
+    Require(!RecenterYawFromHeadPose(HeadPose(0.0f, straightUp, 0.0f)).has_value(),
+        "looking straight up has no usable yaw");
+    Require(!RecenterYawFromHeadPose(HeadPose(0.0f, -straightUp, 0.0f)).has_value(),
+        "looking straight down has no usable yaw");
+    // Just inside the limit still answers, so ordinary head poses are not refused.
+    Require(RecenterYawFromHeadPose(HeadPose(0.0f, 1.4f, 0.0f)).has_value(),
+        "a steep but usable pitch is still accepted");
+}
+
+// The acceptance test the two above are building toward: a reference captured
+// from a crooked headset, then used with a level head, must produce a level
+// world. If roll had leaked into the reference, the camera's right axis would be
+// tilted out of horizontal by exactly that roll.
+void TestCrookedRecenterDoesNotTiltTheWorld()
+{
+    const auto reference = MakeRecenterReference(
+        HeadPose(0.6f, 0.2f, 0.5f), Vec3{10.0f, -4.0f, 2.0f});
+    Require(reference.has_value(), "a crooked recenter still produces a reference");
+
+    // A level head, looking straight ahead.
+    const Pose level = HeadPose(0.0f, 0.0f, 0.0f);
+    const Pose world = EyePoseInWorld(*reference, level);
+
+    const Vec3 right = Rotate(world.orientation, Vec3{1.0f, 0.0f, 0.0f});
+    Require(std::fabs(right.z) < 1e-3f,
+        "the camera's right axis stays horizontal, so the horizon is level");
+
+    const Vec3 up = Rotate(world.orientation, Vec3{0.0f, 0.0f, 1.0f});
+    Require(up.z > 0.99f, "and up still points up");
+}
+
+void TestRecenterReferenceFailsClosed()
+{
+    const float notFinite = std::numeric_limits<float>::quiet_NaN();
+    Require(!MakeRecenterReference(HeadPose(0.0f, 0.0f, 0.0f),
+                                   Vec3{notFinite, 0.0f, 0.0f}).has_value(),
+        "a non-finite world position is refused rather than written");
+    Require(!MakeRecenterReference(HeadPose(0.0f, 1.5707963f, 0.0f),
+                                   Vec3{0.0f, 0.0f, 0.0f}).has_value(),
+        "an unusable head pose refuses the whole reference");
+}
+
 int main()
 {
+    TestRecenterYawTracksYaw();
+    TestRecenterYawIgnoresRollAndPitch();
+    TestNearVerticalHeadPoseIsRefused();
+    TestCrookedRecenterDoesNotTiltTheWorld();
+    TestRecenterReferenceFailsClosed();
     TestAxisConversion();
     TestConversionIsAProperRotation();
     TestRotationConversionInvariant();

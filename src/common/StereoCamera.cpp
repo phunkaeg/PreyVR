@@ -134,6 +134,50 @@ Quaternion YawQuaternion(float radians)
     return {0.0f, 0.0f, std::sin(half), std::cos(half)};
 }
 
+namespace {
+
+// Below this horizontal length the forward axis is too close to vertical for its
+// direction to mean anything. About 5 degrees from straight up or down: small
+// enough that no ordinary head pose is refused, large enough that the surviving
+// answers are not noise.
+constexpr float kMinimumHorizontalLength = 0.087f;
+
+} // namespace
+
+std::optional<float> RecenterYawFromHeadPose(const Pose& openXrHeadPose)
+{
+    const Quaternion engineOrientation = ToEngineSpace(openXrHeadPose.orientation);
+    // Engine forward is +Y with Z up, and YawQuaternion turns about Z.
+    const Vec3 forward = Rotate(engineOrientation, Vec3{0.0f, 1.0f, 0.0f});
+    if (!std::isfinite(forward.x) || !std::isfinite(forward.y)) {
+        return std::nullopt;
+    }
+    const float horizontal = std::sqrt(forward.x * forward.x + forward.y * forward.y);
+    if (horizontal < kMinimumHorizontalLength) {
+        return std::nullopt;
+    }
+    // Matches YawQuaternion: a yaw of t sends +Y to (-sin t, cos t, 0).
+    return std::atan2(-forward.x, forward.y);
+}
+
+std::optional<ReferenceFrame> MakeRecenterReference(
+    const Pose& openXrHeadPose,
+    Vec3 worldPosition)
+{
+    const auto yaw = RecenterYawFromHeadPose(openXrHeadPose);
+    if (!yaw) {
+        return std::nullopt;
+    }
+    if (!std::isfinite(worldPosition.x) || !std::isfinite(worldPosition.y) ||
+        !std::isfinite(worldPosition.z)) {
+        return std::nullopt;
+    }
+    ReferenceFrame reference{};
+    reference.worldPosition = worldPosition;
+    reference.yawRadians = *yaw;
+    return reference;
+}
+
 Pose EyePoseInWorld(const ReferenceFrame& reference, const Pose& openXrEyePose)
 {
     const Pose base{YawQuaternion(reference.yawRadians), reference.worldPosition};

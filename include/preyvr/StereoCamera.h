@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 
 // Turning an OpenXR head pose into a CCamera the engine will accept.
@@ -110,6 +111,45 @@ struct ReferenceFrame {
 };
 
 Quaternion YawQuaternion(float radians);
+
+// The yaw a recenter should store, extracted from a live head pose.
+//
+// **This is the FAIL-CAM-019 seam, and the method is chosen to make the bug
+// unrepresentable rather than merely avoided.** The rule is that the stored
+// reference is yaw-only while the live head pose stays full: strip roll from
+// both and head tilt stops working; strip it from neither and a headset that was
+// crooked at the moment of capture tilts the world for the rest of the session.
+//
+// Yaw is taken by rotating the engine's forward axis and projecting it onto the
+// horizontal plane. That projection is **inherently immune to both roll and
+// pitch** -- roll turns about the forward axis and cannot move it, and pitch
+// moves it within the vertical plane that already contains it, so neither
+// changes its horizontal direction. The immunity is a property of the
+// construction, not an extra step that could be forgotten, and the tests pin it
+// so that a later "simplification" to Euler decomposition fails loudly.
+//
+// Returns nothing when the head is near-vertical. Looking straight up or down
+// leaves almost no horizontal component to take a direction from, so the answer
+// would be noise amplified by `atan2`. The playbook's rule is to **reject rather
+// than invent**: a caller that cannot get a yaw should keep the reference it
+// already has, which is what a player looking at the ceiling expects anyway.
+//
+// Takes an OpenXR-space pose, matching EyePoseInWorld, so callers stay in one
+// space and the conversion happens in exactly one place.
+std::optional<float> RecenterYawFromHeadPose(const Pose& openXrHeadPose);
+
+// The complete recenter: where the play space sits, and which way it faces.
+//
+// `worldPosition` is the game's own eye point, so walking, collision and
+// scripted movement stay the engine's business. Only the yaw comes from the
+// headset.
+//
+// Fails closed with the same rejection as above -- and a caller must treat that
+// as "keep the current reference", never as "use a zero yaw", which would snap
+// the player's world to face engine north.
+std::optional<ReferenceFrame> MakeRecenterReference(
+    const Pose& openXrHeadPose,
+    Vec3 worldPosition);
 
 // The one function the render hook needs: an OpenXR eye pose plus the reference
 // frame, in engine space, ready to become a Matrix34.
