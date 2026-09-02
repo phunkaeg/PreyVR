@@ -100,6 +100,10 @@ std::atomic<bool> gStereoSubmission{false};
 // which is how the first depth test is run, that costs nothing at all.
 std::atomic<unsigned int> gDwellFrames{4};
 
+// Ask for the sRGB swapchain format instead of the exact match -- FAIL-STR-033.
+// Read once when the swapchain is created, so it must be set before StartXrSession.
+std::atomic<bool> gPreferSrgb{false};
+
 void Log(const std::string& line)
 {
     lifecycle::Log("preyvr_xr_session " + line);
@@ -348,7 +352,8 @@ bool CreateSessionAndSwapchain()
     std::vector<std::int64_t> formats(formatCount);
     xrEnumerateSwapchainFormats(gHost.session, formatCount, &formatCount, formats.data());
 
-    const auto choice = xrswapchain::SelectFormat(formats);
+    const auto choice = xrswapchain::SelectFormat(
+        formats, xrswapchain::kR8G8B8A8Unorm, gPreferSrgb.load(std::memory_order_acquire));
     if (!choice) {
         Log("result=failed step=select_format detail=no_acceptable_format");
         return false;
@@ -858,6 +863,23 @@ DWORD SetXrStereoSubmission(unsigned int enabled)
     gStereoSubmission.store(on, std::memory_order_release);
     std::ostringstream line;
     line << "result=0 detail=stereo_submission enabled=" << (on ? "1" : "0");
+    Log(line.str());
+    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+
+DWORD SetXrPreferSrgbFormat(unsigned int enabled)
+{
+    // Only read when the swapchain is built, so setting it on a live session
+    // does nothing and would be a confusing no-op. Refuse instead.
+    if (gStatus.load(std::memory_order_acquire) ==
+        static_cast<DWORD>(XrSessionStatus::running)) {
+        Log("result=refused detail=srgb_preference_needs_restart");
+        return static_cast<DWORD>(XrSessionStatus::failed);
+    }
+    const bool on = enabled != 0u;
+    gPreferSrgb.store(on, std::memory_order_release);
+    std::ostringstream line;
+    line << "result=0 detail=prefer_srgb enabled=" << (on ? "1" : "0");
     Log(line.str());
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
 }

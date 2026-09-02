@@ -86,6 +86,14 @@ unsigned long long XrSubmittedFrameCount();
 // so a regression can be bisected against a known state.
 DWORD SetXrStereoSubmission(unsigned int enabled);
 
+// Asks for the sRGB swapchain format rather than the exact match -- the
+// FAIL-STR-033 double-encoded-gamma fix.
+//
+// Must be set BEFORE StartXrSession; the format is chosen once when the
+// swapchain is built. Refused on a running session rather than silently doing
+// nothing.
+DWORD SetXrPreferSrgbFormat(unsigned int enabled);
+
 // How many frames to hold one eye before taking its image. 2 to 60, default 4.
 DWORD SetXrSubmissionDwell(unsigned int frames);
 

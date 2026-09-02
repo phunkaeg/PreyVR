@@ -83,7 +83,8 @@ struct Choice {
 // copying an 8-bit LDR image into it silently produces something wrong.
 std::optional<Choice> SelectFormat(
     std::span<const std::int64_t> runtimeFormats,
-    std::int64_t sourceFormat = kR8G8B8A8Unorm);
+    std::int64_t sourceFormat = kR8G8B8A8Unorm,
+    bool preferSrgb = false);
 
 // True when the choice will make the runtime apply a transfer function that the
 // source has already had applied. Exposed so the caller can say so in the log

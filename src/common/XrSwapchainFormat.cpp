@@ -35,10 +35,42 @@ bool Offered(std::span<const std::int64_t> formats, std::int64_t wanted)
 
 std::optional<Choice> SelectFormat(
     std::span<const std::int64_t> runtimeFormats,
-    std::int64_t sourceFormat)
+    std::int64_t sourceFormat,
+    bool preferSrgb)
 {
     if (runtimeFormats.empty() || sourceFormat == 0) {
         return std::nullopt;
+    }
+
+    // **Why an exact match can be the wrong answer -- FAIL-STR-033.**
+    //
+    // Prey presents already sRGB-encoded bytes in a plain `_UNORM` surface,
+    // because that is simply what it would have sent to a monitor. Taking the
+    // exact match hands those bytes to a swapchain the compositor treats as
+    // linear, so they are encoded a second time and the image goes milky.
+    //
+    // Measured on this target 2026-09-02: format 28 (`R8G8B8A8_UNORM`),
+    // `colour_conversion=no`, and washed out through the headset on
+    // VirtualDesktopXR -- in the flat mirror as well as in stereo, which is what
+    // ruled out the stereo copy path as the cause.
+    //
+    // Naming the `_SRGB` variant instead makes the hardware decode once on read,
+    // which is the free and correct fix. It is a **preference rather than the
+    // default** because the fleet playbook is explicit that this can be a
+    // property of the runtime rather than of the format, and must be measured
+    // per runtime instead of assumed once.
+    if (preferSrgb) {
+        const std::int64_t srgb = SrgbVariant(sourceFormat);
+        if (Offered(runtimeFormats, srgb)) {
+            return Choice{srgb, Match::srgbVariant};
+        }
+        const std::int64_t swappedSrgbFirst = SwappedChannels(srgb);
+        if (Offered(runtimeFormats, swappedSrgbFirst)) {
+            return Choice{swappedSrgbFirst, Match::srgbVariant};
+        }
+        // Nothing sRGB on offer. Fall through rather than fail: an exact match
+        // that looks wrong beats no session at all, and the log records which
+        // was taken.
     }
 
     if (Offered(runtimeFormats, sourceFormat)) {

@@ -807,6 +807,14 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetXrStereoSubmissionPtr(void* ena
         static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
 }
 
+// Asks for the sRGB swapchain format -- the double-encoded-gamma fix. Must be
+// set before PreyVR_StartXrSession. Pointer-taking per F-009.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetXrPreferSrgbFormatPtr(void* enabled)
+{
+    return preyvr::dll::SetXrPreferSrgbFormat(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
 // Frames to hold one eye before taking its image. 2 to 60, default 4.
 extern "C" __declspec(dllexport) DWORD PreyVR_SetXrSubmissionDwellPtr(void* frames)
 {

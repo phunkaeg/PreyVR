@@ -90,8 +90,46 @@ void TestOtherSourceFormats()
 
 } // namespace
 
+// FAIL-STR-033: the exact match is the wrong answer when the source holds
+// already-encoded bytes.
+//
+// Prey presents sRGB-encoded pixels in a plain _UNORM surface, so taking the
+// exact match hands them to a compositor that treats them as linear and encodes
+// them again. Measured on this target as format 28 with colour_conversion=no,
+// and washed out through the headset -- in the flat mirror as well as in stereo,
+// which is what ruled out the stereo copy path.
+void TestSrgbPreferenceBeatsExactMatch()
+{
+    // A runtime offering both, which is the case that matters.
+    const std::int64_t offered[] = {
+        preyvr::xrswapchain::kR8G8B8A8Unorm,
+        preyvr::xrswapchain::kR8G8B8A8UnormSrgb,
+    };
+
+    const auto exact = preyvr::xrswapchain::SelectFormat(
+        offered, preyvr::xrswapchain::kR8G8B8A8Unorm, false);
+    Require(exact.has_value() && exact->format == preyvr::xrswapchain::kR8G8B8A8Unorm,
+        "without the preference the exact match still wins");
+
+    const auto preferred = preyvr::xrswapchain::SelectFormat(
+        offered, preyvr::xrswapchain::kR8G8B8A8Unorm, true);
+    Require(preferred.has_value() && preferred->format == preyvr::xrswapchain::kR8G8B8A8UnormSrgb,
+        "with the preference the sRGB variant is chosen over the exact match");
+    Require(preyvr::xrswapchain::InvolvesColourConversion(*preferred),
+        "and it is reported as a colour conversion rather than silently");
+
+    // A runtime with no sRGB spelling must still produce a session. An image
+    // that looks wrong beats no session at all, and the log records the choice.
+    const std::int64_t noSrgb[] = {preyvr::xrswapchain::kR8G8B8A8Unorm};
+    const auto fallback = preyvr::xrswapchain::SelectFormat(
+        noSrgb, preyvr::xrswapchain::kR8G8B8A8Unorm, true);
+    Require(fallback.has_value() && fallback->format == preyvr::xrswapchain::kR8G8B8A8Unorm,
+        "the preference falls through rather than failing when no sRGB is offered");
+}
+
 int main()
 {
+    TestSrgbPreferenceBeatsExactMatch();
     TestExactMatchWins();
     TestChannelSwapIsPreferredOverSrgb();
     TestSrgbIsTheLastResort();
