@@ -4,6 +4,8 @@
 #include "preyvr/EngineMap.h"
 #include "preyvr/XrFrameContract.h"
 #include "CameraEditHook.h"
+#include "HeadTrackingHook.h"
+#include "preyvr/StereoCamera.h"
 #include "preyvr/StereoFrame.h"
 #include "preyvr/XrSwapchainFormat.h"
 
@@ -731,6 +733,27 @@ void ServiceXrFrame(void* renderer)
         (viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) != 0 &&
         (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT) != 0;
     gHost.contract.OnViewsLocated(frameState.predictedDisplayTime, haveViews, haveViews);
+
+    // Hand the head pose to the M1 camera hook. The midpoint of the two eyes is
+    // the head, and CyclopsPose is already the project's answer for that -- it
+    // takes orientation from the left eye rather than slerping two identical
+    // quaternions, which would introduce error rather than remove it.
+    //
+    // Published here because this is where the pose already exists. The scope
+    // records that this is *after* rasterisation and therefore not where the
+    // playbook says to sample; the age counter exists to measure exactly how much
+    // that costs before deciding whether to move it.
+    if (haveViews) {
+        const Pose left{
+            Quaternion{views[0].pose.orientation.x, views[0].pose.orientation.y,
+                       views[0].pose.orientation.z, views[0].pose.orientation.w},
+            Vec3{views[0].pose.position.x, views[0].pose.position.y, views[0].pose.position.z}};
+        const Pose right{
+            Quaternion{views[1].pose.orientation.x, views[1].pose.orientation.y,
+                       views[1].pose.orientation.z, views[1].pose.orientation.w},
+            Vec3{views[1].pose.position.x, views[1].pose.position.y, views[1].pose.position.z}};
+        dll::PublishHeadPose(stereo::CyclopsPose(left, right));
+    }
 
     XrFrameBeginInfo beginInfo{XR_TYPE_FRAME_BEGIN_INFO};
     if (XR_FAILED(xrBeginFrame(gHost.session, &beginInfo))) {

@@ -8,6 +8,7 @@
 #include "FrameObserverHook.h"
 #include "Logger.h"
 #include "AimRayProbe.h"
+#include "HeadTrackingHook.h"
 #include "HotkeyBridge.h"
 #include "OpenXRPreflightWin32.h"
 #include "RuntimeSnapshotWin32.h"
@@ -854,6 +855,46 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetHotkeyEyeSwap()
 extern "C" __declspec(dllexport) DWORD PreyVR_GetHotkeyPressCount()
 {
     return preyvr::dll::HotkeyPressCount();
+}
+
+// M1 head tracking, on the CRenderView::SetCamera seam. Recenter first: arming
+// without a reference is refused rather than snapping the world to engine north.
+extern "C" __declspec(dllexport) DWORD PreyVR_RecenterHeadTracking()
+{
+    return preyvr::dll::RecenterHeadTracking();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_SetHeadTrackingEnabledPtr(void* enabled)
+{
+    return preyvr::dll::SetHeadTrackingEnabled(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetHeadTrackingAppliedCount()
+{
+    return preyvr::dll::HeadTrackingAppliedCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetHeadTrackingRefusedCount()
+{
+    return preyvr::dll::HeadTrackingRefusedCount();
+}
+
+// The handoff segment of pose latency only -- it excludes the runtime's own
+// prediction and the display pipeline, so it is a floor rather than the whole.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetHeadTrackingLastPoseAgeMicroseconds()
+{
+    return preyvr::dll::HeadTrackingLastPoseAgeMicroseconds();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetHeadTrackingMaxPoseAgeMicroseconds()
+{
+    return preyvr::dll::HeadTrackingMaxPoseAgeMicroseconds();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetHeadTrackingHasReference()
+{
+    return preyvr::dll::HeadTrackingHasReference();
 }
 
 // Measures whether per-eye stereo is contaminating Prey's cached aim ray -- the

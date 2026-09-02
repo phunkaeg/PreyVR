@@ -124,6 +124,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/DllMain.cpp
         src/dll/FrameCaptureWin32.cpp
         src/dll/FrameObserverHook.cpp
+        src/dll/HeadTrackingHook.cpp
         src/dll/HotkeyBridge.cpp
         src/dll/XrSessionHost.cpp
         src/lifecycle/Logger.cpp
