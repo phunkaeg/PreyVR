@@ -246,3 +246,76 @@ of the aim result: R-049 shows it copies the camera by value into
 `CRenderView::m_camera` at `+0x11A0`, so a camera written there provably cannot
 alias `CSystem::m_ViewCamera` — structurally immune rather than correctly
 ordered, and it never touches the global those 84+ sites read.
+
+
+---
+
+## M1 first run, 2026-09-03: the pose path works, the seam is wrong
+
+**What worked.** Every mechanism built for M1 did its job. Recenter succeeded, so
+the whole pose path is live: `xrLocateViews` to `CyclopsPose` to the seqlock to
+yaw extraction. The hook then ran **9521 times with zero refusals** — never a
+missing pose, never a failed orthonormality gate — and **the view followed the
+headset**.
+
+**Pose latency, measured.** Typical **~4 ms**, max 4.7 ms in steady state.
+
+That corrects a concern raised in this document. Publishing after rasterisation
+was flagged as costing one to two frames before display latency was counted; it
+costs about **4 ms**, comfortably inside a single 11 ms frame, because
+`ServiceXrFrame` and the next frame's `SetCamera` land close together. The
+outlier of 104907 us was a hitch during teardown, not steady-state. **This is no
+longer a reason to move the sampling point.**
+
+**What broke: massive level culling.** Geometry missing and popping across the
+view.
+
+### The seam is wrong for rotation, and the playbook says so directly
+
+`09`'s cull-camera section is unambiguous:
+
+> the visibility pass runs **before** your render-view rewrite, from the engine's
+> camera, not yours. Widening your render frustum or moving your projection
+> changes *how* submitted geometry is drawn — it cannot make the engine submit
+> geometry it already culled.
+
+And SS2VR's rule from the same section: *keep the RenderView override for
+stereo/projection, **never for CPU culling**.*
+
+`CRenderView::SetCamera` **is** the RenderView override. It sits downstream of
+visibility — which is exactly why it is contamination-safe, and exactly why it
+cannot drive head rotation. The engine culled against its own unrotated camera
+and then rendered through our rotated one, so everything outside the original
+frustum was already gone.
+
+**This was in the scope's own risk list and I checked the wrong half of it.** The
+entry read "we write the matrix before `UpdateFrustum`, so the engine should
+derive its cull frustum from our camera" — true of the *old* seam, and carried
+over unexamined when the seam moved. Moving to R-030 moved us downstream of the
+cull, which is the thing that makes it safe and the thing that breaks it.
+
+### The corrected architecture: two seams, split by what each is for
+
+- **Head rotation goes upstream, on the global view camera**, because that is
+  where culling reads from.
+- **Per-eye offset and projection stay on R-030**, downstream and
+  contamination-free.
+
+**And the contamination worry does not transfer to rotation.** The concern about
+84+ readers of the global camera was about a *per-eye offset* — a transient,
+alternating camera no engine expects. A **rotated** view camera is what the
+engine sees every time the player turns their head with a mouse. Those readers
+are built for it. Rotation on the global camera is an ordinary operation;
+per-eye offset is not.
+
+That distinction was not made when the seam was chosen, and making it is what
+resolves the apparent conflict between "move off the global camera" and "culling
+needs the global camera".
+
+### Also
+
+`r_MotionBlur 0` was not set for this run — an oversight, since head rotation
+moves the camera between frames just as alternate-eye does. `e_CameraFrustumSize`
+was probed as a possible cull-widening lever and **refused by the console
+allowlist**, which is the fail-closed design working; it is also the wrong fix,
+per the quote above.
