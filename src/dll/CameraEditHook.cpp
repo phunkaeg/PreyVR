@@ -1570,6 +1570,22 @@ DWORD SetStereoEyeLock(unsigned int eye)
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
 }
 
+void SetStereoEyeLockFromRenderThread(int eye)
+{
+    // **Deliberately lock-free, and deliberately not SetStereoEyeLock.**
+    //
+    // The stereo submission path drives eye alternation from inside Prey's
+    // render loop. SetStereoEyeLock takes gMutex with a timeout, and a control
+    // mutex on the render thread is exactly the shape that turns a slow frame
+    // into a hitch and a contended one into a stall. This touches a single
+    // atomic and nothing else.
+    //
+    // It also does not move the frame-capture tag. That tag exists to keep two
+    // offline dumps from being confused with each other, which is a debugging
+    // concern; submission has its own eye identity and does not read it.
+    gEyeLock.store((eye == 0 || eye == 1) ? eye : -1, std::memory_order_release);
+}
+
 DWORD SetNativeProjection(unsigned int enabled)
 {
     const bool on = enabled != 0u;

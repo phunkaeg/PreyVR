@@ -91,6 +91,11 @@ DWORD SetStereoAsymmetry(float outerScale);
 // 0 locks left, 1 locks right, any other value returns to alternating.
 DWORD SetStereoEyeLock(unsigned int eye);
 
+// Sets the eye lock from inside the render loop, without taking the control
+// mutex. For the stereo submission path only; everything else should use
+// SetStereoEyeLock, which also keeps the capture tag correct.
+void SetStereoEyeLockFromRenderThread(int eye);
+
 // Builds the per-eye camera by translation alone, inheriting Prey's own
 // projection rather than overwriting it with a synthetic one.
 //

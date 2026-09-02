@@ -3,6 +3,8 @@
 #include "Logger.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/XrFrameContract.h"
+#include "CameraEditHook.h"
+#include "preyvr/StereoFrame.h"
 #include "preyvr/XrSwapchainFormat.h"
 
 #include <d3d11.h>
@@ -18,6 +20,8 @@
 #include <openxr/openxr_platform.h>
 
 #include <atomic>
+#include <optional>
+#include <span>
 #include <chrono>
 #include <mutex>
 #include <string>
@@ -58,10 +62,43 @@ struct Host {
     bool sessionBegun = false;
     bool started = false;
 
+    // Stereo submission: one held image per eye.
+    //
+    // Prey renders one eye per frame, so the backbuffer is never both. These two
+    // textures hold the most recent image of each eye so that every submitted
+    // frame can carry a complete pair -- one of them a few frames older than the
+    // other. That staleness is the price of alternate-eye and it is invisible in
+    // a frozen scene, which is how the first depth test is run.
+    ID3D11Texture2D* eyeImage[2] = {nullptr, nullptr};
+    bool eyeImageValid[2] = {false, false};
+    int submissionEye = 0;        // the eye currently being asked for
+    unsigned int dwellFrames = 0; // frames held since the last switch
+
     xrframe::FrameContract contract;
 };
 
 Host gHost;
+
+// Stereo submission, off by default.
+//
+// With this clear the path is the original flat mirror: the same backbuffer into
+// both eyes, declaring the runtime's own FOV. That is a mono image and a false
+// declaration, but it is a *known* one that proved the plumbing, and it stays
+// reachable so a regression here can be bisected against it.
+std::atomic<bool> gStereoSubmission{false};
+
+// How many frames to hold one eye before taking its image.
+//
+// Prey's camera edit happens on the game thread and the backbuffer is read on the
+// render thread, and the two are offset by the engine's MT/RT double buffer -- so
+// an eye asked for on one thread is not on screen for the other until a frame or
+// so later. Holding for several frames makes the request unambiguous, which is
+// the same reasoning that made the eye *lock* the right tool for offline captures
+// and per-frame tagging the wrong one.
+//
+// The cost is that each eye refreshes every 2*dwell frames. In a frozen scene,
+// which is how the first depth test is run, that costs nothing at all.
+std::atomic<unsigned int> gDwellFrames{4};
 
 void Log(const std::string& line)
 {
@@ -362,12 +399,123 @@ bool CreateSessionAndSwapchain()
 
 void Teardown()
 {
+    for (auto*& image : gHost.eyeImage) {
+        if (image != nullptr) {
+            image->Release();
+            image = nullptr;
+        }
+    }
     if (gHost.swapchain) xrDestroySwapchain(gHost.swapchain);
     if (gHost.space) xrDestroySpace(gHost.space);
     if (gHost.session) xrDestroySession(gHost.session);
     if (gHost.instance) xrDestroyInstance(gHost.instance);
     gHost = Host{};
     Log("result=0 detail=torn_down");
+}
+
+// Logs a line at most once, so a per-frame refusal cannot fill the log.
+void LogOnce(const std::string& line)
+{
+    static std::atomic<bool> logged{false};
+    if (!logged.exchange(true, std::memory_order_acq_rel)) {
+        Log(line);
+    }
+}
+
+// Reads Prey's live view camera and returns the frustum to declare.
+//
+// The same code path the verified PreyVR_ReadDeclaredFovPtr uses, so what is
+// submitted is what was measured on 2026-09-02 -- 120 degrees horizontal by
+// 88.507 vertical, zero asymmetry, confirmed against the player's FOV slider.
+//
+// Returns nothing rather than guessing. Every caller must treat that as "do not
+// submit a layer".
+std::optional<XrFovf> DeclaredFovFromLiveCamera()
+{
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) {
+        return std::nullopt;
+    }
+    const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+    auto* const systemPtr = *reinterpret_cast<std::uint8_t**>(base + engine::SystemLayout::pointerRva);
+    if (systemPtr == nullptr) {
+        return std::nullopt;
+    }
+    const auto* const camera = reinterpret_cast<const std::uint8_t*>(
+        reinterpret_cast<std::uintptr_t>(systemPtr) + engine::SystemLayout::viewCamera);
+    const auto view = stereoframe::TangentsFromCamera(
+        std::span<const std::uint8_t>(camera, engine::CameraLayout::size));
+    if (!view) {
+        return std::nullopt;
+    }
+    const auto angles = stereoframe::AnglesFromTangents(*view);
+    XrFovf fov{};
+    fov.angleLeft = angles.angleLeft;
+    fov.angleRight = angles.angleRight;
+    fov.angleDown = angles.angleDown;
+    fov.angleUp = angles.angleUp;
+    return fov;
+}
+
+// Holds one image per eye and submits a complete pair every frame.
+//
+// Prey renders one eye at a time, so the backbuffer is only ever half of a
+// stereo pair. This keeps the other half from the last time that eye was on
+// screen. Eye identity comes from *asking* -- the eye lock is held for several
+// frames and only then is the image taken -- rather than from reading back which
+// eye the engine thinks it drew, which cannot be trusted across the engine's
+// game and render threads.
+//
+// Returns false until both eyes have been seen at least once. Submitting a pair
+// with one empty half would show a black eye, which reads as a broken headset
+// rather than as a warming-up mod.
+bool SubmitStereoPair(
+    ID3D11DeviceContext* context,
+    ID3D11Texture2D* backBuffer,
+    std::uint32_t imageIndex)
+{
+    D3D11_TEXTURE2D_DESC desc{};
+    backBuffer->GetDesc(&desc);
+
+    for (int eye = 0; eye < 2; ++eye) {
+        if (gHost.eyeImage[eye] != nullptr) {
+            continue;
+        }
+        D3D11_TEXTURE2D_DESC hold = desc;
+        hold.Usage = D3D11_USAGE_DEFAULT;
+        hold.BindFlags = 0;
+        hold.CPUAccessFlags = 0;
+        hold.MiscFlags = 0;
+        if (FAILED(gHost.device->CreateTexture2D(&hold, nullptr, &gHost.eyeImage[eye]))) {
+            gHost.eyeImage[eye] = nullptr;
+            LogOnce("result=failed step=create_eye_image");
+            return false;
+        }
+    }
+
+    // Take the image only once the requested eye has had time to reach the
+    // screen, then ask for the other one.
+    const unsigned int dwell = gDwellFrames.load(std::memory_order_acquire);
+    if (gHost.dwellFrames >= dwell) {
+        const int eye = gHost.submissionEye;
+        context->CopyResource(gHost.eyeImage[eye], backBuffer);
+        gHost.eyeImageValid[eye] = true;
+        gHost.submissionEye = 1 - eye;
+        gHost.dwellFrames = 0;
+        dll::SetStereoEyeLockFromRenderThread(gHost.submissionEye);
+    } else {
+        ++gHost.dwellFrames;
+    }
+
+    if (!gHost.eyeImageValid[0] || !gHost.eyeImageValid[1]) {
+        return false;
+    }
+    for (std::uint32_t slice = 0; slice < 2; ++slice) {
+        context->CopySubresourceRegion(
+            gHost.images[imageIndex], D3D11CalcSubresource(0, slice, 1),
+            0, 0, 0, gHost.eyeImage[slice], 0, nullptr);
+    }
+    return true;
 }
 
 void PumpEvents()
@@ -591,6 +739,7 @@ void ServiceXrFrame(void* renderer)
 
     XrCompositionLayerProjectionView projViews[2]{};
     bool rendered = false;
+    bool stereoPair = false;
 
     if (gHost.contract.ShouldRenderThisFrame()) {
         IDXGISwapChain* swapChain = *reinterpret_cast<IDXGISwapChain**>(
@@ -611,26 +760,61 @@ void ServiceXrFrame(void* renderer)
                 ID3D11DeviceContext* context = nullptr;
                 gHost.device->GetImmediateContext(&context);
                 if (context != nullptr) {
-                    // First light is a **flat mirror**: the same backbuffer into
-                    // both eyes. It proves the whole path -- device, session,
-                    // swapchain, submission -- without depending on the per-eye
-                    // camera work, which is a separate experiment with its own
-                    // failure modes.
-                    for (std::uint32_t slice = 0; slice < 2; ++slice) {
-                        context->CopySubresourceRegion(
-                            gHost.images[imageIndex],
-                            D3D11CalcSubresource(0, slice, 1),
-                            0, 0, 0, backBuffer, 0, nullptr);
+                    if (gStereoSubmission.load(std::memory_order_acquire)) {
+                        stereoPair = SubmitStereoPair(context, backBuffer, imageIndex);
+                    } else {
+                        // First light is a **flat mirror**: the same backbuffer
+                        // into both eyes. It proves the whole path -- device,
+                        // session, swapchain, submission -- without depending on
+                        // the per-eye camera work, which is a separate experiment
+                        // with its own failure modes.
+                        for (std::uint32_t slice = 0; slice < 2; ++slice) {
+                            context->CopySubresourceRegion(
+                                gHost.images[imageIndex],
+                                D3D11CalcSubresource(0, slice, 1),
+                                0, 0, 0, backBuffer, 0, nullptr);
+                        }
                     }
                     context->Release();
                 }
                 XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
                 xrReleaseSwapchainImage(gHost.swapchain, &release);
 
+                // **What FOV to declare, and why it is not the runtime's.**
+                //
+                // These pixels were rendered by Prey, through Prey's frustum.
+                // Declaring `views[eye].fov` -- what the headset would like -- is
+                // a statement about the image that is not true, and the runtime
+                // cannot detect it: it reprojects to whatever is claimed, so a
+                // wrong claim shows up as wrong depth and wrong scale rather than
+                // as an error. See docs/SUBMISSION_CONTRACT.md.
+                //
+                // So when stereo submission is armed we declare the frustum the
+                // game actually drew with, read live. Both eyes get the same one,
+                // because Prey renders symmetric and rung 3 separates the eyes by
+                // translation alone.
+                //
+                // Fails closed: if the camera cannot be read we submit no layer
+                // at all rather than fall back to the runtime's FOV. A black
+                // headset is honest and diagnosable; a plausible-looking wrong
+                // image is neither.
+                XrFovf declared{};
+                bool haveDeclared = false;
+                if (stereoPair) {
+                    const auto preyFov = DeclaredFovFromLiveCamera();
+                    if (preyFov) {
+                        declared = *preyFov;
+                        haveDeclared = true;
+                    }
+                }
+                if (stereoPair && !haveDeclared) {
+                    rendered = false;
+                    LogOnce("result=refused detail=camera_unreadable_no_layer");
+                } else {
                 for (int eye = 0; eye < 2; ++eye) {
                     projViews[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
                     projViews[eye].pose = views[eye].pose;
-                    projViews[eye].fov = views[eye].fov;
+                    projViews[eye].fov = haveDeclared ? declared : views[eye].fov;
                     projViews[eye].subImage.swapchain = gHost.swapchain;
                     projViews[eye].subImage.imageArrayIndex = static_cast<std::uint32_t>(eye);
                     projViews[eye].subImage.imageRect.offset = {0, 0};
@@ -639,6 +823,7 @@ void ServiceXrFrame(void* renderer)
                         static_cast<std::int32_t>(gHost.height)};
                 }
                 rendered = true;
+                }
             }
             backBuffer->Release();
         }
@@ -665,6 +850,33 @@ void ServiceXrFrame(void* renderer)
             Log("result=0 detail=first_frame_submitted");
         }
     }
+}
+
+DWORD SetXrStereoSubmission(unsigned int enabled)
+{
+    const bool on = enabled != 0u;
+    gStereoSubmission.store(on, std::memory_order_release);
+    std::ostringstream line;
+    line << "result=0 detail=stereo_submission enabled=" << (on ? "1" : "0");
+    Log(line.str());
+    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+
+DWORD SetXrSubmissionDwell(unsigned int frames)
+{
+    // Below two there is no point holding at all -- the game and render threads
+    // are already about a frame apart, so a shorter hold cannot make the eye
+    // request unambiguous, which is the only reason the hold exists. The upper
+    // bound just keeps a typo from stopping the image updating altogether.
+    if (frames < 2u || frames > 60u) {
+        Log("result=refused detail=dwell_out_of_bounds");
+        return static_cast<DWORD>(XrSessionStatus::failed);
+    }
+    gDwellFrames.store(frames, std::memory_order_release);
+    std::ostringstream line;
+    line << "result=0 detail=dwell frames=" << frames;
+    Log(line.str());
+    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
 }
 
 } // namespace preyvr::dll

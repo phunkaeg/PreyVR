@@ -799,6 +799,21 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetXrSessionStatus()
     return preyvr::dll::XrSessionStatusValue();
 }
 
+// Arms stereo submission: a real image per eye, and Prey's own frustum declared
+// over them rather than the runtime's. Pointer-taking per F-009.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetXrStereoSubmissionPtr(void* enabled)
+{
+    return preyvr::dll::SetXrStereoSubmission(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+// Frames to hold one eye before taking its image. 2 to 60, default 4.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetXrSubmissionDwellPtr(void* frames)
+{
+    return preyvr::dll::SetXrSubmissionDwell(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(frames)));
+}
+
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetXrSubmittedFrameCount()
 {
     return preyvr::dll::XrSubmittedFrameCount();

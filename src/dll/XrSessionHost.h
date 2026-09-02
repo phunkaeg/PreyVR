@@ -78,6 +78,17 @@ DWORD StopXrSession();
 DWORD XrSessionStatusValue();
 unsigned long long XrSubmittedFrameCount();
 
+// Arms stereo submission: a real image per eye, and Prey's own frustum declared
+// over them instead of the runtime's.
+//
+// Off by default. Clear it and the path reverts to the flat mirror that proved
+// the plumbing -- mono, and declaring the runtime's FOV -- which stays reachable
+// so a regression can be bisected against a known state.
+DWORD SetXrStereoSubmission(unsigned int enabled);
+
+// How many frames to hold one eye before taking its image. 2 to 60, default 4.
+DWORD SetXrSubmissionDwell(unsigned int frames);
+
 // Called from the frame observer, on the render thread. Returns immediately when
 // no session is running.
 void ServiceXrFrame(void* renderer);
