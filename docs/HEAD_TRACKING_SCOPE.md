@@ -492,3 +492,65 @@ Neither is safe to keep.
 What does survive is the pass-camera measurement itself: 903 samples, 903
 agreements, zero disagreements. That compared our written camera against the pass
 camera, and holds whatever the written camera contained.
+
+
+## With the composition fixed, 2026-09-03: yaw correct, pitch wrong, culling settled
+
+Rotation armed with the bounded edit (restored after Render, keep-rotation off).
+16,243 applied, zero refusals, zero restore failures.
+
+### Culling: re-established, and the earlier conclusion stands
+
+Reported precisely: *"if I keep the VR headset pointed straight forward and move
+the mouse to change the aim, culling remains perfect. If I yaw or pitch my head to
+separate from the aim, the cull stays with the character aim."*
+
+That is the decisive form of the test, and it was taken with the render camera
+**correct in yaw** -- which is what the previous attempt lacked. So the finding
+survives its own re-examination: **culling follows the character's aim, not the
+camera we write.** There is a separate source for the cull frustum, which is
+CAM-002's shape.
+
+It also refines what was known. Culling tracks the head *not at all*, in yaw or
+pitch, while following the mouse exactly. That is not a stale or lagged copy of
+our camera -- it is a different camera being driven from the player's aim.
+
+**The CAM-002 recipe therefore applies as written:** keep the accurate camera for
+rendering and drive the engine's cull camera conservatively enough to cover where
+the head can look. Widening cannot be done from the render side; the trip hazard
+in that entry is exactly the thing that has now failed twice here.
+
+### Pitch is wrong, and the cause is a design gap rather than a bug
+
+Reported: *"when looking up or down with the mouse, or pitching with the headset,
+we rotate away from our torso... when I pitch fully down the HMD view is still
+forward, but we see the character's feet floating at eye level above the ground."*
+
+**We take only the *yaw* of the engine's camera.** `ReferenceFrameForHeadTracking`
+reads `CameraYawOf(gameCamera)` and discards its pitch and roll entirely, so mouse
+pitch never reaches the rendered view while it still drives the body and the aim.
+The two then disagree about where "up" is along the look axis.
+
+That much is certain. **What is not yet established is the second half of the
+symptom** -- the body appearing displaced rather than merely mis-aimed. Candidates,
+untested:
+
+1. Prey renders a first-person body attached to the camera transform, so a camera
+   rotation the body's own pose does not share swings it through the view.
+2. The engine's camera position moves with pitch (a head bone rather than a fixed
+   eye point), and we take position per frame but orientation from a different
+   composition, so the two desynchronise off-axis.
+3. Something in the matrix round trip is exact for a pure Z-rotation and wrong once
+   a second axis is involved -- a convention error that yaw cannot expose.
+
+Number 3 is the one worth ruling out first, because it would be a real defect
+rather than a design choice, and because **a yaw-only test cannot distinguish it
+from correct behaviour** -- which is precisely why it survived this long.
+
+### Next: dump both matrices rather than reason about them
+
+Read the engine's camera and the matrix we write, on the same frame, with the head
+pitched. Comparing forward, right and up axes plus the translation says
+immediately whether the round trip is faithful and whether position is being
+preserved. That is read-only, needs no headset beyond a pitched pose, and settles
+candidate 3 before any more design work.
