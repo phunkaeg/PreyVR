@@ -96,6 +96,43 @@ completes the stated end state.
 
 **Exit:** the game is playable entirely from HMD and controllers.
 
+## Correction, same day: far more is already built than this document first said
+
+Queried the project's own knowledge graph -- `graphify/graphify-out/graph.json`,
+current as of 2026-09-03 -- at the owner's suggestion, after repeated greps had
+missed things sitting in plain sight. It surfaced in one query what several
+searches had not.
+
+**The pure layer for three of the five stages already exists, with tests.**
+`MotionController.h` carries:
+
+| symbol | stage | note |
+| --- | --- | --- |
+| `ControllerPoseInWorld` | M2 | uses the same `ReferenceFrame` as the eyes, so hand and view cannot drift |
+| `AimFromController` | M2 | tracking-gated, and documented to leave Prey's own reticle ray alone when unusable |
+| `WeaponPoseFromController`, `GripTransform` | H-005 | weapon placement relative to the hand |
+| `TwoHandedWeaponPose` | H-005 | forward runs rear hand to front hand, refuses below a minimum separation |
+| `SnapTurn`, `SmoothTurn`, `WrapAngle` | M5 | `SnapTurn` returns **the new reference yaw** -- exactly the owned-turn value M5 needs |
+
+So the remaining work in M2, M4 and M5 is **wiring, not design**. The maths is
+written, tested, and already agrees with the reference frame the view seam uses.
+
+**The one genuine unknown is narrower than "weapon models".** `GripTransform`'s own
+comment states it plainly: *"Prey's values are unknown -- the transform writer has
+not been located yet -- so this type exists to hold them once measured, not to
+imply we have them."* That is the whole of H-005's open part: **where the
+late-frame weapon transform is written.** Everything either side of it exists.
+
+That also sharpens what the earlier prototype's "impossible" claim is up against.
+Aim is reproduced with a measured number. Weapon *placement* has its maths built
+and a named native limb-IK facility identified -- `IKLIMB_LEFTHAND` /
+`IKLIMB_RIGHTHAND`, a two-bone solver, `CreateIKLimb`. What is missing is one
+address.
+
+**Method note.** The graph should be queried before grepping documentation. Three
+times in one session the answer was already in this repository and repeated
+searches did not surface it; one graph query did.
+
 ## What is already built and carries over
 
 | piece | state |
