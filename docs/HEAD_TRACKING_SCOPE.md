@@ -378,3 +378,68 @@ Head rotation was not an arming condition in the camera edit's guard, so the fir
 upstream run armed successfully and never executed -- applied and refused both
 zero. It cost a test cycle to spot, because "armed" and "applied" were only
 distinguishable by reading a counter. The guard now includes it.
+
+
+## Root cause found, 2026-09-03: our edit is at the right place at the wrong time
+
+Two facts from one run settle it.
+
+| | |
+| --- | --- |
+| pass camera vs the camera we wrote | **903 samples, 903 agreements, 0 disagreements, max difference 0 millidegrees** |
+| culling | **still follows the mouse** |
+
+So the write reaches the pass camera exactly, and culling does not use the pass
+camera. That is CAM-002's separate cull frustum, confirmed rather than inferred.
+
+### The mechanism, from CryEngine's own source
+
+`CCryAction::PostUpdate`:
+
+```cpp
+// begin occlusion job after setting the correct camera
+gEnv->p3DEngine->PrepareOcclusion(m_pSystem->GetViewCamera());
+gEnv->pCharacterManager->SyncAllAnimations();
+m_pSystem->Render();
+```
+
+The occlusion job is spawned from `GetViewCamera()` **before `CSystem::Render` is
+called at all**. Our camera edit hooks `CSystem::Render`, so by the time it runs
+the cull buffer has already been built from the unedited, mouse-driven camera.
+
+`C3DEngine::UpdateRenderingCamera` confirms the split is deliberate:
+
+```cpp
+// only needed for editor here, ingame we spawn the job more early
+if (gEnv->IsEditor())
+    GetObjManager()->PrepareCullbufferAsync(passInfo.GetCamera());
+else
+    assert(IsEquivalent(passInfo.GetCamera().GetViewdir(),
+                        GetObjManager()->m_CullThread.GetViewDir()));
+    // early set camera differs from current main camera - will cause occlusion errors
+```
+
+**Crytek asserts on exactly this failure and names it.** In the editor the cull
+buffer uses the pass camera; in game the job runs early, and the two are required
+to agree. We broke that agreement.
+
+### Why this is good news
+
+The camera is not the problem and neither is the seam. `PrepareOcclusion` reads
+**the same `m_ViewCamera` we already write** -- just earlier in the frame. So this
+is a **timing** fix rather than a third camera to find and drive, and the CAM-002
+recipe of driving a separate cull camera conservatively is not needed here: the
+one camera can be correct for both if it is written before the occlusion job
+starts.
+
+It also explains the whole sequence cleanly. Rotation at `CRenderView::SetCamera`
+was downstream of everything, so nothing culled correctly. Rotation at
+`CSystem::Render` is upstream of the pass camera -- which is why the render and
+pass cameras agree to zero millidegrees -- but still downstream of the occlusion
+job.
+
+### Next
+
+Find where Prey calls `PrepareOcclusion`, and write the rotation before it. The
+route is offline: `CSystem::Render` is R-058, so its callers give Prey's
+`PostUpdate`, and the virtual call a few lines earlier is `PrepareOcclusion`.
