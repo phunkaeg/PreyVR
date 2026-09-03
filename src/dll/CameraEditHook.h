@@ -1,5 +1,7 @@
 #pragma once
 
+#include "preyvr/VrMath.h"
+
 #include <Windows.h>
 
 // The first write to Prey's render path, as a bounded and reversible experiment.
@@ -126,6 +128,13 @@ unsigned long long EyeHandoffDroppedCount();
 // mutex. For the stereo submission path only; everything else should use
 // SetStereoEyeLock, which also keeps the capture tag correct.
 void SetStereoEyeLockFromRenderThread(int eye);
+
+// The forward axis the camera edit last wrote, for the pass-camera probe.
+//
+// Exists so the probe can answer whether the camera the engine culls with is the
+// one we wrote, rather than the two of us reasoning about it from the call graph
+// -- which said it should be, while the cull frustum visibly followed the mouse.
+bool LastWrittenCameraForward(Vec3& out);
 
 // Applies the tracked head rotation to the upstream camera -- the one the engine
 // culls from.

@@ -9,6 +9,7 @@
 #include "Logger.h"
 #include "AimRayProbe.h"
 #include "HeadTrackingHook.h"
+#include "PassCameraProbe.h"
 #include "HotkeyBridge.h"
 #include "OpenXRPreflightWin32.h"
 #include "RuntimeSnapshotWin32.h"
@@ -855,6 +856,38 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetHotkeyEyeSwap()
 extern "C" __declspec(dllexport) DWORD PreyVR_GetHotkeyPressCount()
 {
     return preyvr::dll::HotkeyPressCount();
+}
+
+// Is the camera the engine culls with the camera we wrote? Read-only.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetPassCameraProbeEnabledPtr(void* enabled)
+{
+    return preyvr::dll::SetPassCameraProbeEnabled(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetPassCameraSamples()
+{
+    return preyvr::dll::PassCameraSamples();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetPassCameraAgreements()
+{
+    return preyvr::dll::PassCameraAgreements();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetPassCameraDisagreements()
+{
+    return preyvr::dll::PassCameraDisagreements();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetPassCameraLastDifferenceMillidegrees()
+{
+    return preyvr::dll::PassCameraLastDifferenceMillidegrees();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetPassCameraMaxDifferenceMillidegrees()
+{
+    return preyvr::dll::PassCameraMaxDifferenceMillidegrees();
 }
 
 // Head rotation on the upstream camera, which is the one the engine culls from.
