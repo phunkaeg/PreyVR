@@ -15,3 +15,64 @@
 | H-009 | Can Prey render the world a second time per frame from a supplied camera — native stereo — rather than replaying draws or patching matrices downstream? | Native stereo gets correct culling, LOD, sky and fog per eye for free, which no downstream approach can buy. A cross-engine playbook reports two independent mods reaching it on D3D9 titles, and says the deciding property is whether the world-render is reachable as a vtable slot rather than inlined in the frame loop. | Static only, and answerable in Ghidra before any renderer code exists: is the world-render a vtable slot; is there a camera-accepting pass constructor; how many direct callers does it have. | **Static preconditions met, 2026-08-22 — viability is open, not established.** Both halves of the primitive exist as callable code. `C3DEngine::RenderWorld` (R-054) is virtual at `IProcess` slot 3 with **zero direct call sites**, so it is dispatched purely through `gEnv->p3DEngine`. `CreateGeneralPassRenderingInfo` (R-055) is a real function taking an **arbitrary `CCamera&`**, with 3 direct callers. The canonical pattern is visible in one of them. Corroborating: the `e_ArkLookingGlass` experiment already showed Prey rendering a *complete* scene from a non-default viewpoint. **What is not established:** nothing has been called or observed executing; render-target and `CRenderView` lifecycle behaviour under a second pass is unknown, and render views are pooled `[2][2]` (R-026), so a second pass may contend for them; `SwitchUsageMode` sequencing is untouched; and cost is unmeasured. Requires a live host. **Gating recommendation received 2026-08-23 from the cross-engine playbook, not yet adopted:** bioshock-trilogy-vr gates its second world pass **deny-by-default on the return RVA of a known gameplay caller**, with a census naming that site as the per-tick dispatcher, plus camera-silent, present-stall, teardown and poison gates — reported as observed refusing a foreign caller live. For Prey this is attractive precisely because `C3DEngine::RenderWorld` (R-054) is virtual with **zero direct call sites** (R-053-style dispatch), so any second pass we drive is indistinguishable from the engine's own by signature alone; who called us is the only thing that separates them. Recorded as a design input for when H-009 moves from preconditions to implementation. **Second-pass hazard class added 2026-08-27 from the cross-engine render-pass atlas, and it is broader than the render-target question this entry already lists.** Any *per-frame mutable state* touched by a pass we now run twice advances twice: SOMAVR hit this in two unrelated effects with identical shape — deferred SSAO advancing a temporal blur phase once per invocation, and tone mapping advancing exposure/white-cut/fade/grain together in one packet — so the second eye silently rendered at a different phase. The fix both times was to capture the pre-update packet and the committed result before eye one, replay that baseline for eye two, then restore eye one's result, so exactly one logical update persists per frame. **The test that classifies a resource is whether it is read before it is written within a frame** — carried state must be duplicated or replayed, intra-frame scratch must not be (duplicating ping-pong buffers costs memory and can itself cause eye-desync). Two further traps: fixing a producer does not move its downstream consumers (BioshockVR's shadow pass kept sampling stale centre depth after the colour pass was corrected), and a fix should be scoped to the narrowest predicate that reproduces rather than to its whole class. None of this is Prey-specific yet — no pass census exists — but it is the shape to expect the moment a second `RenderWorld` runs. **Live 2026-08-29 — one relaxation, two new constraints.** Relaxation: `UpdateRenderingCamera` (R-057) is the *only* caller of `SetCamera`, and is itself called only by `RenderWorld` (R-054), so the deny-by-default return-RVA gate is a single comparison rather than a set. Constraint 1: the R-033 pool holds only 4 of the **16** render views scheduled per frame — 14 are Shadow views living outside it (R-062) — so a second world pass must not assume the pool enumerates everything. Constraint 2: `SetPreviousFrameCamera` (R-064) fires immediately after every `SetCamera` with a different camera, and with `r_MotionBlur = 2` and `r_AntialiasingMode = 3` both live it is load-bearing; a per-eye write that ignores it hands the second eye the wrong reprojection history. The 2 Recursive pool entries are allocated, correctly typed, and never scheduled or given a camera, so they are genuinely free. Viability still open — nothing has been written yet. |
 
 Promote an item to a research-log finding only after the specified evidence is captured.
+
+
+## H-005 addendum, 2026-09-03 — a console-reachable weapon offset exists in Prey
+
+Found by querying the rebuilt fleet graph, which pointed at FarCry2-vr's
+`CURRENT_STATE.md`:
+
+> **VIEWMODEL LEVER — FOUND.** Dunia has a built-in **weapon camera offset**, a
+> float3 at **`weapon+0x6C`**, reached from its own `SetWeaponCameraOffsetX/Y/Z`
+> console commands. **Moving the weapon needs no render-pass hook and no engine
+> call. There is no second viewmodel camera.**
+
+Dunia is CryEngine-1 lineage and Prey is CryEngine 3/4, so the obvious question is
+whether Prey inherited it. **It did.** Present in `PreyDll.dll`:
+
+| string | note |
+| --- | --- |
+| `SetWeaponCameraOffsetX` / `Y` / `Z` | help text: *"Set the offset in X for the First Person camera"* |
+| `Game:SetWeaponCameraOffsetX(%%)` | a **script binding**, not only a console command |
+| `i_offset_front`, `i_offset_right`, `i_offset_up` | CryEngine's standard viewmodel offset cvars |
+| `g_weaponOffsetInput`, `g_weaponOffsetOutput`, `g_weaponOffsetToMannequin`, `g_debugWeaponOffset` | a whole offset family |
+
+**Why this matters more than the bone route.** H-005 has been scoped around
+locating the late-frame weapon transform writer and driving limb IK. If these
+offsets are live, weapon *position* is reachable **without a render-pass hook, a
+bone API, or an engine call** — the same conclusion FarCry2-vr reached for Dunia.
+
+**FarCry2-vr also deferred its arm rig, and said why:** *"No bone API confirmed
+yet. SOMAVR's discipline is passive-probe first, and we cannot yet read a bone
+transform, so building a bone lane would be guessing."* A sibling in a closer
+engine lineage chose the offset lever over bones deliberately.
+
+### The honest caveat, and it is a real one
+
+**Strings existing is not the same as the lever being live.** F-007 records exactly
+this trap on this binary: the search that found no consumer for `g_detachCamera`
+also found none for `g_difficultyLevel`, which certainly is consumed. So a
+registered name proves registration and nothing else.
+
+Settling it is cheap and does not need a headset: set the offset and see whether
+the weapon moves. Note that `SetWeaponCameraOffsetX` is not currently on the
+console allowlist, which is fail-closed by design — widening it is a deliberate
+decision for the project owner, not a convenience.
+
+### What BioshockVR contributes: an acceptance test worth stealing
+
+`bioshockvr.dll` **implements** a tracked viewmodel pose, gated behind
+`WeaponViewmodelAbsoluteGripOrientation=1`, and its test procedure is exactly the
+exit criterion M2 needs:
+
+> Equip the weapon, then **hold the controller still while yawing, pitching and
+> rolling only the HMD. The weapon should remain controller/room owned.** Then hold
+> the HMD still and rotate the controller to confirm natural weapon rotation.
+
+Health signals: `absoluteOrientationApplied=1`, a one-time
+`absoluteOrientationBaselineCaptured=1`, and later
+`absoluteOrientationReason=controller_basis_applied`.
+
+That is a better exit test than the one in `SIXDOF_ROUTE.md`, because it separates
+the two failure directions -- weapon following the head, and weapon not following
+the hand -- instead of asking whether it "feels right".
