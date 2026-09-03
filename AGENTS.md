@@ -82,6 +82,31 @@ view matrix, FOV and player structs. Load it when you are deciding *what to look
 6. Target is `Prey.exe` (Prey 2017, CryEngine-derived, **64-bit** -> use **x64dbg**).
 7. RenderDoc works here — Prey renders via **Direct3D 11**.
 
+## Check the graph BEFORE you decide (added 2026-09-03)
+
+**`graphify/graphify-out/graph.json`** — note the `graphify/` prefix, it is not at
+the repo root. Query it with `cd graphify && graphify query "<question>"`.
+
+**Query it before committing to an approach**, not only when asked what the project
+knows. Before choosing a seam, scoping a milestone, designing a mechanism, or
+asking the user a design question.
+
+The rule exists because on 2026-09-03 an agent, in one session, missed: this
+README's own first paragraph stating the 6DoF end state; H-005's limb-IK
+reconnaissance; a `RESEARCH_LOG` line already naming the `SViewParams` callback as
+the planned route; and a fully tested `MotionController.h` carrying
+`WeaponPoseFromController`, `AimFromController`, `TwoHandedWeaponPose` and
+`SnapTurn`. Work was scoped that already existed, and a design question was put to
+the owner whose answer was in the README.
+
+**Grep matches literal strings, so it fails exactly when you do not already know
+the vocabulary** — which is the situation whenever you are deciding what to build.
+The graph is indexed by meaning. One query costs a single call; the failure it
+prevents costs hours.
+
+Refresh with `Graphify-Update-All.ps1` (code + semantics) or
+`Graphify-Update-CodeOnly.ps1`. Check the graph's date before trusting it.
+
 ## Blocked? Read the fleet playbook FIRST (added 2026-09-01)
 
 **`D:\Dev Debug\VR Modding\docs` — start at `bottleneck-map.md`.**
