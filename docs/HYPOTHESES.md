@@ -76,3 +76,44 @@ Health signals: `absoluteOrientationApplied=1`, a one-time
 That is a better exit test than the one in `SIXDOF_ROUTE.md`, because it separates
 the two failure directions -- weapon following the head, and weapon not following
 the hand -- instead of asking whether it "feels right".
+
+
+## unitsPerMetre: first evidence, and a better test than "does it feel right"
+
+From SS2VR's `H12` via the fleet graph concept `World and Unit Scaling`. Their
+symptom triad for a wrong metres-to-engine scale:
+
+- HMD positional movement feels **too small** unless a position scale is cranked up
+- stereo is only comfortable at a **low raw eye separation**
+- first-person weapons and nearby objects feel **about 2x too large**
+
+Their resolution was `world_scale = 3.28` -- feet per metre. **SS2VR's engine units
+are feet**, and one shared calibration then made leaning amplitude and stereo scale
+believable together.
+
+### Why this is evidence for us, weak but real
+
+The second symptom is the one we can already check against a measurement we have.
+The wearer swept the eye offset live across 0.045 to 0.085 and chose **0.064 m** as
+most comfortable -- a *normal physical IPD*, not a suppressed one. Under SS2VR's
+triad a wrong world scale shows up precisely as needing an eye separation far from
+the physical value.
+
+So `unitsPerMetre = 1` now has its first supporting observation rather than being
+purely assumed. **It is still not measured**, and this does not close it: the sweep
+was judged on a static view, and translation is where a scale error actually bites.
+But the assumption has moved from unexamined to weakly supported, and by evidence
+gathered before anyone was looking for it.
+
+### The M3 test, replaced
+
+`SIXDOF_ROUTE.md` gives M3's exit as leaning producing correct parallax, judged by
+eye. SS2VR's framing is sharper and worth adopting:
+
+> **one shared calibration must make leaning amplitude and stereo scale believable
+> at the same time.**
+
+If leaning needs one scale and stereo needs another, the scale is wrong -- and that
+is a *comparison*, not an aesthetic judgement. It also fails loudly in the case
+that matters: a value that happens to look right standing still and wrong the
+moment the player moves.

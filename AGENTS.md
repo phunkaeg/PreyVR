@@ -172,6 +172,29 @@ graphify query "<question>" --graph "D:\Dev Debug\VR Modding\cross-engine-graph\
 >    **34** of them and reaches all seven siblings, having previously appeared in
 >    none. Query that file, not `reconciled-graph.json`.
 >
+> **How to query it.** Seed matching is lexical and unstemmed, so a plain-English
+> sentence seeds on noise -- one such question matched *game*, *flat* and *fov* and
+> landed on a minigame. Start from a **concept name**, not a sentence:
+>
+> ```
+> graphify explain "Weapon and Viewmodel Pose Handoff" --graph <fleet-graph.json>
+> ```
+>
+> That returns every project's implementation of one concept in a single call. For
+> `query`, use engine nouns -- `frustum culling`, `viewmodel pose handoff`,
+> `depth submission`. Some concepts are split across near-duplicate names
+> (`Camera and Viewpoint Ownership` / `Camera and View Ownership`, three
+> `Stereo Rendering Strategy` variants) -- a batching artifact, so check both.
+>
+> **Cross-project edges are `INFERRED`**, proposed from labels. Each carries a
+> `concept` and a `why`. **The graph tells you where; the playbook tells you what.**
+> Every node is a lead with provenance, so go and read the document it names.
+> An empty result covers in-house projects only -- not the 90 surveyed external
+> mods in `sources.yml` / `docs/coverage.md`.
+>
+> Rebuild only when project docs change materially: `update-fleet-docs.ps1
+> -Reconcile`, about $0.03.
+
 > The old conclusion happened to hold for a different reason than the one given:
 > `reconciled-graph.json` had ~1 cross-project link, so cross-project traversal
 > really was dead — from missing semantic reconciliation, not missing edges.
