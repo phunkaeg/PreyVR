@@ -160,6 +160,22 @@ std::optional<float> RecenterYawFromHeadPose(const Pose& openXrHeadPose)
     return std::atan2(-forward.x, forward.y);
 }
 
+Quaternion ComposeHeadOntoGameRotation(
+    Quaternion gameRotation,
+    const Pose& openXrHeadPose,
+    float recenterYaw)
+{
+    const Quaternion headEngine = ToEngineSpace(openXrHeadPose.orientation);
+    // The head measured against where it was pointing at recenter, taking only
+    // that reference's yaw so a tilted capture cannot bake itself in.
+    const Quaternion delta =
+        Multiply(Conjugate(YawQuaternion(recenterYaw)), headEngine);
+    // Post-multiplied: the delta is expressed in the camera's own frame, so it
+    // turns the head relative to wherever the game is facing rather than relative
+    // to the world.
+    return Normalize(Multiply(Normalize(gameRotation), delta));
+}
+
 float CameraYawOf(const Matrix34& matrix)
 {
     // Row-major Matrix34: forward is column 1, elements 1, 5 and 9. Matches

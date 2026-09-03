@@ -1,39 +1,48 @@
+<#
+Compatibility entry point. The old script called a stale bare-path Graphify CLI
+form and could be mistaken for a safe project update. Keep the familiar filename,
+but delegate to the same guarded fleet workflow as every other in-house mod.
+#>
+
 [CmdletBinding()]
 param(
-    [ValidateSet('openai', 'claude', 'gemini', 'kimi', 'deepseek')]
-    [string]$Backend = 'openai',
-    [switch]$Deep
+    [ValidateSet('gemini', 'local')]
+    [string] $SemanticProvider = 'gemini',
+
+    [string] $LocalModel = 'coder-next',
+
+    [ValidatePattern('^https?://')]
+    [string] $LocalBaseUrl = 'http://192.168.0.161:8080/v1',
+
+    [string] $LocalKeyFile,
+
+    [switch] $Deep,
+
+    [switch] $Wiki,
+
+    [switch] $Force,
+
+    [switch] $UpdateGraphify
 )
 
 $ErrorActionPreference = 'Stop'
+$projectRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
+$runner = Join-Path $projectRoot 'Graphify-Update-All.ps1'
 
-$graphify = Get-Command graphify -ErrorAction SilentlyContinue
-if ($null -eq $graphify) {
-    throw 'graphify was not found on PATH.'
-}
-
-$requiredKey = switch ($Backend) {
-    'openai' { 'OPENAI_API_KEY' }
-    'claude' { 'ANTHROPIC_API_KEY' }
-    'gemini' { 'GEMINI_API_KEY or GOOGLE_API_KEY' }
-    'kimi' { 'MOONSHOT_API_KEY' }
-    'deepseek' { 'DEEPSEEK_API_KEY' }
+if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
+    throw "Safe Graphify project runner not found: $runner"
 }
 
-if ($Backend -eq 'gemini') {
-    $hasKey = -not [string]::IsNullOrWhiteSpace($env:GEMINI_API_KEY) -or -not [string]::IsNullOrWhiteSpace($env:GOOGLE_API_KEY)
-} else {
-    $hasKey = -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($requiredKey, 'Process'))
+Write-Host 'Using the guarded fleet Graphify update strategy.' -ForegroundColor Cyan
+$invokeArgs = @{
+    SemanticProvider = $SemanticProvider
+    LocalModel = $LocalModel
+    LocalBaseUrl = $LocalBaseUrl
 }
-if (-not $hasKey) {
-    throw "Missing $requiredKey for Graphify semantic document extraction."
-}
+if ($LocalKeyFile) { $invokeArgs.LocalKeyFile = $LocalKeyFile }
+if ($Deep) { $invokeArgs.Deep = $true }
+if ($Wiki) { $invokeArgs.Wiki = $true }
+if ($Force) { $invokeArgs.Force = $true }
+if ($UpdateGraphify) { $invokeArgs.UpdateGraphify = $true }
 
-$graphifyRoot = Split-Path -Parent $PSCommandPath
-Push-Location $graphifyRoot
-try {
-    & $graphify.Source './corpus' --backend $Backend --wiki $(if ($Deep) { '--mode'; 'deep' })
-    if ($LASTEXITCODE -ne 0) { throw "graphify exited with code $LASTEXITCODE" }
-} finally {
-    Pop-Location
-}
+& $runner @invokeArgs

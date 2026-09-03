@@ -422,8 +422,93 @@ void TestHeadRotationAddsToTheGameCamera()
         "the head turn composes onto the player's facing");
 }
 
+// The property the camera seam depends on: a head back where it was at recenter
+// leaves the game's own camera completely alone -- including its pitch, which the
+// previous yaw-only composition discarded and which showed in headset as rotating
+// away from the torso.
+void TestHeadAtRecenterLeavesGameRotationUntouched()
+{
+    const float recenterYaw = 0.4f;
+    const Pose headAtRecenter = HeadPose(recenterYaw, 0.0f, 0.0f);
+
+    // Game orientations including pitch, which is the case that regressed before.
+    const Quaternion gameRotations[] = {
+        YawQuaternion(0.0f),
+        YawQuaternion(1.3f),
+        Multiply(YawQuaternion(1.3f), HeadAxisAngle(Vec3{1.0f, 0.0f, 0.0f}, 0.6f)),
+        Multiply(YawQuaternion(-2.2f), HeadAxisAngle(Vec3{1.0f, 0.0f, 0.0f}, -0.45f)),
+    };
+
+    for (const Quaternion& game : gameRotations) {
+        const Quaternion composed =
+            ComposeHeadOntoGameRotation(game, headAtRecenter, recenterYaw);
+        // Compared by the axes they produce: quaternions double-cover rotations,
+        // so q and -q are the same orientation and comparing components would
+        // report a difference that does not exist.
+        const Vec3 axes[] = {Vec3{1,0,0}, Vec3{0,1,0}, Vec3{0,0,1}};
+        for (const Vec3& axis : axes) {
+            Require(NearVec(Rotate(composed, axis), Rotate(Normalize(game), axis)),
+                "a head at its recenter pose leaves the game's orientation untouched");
+        }
+    }
+}
+
+// **The frame the head delta is applied in is NOT pinned by these tests, and that
+// is deliberate until the design question below is answered.**
+//
+// A negative control caught this: swapping the multiply order -- applying the head
+// in the world frame instead of the camera frame -- still passed everything here.
+// Every rotation in these cases turns about Z, and rotations about a shared axis
+// commute, so the two orders are indistinguishable. The case that does have pitch
+// puts the head at recenter, making the delta identity, which commutes with
+// everything.
+//
+// Discriminating needs a game rotation with pitch AND a non-identity head delta,
+// and writing that test means first deciding what *should* happen: whether a head
+// yaw turns about the world's up axis (the body's) or about the pitched camera's
+// own up. Those differ exactly when the mouse has pitched the view, which is the
+// case the headset report was about. It is a design decision, not a maths one, so
+// it is left open rather than frozen by a test that assumes an answer.
+
+// And the head genuinely adds: turning the head yaws the view away from the
+// game's facing by the same amount.
+void TestHeadDeltaAddsToGameRotation()
+{
+    const float recenterYaw = 0.0f;
+    const float headTurn = 0.6f;
+    const Quaternion game = YawQuaternion(1.1f);
+
+    const Quaternion composed =
+        ComposeHeadOntoGameRotation(game, HeadPose(headTurn, 0.0f, 0.0f), recenterYaw);
+    Require(Near(CameraYawOf(MatrixFromPose(Pose{composed, Vec3{}})), 1.1f + headTurn, 1e-3f),
+        "the head turn adds to the game's facing");
+}
+
+// FAIL-CAM-019 through this seam: a headset rolled when recenter was pressed must
+// not tilt the world afterwards. Only the reference's yaw is taken, so the stored
+// value carries no tilt to bake in -- while a live roll still reaches the view.
+void TestRolledRecenterDoesNotTiltTheComposition()
+{
+    const float recenterYaw = 0.5f;
+    const Quaternion game = YawQuaternion(0.9f);
+
+    // Recenter captured from a rolled headset yields a yaw-only reference.
+    const auto reference = RecenterYawFromHeadPose(HeadPose(recenterYaw, 0.0f, 0.7f));
+    Require(reference.has_value(), "a rolled recenter still yields a yaw");
+
+    // A level head afterwards must leave the horizon level.
+    const Quaternion composed =
+        ComposeHeadOntoGameRotation(game, HeadPose(recenterYaw, 0.0f, 0.0f), *reference);
+    const Vec3 right = Rotate(composed, Vec3{1.0f, 0.0f, 0.0f});
+    Require(std::fabs(right.z) < 1e-3f,
+        "a crooked recenter does not tilt the composed camera");
+}
+
 int main()
 {
+    TestHeadAtRecenterLeavesGameRotationUntouched();
+    TestHeadDeltaAddsToGameRotation();
+    TestRolledRecenterDoesNotTiltTheComposition();
     TestHeadAtRecenterReproducesTheGameCamera();
     TestHeadRotationAddsToTheGameCamera();
     TestRecenterYawTracksYaw();

@@ -166,6 +166,30 @@ std::optional<float> RecenterYawFromHeadPose(const Pose& openXrHeadPose);
 // scripted movement stay the engine's business.
 ReferenceFrame ReferenceFrameForHeadTracking(const Matrix34& gameCamera, float recenterYaw);
 
+// Adds the head's rotation on top of the orientation the game computed, rather
+// than rebuilding the orientation from scratch.
+//
+// **This is the composition the camera seam needs, and it keeps the game's pitch.**
+// The earlier ReferenceFrameForHeadTracking took only the *yaw* of the engine's
+// camera, so mouse pitch never reached the view -- reported in headset as rotating
+// away from the torso, with the body's feet ending up at eye level. Here the
+// engine's orientation is kept whole and the head is applied as a *delta* on top,
+// so pitch, roll and any scripted camera work all survive untouched.
+//
+// The delta is the live head orientation measured against a **yaw-only** recenter
+// reference. Yaw-only matters for the reason FAIL-CAM-019 records: if the
+// reference held the whole head orientation, a headset that was tilted when
+// recenter was pressed would counter-rotate every later frame and tilt the world
+// permanently. Taking only its yaw means a live head tilt still reaches the view,
+// which is what should happen, while a crooked capture cannot.
+//
+// A head back at its recenter yaw and level returns the game's orientation
+// unchanged, which is the property the tests pin.
+Quaternion ComposeHeadOntoGameRotation(
+    Quaternion gameRotation,
+    const Pose& openXrHeadPose,
+    float recenterYaw);
+
 // The yaw a camera matrix is facing, about engine Z. Same construction as
 // RecenterYawFromHeadPose -- the forward axis projected onto the horizontal plane
 // -- so the two cannot disagree about what yaw means.
