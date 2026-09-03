@@ -74,6 +74,24 @@ struct Host {
     // a frozen scene, which is how the first depth test is run.
     ID3D11Texture2D* eyeImage[2] = {nullptr, nullptr};
     bool eyeImageValid[2] = {false, false};
+
+    // **The contract that rendered each eye's pixels, held with them.**
+    //
+    // FAIL-STR-044, raised by the playbook session from Crysis 2 VR's runtime
+    // records (author-grade, not independently replayed -- treated as a design
+    // warning rather than a measurement). Carrying the eye identity is necessary
+    // and not sufficient: the two held images are captured on *different* frames,
+    // so labelling both with the pose and FOV read at submission time pairs older
+    // pixels with a newer contract. "Latest left plus latest right is not a pair,
+    // and a fresh ticket does not make stale pixels fresh."
+    //
+    // Invisible today, because the rendered image does not yet follow the head, so
+    // a newer pose describes the same picture. It becomes shear and rubber-banding
+    // the moment the view seam lands -- which is why this is fixed before that
+    // rather than after.
+    XrPosef eyePose[2]{};
+    XrFovf eyeFov[2]{};
+    XrTime eyeDisplayTime[2]{};
     xrframe::FrameContract contract;
 };
 
@@ -484,7 +502,10 @@ std::optional<XrFovf> DeclaredFovFromLiveCamera()
 bool SubmitStereoPair(
     ID3D11DeviceContext* context,
     ID3D11Texture2D* backBuffer,
-    std::uint32_t imageIndex)
+    std::uint32_t imageIndex,
+    const XrView* views,
+    const std::optional<XrFovf>& declaredFov,
+    XrTime displayTime)
 {
     D3D11_TEXTURE2D_DESC desc{};
     backBuffer->GetDesc(&desc);
@@ -517,6 +538,12 @@ bool SubmitStereoPair(
     if (eye == 0 || eye == 1) {
         const int target = gSwapEyes.load(std::memory_order_acquire) ? (1 - eye) : eye;
         context->CopyResource(gHost.eyeImage[target], backBuffer);
+        // Publish the pixels and the contract that produced them together. The
+        // copy and these three writes are the one publication unit; nothing
+        // downstream may pair this image with any other frame's pose or FOV.
+        gHost.eyePose[target] = views[target].pose;
+        gHost.eyeFov[target] = declaredFov ? *declaredFov : views[target].fov;
+        gHost.eyeDisplayTime[target] = displayTime;
         gHost.eyeImageValid[target] = true;
     }
 
@@ -800,7 +827,10 @@ void ServiceXrFrame(void* renderer)
                 gHost.device->GetImmediateContext(&context);
                 if (context != nullptr) {
                     if (gStereoSubmission.load(std::memory_order_acquire)) {
-                        stereoPair = SubmitStereoPair(context, backBuffer, imageIndex);
+                        stereoPair = SubmitStereoPair(
+                            context, backBuffer, imageIndex,
+                            views, DeclaredFovFromLiveCamera(),
+                            frameState.predictedDisplayTime);
                     } else {
                         // First light is a **flat mirror**: the same backbuffer
                         // into both eyes. It proves the whole path -- device,
@@ -837,23 +867,27 @@ void ServiceXrFrame(void* renderer)
                 // at all rather than fall back to the runtime's FOV. A black
                 // headset is honest and diagnosable; a plausible-looking wrong
                 // image is neither.
-                XrFovf declared{};
+                // **Each eye is submitted with the contract that rendered it.**
+                // FAIL-STR-044: the two held images come from different frames, so
+                // reading a single live pose and FOV here would relabel the older
+                // eye's pixels with the newer eye's contract. In stereo the held
+                // values are used; the flat mirror has no held pair and uses the
+                // live ones, which is correct because its pixels are this frame's.
                 bool haveDeclared = false;
-                if (stereoPair) {
+                XrFovf liveDeclared{};
+                if (!stereoPair) {
                     const auto preyFov = DeclaredFovFromLiveCamera();
                     if (preyFov) {
-                        declared = *preyFov;
+                        liveDeclared = *preyFov;
                         haveDeclared = true;
                     }
                 }
-                if (stereoPair && !haveDeclared) {
-                    rendered = false;
-                    LogOnce("result=refused detail=camera_unreadable_no_layer");
-                } else {
                 for (int eye = 0; eye < 2; ++eye) {
                     projViews[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
-                    projViews[eye].pose = views[eye].pose;
-                    projViews[eye].fov = haveDeclared ? declared : views[eye].fov;
+                    projViews[eye].pose = stereoPair ? gHost.eyePose[eye] : views[eye].pose;
+                    projViews[eye].fov = stereoPair
+                        ? gHost.eyeFov[eye]
+                        : (haveDeclared ? liveDeclared : views[eye].fov);
                     projViews[eye].subImage.swapchain = gHost.swapchain;
                     projViews[eye].subImage.imageArrayIndex = static_cast<std::uint32_t>(eye);
                     projViews[eye].subImage.imageRect.offset = {0, 0};
@@ -862,7 +896,6 @@ void ServiceXrFrame(void* renderer)
                         static_cast<std::int32_t>(gHost.height)};
                 }
                 rendered = true;
-                }
             }
             backBuffer->Release();
         }
