@@ -897,6 +897,43 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetKeepHeadRotationPtr(void* enabl
         static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
 }
 
+// The view seam: ArkPlayerCamera::UpdateView. Observe first -- the SViewParams
+// layout is from a neighbouring engine generation and is confirmed by reading the
+// FOV back, not assumed.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetViewHookObservingPtr(void* enabled)
+{
+    return preyvr::dll::SetViewHookObserving(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_SetViewHookApplyingPtr(void* enabled)
+{
+    return preyvr::dll::SetViewHookApplying(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetViewHookObservedCount()
+{
+    return preyvr::dll::ViewHookObservedCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetViewHookAppliedCount()
+{
+    return preyvr::dll::ViewHookAppliedCount();
+}
+
+// FOV in ten-thousandths of a radian. Near 15447 confirms the struct layout,
+// since 1.5447 rad was measured from the live camera by an unrelated route.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetViewHookLastFovTenThousandths()
+{
+    return static_cast<DWORD>(preyvr::dll::ViewHookLastFov() * 10000.0f + 0.5f);
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetViewHookLastNearPlaneMicrometres()
+{
+    return static_cast<DWORD>(preyvr::dll::ViewHookLastNearPlane() * 1.0e6f + 0.5f);
+}
+
 // Head rotation on the upstream camera, which is the one the engine culls from.
 // Recenter first.
 extern "C" __declspec(dllexport) DWORD PreyVR_SetUpstreamHeadRotationPtr(void* enabled)

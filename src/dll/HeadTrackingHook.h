@@ -61,6 +61,48 @@ bool TryReadHeadPose(Pose& out, unsigned long long& ageMicroseconds);
 // cannot drift apart in how they build the same camera.
 bool ApplyHeadRotation(std::uint8_t* camera, std::size_t size);
 
+// ---------------------------------------------------------------------------
+// The view seam: ArkPlayerCamera::UpdateView (R-009)
+// ---------------------------------------------------------------------------
+//
+// **The camera is set here, at the source, so everything downstream inherits it.**
+// Writing further down the frame reaches some readers and not others: an edit at
+// CRenderView::SetCamera missed culling entirely, and an edit at CSystem::Render
+// reached the pass camera exactly -- 903 samples, zero disagreements -- while
+// culling still followed the aim, because the occlusion job is spawned earlier
+// from GetViewCamera(). Setting the view where the game computes it puts us
+// upstream of every one of those reads at once.
+//
+// **Orientation is yaw plus head, not the game's rotation plus a head delta.**
+// The target architecture has no mouse pitch at all: the headset owns the whole
+// view in 6DoF, a stick moves the player capsule, and a motion controller owns
+// aim. So the only thing the view needs from outside the headset is a *yaw* for
+// the play space -- taken from the game's camera today, so mouse turning still
+// works while building, and replaced by an owned turn value later.
+//
+// Off by default, and observe-first: the SViewParams layout below is from the
+// CryGame CE3 tree and Prey is an Arkane fork, so it is checked against a value
+// measured independently -- the live camera's 1.5447 rad FOV -- before anything
+// is written.
+
+// Frames the view hook saw, and frames it actually rewrote.
+unsigned long long ViewHookObservedCount();
+unsigned long long ViewHookAppliedCount();
+
+// The last SViewParams the hook saw, for confirming the struct layout before
+// trusting it. FOV in radians: a reading near 1.5447 confirms the offsets, since
+// that value was measured from the live camera by a different route.
+float ViewHookLastFov();
+float ViewHookLastNearPlane();
+
+// Installs the hook in observe-only mode. Nothing is written; the counters and
+// the readings above start moving.
+DWORD SetViewHookObserving(unsigned int enabled);
+
+// Starts rewriting the view orientation. Requires observe mode to have confirmed
+// the layout, and a recenter reference.
+DWORD SetViewHookApplying(unsigned int enabled);
+
 // Arms the camera edit. Off by default.
 //
 // Refused unless a recenter reference has been captured, because without one the

@@ -264,6 +264,169 @@ bool ApplyHeadRotation(std::uint8_t* camera, std::size_t size)
     return cameraedit::RotationIsSafeToWrite(span);
 }
 
+// ---------------------------------------------------------------------------
+// The view seam
+// ---------------------------------------------------------------------------
+namespace viewhook {
+
+// R-009 ArkPlayerCamera::UpdateView(SViewParams&). RCX is ArkPlayer+0x12A0,
+// RDX the SViewParams the game is filling in.
+using UpdateViewFn = void(__fastcall*)(void* camera, std::uint8_t* viewParams);
+
+constexpr std::uintptr_t kUpdateViewRva = 0x148B820;
+constexpr std::array<std::uint8_t, 24> kUpdateViewPrologue = {
+    0x48, 0x8B, 0xC4, 0x55, 0x53, 0x56, 0x57, 0x41, 0x55, 0x41, 0x56, 0x41,
+    0x57, 0x48, 0x8D, 0xA8, 0x28, 0xFF, 0xFF, 0xFF, 0x48, 0x81, 0xEC, 0xA0,
+};
+
+// SViewParams, from the CryGame CE3 tree -- the generation closest to Prey.
+// Quat is `Vec3 v; F w`, so the components are x, y, z, w in memory, matching
+// our own Quaternion. **Treated as unconfirmed until the FOV reads back near
+// 1.5447 rad**, which was measured from the live camera by an unrelated route.
+constexpr std::size_t kViewPosition = 0x00;   // Vec3
+constexpr std::size_t kViewRotation = 0x0C;   // Quat, x y z w
+constexpr std::size_t kViewNearPlane = 0x2C;
+constexpr std::size_t kViewFov = 0x30;
+
+void* gTarget = nullptr;
+std::atomic<UpdateViewFn> gOriginal{nullptr};
+bool gInstalled = false;
+std::atomic<bool> gObserving{false};
+std::atomic<bool> gApplying{false};
+std::atomic<unsigned long long> gObserved{0};
+std::atomic<unsigned long long> gApplied{0};
+std::atomic<float> gLastFov{0.0f};
+std::atomic<float> gLastNearPlane{0.0f};
+
+float ReadFloat(const std::uint8_t* base, std::size_t offset)
+{
+    float value = 0.0f;
+    std::memcpy(&value, base + offset, sizeof(value));
+    return value;
+}
+
+void __fastcall UpdateViewObserved(void* camera, std::uint8_t* viewParams)
+{
+    const UpdateViewFn original = gOriginal.load(std::memory_order_acquire);
+    if (original != nullptr) {
+        original(camera, viewParams);   // let the game compute its own view first
+    }
+    if (viewParams == nullptr || !gObserving.load(std::memory_order_acquire)) {
+        return;
+    }
+    gLastFov.store(ReadFloat(viewParams, kViewFov), std::memory_order_relaxed);
+    gLastNearPlane.store(ReadFloat(viewParams, kViewNearPlane), std::memory_order_relaxed);
+    gObserved.fetch_add(1, std::memory_order_relaxed);
+
+    if (!gApplying.load(std::memory_order_acquire) ||
+        !gHaveReference.load(std::memory_order_acquire)) {
+        return;
+    }
+    Pose headPose{};
+    unsigned long long age = 0;
+    if (!TryReadHeadPose(headPose, age)) {
+        return;
+    }
+
+    // Read the game's rotation only to take its **yaw**. The headset owns
+    // everything else: the target architecture has no mouse pitch, so pitch and
+    // roll come from the head and nowhere else.
+    Quaternion gameRotation{};
+    std::memcpy(&gameRotation, viewParams + kViewRotation, sizeof(gameRotation));
+    const stereo::Matrix34 gameMatrix =
+        stereo::MatrixFromPose(Pose{gameRotation, Vec3{}});
+    const float playSpaceYaw = stereo::CameraYawOf(gameMatrix) -
+                               gReferenceYaw.load(std::memory_order_acquire);
+
+    Pose orientationOnly = headPose;
+    orientationOnly.position = Vec3{};
+    stereo::ReferenceFrame reference{};
+    reference.yawRadians = playSpaceYaw;
+    const Pose world = stereo::EyePoseInWorld(reference, orientationOnly);
+
+    Quaternion out = world.orientation;
+    const float lengthSquared =
+        out.x * out.x + out.y * out.y + out.z * out.z + out.w * out.w;
+    if (!std::isfinite(lengthSquared) || lengthSquared < 0.5f || lengthSquared > 2.0f) {
+        return;   // refuse rather than write a degenerate rotation into the engine
+    }
+    std::memcpy(viewParams + kViewRotation, &out, sizeof(out));
+    gApplied.fetch_add(1, std::memory_order_relaxed);
+}
+
+bool Install()
+{
+    if (gInstalled) {
+        return true;
+    }
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) {
+        return false;
+    }
+    const auto target = reinterpret_cast<std::uintptr_t>(preyDll) + kUpdateViewRva;
+    if (std::memcmp(reinterpret_cast<const void*>(target),
+                    kUpdateViewPrologue.data(), kUpdateViewPrologue.size()) != 0) {
+        Log("result=unavailable detail=update_view_prologue");
+        return false;
+    }
+    gTarget = reinterpret_cast<void*>(target);
+    UpdateViewFn original = nullptr;
+    if (MH_CreateHook(gTarget, reinterpret_cast<void*>(&UpdateViewObserved),
+                      reinterpret_cast<void**>(&original)) != MH_OK) {
+        Log("result=failed detail=view_create_hook");
+        return false;
+    }
+    gOriginal.store(original, std::memory_order_release);
+    if (MH_EnableHook(gTarget) != MH_OK) {
+        Log("result=failed detail=view_enable_hook");
+        MH_RemoveHook(gTarget);
+        return false;
+    }
+    gInstalled = true;
+    Log("result=0 detail=view_hook_installed target=ArkPlayerCamera::UpdateView");
+    return true;
+}
+
+} // namespace viewhook
+
+unsigned long long ViewHookObservedCount() { return viewhook::gObserved.load(std::memory_order_relaxed); }
+unsigned long long ViewHookAppliedCount() { return viewhook::gApplied.load(std::memory_order_relaxed); }
+float ViewHookLastFov() { return viewhook::gLastFov.load(std::memory_order_relaxed); }
+float ViewHookLastNearPlane() { return viewhook::gLastNearPlane.load(std::memory_order_relaxed); }
+
+DWORD SetViewHookObserving(unsigned int enabled)
+{
+    const bool on = enabled != 0u;
+    if (on && !viewhook::Install()) {
+        return 1;
+    }
+    if (on) {
+        viewhook::gObserved.store(0, std::memory_order_relaxed);
+    }
+    viewhook::gObserving.store(on, std::memory_order_release);
+    Log(std::string("result=0 detail=view_observing value=") + (on ? "1" : "0"));
+    return 0;
+}
+
+DWORD SetViewHookApplying(unsigned int enabled)
+{
+    const bool on = enabled != 0u;
+    if (on) {
+        if (!viewhook::gObserving.load(std::memory_order_acquire)) {
+            Log("result=refused detail=observe_first");
+            return 1;
+        }
+        if (!gHaveReference.load(std::memory_order_acquire)) {
+            Log("result=refused detail=no_reference_recenter_first");
+            return 2;
+        }
+        viewhook::gApplied.store(0, std::memory_order_relaxed);
+    }
+    viewhook::gApplying.store(on, std::memory_order_release);
+    Log(std::string("result=0 detail=view_applying value=") + (on ? "1" : "0"));
+    return 0;
+}
+
 void PublishHeadPose(const Pose& openXrHeadPose)
 {
     const unsigned long long sequence = gPoseSlot.sequence.load(std::memory_order_relaxed);
