@@ -121,9 +121,49 @@ void TestAllowlistContents()
 
 } // namespace
 
+// The weapon-offset entries added 2026-09-03, pinned deliberately.
+//
+// These are the first *writable gameplay* entries on the allowlist -- everything
+// else is a renderer or debug toggle -- so what they do and do not permit is
+// worth stating in tests rather than leaving to a reading of the array.
+void TestWeaponOffsetEntriesAreAllowed()
+{
+    Require(Classify("SetWeaponCameraOffsetX 0.1") == Classification::sceneControl,
+        "the weapon camera offset is allowed with a value");
+    Require(Classify("SetWeaponCameraOffsetY 0") == Classification::sceneControl,
+        "so is Y");
+    Require(Classify("SetWeaponCameraOffsetZ -0.05") == Classification::sceneControl,
+        "and Z, including a negative value");
+    Require(Classify("i_offset_front 0.2") == Classification::sceneControl,
+        "the item viewmodel offsets are allowed");
+    Require(Classify("i_offset_right") == Classification::query,
+        "and readable with no argument, which is how a baseline is captured");
+}
+
+// Widening the list must not widen anything else. A near-miss name is still
+// denied, and the new entries are not an injection vector.
+void TestWeaponOffsetWideningIsExact()
+{
+    RequireDenied("SetWeaponCameraOffsetW 1",
+        "a name that merely looks like one of the new entries is still denied");
+    RequireDenied("i_offset_back 1",
+        "an item offset that was not added is still denied");
+    RequireDenied("SetWeaponCameraOffset 1",
+        "the prefix without an axis is not on the list");
+    // The separator guard has to hold for the new entries exactly as for the old
+    // ones -- a writable gameplay command would be a far better smuggling vehicle
+    // than a renderer toggle.
+    RequireDenied("SetWeaponCameraOffsetX 1; quit",
+        "a separator cannot smuggle a second command behind a weapon offset");
+    RequireDenied("i_offset_front 1 && exec autoexec.cfg",
+        "nor can a shell-style chain");
+}
+
 int main()
 {
     TestAllowedFormsClassify();
+    TestWeaponOffsetEntriesAreAllowed();
+    TestWeaponOffsetWideningIsExact();
     TestCaseInsensitivity();
     TestSeparatorsCannotSmuggleCommands();
     TestExecIsDeniedExplicitly();

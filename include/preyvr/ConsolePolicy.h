@@ -63,6 +63,23 @@ bool IsAllowlistedCvar(std::string_view name);
 //                                exactly the noise a camera-move test must not be
 //                                confounded by.
 //   r_MotionBlur                 same reason; live value 2.
+//
+//   SetWeaponCameraOffsetX/Y/Z   move the first-person weapon camera offset.
+//   i_offset_front/right/up      CryEngine's standard item viewmodel offsets.
+//
+//     **Added 2026-09-03 on the owner's explicit decision, and they are the first
+//     writable gameplay entries in this list** -- everything else here is a
+//     renderer or debug toggle. The reason is H-005: the fleet graph surfaced
+//     FarCry2-vr finding Dunia's weapon camera offset, which moves the weapon with
+//     no render-pass hook and no engine call, and PreyDll.dll carries the same
+//     family. One live test settles whether Prey's are consumed, and F-007 is the
+//     reason a live test is needed rather than a symbol search: the sweep that
+//     found no consumer for g_detachCamera also found none for g_difficultyLevel,
+//     which certainly is consumed.
+//
+//     Both are reversible by setting them back, and neither reaches outside the
+//     game. Widening this list is still a deliberate act, not a convenience, and
+//     the fail-closed default stands for everything not named here.
 //   sys_MaxFPS, r_VSync          pace the host so a capture is not racing present.
 //   e_TimeOfDaySpeed             stop the sky and lighting drifting between frames.
 //   r_DrawNearFoV, r_NoDrawNear  the viewmodel pass. r_DrawNearFoV is live at 54

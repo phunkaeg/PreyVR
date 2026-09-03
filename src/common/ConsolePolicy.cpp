@@ -10,12 +10,31 @@ namespace {
 // Kept sorted for readability, not for lookup -- the list is short enough that a
 // linear scan is irrelevant and a binary search would just be a chance to get
 // the ordering wrong.
-constexpr std::array<std::string_view, 12> kAllowlist{
+// The six weapon-offset entries were added 2026-09-03 on the owner's explicit
+// decision, not for convenience. They exist to settle H-005's cheapest route with
+// one live test: the fleet graph pointed at FarCry2-vr finding Dunia's weapon
+// camera offset -- reachable with no render-pass hook and no engine call -- and
+// PreyDll.dll turns out to carry the same family. If they are live, weapon
+// placement needs neither a bone API nor a transform-writer hook.
+//
+// They are the first *writable gameplay* entries here; everything above them is a
+// renderer or debug toggle. That is a real widening of what this list permits, so
+// it is recorded rather than slipped in. `SetWeaponCameraOffset*` moves the first
+// person camera offset and `i_offset_*` are CryEngine's standard item viewmodel
+// offsets; both are reversible by setting them back, and neither reaches outside
+// the game.
+constexpr std::array<std::string_view, 18> kAllowlist{
+    "SetWeaponCameraOffsetX",
+    "SetWeaponCameraOffsetY",
+    "SetWeaponCameraOffsetZ",
     "e_CameraFreeze",
     "e_CoverageBufferDebugFreeze",
     "e_Recursion",
     "e_TimeOfDaySpeed",
     "g_detachCamera",
+    "i_offset_front",
+    "i_offset_right",
+    "i_offset_up",
     "r_AntialiasingMode",
     "r_DrawNearFoV",
     "r_MotionBlur",
