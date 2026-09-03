@@ -1,3 +1,15 @@
+> **SUPERSEDED 2026-09-03 by [`SIXDOF_ROUTE.md`](SIXDOF_ROUTE.md).**
+>
+> This document staged the work as "add head tracking to a flat game", treating
+> mouse and keyboard as fixtures to design around. The project's stated end state
+> is the opposite: HMD-owned 6DoF view, stick locomotion, controller aim, and no
+> mouse at all. That is in `README.md`'s first paragraph and was available
+> throughout; the error was mine, not a gap in the documentation.
+>
+> The **findings** below remain valid and are still the record of what was
+> measured -- the seam comparisons, R-075, the pass-camera result, the
+> instrumentation lesson. Only the **staging** is superseded.
+
 # Head tracking — scope
 
 **Status: scoped, not started. Written 2026-09-02.**
