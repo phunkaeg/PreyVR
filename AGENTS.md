@@ -157,7 +157,32 @@ Separate from this project's own `graphify-out/`. Use it for **"has another proj
 graphify query "<question>" --graph "D:\Dev Debug\VR Modding\cross-engine-graph\graphify-out\reconciled-graph.json" --budget 900
 ```
 
-> **⚠ An empty result from this graph is NOT a negative result. Verified 2026-09-01:**
+> **CORRECTED 2026-09-03 — the warning below described a real problem that has since
+> been fixed, and it was also read wrongly.** Two separate things:
+>
+> 1. **Read `links`, not `edges`.** graphify writes NetworkX node-link JSON, where
+>    relationships live under `"links"`. Indexing `["edges"]` returns an empty
+>    default with no exception — a plausible zero that cannot fail. This session
+>    reported "1,328 nodes and ZERO edges, so it isn't a graph"; the file has
+>    **651 links**. The playbook session made the identical mistake an hour later.
+>    Use `from graphio import load_graph` rather than indexing the dict.
+> 2. **There is now a proper fleet graph.**
+>    `cross-engine-graph/graphify-out/fleet-graph.json` — 2000 nodes, 1047 links,
+>    all **eight** projects namespaced, **167 cross-project links**. PreyVR carries
+>    **34** of them and reaches all seven siblings, having previously appeared in
+>    none. Query that file, not `reconciled-graph.json`.
+>
+> The old conclusion happened to hold for a different reason than the one given:
+> `reconciled-graph.json` had ~1 cross-project link, so cross-project traversal
+> really was dead — from missing semantic reconciliation, not missing edges.
+>
+> A first query against the fleet graph for hand/bone control immediately returned
+> a sibling's `HANDOVER_VIEWMODEL_AND_AIM.md` with a located animator hook, an
+> `arm-ik-authored-interactions` build entry, and BioShock's "post-animation
+> rigid-group pivot" — all directly relevant to H-005 and none of them reachable
+> before.
+
+> **⚠ Superseded, kept for the record. An empty result from the OLD graph was NOT a negative result. Verified 2026-09-01:**
 > it contains **1,328 nodes and ZERO edges**, and covers **SS2VR, BioshockVR and SOMAVR only**.
 > `Swat4-VR`, `FarCry2-vr`, `PreyVR`, `DishonoredVR` and `Sims4VR` return **zero hits because they
 > are not indexed** — as do `9On12`, `D3D12`, `adapterLuid` and `xr-sim`. A DishonoredVR session spent
