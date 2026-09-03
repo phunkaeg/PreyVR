@@ -5,6 +5,7 @@
 #include "preyvr/XrFrameContract.h"
 #include "CameraEditHook.h"
 #include "HeadTrackingHook.h"
+#include "XrInput.h"
 #include "preyvr/StereoCamera.h"
 #include "preyvr/StereoFrame.h"
 #include "preyvr/XrSwapchainFormat.h"
@@ -341,6 +342,14 @@ bool CreateSessionAndSwapchain()
         return false;
     }
 
+    // Controller input, created with the session because OpenXR permits
+    // xrAttachSessionActionSets exactly once per session. A failure here is
+    // logged and tolerated: the result is a session with no hands, which is far
+    // better than no session at all.
+    if (!CreateXrInput(gHost.instance, gHost.session)) {
+        Log("result=degraded detail=no_controller_input");
+    }
+
     std::uint32_t formatCount = 0;
     if (XR_FAILED(xrEnumerateSwapchainFormats(gHost.session, 0, &formatCount, nullptr))) {
         Log("result=failed step=enumerate_formats");
@@ -401,6 +410,7 @@ bool CreateSessionAndSwapchain()
 
 void Teardown()
 {
+    DestroyXrInput();
     for (auto*& image : gHost.eyeImage) {
         if (image != nullptr) {
             image->Release();
@@ -743,6 +753,11 @@ void ServiceXrFrame(void* renderer)
     // records that this is *after* rasterisation and therefore not where the
     // playbook says to sample; the age counter exists to measure exactly how much
     // that costs before deciding whether to move it.
+    // Located against the same predicted display time as the views, so the hands
+    // and the eyes describe the same instant.
+    UpdateXrInput(gHost.session, gHost.space,
+                  static_cast<long long>(frameState.predictedDisplayTime));
+
     if (haveViews) {
         const Pose left{
             Quaternion{views[0].pose.orientation.x, views[0].pose.orientation.y,

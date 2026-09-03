@@ -10,6 +10,7 @@
 #include "AimRayProbe.h"
 #include "HeadTrackingHook.h"
 #include "PassCameraProbe.h"
+#include "XrInput.h"
 #include "HotkeyBridge.h"
 #include "OpenXRPreflightWin32.h"
 #include "RuntimeSnapshotWin32.h"
@@ -895,6 +896,70 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetKeepHeadRotationPtr(void* enabl
 {
     return preyvr::dll::SetKeepHeadRotation(
         static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+// Controller input. 1 once the action set is attached; created with the session,
+// since OpenXR permits that exactly once and it cannot be armed later.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetXrInputCreated()
+{
+    return preyvr::dll::XrInputCreated();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetXrInputSyncCount()
+{
+    return preyvr::dll::XrInputSyncCount();
+}
+
+// Frames where that hand reported a valid pose. 0 = left, 1 = right. Zero syncs
+// means the action set never attached; syncs climbing with zero located means the
+// runtime has the actions but no controller is tracking.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetXrInputLocatedLeft()
+{
+    return preyvr::dll::XrInputLocatedCount(preyvr::dll::Hand::left);
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetXrInputLocatedRight()
+{
+    return preyvr::dll::XrInputLocatedCount(preyvr::dll::Hand::right);
+}
+
+// One hand's live state, for verifying the poses are real before anything is
+// driven from them. Millimetres and thousandths, so it crosses as integers.
+struct PreyVRControllerReadout {
+    unsigned int gripValid, aimValid;
+    int gripX, gripY, gripZ;              // millimetres, OpenXR space
+    int aimForwardX, aimForwardY, aimForwardZ;   // thousandths of a unit
+    int thumbstickX, thumbstickY;         // thousandths
+    unsigned int trigger, grip;
+};
+
+extern "C" __declspec(dllexport) DWORD PreyVR_ReadControllerPtr(PreyVRControllerReadout* out)
+{
+    if (out == nullptr) {
+        return 0;
+    }
+    *out = PreyVRControllerReadout{};
+    preyvr::dll::ControllerState state{};
+    // Right hand: the one a weapon would be in.
+    if (!preyvr::dll::TryGetControllerState(preyvr::dll::Hand::right, state)) {
+        return 0;
+    }
+    out->gripValid = state.gripValidity.orientationValid ? 1u : 0u;
+    out->aimValid = state.aimValidity.orientationValid ? 1u : 0u;
+    out->gripX = static_cast<int>(state.gripPose.position.x * 1000.0f);
+    out->gripY = static_cast<int>(state.gripPose.position.y * 1000.0f);
+    out->gripZ = static_cast<int>(state.gripPose.position.z * 1000.0f);
+    // OpenXR forward is -Z; rotating it shows where the controller points.
+    const preyvr::Vec3 forward =
+        preyvr::Rotate(state.aimPose.orientation, preyvr::Vec3{0.0f, 0.0f, -1.0f});
+    out->aimForwardX = static_cast<int>(forward.x * 1000.0f);
+    out->aimForwardY = static_cast<int>(forward.y * 1000.0f);
+    out->aimForwardZ = static_cast<int>(forward.z * 1000.0f);
+    out->thumbstickX = static_cast<int>(state.thumbstickX * 1000.0f);
+    out->thumbstickY = static_cast<int>(state.thumbstickY * 1000.0f);
+    out->trigger = state.triggerPressed ? 1u : 0u;
+    out->grip = state.gripPressed ? 1u : 0u;
+    return 1;
 }
 
 // The view seam: ArkPlayerCamera::UpdateView. Observe first -- the SViewParams
