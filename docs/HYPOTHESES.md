@@ -37,6 +37,36 @@ whether Prey inherited it. **It did.** Present in `PreyDll.dll`:
 | `i_offset_front`, `i_offset_right`, `i_offset_up` | CryEngine's standard viewmodel offset cvars |
 | `g_weaponOffsetInput`, `g_weaponOffsetOutput`, `g_weaponOffsetToMannequin`, `g_debugWeaponOffset` | a whole offset family |
 
+### CORRECTION 2026-09-03, before any test was spent on it
+
+**FarCry2-vr already falsified this lever in a headset**, and the entry above
+over-claimed by not checking their result first:
+
+> `weapon+0x6C` float3 -- **moves the CAMERA, not the mesh.** Tested in a headset.
+> Real, engine-native, per-frame writable -- but it is a *camera* knob.
+
+Prey's own help text says the same thing and I read past it: *"Set the offset in X
+for the **First Person camera**"*. `SetWeaponCameraOffset` names the weapon camera,
+not the weapon. So this is very likely a camera knob here too, and **not** the
+weapon-placement answer.
+
+It is still worth the one cheap test, because a per-frame writable first-person
+camera offset is genuinely useful for camera work -- but it should be filed under
+camera, and the expectation corrected before it is run.
+
+**Their bone finding matters more, and is also a negative result:**
+`GetBoneWorldMatrix` is an attachment *query*, not a skeleton -- 92,298 calls
+across 3 distinct (entity, bone) pairs, and no arms entity ever appears. Nine bones
+on the weapon, only muzzle and shell-eject queried. *"There is no arm rig on this
+path at all"*, and the final arm draw is almost certainly **pre-skinned**, with the
+pose work upstream in a system not yet located. They recorded that it *"saved
+building a write, a dirty-flag protocol and a composition"* on a dead path.
+
+For H-005 that means the bone route needs the **skinning/pose** path, not a bone
+getter -- and their eventual method was *"follow the getter down to its backing
+store, because an engine that ships no bone setter leaves direct array writes as
+the only mechanism. Not by hunting for a function called SetBone."*
+
 **Why this matters more than the bone route.** H-005 has been scoped around
 locating the late-frame weapon transform writer and driving limb IK. If these
 offsets are live, weapon *position* is reachable **without a render-pass hook, a

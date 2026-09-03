@@ -8,6 +8,7 @@
 #include "FrameObserverHook.h"
 #include "Logger.h"
 #include "AimRayProbe.h"
+#include "AimTakeover.h"
 #include "HeadTrackingHook.h"
 #include "PassCameraProbe.h"
 #include "XrInput.h"
@@ -896,6 +897,38 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetKeepHeadRotationPtr(void* enabl
 {
     return preyvr::dll::SetKeepHeadRotation(
         static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+// M2: the weapon points where the controller points. Off by default; the A/B that
+// matters is aim, look away, toggle, aim again.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetAimTakeoverEnabledPtr(void* enabled)
+{
+    return preyvr::dll::SetAimTakeoverEnabled(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetAimTakeoverApplied()
+{
+    return preyvr::dll::AimTakeoverAppliedCount();
+}
+
+// Split deliberately: a sleeping controller, a refused composition and a missing
+// player call for opposite responses, and one counter would hide which happened.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetAimTakeoverRejectedNoPose()
+{
+    return preyvr::dll::AimTakeoverRejectedNoPose();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetAimTakeoverRejectedCompose()
+{
+    return preyvr::dll::AimTakeoverRejectedCompose();
+}
+
+// The engine's own direction magnitude in thousandths, sampled before any write.
+// 1000 confirms the field is the unit vector we think it is.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetAimTakeoverNativeMagnitude()
+{
+    return preyvr::dll::AimTakeoverNativeDirectionMagnitude();
 }
 
 // Controller input. 1 once the action set is attached; created with the session,

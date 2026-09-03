@@ -503,6 +503,11 @@ unsigned long long HeadTrackingMaxPoseAgeMicroseconds()
     return gMaxPoseAgeMicroseconds.load(std::memory_order_relaxed);
 }
 
+float HeadTrackingReferenceYaw()
+{
+    return gReferenceYaw.load(std::memory_order_acquire);
+}
+
 DWORD HeadTrackingHasReference()
 {
     return gHaveReference.load(std::memory_order_acquire) ? 1u : 0u;

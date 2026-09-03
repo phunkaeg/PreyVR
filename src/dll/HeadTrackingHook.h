@@ -103,6 +103,13 @@ DWORD SetViewHookObserving(unsigned int enabled);
 // the layout, and a recenter reference.
 DWORD SetViewHookApplying(unsigned int enabled);
 
+// The recenter yaw, shared with every lane that composes against the play space.
+//
+// CAM-003, "one recenter event, all lanes": the view and the aim must resolve the
+// same reference, or the hand and the eye drift apart and a recenter fixes only
+// one of them.
+float HeadTrackingReferenceYaw();
+
 // Arms the camera edit. Off by default.
 //
 // Refused unless a recenter reference has been captured, because without one the
