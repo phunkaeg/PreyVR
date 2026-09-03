@@ -890,6 +890,13 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetPassCameraMaxDifferenceMill
     return preyvr::dll::PassCameraMaxDifferenceMillidegrees();
 }
 
+// Leaves head rotation on the camera so the next frame's occlusion job sees it.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetKeepHeadRotationPtr(void* enabled)
+{
+    return preyvr::dll::SetKeepHeadRotation(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
 // Head rotation on the upstream camera, which is the one the engine culls from.
 // Recenter first.
 extern "C" __declspec(dllexport) DWORD PreyVR_SetUpstreamHeadRotationPtr(void* enabled)

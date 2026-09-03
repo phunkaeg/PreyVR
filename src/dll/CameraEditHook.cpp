@@ -104,6 +104,11 @@ std::atomic<float> gWrittenForwardX{0.0f};
 std::atomic<float> gWrittenForwardY{0.0f};
 std::atomic<float> gWrittenForwardZ{0.0f};
 std::atomic<bool> gHaveWrittenForward{false};
+
+// Leave the head rotation on the camera instead of restoring it, so the next
+// frame's occlusion job sees it. Off by default: it changes what every reader of
+// the global camera sees, which is a bigger commitment than a bounded edit.
+std::atomic<bool> gKeepHeadRotation{false};
 std::atomic<bool> gDoubleRender{false};
 std::atomic<unsigned int> gDoubleRenderBudget{0};
 
@@ -1105,10 +1110,37 @@ void __fastcall RenderWithCameraEdit(void* system)
         original(system);
     }
 
-    std::memcpy(camera, restore.bytes.data(), cameraedit::kCameraSize);
+    // **Head rotation is deliberately left in place; everything else is restored.**
+    //
+    // The occlusion job is spawned from `GetViewCamera()` in the frame's update,
+    // *before* CSystem::Render is called at all, so a rotation that is written
+    // during Render and undone before returning is never visible to culling. That
+    // is the whole reason the cull frustum followed the mouse while the pass
+    // camera agreed with us to zero millidegrees.
+    //
+    // Leaving it means the next frame's occlusion job reads a camera carrying the
+    // previous frame's head rotation. One frame stale, which for a *cull* frustum
+    // is cheap: it decides what to submit, and a frame of lag on that shows as
+    // slightly-wrong edges during a fast turn rather than as missing rooms.
+    //
+    // **This is a real behavioural change, not just a timing one.** A rotation
+    // left on the global camera is visible to every reader of it, including the
+    // cached aim ray, so aim will follow the head. That is a different tradeoff
+    // from the transient per-eye offset, which was restored precisely because no
+    // engine expects it -- a rotated view camera is ordinary, and is what those
+    // readers see whenever the player turns with a mouse.
+    //
+    // The alternative is a bounded window: write before the occlusion job and
+    // restore after Render. That needs the address of Prey's PrepareOcclusion
+    // call, which the static hunt has not yet produced.
+    const bool keepRotation =
+        headRotationApplied && gKeepHeadRotation.load(std::memory_order_acquire);
+    if (!keepRotation) {
+        std::memcpy(camera, restore.bytes.data(), cameraedit::kCameraSize);
+    }
 
     // Verified, not assumed. A restore that is merely performed is a hope.
-    if (!cameraedit::MatchesRestorePoint(live, restore)) {
+    if (!keepRotation && !cameraedit::MatchesRestorePoint(live, restore)) {
         gRestoreFailures.fetch_add(1, std::memory_order_relaxed);
         gArmed.store(false, std::memory_order_release);
         gStereoIpd.store(0.0f, std::memory_order_release);
@@ -1751,6 +1783,17 @@ void SetStereoEyeLockFromRenderThread(int eye)
     // offline dumps from being confused with each other, which is a debugging
     // concern; submission has its own eye identity and does not read it.
     gEyeLock.store((eye == 0 || eye == 1) ? eye : -1, std::memory_order_release);
+}
+
+DWORD SetKeepHeadRotation(unsigned int enabled)
+{
+    const bool on = enabled != 0u;
+    gKeepHeadRotation.store(on, std::memory_order_release);
+    std::ostringstream line;
+    line << "preyvr_camera_edit result=0 detail=keep_head_rotation enabled="
+         << (on ? "1" : "0");
+    lifecycle::Log(line.str());
+    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
 }
 
 bool LastWrittenCameraForward(Vec3& out)

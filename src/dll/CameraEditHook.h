@@ -129,6 +129,22 @@ unsigned long long EyeHandoffDroppedCount();
 // SetStereoEyeLock, which also keeps the capture tag correct.
 void SetStereoEyeLockFromRenderThread(int eye);
 
+// Leaves the head rotation on the global camera rather than restoring it, so the
+// next frame's occlusion job sees it.
+//
+// **A diagnostic first and possibly the fix.** The occlusion job is spawned from
+// GetViewCamera() before CSystem::Render runs, so a rotation written during
+// Render and undone before returning is never visible to culling -- which is why
+// the cull frustum followed the mouse while the pass camera agreed with us
+// exactly. Leaving it costs one frame of staleness on the cull frustum, which
+// decides what to submit and tolerates lag far better than the render camera
+// would.
+//
+// It also changes behaviour rather than only timing: every reader of the global
+// camera now sees the rotation, including the cached aim ray, so aim follows the
+// head. Off by default for that reason.
+DWORD SetKeepHeadRotation(unsigned int enabled);
+
 // The forward axis the camera edit last wrote, for the pass-camera probe.
 //
 // Exists so the probe can answer whether the camera the engine culls with is the
