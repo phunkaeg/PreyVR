@@ -443,3 +443,52 @@ job.
 Find where Prey calls `PrepareOcclusion`, and write the rotation before it. The
 route is offline: `CSystem::Render` is R-058, so its callers give Prey's
 `PostUpdate`, and the virtual call a few lines earlier is `PrepareOcclusion`.
+
+
+## Keep-rotation run, 2026-09-03: timing refuted, and a bug of mine found
+
+**The timing theory is wrong.** With the rotation left on the camera rather than
+restored -- so the next frame's occlusion job would read it -- **culling still
+followed the mouse**. Not restoring changes nothing, which rules out "our edit
+happens after the occlusion job reads the camera" as the explanation.
+
+### And the run surfaced a bug the counters could never have shown
+
+Reported from the screen: the view was offset to the side, with the player's whole
+body rotating in front of it.
+
+`ApplyHeadRotation` **replaced** the camera's orientation with
+`recenterYaw + headRotation` instead of composing with the engine's own. So
+mouse-look never reached the rendered camera: the body kept turning with the
+mouse and the camera did not, which is precisely a body rotating in front of the
+view.
+
+Fixed by taking the reference yaw from the engine's current facing minus the yaw
+the head held at recenter, so a head back at its recenter orientation reproduces
+the engine's camera exactly and head rotation composes on top of the player's
+facing. Two tests pin it, and the negative control -- parking the reference at the
+recenter yaw, the original bug -- fails the named assertion.
+
+**Every counter was green while this was happening.** Applied climbed at frame
+rate, refusals stayed at zero, restore failures stayed at zero, the pass-camera
+probe agreed to zero millidegrees. None of them could see it, because they all
+measure whether the write happened rather than whether the value was right. A
+person looking at the screen caught it immediately.
+
+### What this means for the culling question
+
+The two symptoms were entangled. With the camera's orientation replaced rather
+than composed, our camera had **diverged from the engine's**, so "culling follows
+the mouse" may have been describing the divergence rather than a separate cull
+camera. Culling might well follow our camera and simply have been correct about a
+camera that was wrong.
+
+**So the culling question is now open again rather than answered**, and the next
+run has to re-establish it with the composition fixed. Two results that looked
+like findings -- the timing refutation above, and the earlier separate-cull-camera
+conclusion -- both rest on observations taken while the render camera was wrong.
+Neither is safe to keep.
+
+What does survive is the pass-camera measurement itself: 903 samples, 903
+agreements, zero disagreements. That compared our written camera against the pass
+camera, and holds whatever the written camera contained.

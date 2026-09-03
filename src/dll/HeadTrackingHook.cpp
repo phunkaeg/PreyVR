@@ -240,12 +240,17 @@ bool ApplyHeadRotation(std::uint8_t* camera, std::size_t size)
     }
     const auto span = std::span<std::uint8_t>(camera, cameraedit::kCameraSize);
 
-    // The engine's own eye point stays the engine's business, so walking,
-    // collision and scripted movement are untouched. Only the orientation is ours.
+    // **Compose with the engine's camera rather than replacing it.** The engine's
+    // camera already carries where the player is facing, so the play space sits at
+    // that yaw minus the yaw the head held at recenter. A head back at its
+    // recenter orientation then reproduces the engine's own camera exactly.
+    //
+    // The first build set the reference to the recenter yaw and left it, which
+    // discarded mouse-look from the rendered camera entirely -- seen in game as
+    // the player's body rotating in front of the view.
     const stereo::Matrix34 existing = stereo::ReadMatrix(span);
-    stereo::ReferenceFrame reference{};
-    reference.worldPosition = stereo::PoseFromMatrix(existing).position;
-    reference.yawRadians = gReferenceYaw.load(std::memory_order_acquire);
+    const stereo::ReferenceFrame reference = stereo::ReferenceFrameForHeadTracking(
+        existing, gReferenceYaw.load(std::memory_order_acquire));
 
     Pose orientationOnly = headPose;
     orientationOnly.position = Vec3{};

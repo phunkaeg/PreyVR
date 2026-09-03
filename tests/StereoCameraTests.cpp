@@ -377,8 +377,55 @@ void TestRecenterReferenceFailsClosed()
         "an unusable head pose refuses the whole reference");
 }
 
+// The correction to the first head-tracking build, pinned.
+//
+// That version parked the reference at the recenter yaw, so the rendered camera
+// pointed at recenterYaw + headRotation and the player's mouse-look never reached
+// it. In game that looks like the body rotating in front of the view -- the body
+// still turns with the mouse and the camera does not. The composition has to
+// start from the engine's own facing.
+void TestHeadAtRecenterReproducesTheGameCamera()
+{
+    // The engine facing several different ways, as a player turning would.
+    const float gameYaws[] = {0.0f, 0.8f, -1.9f, 2.7f};
+    const float recenterYaw = 0.35f;
+    const Pose headAtRecenter = HeadPose(recenterYaw, 0.0f, 0.0f);
+
+    for (const float gameYaw : gameYaws) {
+        const Matrix34 gameCamera = MatrixFromPose(
+            Pose{YawQuaternion(gameYaw), Vec3{5.0f, -2.0f, 1.5f}});
+
+        const ReferenceFrame reference =
+            ReferenceFrameForHeadTracking(gameCamera, recenterYaw);
+        const Pose world = EyePoseInWorld(reference, headAtRecenter);
+
+        Require(Near(CameraYawOf(MatrixFromPose(world)), gameYaw, 1e-3f),
+            "a head at its recenter orientation reproduces the engine's own facing");
+        Require(NearVec(world.position, Vec3{5.0f, -2.0f, 1.5f}),
+            "and the engine keeps its own eye point");
+    }
+}
+
+// Head rotation adds to the player's facing rather than replacing it: turn the
+// head 30 degrees and the camera moves 30 degrees from wherever the mouse left it.
+void TestHeadRotationAddsToTheGameCamera()
+{
+    const float recenterYaw = 0.0f;
+    const float gameYaw = 1.2f;
+    const float headTurn = 0.5236f;   // 30 degrees
+    const Matrix34 gameCamera = MatrixFromPose(Pose{YawQuaternion(gameYaw), Vec3{}});
+
+    const ReferenceFrame reference = ReferenceFrameForHeadTracking(gameCamera, recenterYaw);
+    const Pose world = EyePoseInWorld(reference, HeadPose(headTurn, 0.0f, 0.0f));
+
+    Require(Near(CameraYawOf(MatrixFromPose(world)), gameYaw + headTurn, 1e-3f),
+        "the head turn composes onto the player's facing");
+}
+
 int main()
 {
+    TestHeadAtRecenterReproducesTheGameCamera();
+    TestHeadRotationAddsToTheGameCamera();
     TestRecenterYawTracksYaw();
     TestRecenterYawIgnoresRollAndPitch();
     TestNearVerticalHeadPoseIsRefused();

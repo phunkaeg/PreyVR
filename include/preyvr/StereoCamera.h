@@ -147,6 +147,30 @@ std::optional<float> RecenterYawFromHeadPose(const Pose& openXrHeadPose);
 // Fails closed with the same rejection as above -- and a caller must treat that
 // as "keep the current reference", never as "use a zero yaw", which would snap
 // the player's world to face engine north.
+// The reference frame that makes head rotation **compose with** the game's own
+// camera instead of replacing it.
+//
+// **This is the correction to the first head-tracking build.** That version set
+// the reference yaw to the recenter yaw and left it there, so the rendered camera
+// pointed at `recenterYaw + headRotation` and the player's mouse-look was simply
+// discarded. In game that reads as the body rotating in front of you: the body
+// still turns with the mouse, and the camera no longer does.
+//
+// The engine's camera already carries where the player is facing -- mouse, stick,
+// scripted turns, everything. So the play space must sit at *that* yaw, minus the
+// yaw the head was at when recenter was pressed. Then a head back at its recenter
+// orientation reproduces the engine's own camera exactly, and head rotation adds
+// on top of the player's facing rather than fighting it.
+//
+// Position is taken unchanged from the engine's camera, so walking, collision and
+// scripted movement stay the engine's business.
+ReferenceFrame ReferenceFrameForHeadTracking(const Matrix34& gameCamera, float recenterYaw);
+
+// The yaw a camera matrix is facing, about engine Z. Same construction as
+// RecenterYawFromHeadPose -- the forward axis projected onto the horizontal plane
+// -- so the two cannot disagree about what yaw means.
+float CameraYawOf(const Matrix34& matrix);
+
 std::optional<ReferenceFrame> MakeRecenterReference(
     const Pose& openXrHeadPose,
     Vec3 worldPosition);

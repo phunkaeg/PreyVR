@@ -160,6 +160,23 @@ std::optional<float> RecenterYawFromHeadPose(const Pose& openXrHeadPose)
     return std::atan2(-forward.x, forward.y);
 }
 
+float CameraYawOf(const Matrix34& matrix)
+{
+    // Row-major Matrix34: forward is column 1, elements 1, 5 and 9. Matches
+    // YawQuaternion, where a yaw of t sends +Y to (-sin t, cos t, 0).
+    return std::atan2(-matrix[1], matrix[5]);
+}
+
+ReferenceFrame ReferenceFrameForHeadTracking(const Matrix34& gameCamera, float recenterYaw)
+{
+    ReferenceFrame reference{};
+    reference.worldPosition = PositionOf(gameCamera);
+    // The engine's facing, minus where the head was when recenter was pressed.
+    // A head back at that orientation then reproduces the engine's camera exactly.
+    reference.yawRadians = CameraYawOf(gameCamera) - recenterYaw;
+    return reference;
+}
+
 std::optional<ReferenceFrame> MakeRecenterReference(
     const Pose& openXrHeadPose,
     Vec3 worldPosition)
