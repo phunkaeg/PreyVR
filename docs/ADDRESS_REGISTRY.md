@@ -146,3 +146,33 @@ if that crash is revisited.
 
 **This blocks only rung 1b**, which needs a submission seam to double. It does not
 block rung 3, which is the selected route and needs no part of it.
+
+## R-075 -- SViewParams layout, confirmed live 2026-09-03
+
+The struct `ArkPlayerCamera::UpdateView` (R-009) fills in, at RDX.
+
+| offset | field | type |
+| --- | --- | --- |
+| `+0x00` | `position` | `Vec3` |
+| `+0x0C` | `rotation` | `Quat`, x y z w |
+| `+0x1C` | `localRotationLast` | `Quat` |
+| `+0x2C` | `nearplane` | `float` |
+| `+0x30` | `fov` | `float`, radians |
+
+Taken from the **CryGame CE3 tree**, the generation the playbook names as closest
+to Prey, and confirmed against this binary rather than assumed: a read-only hook
+over 3357 calls reported `fov` as **1.5447 rad**, matching to the last digit the
+value measured from `CSystem::m_ViewCamera` by a completely unrelated route.
+
+**Confirming `fov` confirms the fields that matter.** `0x30` is only reachable as
+`position(12) + rotation(16) + localRotationLast(16) + nearplane(4)`, so the
+offset landing exactly means every preceding field is where CE3 puts it --
+including `rotation`, which is the one the view seam writes. A single field
+agreeing by coincidence is possible; the arithmetic behind its offset agreeing is
+not.
+
+`nearplane` reads `0.0`, which is expected: `SViewParams` initialises it to zero
+and only sets it for special cases.
+
+`Quat` is `Vec3 v; F w` in this tree, so components are x, y, z, w in memory --
+the same order as this project's own `Quaternion`, needing no swizzle.
