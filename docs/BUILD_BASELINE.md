@@ -45,6 +45,13 @@ Measured on 2026-08-15 across seven functions whose Steam and EGS addresses are 
 | `CArkWeapon::GetReticleInfoForFiring` | `0x1694890` | `0x1666DE0` | `0x2DAB0` |
 | `ArkPlayerMovementController::GetMovementState` | `0x159AF10` | `0x156E050` | `0x2CEC0` |
 
+Contributed to the fleet playbook 2026-09-05 as **`RE-010`** (one game, several binaries), with
+**`FAIL-RE-027`** and **`FAIL-RE-028`** as its symptoms and a shipping subsection in chapter 08.
+The pattern pairs this measurement with FarCry2-vr's negative control -- their verifier passes 7/7
+on the Uplay/Steam map and *correctly fails 7/7* on the GOG map -- because a check that passes on
+two different builds is not checking anything. The shipped-mod consequence is recorded there:
+identify the build, select a table or refuse, and gate each hook as well as the image.
+
 Five distinct deltas across seven pairs, spanning `0x1590` (5,520 bytes). Code was inserted and
 removed unevenly between the builds, so **no arithmetic shortcut exists**. This matters now that
 the Chairloader headers supply 14,622 EGS function RVAs: each one must be translated by its own
