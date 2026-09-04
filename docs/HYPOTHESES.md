@@ -264,3 +264,43 @@ show the thing being claimed: six captures at an even frame stride, 277 "healthy
 syncs that were all unfocused, and "static" IK targets sampled from a stationary
 player. Every one was cheap to falsify once someone tried. **The wearer falsified
 two of them faster than the instrumentation did.**
+
+
+## unitsPerMetre MEASURED, 2026-09-04: Prey's units are metres
+
+No longer an assumption. Measured live on a **vanilla** Prey by sampling
+`CSystem::m_ViewCamera`'s world height at 50 Hz while the player crouched and
+stood repeatedly in one spot.
+
+| | |
+| --- | --- |
+| samples | 584 over 12 s |
+| eye height range | 488.5 to 489.2 |
+| **crouch delta** | **0.700** |
+| horizontal travel | 0.09, 0.10 |
+
+**0.7 units for a crouch is a human crouch in metres** -- standing eye height about
+1.65 m, crouched about 0.95 m. Centimetres would have given 70. The near-zero
+horizontal travel is what makes it a crouch rather than a walk downhill or a
+staircase, which is the confound that would otherwise make this number meaningless.
+
+**So `unitsPerMetre = 1`.** The stereo eye offset of 0.064 m, chosen by the wearer
+from a live sweep, is therefore a true 64 mm and not a coincidence -- which
+retroactively explains why a *physical* IPD felt right when SS2VR's symptom triad
+predicts a wrong scale shows up as needing an eye separation far from the physical
+value.
+
+### What this unblocks
+
+M3's exit criterion no longer needs a calibration hunt. SS2VR's framing -- one
+shared calibration must make leaning amplitude and stereo scale believable together
+-- can now be tested against a *known* scale rather than a fitted one, so a
+disagreement means something is wrong rather than that the constant needs tuning.
+
+### Why it took this long, which is the useful part
+
+The measurement is twelve seconds of work and needed only a live process. It stayed
+open all session because it was recorded as an assumption and never converted into
+a question anyone could answer cheaply. **Two earlier notes even described the
+evidence for it** -- human-scale IK target heights, and a comfortable physical IPD --
+without either being turned into a measurement.
