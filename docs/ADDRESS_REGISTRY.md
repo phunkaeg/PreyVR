@@ -241,3 +241,61 @@ weapon camera offset, which turned out to move the camera rather than the mesh.
 
 The next step is to find what references `0x1D26FC6`, since that function already
 has the target transform in hand.
+
+## R-077 -- the IK target transform layout, 2026-09-04
+
+Found by scanning `.text` for a RIP-relative `LEA` resolving to R-076's format
+string, because **Ghidra has no xrefs for it and no function defined there** --
+its analysis has not covered this region at all. The scan is the same byte-level
+sweep this project used for the `GetViewCamera` census.
+
+| | |
+| --- | --- |
+| reference to the format string | `LEA` at RVA **`0x878744`** |
+| containing function start | RVA **`0x877B50`** (the reference is `+0xBF4` in) |
+| `CreateIKLimb` binding registration | `LEA` at RVA `0x18090B9` |
+| `IKLIMB_LEFTHAND` constant registration | `LEA` at RVA `0x18091D0` |
+
+### The transform, read out of the instructions around it
+
+The loads bracketing the `LEA` all come from `r12`:
+
+```
+movss xmm6, [r12+0x00]   movss xmm5, [r12+0x04]
+movss xmm4, [r12+0x08]   movss xmm7, [r12+0x0C]
+movss xmm3, [r12+0x10]   movss xmm2, [r12+0x14]
+movss xmm8, [r12+0x18]
+lea   rax, [LHand_IKTarget fmt]
+```
+
+Seven floats at `+0x00`..`+0x18`, feeding a string that prints
+`rot: (%f %f %f %f) pos: (%f %f %f) blend: %f`. So:
+
+```
+r12 + 0x00   Quat  rot   (x, y, z, w)
+r12 + 0x10   Vec3  pos
+r12 + 0x1C   float blend   (loaded after the window dumped here)
+```
+
+That is CryEngine's `QuatT` followed by a blend weight -- **the exact shape a hand
+takeover writes**, confirmed from the code that consumes it rather than from a
+header.
+
+### The limitation, which is real
+
+**This is the logging path.** The `LEA` only executes when whatever debug switch
+guards it is on, so it proves the *layout* and does not by itself give a live
+pointer. The consumer that actually applies the target reads the same structure
+elsewhere.
+
+Two ways on, and they are cheap in different currencies:
+
+1. **Static:** find other code touching a `QuatT`+blend at these offsets within the
+   `FirstPersonHandIKContext`, and locate the context itself.
+2. **Live:** breakpoint `0x180878744` in x64dbg with the guarding switch enabled;
+   `r12` then names a real IK target address, and the containing object follows
+   from it. This is the faster of the two if the switch can be found.
+
+Nothing here has been hooked or written. Layout confirmed, seam not yet held --
+the same standard that stopped the weapon camera offset being called a weapon
+lever.
