@@ -299,3 +299,73 @@ Two ways on, and they are cheap in different currencies:
 Nothing here has been hooked or written. Layout confirmed, seam not yet held --
 the same standard that stopped the weapon camera offset being called a weapon
 lever.
+
+## R-078 -- the IK targets, read live 2026-09-04
+
+Captured with Frida on a **vanilla** Prey, hooking R-077's `LEA` and reading the
+thread context. No PreyVR DLL involved; the only change was the debug guard at
+`PreyDll+0x2257810`, set to 1 for the capture and **restored to 0** afterwards.
+
+x64dbg was tried first and abandoned. The site sits inside animation command
+processing, so a software breakpoint halts the game every frame and yields one
+awkward read; a Frida `Interceptor` samples thousands of hits without stopping
+anything. **On a hot per-frame site, prefer the interceptor.**
+
+### The layout, confirmed rather than inferred
+
+`r12` points at a `QuatT`:
+
+```
+r12 + 0x00   Quat  rot  (x, y, z, w)   -- unit length in 4/4 samples checked
+r12 + 0x10   Vec3  pos
+stride       0x1C (28 bytes) -- entries are adjacent in an array
+```
+
+**R-077's guess that blend sits at `+0x1C` is wrong.** `+0x1C` is the *next*
+entry's first float -- proved by the same value appearing as one sample's eighth
+float and the next sample's first. The blend is passed separately.
+
+Every quaternion sampled had magnitude 1.0000, which is what identifies the field
+as a rotation rather than four unrelated floats.
+
+### Two limbs, named by a register
+
+`rsi` carries a limb identifier, consistent across every skeleton:
+
+| `rsi` | mean position | reading |
+| --- | --- | --- |
+| `0x4EC` | 0.234, 0.066, 1.24 | near the body -- the trigger hand |
+| `0x7E0` | 0.034, **0.432**, 1.25 | extended forward -- the support hand |
+
+That matches the rig's own names, `Bip01 RHand2RiflePos_IKTarget` and
+`Bip01 LHand2Weapon_IKTarget`.
+
+### The finding that matters for a takeover
+
+**These targets are static.** Sampled across 697 hits each, `x` never moved beyond
+the third decimal -- range `[0.234, 0.234]`. They are *authored rest targets*, not
+values the animation system recomputes per frame.
+
+So nothing is fighting a write. A controller-driven hand can write these each frame
+without racing the animator, which is a materially easier position than a value
+being recomputed underneath us.
+
+Four live targets, two per skeleton, at stable addresses for the session
+(`0x...f02604`/`0x...f02620` and `0x...efef04`/`0x...efef20` in this run), all
+sharing one owning object in `r13`.
+
+### Still not established
+
+The addresses are heap and **session-specific** -- they must be reached through the
+owning object rather than hardcoded. `r13` is the same for every hit and is the
+obvious next thread to pull, along with `rdi`, which differs per skeleton.
+
+And nothing has been written yet. That these are the targets the IK *solves toward*
+is inferred from the rig names and the geometry; it is not proven until a write
+moves a hand on screen.
+
+### Position units
+
+`z` values of 0.94 to 1.53 for hand targets are human limb heights **in metres**,
+which is further weak support for `unitsPerMetre = 1` -- gathered, again, while
+looking for something else.
