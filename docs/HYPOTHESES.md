@@ -147,3 +147,59 @@ If leaning needs one scale and stereo needs another, the scale is wrong -- and t
 is a *comparison*, not an aesthetic judgement. It also fails loudly in the case
 that matters: a value that happens to look right standing still and wrong the
 moment the player moves.
+
+
+## H-004 CONFIRMED LIVE with a motion controller, 2026-09-04
+
+The gate that stopped the earlier prototype is open. Previously reproduced with a
+synthetic probe and a stack-local wrench edit; now driven by a physical Touch
+controller through the full path.
+
+| | |
+| --- | --- |
+| native direction magnitude | **1000** exactly, sampled before every write |
+| applied / compose-rejected, measured window | **911 / 0** |
+| controllers located | 14,550 left, 15,447 right |
+| restore failures | 0 |
+
+**Confirmed by the wearer, all three:**
+
+1. the gloo gun aims **predictably** along the controller
+2. the aim **rotates with the mouse yaw** -- it carries with the player's facing
+   rather than being left behind on a fixed bearing
+3. pointing at an interactable raises the use-prompt where the **controller**
+   points
+
+The second is the one that distinguishes a working composition from a coincidence,
+and it is what the fix on 2026-09-04 changed.
+
+### What is proven, and what is not
+
+**Proven:** a motion controller owns Prey's gameplay aim. Native consumers respond
+-- weapon firing and `ArkPlayerTargetSelector::UpdateCandidates` both act on the
+written ray. The write is direction-only, at `ArkPlayer+0x17E0`, after R-011 rebuilds
+it and before its consumers read.
+
+**Not proven, and not claimed:**
+
+- The **weapon model does not follow** the controller. It never could from this
+  seam -- the mesh is posed by the animation and attachment system, which is H-005
+  and still open. An earlier instruction to "watch the weapon move" was asking for
+  the one thing this lane cannot do.
+- **Not yet tested against head tracking.** BioshockVR's stricter form -- hold the
+  controller still, move only the HMD, the weapon must not follow -- cannot be run
+  until the view seam is applied, because the head currently drives nothing. It
+  remains M2's real exit criterion.
+- The applied share over the whole armed period was about **half**, with the
+  remainder rejected as no-pose and **zero** rejected on composition. The split
+  counter attributes it to controller pose availability rather than the maths, and
+  it is worth a look rather than an assumption.
+
+### On the "impossible" claim
+
+The earlier prototype's blocker was taking control of weapon models **and** aim.
+Those are now clearly separate: **aim is done**, and weapon models remain open with
+a narrower question than before -- FarCry2-vr established for the same engine family
+that the weapon camera offset moves the *camera* rather than the mesh, that the bone
+getter is an attachment query with no arm rig on it, and that the arm draw is
+probably pre-skinned with the pose work upstream.
