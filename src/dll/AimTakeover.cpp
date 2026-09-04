@@ -2,6 +2,7 @@
 
 #include "HeadTrackingHook.h"
 #include "Logger.h"
+#include "ReticleFollow.h"
 #include "XrInput.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/MotionController.h"
@@ -164,6 +165,13 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
                     playerAddress + engine::ArkPlayerLayout::cachedReticleDirection),
                 &ray->direction, sizeof(ray->direction));
     gApplied.fetch_add(1, std::memory_order_relaxed);
+
+    // Move the crosshair to match. Without this the reticle keeps pointing where
+    // the engine aimed while shots follow the hand, so anyone judging aim by the
+    // crosshair is being told the wrong thing. Independently gated, so a
+    // crosshair that follows while shots do not -- or the reverse -- names which
+    // half is wrong.
+    WriteReticleScreenPosition(player, ray->direction);
 }
 
 bool Install()

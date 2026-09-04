@@ -176,3 +176,68 @@ and only sets it for special cases.
 
 `Quat` is `Vec3 v; F w` in this tree, so components are x, y, z, w in memory --
 the same order as this project's own `Quaternion`, needing no swizzle.
+
+## R-076 -- Prey's first-person hand IK seam, 2026-09-04
+
+Found by searching the binary directly after Ghidra's string index returned
+nothing for any of these. **The index is incomplete; the strings are present.**
+That is worth knowing on its own -- an empty Ghidra string search is not evidence
+of absence on this binary.
+
+### A script-reachable limb-IK constructor
+
+```
+slot,limbName,rootBone,midBone,endBone,flags   rva 0x1EA6FB5
+CreateIKLimb                                   rva 0x1EA6FE0
+IKLIMB_LEFTHAND / IKLIMB_RIGHTHAND             rva 0x1EA7028 / 0x1EA7038
+```
+
+The parameter list sits immediately before the name, in `.rdata` among other
+script bindings (`SelectItem`, `EnableHitReaction`, `RefreshPickAndThrowObjectPhysics`).
+So `CreateIKLimb(slot, limbName, rootBone, midBone, endBone, flags)` is exposed to
+script with the hand limbs as named constants -- the same *"override the engine
+already honours"* shape as R-009's camera callback.
+
+### Named first-person IK target bones in the rig
+
+```
+Bip01 RHand2RiflePos_IKTarget      rva 0x1CB8685
+Bip01 LHand2Weapon_IKTarget
+Bip01 RHand2RiflePos_IKBlend
+FirstPersonHandIKContext
+```
+
+And CryAnimation's own command-buffer log line:
+
+```
+LHand_IKTarget: name: %s  rot: (%f %f %f %f)  pos: (%f %f %f) blend: %f
+   rva 0x1D26FC6
+```
+
+That format string means a function exists which already handles an IK target as
+**rotation, position and blend** -- exactly the transform a takeover needs to
+write -- and it is reachable by finding what references this string.
+
+Supporting pose modifiers, all present: `AnimationPoseModifier_LimbIk`
+(`0x1D2294E`), `_Ik2Segments` (`0x1D1FB2E`), `_IKTorsoAim` (`0x1CEF446`), plus
+`PoseAligner` and 7 `a_poseAligner*` cvars.
+
+### Why this is a better position than the fleet's other attempts
+
+FarCry2-vr concluded for Dunia that *"there is no arm rig on this path at all"* --
+their bone getter was an attachment query, nine weapon bones, only muzzle and
+shell-eject ever asked for. They deferred the arm rig on the grounds that without a
+confirmed bone API a bone lane would be guessing.
+
+Prey ships a **named, first-person-specific hand IK facility** with a script
+constructor and target bones. That is not guessing; it is a documented mechanism to
+be located and driven.
+
+### Not yet established
+
+Nothing here has been executed or hooked. What exists is a set of strings and their
+addresses, which is a strong lead and no more -- the same standard applied to the
+weapon camera offset, which turned out to move the camera rather than the mesh.
+
+The next step is to find what references `0x1D26FC6`, since that function already
+has the target transform in hand.

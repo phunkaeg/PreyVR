@@ -11,6 +11,7 @@
 #include "AimTakeover.h"
 #include "HeadTrackingHook.h"
 #include "PassCameraProbe.h"
+#include "ReticleFollow.h"
 #include "XrInput.h"
 #include "HotkeyBridge.h"
 #include "OpenXRPreflightWin32.h"
@@ -897,6 +898,35 @@ extern "C" __declspec(dllexport) DWORD PreyVR_SetKeepHeadRotationPtr(void* enabl
 {
     return preyvr::dll::SetKeepHeadRotation(
         static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+// The indicative overlay: Prey's own crosshair follows the controller ray.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetReticleFollowEnabledPtr(void* enabled)
+{
+    return preyvr::dll::SetReticleFollowEnabled(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetReticleFollowApplied()
+{
+    return preyvr::dll::ReticleFollowAppliedCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetReticleFollowOffScreen()
+{
+    return preyvr::dll::ReticleFollowOffScreenCount();
+}
+
+// Thousandths of a viewport fraction. 500/500 with the controller pointed
+// straight ahead confirms the projection before anything is judged by eye.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetReticleFollowLastX()
+{
+    return preyvr::dll::ReticleFollowLastX();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetReticleFollowLastY()
+{
+    return preyvr::dll::ReticleFollowLastY();
 }
 
 // M2: the weapon points where the controller points. Off by default; the A/B that
