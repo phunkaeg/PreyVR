@@ -14,6 +14,8 @@
 #include "ReticleFollow.h"
 #include "XrInput.h"
 #include "HotkeyBridge.h"
+#include "IkTargetProbe.h"
+#include "DebugWatch.h"
 #include "OpenXRPreflightWin32.h"
 #include "RuntimeSnapshotWin32.h"
 #include "Version.h"
@@ -1180,4 +1182,173 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetEyeHandoffDroppedCount()
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetXrSubmittedFrameCount()
 {
     return preyvr::dll::XrSubmittedFrameCount();
+}
+
+// ---------------------------------------------------------------------------
+// H-005 producer hunt. Hardware breakpoints, so nothing in the game is patched.
+//
+// The sequence, all from the console:
+//   1. PreyVR_ArmIkCapture 64        -- opens the log gate, execute-watches R-077
+//   2. play for a few seconds with a weapon drawn
+//   3. PreyVR_DisarmIkCapture        -- closes the gate again
+//   4. read the rows, pick a target address
+//   5. PreyVR_ArmIkProducerWatch <address>
+//   6. move, so the animator recomputes it
+//   7. read the producers -- those RVAs are the answer
+// ---------------------------------------------------------------------------
+
+extern "C" __declspec(dllexport) DWORD PreyVR_ArmIkCapturePtr(void* maxCaptures)
+{
+    return preyvr::dll::ArmIkCapture(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(maxCaptures)));
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_DisarmIkCapture()
+{
+    return preyvr::dll::DisarmIkCapture();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetIkCaptureArmed()
+{
+    return preyvr::dll::IkCaptureArmed();
+}
+
+// The gate byte before we touched it, and what it reads now. Equal after a disarm
+// is the proof the engine was put back; a capture that found nothing while the
+// gate reads 0 means the gate never opened, which is a different problem from a
+// site that never executed.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetIkLogGateOriginal()
+{
+    return preyvr::dll::IkLogGateOriginalValue();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetIkLogGateCurrent()
+{
+    return preyvr::dll::IkLogGateCurrentValue();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetIkTargetRowCount()
+{
+    return preyvr::dll::IkTargetRowCount();
+}
+
+// One folded IK target. `index` in, everything else out; millimetres and
+// thousandths so it crosses as integers.
+struct PreyVRIkTargetReadout {
+    unsigned int index;
+    unsigned int valid;
+    unsigned long long targetAddress;
+    unsigned long long limbId;
+    unsigned long long owner;
+    unsigned long long skeleton;
+    unsigned int hits;
+    int posX, posY, posZ;
+    unsigned int quatMagnitude;
+    unsigned int readable;
+};
+
+extern "C" __declspec(dllexport) DWORD PreyVR_ReadIkTargetPtr(PreyVRIkTargetReadout* io)
+{
+    if (io == nullptr) {
+        return 0;
+    }
+    preyvr::dll::IkTargetRow row{};
+    if (!preyvr::dll::ReadIkTargetRow(io->index, row)) {
+        io->valid = 0;
+        return 0;
+    }
+    io->valid = 1;
+    io->targetAddress = row.targetAddress;
+    io->limbId = row.limbId;
+    io->owner = row.owner;
+    io->skeleton = row.skeleton;
+    io->hits = row.hits;
+    io->posX = row.posX;
+    io->posY = row.posY;
+    io->posZ = row.posZ;
+    io->quatMagnitude = row.quatMagnitude;
+    io->readable = row.readable;
+    return 1;
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_ArmIkProducerWatchPtr(void* targetAddress)
+{
+    return preyvr::dll::ArmIkProducerWatch(
+        reinterpret_cast<unsigned long long>(targetAddress), 16u);
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_DisarmIkProducerWatch()
+{
+    return preyvr::dll::DisarmIkProducerWatch();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetIkProducerCount()
+{
+    return preyvr::dll::IkProducerCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetIkProducerRvaPtr(void* index)
+{
+    return preyvr::dll::IkProducerRva(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(index)));
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetIkProducerHitsPtr(void* index)
+{
+    return preyvr::dll::IkProducerHits(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(index)));
+}
+
+// 1 means the reported RVA is the instruction *after* the store. Published rather
+// than left as lore, so the offset is not subtracted twice or not at all.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetIkProducerRipIsAfterWrite()
+{
+    return preyvr::dll::IkProducerRipIsAfterWrite();
+}
+
+// Watch-engine health. Threads armed vs missed decides whether an empty result is
+// evidence of absence; foreign traps say something else owns the debug registers,
+// which in practice means a debugger is attached and the results are not ours.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetWatchArmedMask()
+{
+    return preyvr::dll::WatchArmedMask();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetWatchArmedThreads()
+{
+    return preyvr::dll::WatchArmedThreadCount();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetWatchMissedThreads()
+{
+    return preyvr::dll::WatchMissedThreadCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetWatchForeignTraps()
+{
+    return preyvr::dll::WatchForeignTrapCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetWatchHitCountPtr(void* slot)
+{
+    return preyvr::dll::WatchHitCount(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(slot)));
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetWatchCaptureCount()
+{
+    return preyvr::dll::WatchCaptureCount();
+}
+
+// Re-installs the debug registers on every thread that exists now. Worth calling
+// once the game has spawned its worker threads, since threads created after
+// arming carry no breakpoints and would make a real producer look absent.
+extern "C" __declspec(dllexport) DWORD PreyVR_RearmWatchThreads()
+{
+    return preyvr::dll::RearmThreads();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_DisarmAllWatches()
+{
+    return preyvr::dll::DisarmAllWatches();
 }

@@ -74,6 +74,7 @@ add_library(preyvr_core STATIC
     src/common/AimState.cpp
     src/common/CameraEdit.cpp
     src/common/ConsolePolicy.cpp
+    src/common/DebugRegisters.cpp
     src/common/EngineMap.cpp
     src/common/FrameDump.cpp
     src/common/FrameObserver.cpp
@@ -122,11 +123,13 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/Bootstrap.cpp
         src/dll/CameraEditHook.cpp
         src/dll/ConsoleBridgeWin32.cpp
+        src/dll/DebugWatch.cpp
         src/dll/DllMain.cpp
         src/dll/FrameCaptureWin32.cpp
         src/dll/FrameObserverHook.cpp
         src/dll/HeadTrackingHook.cpp
         src/dll/HotkeyBridge.cpp
+        src/dll/IkTargetProbe.cpp
         src/dll/PassCameraProbe.cpp
         src/dll/ReticleFollow.cpp
         src/dll/XrInput.cpp
@@ -317,6 +320,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_frame_dump_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_frame_dump_tests)
     add_test(NAME frame_dump COMMAND preyvr_frame_dump_tests)
+
+    add_executable(preyvr_debug_registers_tests tests/DebugRegistersTests.cpp)
+    target_link_libraries(preyvr_debug_registers_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_debug_registers_tests)
+    add_test(NAME debug_registers COMMAND preyvr_debug_registers_tests)
 
     add_executable(preyvr_console_policy_tests tests/ConsolePolicyTests.cpp)
     target_link_libraries(preyvr_console_policy_tests PRIVATE preyvr_core)

@@ -238,6 +238,22 @@ positions, ~1130 hits each in 4 s) plus `0xB1` and `0xB2` (~5 hits, rare).
 | deterministic, at the log site, 10 s, 5732 hits, 80 cm offset | **nothing at all** |
 
 **Writing at the log site never works; writing at random times occasionally does.**
+
+### The instrument for the next step, built 2026-09-04 (R-079)
+
+The conclusion above -- write at the log site and nothing happens -- is what makes
+the producer the gate. It is now hunted with hardware breakpoints rather than more
+hooks, because neither address involved is a function entry: the log site is
+`0xBF4` bytes into its function in a region Ghidra has not analysed, and the
+producer's address is the unknown being solved for.
+
+An **execute** watch at `0x878744` reports `r12` (a live target), `rsi` (limb),
+`r13` (owner) and `rdi` (skeleton). A **write** watch on `r12+0x10` then reports
+the faulting `rip`, which is the producer. No bytes are patched; the only written
+state is the one-byte log gate at `0x2257810`, saved and restored.
+
+**Not yet run against the game.** This is the instrument, not a result.
+
 So `0x878744` sits *downstream* of the point where the solver consumes the target.
 Our write there is always too late -- the value is recomputed before its next use --
 while the async hammer occasionally landed in the window between the producer

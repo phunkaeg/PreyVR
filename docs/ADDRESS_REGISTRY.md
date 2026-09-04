@@ -394,3 +394,70 @@ moves a hand on screen.
 `z` values of 0.94 to 1.53 for hand targets are human limb heights **in metres**,
 which is further weak support for `unitsPerMetre = 1` -- gathered, again, while
 looking for something else.
+
+## R-079 -- the producer hunt, moved onto hardware breakpoints, 2026-09-04
+
+R-078 ended with a specific blocker: the IK targets are recomputed continuously, a
+direct write races the animator and loses, and the only site we hold is the log
+`LEA` at `0x878744` -- which is **downstream of consumption**, so writing there
+does nothing. Naming the *producer* is the gate.
+
+### Why a debug register rather than another hook
+
+Neither address involved is a function entry. `0x878744` is `0xBF4` bytes into its
+function, in a region Ghidra has not analysed, so a MinHook trampoline would mean
+relocating instructions nobody has read; and the producer's address is unknown by
+definition, which is the whole question. A hardware breakpoint modifies no bytes at
+all, so there is nothing to restore and nothing to get wrong.
+
+Two steps, both on the same four registers:
+
+| step | mechanism | what it yields |
+| --- | --- | --- |
+| capture | **execute** watch at `0x878744` | `r12` = a live IK target, `rsi` = limb, `r13` = owner, `rdi` = skeleton |
+| producer | **write** watch on `r12+0x10` | the faulting `rip` **is** the writer |
+
+### Bytes confirmed against the shipped binary
+
+Read out of the installed Steam `PreyDll.dll` on 2026-09-04, whose SHA-256 is
+`7D6E322F61B28331095A400F0BA5F09BD9A39C57BF993602285DD6ACB05311A7` -- the hash
+already recorded in `BUILD_BASELINE.md`, so this is the documented build:
+
+| RVA | section | bytes | reading |
+| --- | --- | --- | --- |
+| `0x878744` | `.text` | `48 8D 05 75 E8 4A 01` | `LEA RAX, [RIP+0x14AE875]` -> `0x1D26FC0` |
+| `0x877B50` | `.text` | `48 89 54 24 10 55 53 41 55` | `mov [rsp+0x10], rdx; push rbp; push rbx; push r13` -- a real prologue |
+| `0x2257810` | `.data` | `00` | the log gate, default off |
+
+The `LEA` bytes are checked before the watch arms. The check is **local to the
+probe, deliberately not added to the landmark table**: the landmark gate is
+fail-closed for the whole mod, and an unrecognised binary should cost the user a
+probe rather than the ability to load PreyVR at all.
+
+Note the `LEA` resolves to `0x1D26FC0`, six bytes below the `0x1D26FC6` recorded in
+R-076. The instruction is the one R-077 identified; the six bytes are where inside
+that string blob R-076 happened to anchor. Not chased -- it changes nothing about
+the site.
+
+### Two ways this fails silently, both now refused rather than reported
+
+Both are the failure shape this project keeps meeting -- **a measurement that
+cannot show the thing it claims to test**, returning a confident value instead of
+an error.
+
+1. **A misaligned data breakpoint never fires.** `ArmWatch` refuses an address not
+   aligned to its own length instead of arming a watch that would report zero
+   writes. Pinned by `tests/DebugRegistersTests.cpp`.
+2. **`Dr6` and `Dr7` edits inside a vectored handler are dropped** unless the
+   resumed context asks for debug registers, which it does not by default. Without
+   that flag the status bits never clear, every later trap is misattributed, and
+   nothing looks wrong. `CONTEXT_DEBUG_REGISTERS` is now set explicitly.
+
+The `LEN` field is also worth stating once, because it is the most transposable
+thing here: **`0b11` is four bytes and `0b10` is eight**, not the other way round.
+
+### Still not established
+
+Nothing has been captured yet -- this is the instrument, not a result. The
+execute watch has not been fired against a running game, so the claim that `r12`
+carries a live target at this site is still R-078's, inherited and not re-proved.
