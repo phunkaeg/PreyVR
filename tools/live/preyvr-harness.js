@@ -359,8 +359,124 @@ var PreyVR = (function () {
         return status();
     }
 
+    // ---------------------------------------------------------------------
+    // H-005 producer hunt (R-079). Two hardware breakpoints, no patched bytes.
+    //
+    // Step 1 opens the engine log gate and puts an *execute* watch on R-077's
+    // LEA, whose r12 is a live IK target. Step 2 puts a *write* watch on that
+    // target's position; the faulting rip is the producer, which is the whole
+    // question H-005 is stuck on.
+    //
+    // Run step 1 with a weapon drawn and the player moving -- a stationary
+    // player is what made R-078 report the targets as static, and the same
+    // mistake is available here.
+    // ---------------------------------------------------------------------
+
+    function watchHealth() {
+        return {
+            armedMask: Number(callTolerant('PreyVR_GetWatchArmedMask', 'uint32', []).value),
+            armedThreads: Number(callTolerant('PreyVR_GetWatchArmedThreads', 'uint32', []).value),
+            missedThreads: Number(callTolerant('PreyVR_GetWatchMissedThreads', 'uint32', []).value),
+            foreignTraps: String(callTolerant('PreyVR_GetWatchForeignTraps', 'uint64', []).value),
+            captures: Number(callTolerant('PreyVR_GetWatchCaptureCount', 'uint32', []).value),
+            gateOriginal: Number(callTolerant('PreyVR_GetIkLogGateOriginal', 'uint32', []).value),
+            gateCurrent: Number(callTolerant('PreyVR_GetIkLogGateCurrent', 'uint32', []).value)
+        };
+    }
+
+    // PreyVRIkTargetReadout: index, valid, then four u64, then hits and three
+    // int millimetres, then quatMagnitude and readable. 64 bytes.
+    function readIkRow(index) {
+        var buf = Memory.alloc(64);
+        buf.writeU32(index);
+        act('PreyVR_ReadIkTargetPtr', buf);
+        return {
+            valid: buf.add(4).readU32() === 1,
+            target: '0x' + buf.add(8).readU64().toString(16),
+            limb: '0x' + buf.add(16).readU64().toString(16),
+            owner: '0x' + buf.add(24).readU64().toString(16),
+            skeleton: '0x' + buf.add(32).readU64().toString(16),
+            hits: buf.add(40).readU32(),
+            posMm: [buf.add(44).readS32(), buf.add(48).readS32(), buf.add(52).readS32()],
+            quatMagnitude: buf.add(56).readU32(),
+            readable: buf.add(60).readU32() === 1
+        };
+    }
+
+    function runIkCapture(seconds) {
+        var out = { step: 'ik-capture', seconds: seconds || 5 };
+        var armed = act('PreyVR_ArmIkCapturePtr', ptr(64));
+        out.arm = armed.ok ? armed.returned : armed.error;
+        if (out.arm !== 0) {
+            // Non-zero is a refusal with a reason, not a hiccup to retry: 3 is a
+            // busy slot, 6 is the LEA bytes not matching this binary.
+            out.verdict = 'REFUSED - see the log line for the reason; nothing was armed';
+            out.health = watchHealth();
+            return out;
+        }
+        out.armedHealth = watchHealth();
+        Thread.sleep(out.seconds);
+        out.hits = String(callTolerant('PreyVR_GetWatchHitCountPtr', 'uint64', ['pointer'], [ptr(0)]).value);
+        act('PreyVR_DisarmIkCapture');
+        out.health = watchHealth();
+
+        out.rows = [];
+        var count = Number(callTolerant('PreyVR_GetIkTargetRowCount', 'uint32', []).value);
+        for (var i = 0; i < count; i++) {
+            out.rows.push(readIkRow(i));
+        }
+        // The gate must read what it read before we touched it. A restore that
+        // silently failed would leave the shipped game logging every frame.
+        out.gateRestored = out.health.gateCurrent === out.health.gateOriginal;
+        out.verdict = (Number(out.hits) > 0 && out.rows.length > 0 && out.gateRestored)
+            ? 'targets captured - pick a row with quatMagnitude ~1000 and run runIkProducerHunt on its target'
+            : (Number(out.hits) === 0
+                ? 'NO HITS: the gate opened but the site never ran, or no skeleton was animating'
+                : 'DO NOT TRUST: hits without rows, or the log gate was not restored');
+        return out;
+    }
+
+    function runIkProducerHunt(targetAddress, seconds) {
+        var out = { step: 'ik-producer', target: String(targetAddress), seconds: seconds || 8 };
+        var armed = act('PreyVR_ArmIkProducerWatchPtr', ptr(targetAddress));
+        out.arm = armed.ok ? armed.returned : armed.error;
+        if (out.arm !== 0) {
+            // 2 means the address was not 4-aligned, which never fires on x86 and
+            // is refused rather than armed -- see R-079.
+            out.verdict = 'REFUSED - nothing armed, so an empty result here would have been a lie';
+            out.health = watchHealth();
+            return out;
+        }
+        // Move now. A target the animator is not recomputing has no producer to
+        // catch, which is exactly the window R-078 measured and misread.
+        Thread.sleep(out.seconds);
+        out.hits = String(callTolerant('PreyVR_GetWatchHitCountPtr', 'uint64', ['pointer'], [ptr(1)]).value);
+        act('PreyVR_DisarmIkProducerWatch');
+        out.health = watchHealth();
+        out.ripIsAfterWrite =
+            Number(callTolerant('PreyVR_GetIkProducerRipIsAfterWrite', 'uint32', []).value) === 1;
+
+        out.producers = [];
+        var count = Number(callTolerant('PreyVR_GetIkProducerCount', 'uint32', []).value);
+        for (var i = 0; i < count; i++) {
+            out.producers.push({
+                rva: '0x' + callTolerant('PreyVR_GetIkProducerRvaPtr', 'uint64', ['pointer'], [ptr(i)]).value.toString(16),
+                hits: Number(callTolerant('PreyVR_GetIkProducerHitsPtr', 'uint32', ['pointer'], [ptr(i)]).value)
+            });
+        }
+        out.verdict = out.producers.length > 0
+            ? 'PRODUCER FOUND - these RVAs write the target; rip is the instruction AFTER the store'
+            : (Number(out.health.foreignTraps) > 0
+                ? 'INCONCLUSIVE: foreign traps seen, so something else owns the debug registers (a debugger attached?)'
+                : 'no writes seen - either the target address went stale, or nothing moved during the window');
+        return out;
+    }
+
     return {
         status: status,
+        watchHealth: watchHealth,
+        runIkCapture: runIkCapture,
+        runIkProducerHunt: runIkProducerHunt,
         enableObserver: enableObserver,
         console: console_,
         capture: capture,
