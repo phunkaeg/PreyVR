@@ -456,6 +456,25 @@ an error.
 The `LEN` field is also worth stating once, because it is the most transposable
 thing here: **`0b11` is four bytes and `0b10` is eight**, not the other way round.
 
+### Contributed to the fleet playbook
+
+Distilled and pushed up on 2026-09-04, because none of it is Prey-specific:
+**`RE-009`** (data write watchpoints -- the recipe behind chapter 11's
+`#writer-census` step 2, which asked for a write watchpoint and had no mechanics
+attached), plus **`FAIL-RE-024`** (a watchpoint reporting zero writes because the
+address was misaligned or the thread was never armed), **`FAIL-RE-025`** (`DR6`
+edits dropped in a handler, so later traps are misattributed) and
+**`FAIL-RE-026`** (a seam that accepts writes every frame while nothing changes,
+because it is downstream of consumption -- the shape of this whole blocker).
+
+`FAIL-RE-025` is worth knowing about here specifically: the playbook already
+carried `FAIL-RE-022`, which says to set `EFLAGS.RF` on an execution breakpoint.
+That advice is right and incomplete -- `RF` lands because it lives in the default
+context, while the `DR6` clear beside it silently does not.
+
+The Prey-specific addresses stay here. Project receipts own target facts; the
+playbook owns transferable method.
+
 ### Still not established
 
 Nothing has been captured yet -- this is the instrument, not a result. The
