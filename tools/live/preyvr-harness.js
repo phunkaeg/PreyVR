@@ -472,9 +472,94 @@ var PreyVR = (function () {
         return out;
     }
 
+    // The native input path (H-006 / R-070). Read-only: resolves and validates,
+    // calls nothing. Safe to run any time, including at a menu.
+    function resolveInputPath() {
+        var out = { step: 'input-path' };
+        var r = act('PreyVR_ResolveInputPath');
+        out.result = r.ok ? r.returned : r.error;
+        if (out.result === 2) {
+            out.verdict = 'pInput is null - the input system is not up yet. Load into a level and rerun.';
+            return out;
+        }
+        if (out.result !== 0) {
+            out.verdict = 'REFUSED - nothing resolved';
+            return out;
+        }
+        out.pInput = '0x' + callTolerant('PreyVR_GetInputPathPointer', 'uint64', []).value.toString(16);
+        out.vtable = '0x' + callTolerant('PreyVR_GetInputPathVtable', 'uint64', []).value.toString(16);
+        out.alignmentConfirmed =
+            Number(callTolerant('PreyVR_GetInputPathAlignmentConfirmed', 'uint32', []).value) === 1;
+        out.alignmentSlot = Number(callTolerant('PreyVR_GetInputPathAlignmentSlot', 'uint32', []).value);
+        out.postInputEventRva =
+            '0x' + callTolerant('PreyVR_GetInputPathPostInputEventRva', 'uint64', []).value.toString(16);
+        out.slots = [];
+        for (var i = 0; i < 20; i++) {
+            out.slots.push('0x' + callTolerant('PreyVR_GetInputPathSlotRvaPtr', 'uint64', ['pointer'], [ptr(i)]).value.toString(16));
+        }
+        // **The confirmed flag is the whole point.** Unconfirmed means the RVA is
+        // the CryEngine-5 header guess, and calling an unknown virtual on a live
+        // engine object is exactly what this probe exists to avoid.
+        out.verdict = out.alignmentConfirmed
+            ? 'CONFIRMED by the setter/getter pair at slot ' + out.alignmentSlot +
+              ' - PostInputEvent is slot ' + (out.alignmentSlot + 2) + '. Check the RVA in Ghidra before calling it.'
+            : 'UNCONFIRMED - the alignment pair was not found, so the RVA is the header guess. Read out.slots by hand; do not call through it.';
+        return out;
+    }
+
+    // The 6DoF view seam. Rotation first, then position, because they fail
+    // differently and a single arming would not say which half is wrong.
+    function runSixDof(step, seconds) {
+        var out = { step: 'sixdof:' + step, seconds: seconds || 10 };
+        if (step === 'observe') {
+            out.arm = act('PreyVR_SetViewHookObservingPtr', ptr(1)).returned;
+            Thread.sleep(2);
+            out.observed = String(callTolerant('PreyVR_GetViewHookObservedCount', 'uint64', []).value);
+            out.verdict = Number(out.observed) > 0
+                ? 'seam is live - proceed to rotation'
+                : 'NOT RUNNING: UpdateView never fired, so nothing downstream can be trusted';
+            return out;
+        }
+        if (step === 'rotation') {
+            out.recenter = act('PreyVR_RecenterHeadTracking').returned;
+            out.arm = act('PreyVR_SetViewHookApplyingPtr', ptr(1)).returned;
+            Thread.sleep(out.seconds);
+            out.applied = String(callTolerant('PreyVR_GetViewHookAppliedCount', 'uint64', []).value);
+            out.verdict = Number(out.applied) > 0
+                ? 'rotation applied - look around, then check whether CULLING follows the view now'
+                : 'ARMED BUT INERT: applied stayed 0. Head pose or recenter reference is missing.';
+            return out;
+        }
+        if (step === 'position') {
+            out.arm = act('PreyVR_SetViewPositionApplyingPtr', ptr(1)).returned;
+            Thread.sleep(out.seconds);
+            out.applied = String(callTolerant('PreyVR_GetViewPositionApplied', 'uint64', []).value);
+            out.refused = String(callTolerant('PreyVR_GetViewPositionRefused', 'uint64', []).value);
+            out.offsetMm = Number(callTolerant('PreyVR_GetViewPositionOffsetMm', 'uint32', []).value);
+            // An offset pinned near zero while applied climbs is the failure this
+            // project keeps meeting: every counter green, nothing happening.
+            out.verdict = (Number(out.applied) > 0 && out.offsetMm > 20)
+                ? 'position is live and moving - lean and watch offsetMm track you'
+                : (Number(out.applied) > 0
+                    ? 'SUSPECT: applied is climbing but offsetMm is ~0. Either you held still, or head translation is not reaching the seam.'
+                    : 'ARMED BUT INERT: nothing applied. Rotation must be armed first.');
+            return out;
+        }
+        if (step === 'off') {
+            act('PreyVR_SetViewPositionApplyingPtr', ptr(0));
+            act('PreyVR_SetViewHookApplyingPtr', ptr(0));
+            out.verdict = 'both lanes disarmed';
+            return out;
+        }
+        out.verdict = "unknown step - use 'observe', 'rotation', 'position' or 'off'";
+        return out;
+    }
+
     return {
         status: status,
         watchHealth: watchHealth,
+        resolveInputPath: resolveInputPath,
+        runSixDof: runSixDof,
         runIkCapture: runIkCapture,
         runIkProducerHunt: runIkProducerHunt,
         enableObserver: enableObserver,
