@@ -203,3 +203,64 @@ a narrower question than before -- FarCry2-vr established for the same engine fa
 that the weapon camera offset moves the *camera* rather than the mesh, that the bone
 getter is an attachment query with no arm rig on it, and that the arm draw is
 probably pre-skinned with the pose work upstream.
+
+
+## H-005 progress, 2026-09-04: the right targets, the wrong end of the frame
+
+A long live session with Frida on a vanilla Prey. Several claims made and
+falsified within minutes of each other; what survives is below.
+
+### Established
+
+**These are the targets the viewmodel uses.** An asynchronous write produced a
+visible one-frame flicker *in the weapon model*. Not a dead field.
+
+**They are not the third-person skeleton.** The wearer checked their own shadow
+during the same write: no flicker. That was the next hypothesis and it was
+falsified before it could be proposed.
+
+**They are not static.** R-078's claim was disproved by writing to them -- the
+game restores the value within seconds. The original claim came from sampling a
+stationary player.
+
+**The count tracks characters on screen.** Forty targets appeared during combat and
+six with no enemies nearby: every NPC skeleton carries the same limbs. Earlier
+samples were not measuring "the player's four targets" at all.
+
+**Four limb ids exist**, not two: `0x4EC` and `0x7E0` (the rifle and weapon
+positions, ~1130 hits each in 4 s) plus `0xB1` and `0xB2` (~5 hits, rare).
+
+### The finding that redirects the work
+
+| write style | result |
+| --- | --- |
+| asynchronous hammer, random timing, ~72% present | **one-frame flicker** |
+| deterministic, at the log site, 10 s, 5732 hits, 80 cm offset | **nothing at all** |
+
+**Writing at the log site never works; writing at random times occasionally does.**
+So `0x878744` sits *downstream* of the point where the solver consumes the target.
+Our write there is always too late -- the value is recomputed before its next use --
+while the async hammer occasionally landed in the window between the producer
+writing and the solver reading.
+
+We have been hooking the wrong end of the frame. **The log site is useful for
+reading and useless for writing.**
+
+### Next
+
+Find the **producer**: set a hardware write watchpoint on one target address and
+catch what writes it. That is one hit, not a hot path, so it is the case where a
+debugger beats an interceptor -- the reverse of the earlier lesson, and for the
+same reason: match the tool to whether the site is hot.
+
+The wearer's own suggestion -- suppress the idle animations so nothing fights the
+write -- remains a good fallback if the producer proves awkward to hook, and is
+worth trying via the `ca_` animation cvars.
+
+### Method note
+
+Three separate claims this session were measured under conditions that could not
+show the thing being claimed: six captures at an even frame stride, 277 "healthy"
+syncs that were all unfocused, and "static" IK targets sampled from a stationary
+player. Every one was cheap to falsify once someone tried. **The wearer falsified
+two of them faster than the instrumentation did.**
