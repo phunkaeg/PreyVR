@@ -340,9 +340,34 @@ as a rotation rather than four unrelated floats.
 That matches the rig's own names, `Bip01 RHand2RiflePos_IKTarget` and
 `Bip01 LHand2Weapon_IKTarget`.
 
-### The finding that matters for a takeover
+### CORRECTION 2026-09-04, same session -- they are NOT static
 
-**These targets are static.** Sampled across 697 hits each, `x` never moved beyond
+**A live write proved this section wrong within minutes of it being written.**
+Bumping `pos.z` by 0.5 on both `0x7E0` targets: the game restored both within 2.5
+seconds (1.082 -> wrote 1.582 -> 1.097; 0.964 -> wrote 1.464 -> 0.964).
+
+The original claim came from sampling `x` across 697 hits and seeing no movement
+past the third decimal. **That window was a stationary player.** The values are
+recomputed continuously; a quiet moment was measured and reported as a property of
+the data.
+
+This is the same error shape as the capture stride that made six frames look
+identical, and as the counter that reported 277 healthy syncs while nothing worked:
+**a measurement taken under conditions that cannot show the thing being claimed.**
+The test that would have caught it -- move, then sample -- costs nothing and was not
+run.
+
+**Consequence:** a direct memory write to these addresses races the animator and
+loses. A takeover has to write at a point in the frame the game does not overwrite
+afterwards, which means hooking the producer or the consumer rather than poking the
+buffer.
+
+The claim below is left in place, struck through, because the reasoning that
+produced it is the part worth not repeating.
+
+### ~~The finding that matters for a takeover~~ (WRONG, see above)
+
+~~**These targets are static.**~~ Sampled across 697 hits each, `x` never moved beyond
 the third decimal -- range `[0.234, 0.234]`. They are *authored rest targets*, not
 values the animation system recomputes per frame.
 
