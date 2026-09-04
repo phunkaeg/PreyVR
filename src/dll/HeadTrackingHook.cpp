@@ -9,6 +9,7 @@
 
 #include <array>
 #include <atomic>
+#include <cmath>
 #include <cstring>
 #include <optional>
 #include <span>
@@ -293,6 +294,11 @@ std::atomic<UpdateViewFn> gOriginal{nullptr};
 bool gInstalled = false;
 std::atomic<bool> gObserving{false};
 std::atomic<bool> gApplying{false};
+std::atomic<bool> gApplyingPosition{false};
+std::atomic<float> gPositionScale{1.0f};
+std::atomic<unsigned long long> gPositionApplied{0};
+std::atomic<unsigned long long> gPositionRefused{0};
+std::atomic<unsigned int> gLastOffsetMillimetres{0};
 std::atomic<unsigned long long> gObserved{0};
 std::atomic<unsigned long long> gApplied{0};
 std::atomic<float> gLastFov{0.0f};
@@ -338,11 +344,39 @@ void __fastcall UpdateViewObserved(void* camera, std::uint8_t* viewParams)
     const float playSpaceYaw = stereo::CameraYawOf(gameMatrix) -
                                gReferenceYaw.load(std::memory_order_acquire);
 
-    Pose orientationOnly = headPose;
-    orientationOnly.position = Vec3{};
+    // **Position is gated separately from rotation on purpose.** They fail in
+    // completely different ways -- a wrong rotation reads as the world spinning,
+    // a wrong position as the world sliding or the player standing inside a wall
+    // -- and one switch would make an A/B unable to say which half is wrong.
+    const bool wantPosition = gApplyingPosition.load(std::memory_order_acquire);
+
+    Pose headForView = headPose;
+    if (!wantPosition) {
+        headForView.position = Vec3{};
+    } else {
+        // unitsPerMetre was **measured as 1** (0.700 units for a crouch), so the
+        // default scale is 1.0 and is not a fudge factor. The lever exists because
+        // SS2VR's symptom triad for a wrong world scale leads with "HMD positional
+        // movement feels too small", and that is judged in a headset, not here --
+        // so it is adjustable live rather than guessed at build time. A value that
+        // has to move far from 1.0 to feel right means the measurement was wrong,
+        // and that is worth knowing rather than hiding.
+        const float scale = gPositionScale.load(std::memory_order_relaxed);
+        headForView.position.x *= scale;
+        headForView.position.y *= scale;
+        headForView.position.z *= scale;
+    }
+
     stereo::ReferenceFrame reference{};
     reference.yawRadians = playSpaceYaw;
-    const Pose world = stereo::EyePoseInWorld(reference, orientationOnly);
+    if (wantPosition) {
+        // The game's own eye point is the origin the head offset is applied about,
+        // so walking, collision, crouching and scripted movement all stay the
+        // engine's business and only the offset from them is ours.
+        std::memcpy(&reference.worldPosition, viewParams + kViewPosition,
+                    sizeof(reference.worldPosition));
+    }
+    const Pose world = stereo::EyePoseInWorld(reference, headForView);
 
     Quaternion out = world.orientation;
     const float lengthSquared =
@@ -352,6 +386,34 @@ void __fastcall UpdateViewObserved(void* camera, std::uint8_t* viewParams)
     }
     std::memcpy(viewParams + kViewRotation, &out, sizeof(out));
     gApplied.fetch_add(1, std::memory_order_relaxed);
+
+    if (!wantPosition) {
+        return;
+    }
+    // A non-finite position would put the camera nowhere and is not recoverable by
+    // looking away, unlike a bad rotation. Refuse it and leave the engine's own
+    // position in place.
+    if (!std::isfinite(world.position.x) || !std::isfinite(world.position.y) ||
+        !std::isfinite(world.position.z)) {
+        gPositionRefused.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+    // Bound the offset too. The head cannot legitimately be 10 metres from the
+    // game's own eye point; if it is, the pose or the reference frame is wrong,
+    // and writing it would teleport the player rather than lean them.
+    const float dx = world.position.x - reference.worldPosition.x;
+    const float dy = world.position.y - reference.worldPosition.y;
+    const float dz = world.position.z - reference.worldPosition.z;
+    const float offsetSquared = dx * dx + dy * dy + dz * dz;
+    if (offsetSquared > 100.0f) {
+        gPositionRefused.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+    std::memcpy(viewParams + kViewPosition, &world.position, sizeof(world.position));
+    gPositionApplied.fetch_add(1, std::memory_order_relaxed);
+    gLastOffsetMillimetres.store(
+        static_cast<unsigned int>(std::sqrt(offsetSquared) * 1000.0f + 0.5f),
+        std::memory_order_relaxed);
 }
 
 bool Install()
@@ -406,6 +468,56 @@ DWORD SetViewHookObserving(unsigned int enabled)
     viewhook::gObserving.store(on, std::memory_order_release);
     Log(std::string("result=0 detail=view_observing value=") + (on ? "1" : "0"));
     return 0;
+}
+
+// Positional 6DoF -- lean, crouch and room-scale translation. Separate from the
+// rotation switch so the two can be A/B'd apart in a headset.
+DWORD SetViewPositionApplying(unsigned int enabled)
+{
+    const bool on = enabled != 0u;
+    if (on) {
+        viewhook::gPositionApplied.store(0, std::memory_order_relaxed);
+        viewhook::gPositionRefused.store(0, std::memory_order_relaxed);
+    }
+    viewhook::gApplyingPosition.store(on, std::memory_order_release);
+    lifecycle::Log(std::string("preyvr_view_hook result=0 detail=position_applying value=") +
+                   (on ? "1" : "0"));
+    return 0;
+}
+
+// Thousandths, so it crosses as an integer. 1000 == 1.0 == the measured
+// unitsPerMetre. Clamped to a sane band rather than trusted.
+DWORD SetViewPositionScaleMilli(unsigned int scaleMilli)
+{
+    float scale = static_cast<float>(scaleMilli) / 1000.0f;
+    if (!(scale > 0.01f) || !(scale < 100.0f)) {
+        scale = 1.0f;
+    }
+    viewhook::gPositionScale.store(scale, std::memory_order_relaxed);
+    lifecycle::Log("preyvr_view_hook result=0 detail=position_scale_milli value=" +
+                   std::to_string(scaleMilli));
+    return 0;
+}
+
+unsigned long long ViewPositionAppliedCount()
+{
+    return viewhook::gPositionApplied.load(std::memory_order_relaxed);
+}
+
+// Frames where the composed position was non-finite or implausibly far from the
+// engine's own eye point. Non-zero here means the pose or the reference frame is
+// wrong, and is a different problem from a lane that never ran.
+unsigned long long ViewPositionRefusedCount()
+{
+    return viewhook::gPositionRefused.load(std::memory_order_relaxed);
+}
+
+// How far the head currently sits from the game's eye point, in millimetres.
+// This is the number that says whether positional tracking is actually doing
+// anything: it should move as you lean and sit near zero when you do not.
+DWORD ViewPositionOffsetMillimetres()
+{
+    return viewhook::gLastOffsetMillimetres.load(std::memory_order_relaxed);
 }
 
 DWORD SetViewHookApplying(unsigned int enabled)

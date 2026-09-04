@@ -103,6 +103,38 @@ DWORD SetViewHookObserving(unsigned int enabled);
 // the layout, and a recenter reference.
 DWORD SetViewHookApplying(unsigned int enabled);
 
+// Positional 6DoF: lean, crouch and room-scale translation, written into
+// SViewParams position alongside the rotation.
+//
+// **Gated separately from rotation, because they fail differently.** A wrong
+// rotation reads as the world spinning and is recoverable by looking away; a
+// wrong position reads as sliding, or as standing inside geometry, and is not.
+// One switch for both would make an in-headset A/B unable to say which half is
+// wrong -- and this project has already paid once for a lane whose counters were
+// all green while the result was unusable.
+//
+// The engine keeps its own eye point as the origin, so walking, collision and
+// scripted movement stay its business; only the offset from it is ours.
+DWORD SetViewPositionApplying(unsigned int enabled);
+
+// Scale in thousandths; 1000 == 1.0 == the measured unitsPerMetre. The lever
+// exists because a wrong world scale is judged in a headset, not here -- SS2VR's
+// symptom triad leads with "HMD movement feels too small". Needing a value far
+// from 1000 means the measurement was wrong, which is worth surfacing.
+DWORD SetViewPositionScaleMilli(unsigned int scaleMilli);
+
+unsigned long long ViewPositionAppliedCount();
+
+// Non-finite or implausibly large offsets, refused rather than written. Non-zero
+// means the pose or the reference frame is wrong -- a different problem from a
+// lane that never ran, which is why it is not folded into one counter.
+unsigned long long ViewPositionRefusedCount();
+
+// Current head offset from the engine eye point, in millimetres. This is the
+// number that says positional tracking is doing something: it should move as you
+// lean and sit near zero when you do not.
+DWORD ViewPositionOffsetMillimetres();
+
 // The recenter yaw, shared with every lane that composes against the play space.
 //
 // CAM-003, "one recenter event, all lanes": the view and the aim must resolve the

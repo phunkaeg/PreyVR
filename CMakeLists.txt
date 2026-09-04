@@ -130,6 +130,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/HeadTrackingHook.cpp
         src/dll/HotkeyBridge.cpp
         src/dll/IkTargetProbe.cpp
+        src/dll/InputPathProbe.cpp
         src/dll/PassCameraProbe.cpp
         src/dll/ReticleFollow.cpp
         src/dll/XrInput.cpp

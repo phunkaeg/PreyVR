@@ -1,5 +1,7 @@
 #include "HotkeyBridge.h"
 
+#include "HeadTrackingHook.h"
+
 #include "CameraEditHook.h"
 #include "ConsoleBridgeWin32.h"
 #include "Logger.h"
@@ -62,20 +64,42 @@ void ApplyAa()
     Log("result=0 detail=aa mode=" + std::to_string(mode));
 }
 
+// Position scale, in thousandths. 1000 is the measured unitsPerMetre; the
+// neighbours exist so a wrong measurement shows up as "one of these feels right
+// and 1000 does not", which is a far better signal than a slider.
+constexpr std::array<int, 7> kPositionScales = {500, 750, 1000, 1250, 1500, 2000, 3280};
+// Index 2 == 1000 == measured. Starting anywhere else would bias the very
+// judgement this lever exists to make.
+std::atomic<int> gPositionScaleIndex{2};
+std::atomic<bool> gPositionOn{false};
+
+void ApplyPositionScale()
+{
+    const int milli = kPositionScales[static_cast<std::size_t>(
+        gPositionScaleIndex.load(std::memory_order_relaxed))];
+    SetViewPositionScaleMilli(static_cast<unsigned int>(milli));
+    Log("result=0 detail=position_scale milli=" + std::to_string(milli));
+}
+
 void Poll()
 {
     // Edge-detected: a held key must not repeat, or one press walks the whole
     // table before the wearer has looked at anything.
-    std::array<bool, 6> was{};
+    std::array<bool, 9> was{};
     // **Not the arrow keys.** Ctrl+Alt+Arrow is Intel's display-rotation
     // shortcut on machines where that driver's hotkeys are enabled, so cycling
     // the eye offset could rotate the desktop out from under a wearer who cannot
     // see it happening. PageUp/PageDown and Home/End are claimed by nothing.
-    const int keys[6] = {VK_PRIOR, VK_NEXT, VK_HOME, VK_END, 'E', VK_BACK};
+    //
+    // **Not Delete.** Ctrl+Alt+Delete is the Windows secure attention sequence:
+    // it cannot be captured, and it would throw a wearer who cannot see the
+    // screen onto the security desktop. Letters for the position lane instead.
+    const int keys[9] = {VK_PRIOR, VK_NEXT, VK_HOME, VK_END, 'E', VK_BACK,
+                         'P', VK_INSERT, 'O'};
 
     while (gRunning.load(std::memory_order_acquire)) {
         const bool chord = Chord();
-        for (int i = 0; i < 6; ++i) {
+        for (int i = 0; i < 9; ++i) {
             const bool down = chord && (GetAsyncKeyState(keys[i]) & 0x8000) != 0;
             const bool pressed = down && !was[static_cast<std::size_t>(i)];
             was[static_cast<std::size_t>(i)] = down;
@@ -120,7 +144,32 @@ void Poll()
                     // of mono image underneath a stereo declaration.
                     SetXrStereoSubmission(0u);
                     SetSyntheticStereo(0.0f, 0.0f);
+                    // Position last but always: a camera in the wrong place is
+                    // the least recoverable of these by looking away.
+                    SetViewPositionApplying(0u);
+                    gPositionOn.store(false, std::memory_order_relaxed);
                     Log("result=0 detail=panic_disarm");
+                    break;
+                case 6: {
+                    const bool next = !gPositionOn.load(std::memory_order_relaxed);
+                    gPositionOn.store(next, std::memory_order_relaxed);
+                    SetViewPositionApplying(next ? 1u : 0u);
+                    Log(std::string("result=0 detail=position_lane enabled=") +
+                        (next ? "1" : "0"));
+                    break;
+                }
+                case 7:
+                    gPositionScaleIndex.store(
+                        std::min<int>(gPositionScaleIndex.load(std::memory_order_relaxed) + 1,
+                                      static_cast<int>(kPositionScales.size()) - 1),
+                        std::memory_order_relaxed);
+                    ApplyPositionScale();
+                    break;
+                case 8:
+                    gPositionScaleIndex.store(
+                        std::max<int>(gPositionScaleIndex.load(std::memory_order_relaxed) - 1, 0),
+                        std::memory_order_relaxed);
+                    ApplyPositionScale();
                     break;
                 default:
                     break;

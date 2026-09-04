@@ -15,6 +15,7 @@
 #include "XrInput.h"
 #include "HotkeyBridge.h"
 #include "IkTargetProbe.h"
+#include "InputPathProbe.h"
 #include "DebugWatch.h"
 #include "OpenXRPreflightWin32.h"
 #include "RuntimeSnapshotWin32.h"
@@ -1351,4 +1352,86 @@ extern "C" __declspec(dllexport) DWORD PreyVR_RearmWatchThreads()
 extern "C" __declspec(dllexport) DWORD PreyVR_DisarmAllWatches()
 {
     return preyvr::dll::DisarmAllWatches();
+}
+
+// ---------------------------------------------------------------------------
+// Positional 6DoF. Separate switch from rotation, because they fail differently
+// and one switch would make an in-headset A/B unable to say which half is wrong.
+// ---------------------------------------------------------------------------
+
+extern "C" __declspec(dllexport) DWORD PreyVR_SetViewPositionApplyingPtr(void* enabled)
+{
+    return preyvr::dll::SetViewPositionApplying(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+// Thousandths; 1000 == the measured unitsPerMetre of 1. Needing a value far from
+// 1000 means the measurement was wrong, which is worth surfacing rather than
+// quietly compensating for.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetViewPositionScaleMilliPtr(void* scaleMilli)
+{
+    return preyvr::dll::SetViewPositionScaleMilli(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(scaleMilli)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetViewPositionApplied()
+{
+    return preyvr::dll::ViewPositionAppliedCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetViewPositionRefused()
+{
+    return preyvr::dll::ViewPositionRefusedCount();
+}
+
+// Head offset from the engine eye point, in millimetres. The number that says
+// positional tracking is doing something: it moves as you lean, and sits near
+// zero when you do not.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetViewPositionOffsetMm()
+{
+    return preyvr::dll::ViewPositionOffsetMillimetres();
+}
+
+// ---------------------------------------------------------------------------
+// Native input path (H-006 / R-070). Read-only: resolves and validates, calls
+// nothing.
+// ---------------------------------------------------------------------------
+
+extern "C" __declspec(dllexport) DWORD PreyVR_ResolveInputPath()
+{
+    return preyvr::dll::ResolveInputPath();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetInputPathPointer()
+{
+    return preyvr::dll::InputPathInputPointer();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetInputPathVtable()
+{
+    return preyvr::dll::InputPathVtable();
+}
+
+// **Check this before trusting the RVA below.** 0 means the setter/getter
+// alignment pair was not found and the published index is the header-derived
+// guess, not a measurement.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetInputPathAlignmentConfirmed()
+{
+    return preyvr::dll::InputPathAlignmentConfirmed();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetInputPathAlignmentSlot()
+{
+    return preyvr::dll::InputPathAlignmentSlot();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetInputPathPostInputEventRva()
+{
+    return preyvr::dll::InputPathPostInputEventRva();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetInputPathSlotRvaPtr(void* slot)
+{
+    return preyvr::dll::InputPathSlotRva(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(slot)));
 }
