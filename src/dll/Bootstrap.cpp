@@ -946,6 +946,13 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetXrInputSyncCount()
 // Frames where that hand reported a valid pose. 0 = left, 1 = right. Zero syncs
 // means the action set never attached; syncs climbing with zero located means the
 // runtime has the actions but no controller is tracking.
+// Syncs that returned NOT_FOCUSED. High here means the headset is not being worn,
+// which is a different problem from controllers not tracking.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetXrInputNotFocused()
+{
+    return preyvr::dll::XrInputNotFocusedCount();
+}
+
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetXrInputLocatedLeft()
 {
     return preyvr::dll::XrInputLocatedCount(preyvr::dll::Hand::left);

@@ -43,6 +43,10 @@ std::array<HandActions, 2> gHands{};
 
 std::atomic<bool> gCreated{false};
 std::atomic<unsigned long long> gSyncs{0};
+// Counted separately, because "the session is not focused" and "the controllers
+// are not tracking" have different fixes -- put the headset on, versus pick the
+// controllers up.
+std::atomic<unsigned long long> gSyncsNotFocused{0};
 std::array<std::atomic<unsigned long long>, 2> gLocated{};
 
 // Published latest-wins, the same shape as the head pose slot: a seqlock, so the
@@ -221,8 +225,20 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
     XrActionsSyncInfo sync{XR_TYPE_ACTIONS_SYNC_INFO};
     sync.countActiveActionSets = 1;
     sync.activeActionSets = &active;
-    if (XR_FAILED(xrSyncActions(session, &sync))) {
-        return;   // not focused, typically; poses simply do not advance
+    // **XR_SESSION_NOT_FOCUSED is a SUCCESS code, and that matters here.**
+    // Checking only XR_FAILED counts an unfocused sync as an effective one, so
+    // the counter reads healthy while every action is inactive and no pose can
+    // locate. That is exactly what happened on 2026-09-04: 277 syncs, zero hands
+    // located, and the cause was the headset sitting on a desk rather than being
+    // worn. The counter said the input layer was working; it was reporting that
+    // the call returned, not that it did anything.
+    const XrResult syncResult = xrSyncActions(session, &sync);
+    if (XR_FAILED(syncResult)) {
+        return;
+    }
+    if (syncResult == XR_SESSION_NOT_FOCUSED) {
+        gSyncsNotFocused.fetch_add(1, std::memory_order_relaxed);
+        return;   // actions are inactive; locating would read stale zeros
     }
     gSyncs.fetch_add(1, std::memory_order_relaxed);
 
@@ -283,6 +299,7 @@ void DestroyXrInput()
     gGripPose = gAimPose = gThumbstick = gTrigger = gSqueeze = XR_NULL_HANDLE;
     gCreated.store(false, std::memory_order_release);
     gSyncs.store(0, std::memory_order_relaxed);
+    gSyncsNotFocused.store(0, std::memory_order_relaxed);
     for (auto& count : gLocated) {
         count.store(0, std::memory_order_relaxed);
     }
@@ -312,6 +329,11 @@ bool TryGetControllerState(Hand hand, ControllerState& out)
 }
 
 unsigned long long XrInputSyncCount() { return gSyncs.load(std::memory_order_relaxed); }
+
+unsigned long long XrInputNotFocusedCount()
+{
+    return gSyncsNotFocused.load(std::memory_order_relaxed);
+}
 
 unsigned long long XrInputLocatedCount(Hand hand)
 {

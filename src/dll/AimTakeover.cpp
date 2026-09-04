@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstring>
 #include <sstream>
+#include <span>
 #include <string_view>
 
 namespace preyvr::dll {
@@ -51,6 +52,27 @@ const engine::Landmark* FindLandmark(std::string_view id)
 float Length(const Vec3& v)
 {
     return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+// The yaw the engine's own view camera is facing. Read live rather than cached,
+// because the whole point is to follow the player's facing as it changes.
+float GameCameraYaw()
+{
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) {
+        return 0.0f;
+    }
+    const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+    auto* const systemPtr =
+        *reinterpret_cast<std::uint8_t**>(base + engine::SystemLayout::pointerRva);
+    if (systemPtr == nullptr) {
+        return 0.0f;
+    }
+    const auto* const camera = reinterpret_cast<const std::uint8_t*>(
+        reinterpret_cast<std::uintptr_t>(systemPtr) + engine::SystemLayout::viewCamera);
+    const stereo::Matrix34 matrix =
+        stereo::ReadMatrix(std::span<const std::uint8_t>(camera, engine::CameraLayout::size));
+    return stereo::CameraYawOf(matrix);
 }
 
 void __fastcall UpdateCachedRayWithTakeover(void* player)
@@ -96,8 +118,18 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
         gRejNoPose.fetch_add(1, std::memory_order_relaxed);
         return;
     }
+    // **The play space faces where the *game* faces, not where the head was at
+    // recenter.** Parking the reference at the raw recenter yaw is the same bug
+    // the view seam had: it never follows the player's actual facing, so turning
+    // with the mouse leaves the aim ray on a fixed bearing and it swings off
+    // screen. Measured live 2026-09-04 -- the controller drove the ray, and the
+    // ray pointed somewhere unrelated to the player.
+    //
+    // The engine's current yaw minus the recenter yaw is the same composition the
+    // view uses, which is what CAM-003 means by one recenter for all lanes: not
+    // just one recenter *event*, but one *resolution* of it.
     stereo::ReferenceFrame reference{};
-    reference.yawRadians = HeadTrackingReferenceYaw();
+    reference.yawRadians = GameCameraYaw() - HeadTrackingReferenceYaw();
     // The ray's own origin is the engine's, so the hand's position is expressed
     // about the same point the engine is already firing from. Position tracking
     // is M3's business; this lane only replaces the direction and keeps the

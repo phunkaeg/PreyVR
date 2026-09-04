@@ -63,6 +63,13 @@ bool TryGetControllerState(Hand hand, ControllerState& out);
 // Diagnostics, so a session with no hands says which half is missing rather than
 // silently doing nothing.
 unsigned long long XrInputSyncCount();
+
+// Syncs that returned XR_SESSION_NOT_FOCUSED -- a *success* code, so a plain
+// XR_FAILED check counts them as working syncs while every action is inactive.
+// A high count here means the session does not have focus, which in practice
+// means the headset is not being worn; it is a different problem from controllers
+// that are not tracking, and it needs a different fix.
+unsigned long long XrInputNotFocusedCount();
 unsigned long long XrInputLocatedCount(Hand hand);
 DWORD XrInputCreated();
 
