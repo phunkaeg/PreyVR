@@ -108,4 +108,37 @@ DWORD WatchHandlerInstalled();
 // something else owns the debug registers.
 unsigned long long WatchForeignTrapCount();
 
+// Applies a bounded offset to a Vec3 immediately after a *specific instruction*
+// writes it.
+//
+// **This is the takeover mechanism, and it reuses the instrument that found the
+// problem.** R-082 established that `0x87BC36` writes the IK target position last
+// in every cycle, so anything written earlier is overwritten before use -- six
+// live bump attempts confirmed that racing it does not work. The site is
+// mid-function, so MinHook cannot take it without patching exact instruction
+// bytes; but a data write watch already traps there, and traps *after the store
+// retires*, which is exactly where an override has to land.
+//
+// `matchRip` is an absolute address, not an RVA: the caller resolves it against
+// the live module, so a stale RVA cannot silently apply at the wrong site.
+//
+// Read-modify-write, so the hand keeps following the animation and is only
+// displaced from it. Bounded three ways -- 10 m magnitude, 120 s deadline, and a
+// 4-aligned target -- because an override left armed is a permanent edit to a
+// running game that nobody would think to look for.
+//
+// Returns 0 on success; 2 unaligned or null, 3 offset too large, 4 bad duration,
+// 5 the slot is not armed so nothing would ever trap.
+DWORD ArmApplyOffset(unsigned int slot, unsigned long long vec3Address,
+                     unsigned long long matchRip, float dx, float dy, float dz,
+                     unsigned int seconds);
+DWORD DisarmApplyOffset(unsigned int slot);
+
+unsigned long long ApplyOffsetAppliedCount();
+// Traps that were NOT the matching site, or produced a non-finite result. A high
+// skip count with zero applied means the match address is wrong -- which is a
+// different problem from the override not being armed.
+unsigned long long ApplyOffsetSkippedCount();
+unsigned long long ApplyOffsetExpiredCount();
+
 } // namespace preyvr::dll

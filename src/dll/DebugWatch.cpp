@@ -8,6 +8,7 @@
 
 #include <array>
 #include <atomic>
+#include <cmath>
 #include <cstdint>
 #include <string>
 
@@ -31,7 +32,37 @@ struct SlotState {
     std::atomic<unsigned long long> hits{0};
     std::atomic<unsigned int> maxCaptures{0};
     std::atomic<unsigned int> stored{0};
+
+    // Apply mode: when this slot traps and the trapping RIP is `applyMatchRip`,
+    // add `applyOffset` to the Vec3 at `applyVec3`.
+    //
+    // **Why in the handler and not in a hook.** The site that owns the final value
+    // (R-082, `0x87BC36`) is mid-function, so MinHook cannot take it without
+    // patching exact instruction bytes. A data write watch already traps there,
+    // and traps *after the store retires* -- which is precisely where an override
+    // has to land to survive. The mechanism we built to find the writer turns out
+    // to be the mechanism for overriding it.
+    std::atomic<bool> applyEnabled{false};
+    std::atomic<unsigned long long> applyMatchRip{0};
+    std::atomic<unsigned long long> applyVec3{0};
+    std::atomic<float> applyOffsetX{0.0f};
+    std::atomic<float> applyOffsetY{0.0f};
+    std::atomic<float> applyOffsetZ{0.0f};
+    // Bounded by construction: an override left armed would be a permanent edit
+    // to someone's animation with no way to notice.
+    std::atomic<long long> applyDeadlineQpc{0};
 };
+
+std::atomic<unsigned long long> gApplyApplied{0};
+std::atomic<unsigned long long> gApplySkipped{0};
+std::atomic<unsigned long long> gApplyExpired{0};
+
+long long QpcNowRaw()
+{
+    LARGE_INTEGER now{};
+    QueryPerformanceCounter(&now);
+    return now.QuadPart;
+}
 
 std::array<SlotState, kSlots> gSlots;
 std::array<WatchCapture, kRingSize> gRing;
@@ -145,7 +176,42 @@ LONG CALLBACK OnException(EXCEPTION_POINTERS* info)
         }
         state.hits.fetch_add(1, std::memory_order_relaxed);
 
-        if (SlotIsFull(state)) {
+        // Apply runs before the capture bookkeeping and is independent of the
+        // capture quota: an override must keep working after the ring is full,
+        // or it would stop silently mid-test.
+        if (state.applyEnabled.load(std::memory_order_acquire)) {
+            if (QpcNowRaw() > state.applyDeadlineQpc.load(std::memory_order_relaxed)) {
+                state.applyEnabled.store(false, std::memory_order_release);
+                gApplyExpired.fetch_add(1, std::memory_order_relaxed);
+            } else if (context.Rip != state.applyMatchRip.load(std::memory_order_relaxed)) {
+                // A write from some other site in the cycle. Left alone -- only
+                // the LAST writer's result is worth overriding, and editing an
+                // intermediate one just gets overwritten again.
+                gApplySkipped.fetch_add(1, std::memory_order_relaxed);
+            } else {
+                auto* const v = reinterpret_cast<float*>(
+                    static_cast<std::uintptr_t>(state.applyVec3.load(std::memory_order_relaxed)));
+                // Read-modify-write against what the engine just stored, so the
+                // hand keeps following the animation and is only displaced from it.
+                const float nx = v[0] + state.applyOffsetX.load(std::memory_order_relaxed);
+                const float ny = v[1] + state.applyOffsetY.load(std::memory_order_relaxed);
+                const float nz = v[2] + state.applyOffsetZ.load(std::memory_order_relaxed);
+                if (std::isfinite(nx) && std::isfinite(ny) && std::isfinite(nz)) {
+                    v[0] = nx; v[1] = ny; v[2] = nz;
+                    gApplyApplied.fetch_add(1, std::memory_order_relaxed);
+                } else {
+                    gApplySkipped.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+        }
+
+        // **An applying slot must never self-disarm on the capture quota.** The
+        // quota exists so a hot path cannot fill memory; an override has nothing
+        // to do with memory and needs the trap to keep firing. Without this the
+        // takeover would work for the first 16 traps and then stop, with every
+        // counter still looking healthy -- the exact failure shape this project
+        // keeps meeting.
+        if (SlotIsFull(state) && !state.applyEnabled.load(std::memory_order_acquire)) {
             // Quota met. Clear this slot out of *this* thread debug registers so
             // the trap stops costing anything here; other threads drop it as they
             // hit it, and RearmThreads will not put it back.
@@ -331,6 +397,61 @@ DWORD ArmWatch(unsigned int slot, unsigned long long address, WatchKind kind,
         " max_captures=" + std::to_string(maxCaptures));
     return 0;
 }
+
+DWORD ArmApplyOffset(unsigned int slot, unsigned long long vec3Address,
+                     unsigned long long matchRip, float dx, float dy, float dz,
+                     unsigned int seconds)
+{
+    if (slot >= kSlots) {
+        return 1;
+    }
+    // The Vec3 must be 4-aligned for the same reason the watch address must be:
+    // an unaligned float write is not a crash, it is a wrong number.
+    if (vec3Address == 0 || (vec3Address % 4) != 0 || matchRip == 0) {
+        return 2;
+    }
+    // A hand does not move ten metres. A larger request is a caller error, and
+    // this is memory belonging to a running game.
+    const float magnitude = std::sqrt(dx * dx + dy * dy + dz * dz);
+    if (!std::isfinite(magnitude) || magnitude > 10.0f) {
+        return 3;
+    }
+    if (seconds == 0 || seconds > 120) {
+        return 4;
+    }
+    SlotState& state = gSlots[slot];
+    if (!state.armed.load(std::memory_order_acquire)) {
+        return 5;   // nothing is trapping, so nothing would ever apply
+    }
+    LARGE_INTEGER freq{};
+    QueryPerformanceFrequency(&freq);
+    state.applyVec3.store(vec3Address, std::memory_order_relaxed);
+    state.applyMatchRip.store(matchRip, std::memory_order_relaxed);
+    state.applyOffsetX.store(dx, std::memory_order_relaxed);
+    state.applyOffsetY.store(dy, std::memory_order_relaxed);
+    state.applyOffsetZ.store(dz, std::memory_order_relaxed);
+    state.applyDeadlineQpc.store(
+        QpcNowRaw() + static_cast<long long>(seconds) * (freq.QuadPart ? freq.QuadPart : 1),
+        std::memory_order_relaxed);
+    gApplyApplied.store(0, std::memory_order_relaxed);
+    gApplySkipped.store(0, std::memory_order_relaxed);
+    gApplyExpired.store(0, std::memory_order_relaxed);
+    state.applyEnabled.store(true, std::memory_order_release);
+    return 0;
+}
+
+DWORD DisarmApplyOffset(unsigned int slot)
+{
+    if (slot >= kSlots) {
+        return 1;
+    }
+    gSlots[slot].applyEnabled.store(false, std::memory_order_release);
+    return 0;
+}
+
+unsigned long long ApplyOffsetAppliedCount() { return gApplyApplied.load(std::memory_order_relaxed); }
+unsigned long long ApplyOffsetSkippedCount() { return gApplySkipped.load(std::memory_order_relaxed); }
+unsigned long long ApplyOffsetExpiredCount() { return gApplyExpired.load(std::memory_order_relaxed); }
 
 DWORD DisarmWatch(unsigned int slot)
 {

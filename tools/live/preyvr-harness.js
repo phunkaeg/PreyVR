@@ -715,6 +715,63 @@ var PreyVR = (function () {
         return out;
     }
 
+    // The hand takeover. Arms the write watch so the site traps, then applies a
+    // bounded offset immediately after PreyDll+0x87BC36 stores the position.
+    //
+    // **Why this works where six bump attempts did not.** Bumping raced the
+    // animator and lost: 0x87BC36 (R-082) writes last in every cycle, so anything
+    // written earlier is overwritten before use. Applying inside the trap for that
+    // instruction lands AFTER its store retires, which is the one point in the
+    // frame nothing overwrites.
+    function runIkTakeover(targetAddress, dx, dy, dz, seconds) {
+        var out = { step: 'ik-takeover', target: String(targetAddress),
+                    offset: [dx, dy, dz], seconds: seconds || 20 };
+        // The watch must be armed first -- ArmApplyOffset refuses a slot that is
+        // not trapping, because an override on a silent slot would report success
+        // and never run.
+        var watch = act('PreyVR_ArmIkProducerWatchPtr', ptr(targetAddress));
+        out.watch = watch.ok ? watch.returned : watch.error;
+        if (out.watch !== 0) {
+            out.verdict = 'REFUSED - the write watch did not arm, so nothing would trap';
+            return out;
+        }
+        var args = Memory.alloc(40);
+        args.writeU64(ptr(targetAddress));                 // vec3 address (pos.x)
+        args.add(8).writeU64(0x87BC36);                    // match RVA, resolved live in the DLL
+        args.add(16).writeFloat(dx);
+        args.add(20).writeFloat(dy);
+        args.add(24).writeFloat(dz);
+        args.add(28).writeU32(out.seconds);
+        args.add(32).writeU32(1);                          // producer slot
+        var armed = act('PreyVR_ArmIkApplyOffsetPtr', args);
+        out.arm = armed.ok ? armed.returned : armed.error;
+        if (out.arm !== 0) {
+            out.verdict = 'REFUSED code ' + out.arm +
+                ' (2 unaligned/null, 3 offset > 10m, 4 bad duration, 5 slot not armed)';
+            act('PreyVR_DisarmIkProducerWatch');
+            return out;
+        }
+        Thread.sleep(3);
+        out.applied = String(callTolerant('PreyVR_GetIkApplyAppliedCount', 'uint64', []).value);
+        out.skipped = String(callTolerant('PreyVR_GetIkApplySkippedCount', 'uint64', []).value);
+        out.health = watchHealth();
+        // Applied climbing is the only evidence the override is running. Skipped
+        // climbing while applied stays 0 means the match address never matched --
+        // a different fault from not being armed, and worth saying so.
+        out.verdict = Number(out.applied) > 0
+            ? 'APPLYING - offset is landing after the final write; look now, it should HOLD rather than flicker'
+            : (Number(out.skipped) > 0
+                ? 'NOT MATCHING: traps are happening but never at 0x87BC36 - the match address is wrong'
+                : 'NO TRAPS at all - the watch is armed but the site is not being written');
+        return out;
+    }
+
+    function stopIkTakeover() {
+        act('PreyVR_DisarmIkApplyOffsetPtr', ptr(1));
+        act('PreyVR_DisarmIkProducerWatch');
+        return { stopped: true, note: 'the animator restores the pose on its own next frame' };
+    }
+
     return {
         status: status,
         watchHealth: watchHealth,
@@ -724,6 +781,8 @@ var PreyVR = (function () {
         runIkCapture: runIkCapture,
         runIkProducerHunt: runIkProducerHunt,
         runIkProducerOrder: runIkProducerOrder,
+        runIkTakeover: runIkTakeover,
+        stopIkTakeover: stopIkTakeover,
         enableObserver: enableObserver,
         console: console_,
         capture: capture,

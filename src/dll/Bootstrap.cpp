@@ -1544,3 +1544,61 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetDeclaredFovWorstMilliTan()
 {
     return preyvr::dll::DeclaredFovWorstMilliTan();
 }
+
+// ---------------------------------------------------------------------------
+// The hand takeover (R-082). Applies a bounded offset immediately after
+// PreyDll+0x87BC36 writes the IK target position -- the site that writes LAST in
+// every cycle, and therefore the only place a write survives to be consumed.
+// ---------------------------------------------------------------------------
+
+namespace {
+// args[0] Vec3 address, args[1] match RVA, args[2..4] offset xyz as floats
+// bit-cast into the array, args[5] seconds. One pointer, per F-009.
+struct ApplyOffsetArgs {
+    unsigned long long vec3Address;
+    unsigned long long matchRva;
+    float dx, dy, dz;
+    unsigned int seconds;
+    unsigned int slot;
+};
+} // namespace
+
+extern "C" __declspec(dllexport) DWORD PreyVR_ArmIkApplyOffsetPtr(const ApplyOffsetArgs* args)
+{
+    if (args == nullptr) {
+        return 1;
+    }
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) {
+        return 6;
+    }
+    // The RVA is resolved here against the live module, so the caller never
+    // passes an absolute address that could be stale from another session.
+    const auto matchRip =
+        reinterpret_cast<unsigned long long>(preyDll) + args->matchRva;
+    return preyvr::dll::ArmApplyOffset(args->slot, args->vec3Address, matchRip,
+                                       args->dx, args->dy, args->dz, args->seconds);
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_DisarmIkApplyOffsetPtr(void* slot)
+{
+    return preyvr::dll::DisarmApplyOffset(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(slot)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetIkApplyAppliedCount()
+{
+    return preyvr::dll::ApplyOffsetAppliedCount();
+}
+
+// Traps that were not the matching site. **High skipped with zero applied means
+// the match address is wrong**, which is a different fault from not being armed.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetIkApplySkippedCount()
+{
+    return preyvr::dll::ApplyOffsetSkippedCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetIkApplyExpiredCount()
+{
+    return preyvr::dll::ApplyOffsetExpiredCount();
+}
