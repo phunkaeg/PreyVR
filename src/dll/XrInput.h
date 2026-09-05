@@ -40,6 +40,12 @@ struct ControllerState {
     float thumbstickY = 0.0f;
     bool triggerPressed = false;
     bool gripPressed = false;
+    // Menu buttons. A controller that cannot confirm a choice leaves the mod
+    // stopped at the main menu, which is why these are part of the product and
+    // not a debug affordance.
+    bool menuAccept = false;
+    bool menuCancel = false;
+    bool menuStart = false;
 };
 
 // Builds the action set, suggests bindings and creates the pose spaces. Must run
@@ -54,6 +60,12 @@ bool CreateXrInput(void* instanceHandle, void* sessionHandle);
 // session's own frame service, after xrWaitFrame so the predicted display time is
 // the one the poses are located against.
 void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDisplayTime);
+
+// Arms controller-driven menu navigation. Off by default: it posts synthesised
+// input into the engine, so it is enabled deliberately like every other write
+// this mod performs.
+void SetMenuNavigation(unsigned int enabled);
+unsigned long long MenuNavigationActionCount();
 
 void DestroyXrInput();
 

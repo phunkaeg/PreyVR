@@ -10,6 +10,7 @@
 #include "RenderFrame.h"
 #include "InputPost.h"
 #include "WeaponAttachment.h"
+#include "XrInput.h"
 #include "XrSessionHost.h"
 
 #include <atomic>
@@ -123,6 +124,10 @@ void WriteReport(std::ostringstream& out)
         << " weaponRefused=" << WeaponOffsetRefusedCount()
         << " frameCaptures=" << RenderFrameCaptureCount()
         << " frameTracked=" << RenderFrameTrackedCharacters()
+        << " menuActions=" << MenuNavigationActionCount()
+        << " inputPosted=" << InputPostCount()
+        << " inputDropped=" << InputQueueDroppedCount()
+        << " inputDrainThread=" << InputDrainThreadId()
         << " channelProcessed=" << gProcessed.load(std::memory_order_relaxed)
         << " channelRejected=" << gRejected.load(std::memory_order_relaxed);
 }
@@ -276,6 +281,13 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << " refused=" << InputPostRefusedCount()
             << " dropped=" << InputQueueDroppedCount()
             << " drainThread=" << InputDrainThreadId();
+    } else if (verb == "menu.nav") {
+        // Arms the controller -> menu binding. Separate from `input.post` on
+        // purpose: one authorises posting at all, the other decides whether a
+        // controller may produce it.
+        SetMenuNavigation(static_cast<unsigned int>(arg(1, 1)));
+        out << "menu.nav result=0 value=" << arg(1, 1)
+            << " actions=" << MenuNavigationActionCount();
     } else if (verb == "report") {
         WriteReport(out);
     } else {

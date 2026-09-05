@@ -82,6 +82,7 @@ add_library(preyvr_core STATIC
     src/common/InputQueue.cpp
     src/common/InteractionQuery.cpp
     src/common/Locomotion.cpp
+    src/common/MenuNavigator.cpp
     src/common/MotionController.cpp
     src/common/OpenXRBootstrap.cpp
     src/common/RenderFrameTable.cpp
@@ -326,6 +327,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_input_queue_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_input_queue_tests)
     add_test(NAME input_queue COMMAND preyvr_input_queue_tests)
+
+    add_executable(preyvr_menu_navigator_tests tests/MenuNavigatorTests.cpp)
+    target_link_libraries(preyvr_menu_navigator_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_menu_navigator_tests)
+    add_test(NAME menu_navigator COMMAND preyvr_menu_navigator_tests)
 
     add_executable(preyvr_locomotion_tests tests/LocomotionTests.cpp)
     target_link_libraries(preyvr_locomotion_tests PRIVATE preyvr_core)
