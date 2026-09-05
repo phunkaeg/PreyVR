@@ -760,3 +760,26 @@ the real target.
 
 Six memcpy traps were present in a three-second sample, so the data is there as
 soon as the accessor exists.
+
+## H-011 static renderer landmarks — 2026-09-05
+
+These are **static-only** findings against the supported Steam DLL, pending the
+separate agent's live draw confirmation. No numbered R entry is reserved while
+another agent is recording live work. Full arguments, offsets, disassembly,
+evidence files and the near-only test are in
+[the H-011 investigation](RE-H011-NEAR-PASS-STEREO-2026-09-05.md).
+
+| Steam RVA | Finding |
+|---|---|
+| `0xFB0B70` | Full/zero/inverse view builder. Clears fourth-output translation at `0xFB1037` / `0xFB103B`; current/previous caller returns `0xFB2E4D` / `0xFB2E72`. |
+| `0xFB1530` | Near projection: 0.03 near plane, near FOV, four asymmetry shifts scaled by 0.03/camera.near. |
+| `0xFB1670` | View-info source dispatch; owner `+0x2E0` selects CRenderView versus renderer fallback. |
+| `0xFB2AC0`, `0xFB4280` | Both produce near VP at output `+0xA0` from a translation-free view. |
+| `0xFB57A0` | Transposes that near VP into 0x3A0-byte constant-buffer payload `+0x90`, passed to `0x107EE50`. GPU buffer/binding identity remains unconfirmed. |
+| `0xF43D70` | UpdateNearestChange; renderer `+0x95B4` consumer, saves camera at `+0x5620`, scales asymmetry and installs near camera through R-066. |
+| `0xF42C00` | RT_SetCameraInfo at renderer vtable `+0x930`; copies zero view to renderer `+0x130` and forms zero VP at `+0x230`. |
+| `0xF39E00` | Object-change gate: object `+0x40` bit 23 is FOB_NEAREST; pipeline nearest flag is `0x10000`. |
+
+R-069 follow-up: the direct consumers of the **latched member** are `0xF43D70`,
+`0xFB4280`, and deferred-shadow setup `0xF054F0`. The five name lookups in the
+original H-011 handover were not a complete renderer-consumer census.

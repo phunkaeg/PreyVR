@@ -1,5 +1,12 @@
 # Handover — H-011: the near/viewmodel pass receives no per-eye offset
 
+**Static investigation added 2026-09-05:**
+[Exact near-matrix route and proposed stereo discriminator](RE-H011-NEAR-PASS-STEREO-2026-09-05.md).
+Prey's `0xFB0B70` explicitly clears view translation, and `0xFB2AC0` uses that
+matrix for the nearest VP at view-info `+0xA0`, packed by `0xFB57A0` at payload
+`+0x90`. Near asymmetry scaling is already implemented. These are static findings;
+the weapon draw and fix still need live confirmation by the agent owning the game.
+
 **Written 2026-09-05.** Self-contained: everything needed to work this without the
 session that found it. Deprioritised in favour of the bone-rig hunt (H-005), which
 is independent — this does not unblock that, and that does not unblock this.
@@ -66,10 +73,11 @@ references:
 
 `IConsole::GetCVar` at vtable `+0xB8` is established by R-052.
 
-**One of the five lookups is the near-pass setup, and that function builds the
-transform this hypothesis is about.** Unlike the IK chase, the symptom is known in
-advance: the right site is the one whose transform would produce *zero parallax
-with correct shadows*.
+**Correction, 2026-09-05:** none of these string lookups is guaranteed to be the
+near-pass setup. R-069 already names the latched value at renderer `+0x95B4`.
+Following its direct consumers located `UpdateNearestChange` at `0xF43D70` and
+the separate view-info/nearest-projection route above. The symptom still supplies
+the discriminator: zero weapon parallax with correct shadows.
 
 ## What is already ruled out
 

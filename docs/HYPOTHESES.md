@@ -416,6 +416,13 @@ design from the one H-005 assumed.
 
 ## H-011 -- the near/viewmodel pass receives no per-eye offset
 
+**2026-09-05 static follow-up:** the translation-free near-matrix mechanism is
+now located in Prey's binary. `0xFB0B70` explicitly clears view translation,
+`0xFB2AC0` builds the near VP at view-info `+0xA0`, and `0xFB57A0` packs it at
+constant-buffer payload `+0x90`. The near projection already rescales all four
+asymmetry values. See [the exact route and test](RE-H011-NEAR-PASS-STEREO-2026-09-05.md).
+The link to the observed weapon draw and the fix remain unconfirmed live.
+
 **Found in a headset 2026-09-05, by a test I would not have thought to run.** With
 stereo, head tracking and positional tracking all live, the wearer lined up
 overlapping detail between the left and right eye images and reported:
@@ -458,7 +465,7 @@ cannot sit at a believable depth however its bones are driven.
 ### The next hunt, and it is well motivated
 
 `r_DrawNearFoV` is looked up by name at five `IConsole::GetCVar` sites (`0x2EE2E1`,
-`0x1490DBF`, `0x1490F0E`, `0x17267BA`, `0x1727043`). One of them is the near-pass
-setup, and that is where the pass builds the transform this hypothesis is about.
-Unlike the IK chase, the symptom is known in advance, so the right site is the one
-whose transform explains **zero parallax with correct shadows**.
+`0x1490DBF`, `0x1490F0E`, `0x17267BA`, `0x1727043`). **Corrected 2026-09-05:**
+the near setup need not look it up by name; R-069's renderer `+0x95B4` latch
+leads directly to `0xF43D70` and `0xFB4280`. The next proof is the actual weapon
+draw's use of the translation-free near VP, with its shadow as the control.

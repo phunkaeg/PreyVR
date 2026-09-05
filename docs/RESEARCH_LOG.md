@@ -1562,3 +1562,19 @@ distinctive signature available and is what to grep the decompilations for.
 
 **Not yet found.** Two of the eight adjacent slots eliminated. Left here rather
 than guessed at, and the remaining work is mechanical rather than uncertain.
+
+## 2026-09-05 — H-011 near-pass stereo, static route located
+
+Followed R-069's latched near-FOV member rather than the five string lookups.
+Located `UpdateNearestChange` (`0xF43D70`) and the separate near view-info route.
+`0xFB0B70` explicitly clears translation in a copied view matrix; `0xFB2AC0`
+multiplies that copy by the near projection into view-info `+0xA0`; `0xFB57A0`
+transposes it into constant-buffer payload `+0x90`. Near asymmetry scaling is
+already present in both routes. Supported Steam hash verified from disk.
+
+[Investigation and proposed near-only discriminator](RE-H011-NEAR-PASS-STEREO-2026-09-05.md)
+records arguments, branches, exact clearing instructions, upload layout and
+remaining runtime proof. The user reserved the running process for another
+agent; no hooks or game-state edits were made, and work continued statically.
+A synthetic matrix check verified the proposed eye-relative translation formula
+and inverse-depth disparity; it is not a gameplay or headset result.
