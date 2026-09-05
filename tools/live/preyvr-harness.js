@@ -552,6 +552,37 @@ var PreyVR = (function () {
         // artifact on near geometry. TAA 3 was chosen over the other three modes.
         out.motionBlur = console_('r_MotionBlur 0').lastResult;
         out.aa = console_('r_AntialiasingMode 3').lastResult;
+
+        // **The viewmodel FOV, matched to the world's.** Prey draws near objects
+        // through a separate pass with its own field (r_DrawNearFoV), tuned for a
+        // flat screen -- so by default the weapon is rendered at a different
+        // projection from the world it sits in, which reads in a headset as the
+        // weapon belonging to a different photograph. Confirmed 2026-09-05: the
+        // weapon changes and the world does not, which is what proves the cvar
+        // reaches that pass.
+        //
+        // **Derived, not hardcoded.** The world FOV follows the player's own
+        // slider, so a fixed 88.507 is only right for the machine it was measured
+        // on. Read the live frustum and match it.
+        //
+        // It resets to Prey's default every launch, which is why this belongs in
+        // the bring-up rather than in someone's memory.
+        var fovBuf = Memory.alloc(16);
+        try {
+            new NativeFunction(module_().getExportByName('PreyVR_ReadDeclaredFovPtr'),
+                               'uint32', ['pointer'])(fovBuf);
+            // The export returns TANGENT half-extents, not angles.
+            var tanUp = fovBuf.add(8).readFloat(), tanDown = fovBuf.add(12).readFloat();
+            var verticalDeg = (Math.atan(Math.abs(tanUp)) + Math.atan(Math.abs(tanDown))) * 180.0 / Math.PI;
+            if (verticalDeg > 20.0 && verticalDeg < 170.0) {
+                out.nearFovDegrees = Math.round(verticalDeg * 1000) / 1000;
+                out.nearFov = console_('r_DrawNearFoV ' + out.nearFovDegrees).lastResult;
+            } else {
+                out.nearFov = 'skipped - derived value ' + verticalDeg + ' is not plausible';
+            }
+        } catch (e) {
+            out.nearFov = 'unavailable: ' + String(e.message || e);
+        }
         Thread.sleep(2);
         out.frames = String(callTolerant('PreyVR_GetXrSubmittedFrameCount', 'uint64', []).value);
 
