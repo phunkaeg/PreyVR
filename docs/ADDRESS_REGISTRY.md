@@ -898,3 +898,54 @@ Which of these instances draws the *visible first-person* hands. Prey's remapped
 skinning aliases master bones between meshes, so shared buffers do not identify a
 mesh -- that needs explicit draw correlation, and it is the remaining question
 before a write means anything.
+
+## R-085 -- draw correlation: which instance is the first-person hands
+
+Captured at `0x81D377` (`mov [rbx+0x98], rbp` -- the skinning-pointer store in
+`RenderCHR`), 4,000 samples over four seconds, reading render-object flags at
+`+0x40`, the skinning pointer, and the joint count via `character+0x10`.
+
+### Two instances share the hand rig, and `FOB_NEAREST` separates them
+
+| character | object flags | `FOB_NEAREST` (`0x800000`) | draws |
+| --- | --- | --- | --- |
+| `…aae0` | `0x4C00007`, `0x4800007` | **set** | 853 + 96 = **949** |
+| `…ed40` | `0x4400007` | clear | **949** |
+
+Both are the **101-joint `root_jnt` rig** carrying `r_hand_jnt` (45) and
+`l_hand_jnt` (72). The draw counts are symmetric, which is the tell: the same
+skeleton is instanced twice per frame, once into the near pass and once into the
+world.
+
+**So the near-flagged instance is the first-person hands, and the other is the
+body that casts the shadow.** That resolves the wearer's observation -- a body
+mesh with no head whose shadow has one -- as two *instances*, not one mesh drawn
+twice, and it settles H-010's open mapping.
+
+### Why this had to be measured and could not be inferred
+
+An earlier handover claimed the two meshes must read different bone matrices, so
+finding the consumer would settle ownership for free. **That was wrong**: Prey's
+remapped skinning aliases master bones between meshes. What actually separates
+them is a per-draw *flag*, which no amount of looking at buffers would reveal.
+
+Note also that `0x81D37E`, two instructions later, ORs `0x1100000` into the same
+flags -- neither of which is `FOB_NEAREST`. The bit is set elsewhere, so reading
+flags at the wrong point in this function would report it clear for everything.
+
+### Other skeletons drawn in the same window
+
+101 (x2 instances), 103 (Breather face), 38, 18 (x2), 13, 12, and a 2-joint
+anchor. The 2-joint instance also carries `FOB_NEAREST`, so **the flag alone does
+not mean "the hands"** -- it means "drawn in the near pass". Join on the flag *and*
+the rig.
+
+### What this unblocks
+
+The takeover at `0x82EE10` can now select its character: apply the hand offset
+only for the instance observed being drawn with `FOB_NEAREST`, leaving the world
+body untouched. That also gives a built-in control -- the shadow should **not**
+move when the near instance is displaced.
+
+Character pointers are session-specific; the discriminator is the flag, and the
+mapping has to be re-observed each run.
