@@ -515,3 +515,52 @@ The wrench is not available through cvars. Freezing or bypassing Prey's animatio
 would have to be done by hooking, which is far more invasive than a console
 setting -- and that cost should be weighed against simply accepting the pipeline
 and hooking the consumer instead.
+
+
+## H-011 -- CONFIRMED live 2026-09-05: the near pass now has a per-eye viewpoint
+
+The weapon has depth. A wearer's verdict: *"weapon had depth for sure."*
+
+### The protocol, in the order that made it falsifiable
+
+| step | result |
+| --- | --- |
+| Stereo up, native projection on | `fovDiverged 0`, `lastEye` publishing |
+| **Zero-delta control** -- every path armed, displacement zero | 30,796 applied, 0 refused, **pixel-identical** |
+| Real delta, half-IPD 32 mm | 1,036,783 applied, 0 refused |
+| Sign per eye | `lastDelta` alternating **-32000 / +32000 um** |
+
+The control is what makes this worth recording: hook, snapshot, matrix arithmetic
+and restore all ran with a zero displacement and produced **no visible change**,
+so the machinery was proven inert before a real offset was layered on it.
+
+### What it fixes
+
+The near view-projection is built from a **translation-free** view (`0xFB0B70`
+zeroes the row at `0xFB1037`), so the viewmodel was camera-relative by
+construction and could not receive stereo separation from moving the camera --
+which is exactly why the wearer saw the weapon identical in both eyes while its
+shadows separated correctly. The edit adds the eye displacement to the finished
+near VP only, leaving world and shadow paths untouched.
+
+### A separate bug found in the same session, and it is instructive
+
+`r_DrawNearFoV` was set to **104.254** twice, live, and the wearer reported the
+weapon FOV looked wrong. It did. The declared-FOV export returns
+`[0, tanLeft, tanRight, tanUp]` -- **offset by one field** -- and indices 2 and 3
+were read as the vertical pair, mixing a horizontal tangent with a vertical one.
+Read correctly the frustum is `120 x 88.507`, precisely the value recorded weeks
+earlier and replaced by a "derived" one that was worse.
+
+**The frustum guard did not catch it**, and the reason generalises: that assert
+watches the *submission* path, comparing declared against rendered. This number
+reached the engine through a **console cvar**. A check only covers the path it is
+on, and a second path into the same subsystem is a second place to be wrong.
+
+### Not yet established
+
+The packer at `0xFB57A0` is shared -- over a million applies in three seconds is
+far more than one per frame, so many view-info builds pass through it. The
+projection-shape guard admits all of them. Nothing else was reported as gaining
+disparity, but that is an absence of complaint rather than a filter, and owner or
+view-type filtering remains the honest next step.
