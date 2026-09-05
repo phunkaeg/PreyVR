@@ -557,10 +557,22 @@ watches the *submission* path, comparing declared against rendered. This number
 reached the engine through a **console cvar**. A check only covers the path it is
 on, and a second path into the same subsystem is a second place to be wrong.
 
-### Not yet established
+### Acceptance test passed in a headset, 2026-09-05
 
-The packer at `0xFB57A0` is shared -- over a million applies in three seconds is
-far more than one per frame, so many view-info builds pass through it. The
-projection-shape guard admits all of them. Nothing else was reported as gaining
-disparity, but that is an absence of complaint rather than a filter, and owner or
-view-type filtering remains the honest next step.
+Run with the full stack live at once -- stereo, native projection, head rotation,
+positional 6DoF, corrected viewmodel FOV -- and a **valid recenter taken in
+gameplay** rather than at a menu. Health across 9,472 frames: `fovDiverged 0`,
+`posRefused 0`, `nearRefused 0`, `nearNoEye 0`, delta alternating per eye.
+
+Wearer's verdict: **"weapon depth looks correct, nothing else off."**
+
+The second half is the part that was genuinely open. The packer at `0xFB57A0` is
+shared -- 1.43 M applies in one session is far more than one per frame, so many
+view-info builds pass through it, and the projection-shape guard admits all of
+them. The concern was that a secondary view, HUD or scope would gain disparity
+too. **Checked by eye across a play session: it did not.**
+
+That is an *absence of observed error*, not a filter, and it is worth saying which
+one it is. If a future scene introduces a near-flagged secondary view, this would
+bite without warning, and owner or view-type filtering is the fix. But the
+acceptance test as specified has passed, and the lane is closed rather than open.
