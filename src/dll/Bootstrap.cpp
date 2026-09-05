@@ -1602,3 +1602,57 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetIkApplyExpiredCount()
 {
     return preyvr::dll::ApplyOffsetExpiredCount();
 }
+
+// ---------------------------------------------------------------------------
+// Captured registers.
+//
+// The ring has recorded all sixteen since it was written; only rip, stackTop,
+// sequence, thread and slot were reachable. R-083 needs `rdx`: the out-of-module
+// memcpy at 0xF97DC1DC refreshes the IK targets every cycle, and on the Win64 ABI
+// memcpy(dst, src, n) passes the SOURCE in rdx -- which names the buffer the
+// scratch targets are copied from, and therefore the next candidate for the real
+// one.
+//
+// Returned raw, not as an RVA: these are heap pointers as often as code
+// addresses, and silently subtracting a module base from a heap pointer produces
+// a plausible number that means nothing.
+// ---------------------------------------------------------------------------
+
+namespace {
+struct CaptureRegisterQuery {
+    unsigned int index;
+    unsigned int which;   // 0 rax, 1 rcx, 2 rdx, 3 rbx, 4 rsp, 5 rbp, 6 rsi, 7 rdi,
+                          // 8..15 r8..r15
+};
+} // namespace
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetWatchCaptureRegisterPtr(
+    const CaptureRegisterQuery* query)
+{
+    if (query == nullptr) {
+        return 0;
+    }
+    preyvr::dll::WatchCapture c{};
+    if (!preyvr::dll::ReadWatchCapture(query->index, c)) {
+        return 0;
+    }
+    switch (query->which) {
+        case 0:  return c.rax;
+        case 1:  return c.rcx;
+        case 2:  return c.rdx;
+        case 3:  return c.rbx;
+        case 4:  return c.rsp;
+        case 5:  return c.rbp;
+        case 6:  return c.rsi;
+        case 7:  return c.rdi;
+        case 8:  return c.r8;
+        case 9:  return c.r9;
+        case 10: return c.r10;
+        case 11: return c.r11;
+        case 12: return c.r12;
+        case 13: return c.r13;
+        case 14: return c.r14;
+        case 15: return c.r15;
+        default: return 0;
+    }
+}
