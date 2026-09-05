@@ -47,6 +47,34 @@ DWORD SetHandRigJoint(unsigned int jointIndex);
 // discriminator in the investigation's protocol is a fixed 100 mm shift.
 DWORD SetHandRigOffsetMillimetres(int x, int y, int z);
 
+// Restricts the edit to one character instance.
+//
+// **Necessary because the rig is instanced twice.** R-085 measured two character
+// instances sharing the 101-joint hand rig: one drawn with `FOB_NEAREST` (the
+// first-person hands) and one without (the world body that casts the shadow),
+// 949 draws each per four seconds. Converting both would move the shadow as well,
+// which is not the product -- and would also destroy the best control available
+// here, since **the shadow not moving is what proves the right instance was
+// picked**.
+//
+// `FOB_NEAREST` is a *per-draw* render-object flag, while this hook is *per
+// character*, so the correlation cannot be made here. The observer that watches
+// `RenderCHR` supplies the pointer instead.
+//
+// Zero means "any character", which is only appropriate for topology capture.
+DWORD SetHandRigCharacterPtr(void* character);
+
+// The last character converted, so an observed draw can be joined to a
+// conversion by pointer.
+unsigned long long HandRigLastCharacter();
+
+// Conversions that matched the selected character, and those skipped because they
+// did not. **Skipped climbing while matched stays zero means the selection is
+// wrong** -- a different fault from the hook not running, and the reason these are
+// counted apart.
+unsigned long long HandRigMatchedCount();
+unsigned long long HandRigSkippedCount();
+
 // --- Topology, captured passively at the consumer -------------------------
 //
 // Step one of the protocol, and it must happen before any write: the joint whose

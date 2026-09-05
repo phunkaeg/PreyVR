@@ -54,6 +54,9 @@ std::atomic<int> gJoint{-1};
 std::atomic<float> gOffsetX{0.0f}, gOffsetY{0.0f}, gOffsetZ{0.0f};
 std::atomic<unsigned long long> gForwarded{0}, gApplied{0}, gRefused{0};
 std::atomic<unsigned int> gLastSubtree{0};
+std::atomic<unsigned long long> gSelectedCharacter{0};
+std::atomic<unsigned long long> gLastCharacter{0};
+std::atomic<unsigned long long> gMatched{0}, gSkipped{0};
 
 // Topology of the most recent conversion, for the passive dump.
 std::atomic<unsigned int> gTopologyCount{0};
@@ -137,6 +140,19 @@ void* __fastcall ComputeWithHandTakeover(void* charInstance, void* skinningData,
         return forward();
     }
     CaptureTopology(defaultSkeleton, count);
+    gLastCharacter.store(reinterpret_cast<unsigned long long>(charInstance),
+                         std::memory_order_relaxed);
+
+    // Topology is captured for every character; edits are not. A zero selection
+    // means "any", which is only right while dumping.
+    const unsigned long long selected = gSelectedCharacter.load(std::memory_order_acquire);
+    const bool matches = selected == 0ull ||
+                         selected == reinterpret_cast<unsigned long long>(charInstance);
+    if (!matches) {
+        gSkipped.fetch_add(1, std::memory_order_relaxed);
+        return forward();
+    }
+    gMatched.fetch_add(1, std::memory_order_relaxed);
 
     auto* const absolute =
         *reinterpret_cast<std::uint8_t* const*>(poseData + kPoseAbsoluteArray);
@@ -301,6 +317,21 @@ DWORD SetHandRigOffsetMillimetres(int x, int y, int z)
         " y=" + std::to_string(y) + " z=" + std::to_string(z));
     return 0;
 }
+
+DWORD SetHandRigCharacterPtr(void* character)
+{
+    gSelectedCharacter.store(reinterpret_cast<unsigned long long>(character),
+                             std::memory_order_release);
+    gMatched.store(0, std::memory_order_relaxed);
+    gSkipped.store(0, std::memory_order_relaxed);
+    Log("result=0 detail=selected_character value=" +
+        std::to_string(reinterpret_cast<unsigned long long>(character)));
+    return 0;
+}
+
+unsigned long long HandRigLastCharacter() { return gLastCharacter.load(std::memory_order_relaxed); }
+unsigned long long HandRigMatchedCount() { return gMatched.load(std::memory_order_relaxed); }
+unsigned long long HandRigSkippedCount() { return gSkipped.load(std::memory_order_relaxed); }
 
 DWORD HandRigJointCount() { return gTopologyCount.load(std::memory_order_acquire); }
 

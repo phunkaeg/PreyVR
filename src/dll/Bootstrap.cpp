@@ -1790,3 +1790,29 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetHandRigLastSubtreeSize()
 {
     return preyvr::dll::HandRigLastSubtreeSize();
 }
+
+// Restricts the hand edit to one character instance. R-085: two instances share
+// the hand rig, and only the FOB_NEAREST-drawn one is the first-person hands.
+// Editing both would move the shadow too -- and the shadow NOT moving is the
+// control that proves the right instance was selected.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetHandRigCharacterPtr(void* character)
+{
+    return preyvr::dll::SetHandRigCharacterPtr(character);
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetHandRigLastCharacter()
+{
+    return preyvr::dll::HandRigLastCharacter();
+}
+
+// Skipped climbing while matched stays zero means the selected pointer is wrong,
+// which is a different fault from the hook not running.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetHandRigMatched()
+{
+    return preyvr::dll::HandRigMatchedCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetHandRigSkipped()
+{
+    return preyvr::dll::HandRigSkippedCount();
+}
