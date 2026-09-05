@@ -1,5 +1,14 @@
 # Handover — the model frame, and Prey's own two-bone solver
 
+**Static answer, 2026-09-05:** [full investigation and implementation contract](RE-H005B-MODEL-FRAME-ARM-CHAIN-2026-09-05.md).
+The full render matrix is object `+0`; the near character uses camera-position-relative,
+world-oriented coordinates. Native two-bone solver `0x871CA0` survives, without a
+pole input and with writes to both pose arrays. Attachment `+0x48` is confirmed,
+with bind/current-pose compensation required. Two timing hazards are now explicit:
+`0x81D377` follows job dispatch, and the post-physics modifier loop repeats entry
+zero. The verifier passes 28 static landmarks and 8 synthetic fixtures; no live
+process access or runtime implementation was performed in this investigation.
+
 **Written 2026-09-05, after independent per-hand control was reproduced in a
 headset.** Two static questions now gate precision. Both suit static analysis; the
 live lane has taken them as far as approximation allows.

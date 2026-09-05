@@ -2,6 +2,32 @@
 
 Only confirmed or explicitly provisional build-specific locations belong here. Prefer a signature plus validation recipe over an RVA alone.
 
+### H-005B static additions — 2026-09-05
+
+No R-number allocation: the other agent owns the live lane. Supported Steam hash
+and 28 instruction/vtable checks are encoded in
+`tools/re/verify_h005b_model_frame.py`; eight synthetic fixtures verify the
+coordinate/attachment equations. All entries here are **static-only**, except
+the inherited live identities explicitly referenced in the investigation.
+
+| RVA / field | Purpose and constraint |
+| --- | --- |
+| `0x81D194..0x81D1E3`; object `+0..+0x2F` | Full Matrix34 copy in RenderCHR; translation `+0x0C/+0x1C/+0x2C` |
+| `0x81D272` | Proposed earlier observation: RBX object, RDI character, EAX pool ID; precedes this caller's job dispatch at `0x81D35F`. Existing `0x81D377` is later. |
+| `0x973400`; `0x974735..0x974780` | Entity-slot character render; ordinary near branch subtracts camera position without rotating the model basis into view space |
+| `0x81BCB0` | Character vtable `+0xC0`, composes offset/render transform then calls RenderCHR |
+| `0x871CA0`; `0x874210` | Native two-bone leaf and handle dispatcher; write pose `+0x10` relative and `+0x18` absolute, no pole, optional stretch |
+| `0x16CB760`; `0x16D8290`; `0x16DC190`; `0x8345E0` | Compiled CreateIKLimb, actor iteration, limb update and SetHumanLimbIK path; selected-player activation/handle matching unproven |
+| `0x8390E0`; character `+0x598` | Modifier preparation and Setup pointer; nested stack at setup `+0x20` |
+| `0x87799E..0x8779D2` | Post-physics main queue executes entry zero repeatedly; pointer does not advance |
+| `0x7F31A0` | Nested CPoseModifierStack Execute advances correctly through its shared-pointer vector |
+| `0x7E3A20`; `0x7E3B00` | Ik2Segments modifier Prepare/Execute; vtable `0x1D1FBF8`, slots `+0x20/+0x28` |
+| `0x828D70`; `0x822C70` | Bone attachment SetAbs/GetAbs, vtable `0x1D212B8 +0x48/+0x50`; default QuatT at attachment `+0x114` |
+| `0x7A2560`; `0x7A21B0` | ProjectAttachment regenerates relative default; AlignJointAttachment explicitly resets absolute default |
+| `0x7A3390`; `0x7A40E0`; `0x7A37E0` | Bone execute/static/redirected updates; default-to-current pose compensation and timing explained in report |
+
+[Contracts, caveats, and next live discriminators](RE-H005B-MODEL-FRAME-ARM-CHAIN-2026-09-05.md).
+
 | ID | Module | RVA | Symbol / purpose | Signature | Evidence | Confidence | Validation / status |
 | --- | --- | ---: | --- | --- | --- | --- | --- |
 | R-001 | `PreyDll.dll` | `0x1D93408` | D3D dynamic-loader string cluster | ASCII `CreateDXGIFactory1\0` followed by `dxgi.dll`, `D3D11CreateDevice`, `d3d11.dll` | Ghidra memory inspection 2026-07-30; xrefs resolved after the full analysis pass, 2026-08-01 | observed | Consumers identified: `0x180F50057` in R-025 and `0x180D87761` in R-046. **Both are now classified as of 2026-08-22** — R-025 is the real device/swapchain creation path and R-046 is machine-spec detection telemetry that creates and immediately releases throwaway devices. There is no second render or present path behind these strings. Anchor only; still do **not** hook or patch the strings themselves. |
@@ -1090,3 +1116,92 @@ The wearer's report is what corrected it, for the third time today.
 Wrist **rotation** (translation only, so the hand does not turn), the
 upper-arm/forearm chain, arm-length calibration, cutscene suspension, and the
 weapon binding.
+
+## R-088 -- the model frame, the native two-bone solver, and the mount equation
+
+Static, verified against this build by `tools/re/verify_h005b_model_frame.py`
+(28 landmarks, 8 synthetic fixtures, `runtime_tested: false`). Full analysis:
+[`RE-H005B-MODEL-FRAME-ARM-CHAIN-2026-09-05.md`](RE-H005B-MODEL-FRAME-ARM-CHAIN-2026-09-05.md).
+
+### The render matrix is `CRenderObject+0x00`
+
+Twelve floats, row-major 3x4, stored at `0x81D194..0x81D1E3`. **Basis vectors are
+columns, not rows:** X at `+0x00,+0x10,+0x20`, Y at `+0x04,+0x14,+0x24`, Z at
+`+0x08,+0x18,+0x28`, translation at `+0x0C,+0x1C,+0x2C`.
+
+For the near character the matrix is **camera-position-relative with
+world-oriented axes**: `Mnear = T(-C) * W`, where `0x974743..0x974780` negates the
+view camera's translation and adds it to the model translation. **The basis is not
+multiplied by inverse camera rotation.**
+
+So the conversions are:
+
+```
+world instance:  Pmodel = inverse(Mworld) * Pworld
+near instance:   Pmodel = inverse(Mnear)  * (Pworld - C)
+```
+
+**Two instances sharing a rig do not share a matrix.** Even with identical `W`,
+`Mnear != Mworld` whenever `C` is non-zero. Never reuse the near inverse for the
+shadow on the strength of a shared rig id.
+
+### Timing: `0x81D377` is too late
+
+The existing marker sits **after** the skinning dispatch at `0x81D35F`, so a
+matrix read there is not guaranteed to be seen by the job it was meant for. The
+proposed earlier marker is **`0x81D272`**, where `RBX` is the render object, `RDI`
+the character and `EAX` the skinning pool id.
+
+### The native two-bone solver survives: `0x871CA0`
+
+`IK_Solver2Bones(const Vec3* modelGoal, const IKLimb* limb, CPoseData* pose)`,
+RCX/RDX/R8. Called from the known animation path `0x877B50` after comparing limb
+`+8` against ASCII `2BIK`; siblings handle `3BIK` (`0x872C60`) and `CCDX`
+(`0x874810`). **This is compiled and connected code, not a stripped registration.**
+
+Properties that decide whether it is usable:
+
+* **No pole or hint vector.** The bend plane comes from the current posed chain.
+* Reads relative QuatT at `pose+0x10` and absolute at `pose+0x18`, and **writes
+  both**.
+* Stretches both segments by up to `1.25x` when the goal is unreachable -- a *per
+  call* cap, not a bound relative to the original pose.
+* Refuses degenerate cases: goal displacement below `1e-10`, near-collinear bend
+  plane, and clamps the law-of-cosines term to `[-0.99, 0.99]`.
+* Does not finish descendants and does not take a wrist orientation.
+
+**This blocks our current consumer seam as written.** The pose view we hand the
+original is a 32-byte prefix with only `+0x18` redirected; `+0x10` still points at
+engine memory, and the solver writes there. Using it means cloning **both** arrays.
+
+### The attachment mount is a DEFAULT, not the current transform
+
+Bone-attachment vtable `0x1D212B8`: `SetAttAbsoluteDefault` `+0x48` (`0x828D70`),
+`GetAttAbsoluteDefault` `+0x50` (`0x822C70`, returns `this+0x114`). Fields:
+relative default `+0xF8`, absolute default `+0x114`, current model mount `+0x130`,
+extra rotation `+0x14C`, joint index `+0x15C`.
+
+The update composes, with `B` the bind joint pose and `J` the current joint pose:
+
+```
+currentMount            = J * inverse(B) * absoluteDefault
+absoluteDefaultToWrite  = B * inverse(J) * G          // for a desired G
+```
+
+Normal static/execute updates additionally right-multiply orientation by the
+quaternion `K` at `+0x14C`, so use `G0 = { qG * inverse(K), tG }` when `K` is not
+identity.
+
+**Persistence is confirmed for the inspected update paths** -- they rebuild the
+*relative* default from the absolute one rather than overwriting it. But
+`AlignJointAttachment` (`+0xB8`) *does* overwrite the absolute default, and its
+only found reference is its own vtable entry, so a per-frame virtual caller cannot
+be ruled out statically.
+
+### Consequence for what this project already built
+
+The weapon lane writes the desired pose **straight into** `SetAttAbsoluteDefault`,
+which by the equation above yields `J * inverse(B) * G` -- so it moves the weapon
+*relative to the animation* rather than placing it absolutely. That is adequate
+for a delta and is **not** absolute placement; the code and its header said more
+than it did, and both are corrected.

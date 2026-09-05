@@ -1599,3 +1599,34 @@ The joint-name/parent/count accessors and record layout are now byte-verified.
 The standalone read-only verifier `tools/re/verify_h005_skinning.py` passes 16
 instruction/vtable checks against the supported module. This proves static
 landmarks only; independent rendered-hand control remains untested.
+
+## 2026-09-05 — H-005B model frame, native IK, and attachment contract
+
+The subsequent live handover confirms R-084/R-085/R-087 and supersedes the
+previous entry's untested hand-control status. This new investigation stayed
+static and left the running game and mod implementation to the owning agent.
+
+Located the entire render Matrix34 at object `+0`; traced entity character
+render through `0x973400 -> 0x81BCB0 -> 0x81D0D0`. Near translation is relative
+to camera position while its axes remain world-oriented. The existing marker
+`0x81D377` follows skinning dispatch; proposed earlier observation is `0x81D272`,
+with pool ID in EAX. Per-instance matrix/origin/epoch matching is still a live proof.
+
+Native two-bone leaf `0x871CA0` is called by the animation-driven path and
+mutates both relative and absolute pose arrays. It has no pole input, rejects
+degenerate geometry and permits 25% segment stretch. CreateIKLimb and the
+modifier stack have compiled evaluation paths. Found a concrete main-queue
+defect: `0x8779C0..0x8779D2` repeats the first entry without pointer advancement;
+the nested stack `0x7F31A0` iterates correctly.
+
+Verified attachment SetAbs at vtable `+0x48` / RVA `0x828D70`: it copies the
+default QuatT and invalidates projection. Inspected animation updates retain
+that value and rebuild relative/current mounts. Absolute placement requires
+`B * inverse(J) * G`, with an additional Prey mount quaternion on normal
+static/execute paths. Same-frame consumption and ownership are separate from
+setter persistence; skinning-only hand edits do not change the attachment's J.
+
+[H-005B report and proposed live experiments](RE-H005B-MODEL-FRAME-ARM-CHAIN-2026-09-05.md).
+`tools/re/verify_h005b_model_frame.py` passes 28 static landmarks and 8 synthetic
+transform fixtures. No process attachment, runtime write, deployment or headset
+test was performed by this investigation.

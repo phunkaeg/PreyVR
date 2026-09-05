@@ -1,5 +1,16 @@
 # Hypotheses queue
 
+**H-005B static advance, 2026-09-05:** R-084/R-085/R-087 have since confirmed
+the earlier consumer route and controller translation in a headset. The next
+static contracts are now located: render object `+0` is the complete model
+matrix, with camera-position-relative translation on the near entity route;
+native two-bone solve is `0x871CA0`; bone-attachment SetAbs is `0x828D70`.
+Before integration, account for the current marker following job dispatch,
+both relative/absolute arrays being writable by IK, and attachment bind/current
+pose compensation. The main modifier queue's first-entry repetition is also
+byte-verified. [H-005B findings and bounded live proofs](RE-H005B-MODEL-FRAME-ARM-CHAIN-2026-09-05.md).
+These are static refinements to the accepted hand takeover, not new headset results.
+
 **H-005 static advance, 2026-09-05:** the finished-pose consumer and GPU/software
 handoff are located: **`0x82EE10`** accepts a character's absolute joint poses,
 builds skinning dual quaternions and publishes them. A private input substitution
