@@ -140,6 +140,42 @@ void TestWeaponOffsetEntriesAreAllowed()
         "and readable with no argument, which is how a baseline is captured");
 }
 
+// The animation-control entries, added 2026-09-05.
+//
+// A different kind of widening from the weapon offsets: these do not move
+// something, they switch a subsystem off. Worth pinning for that reason -- an
+// entry that disables the animator has a much larger blast radius than one that
+// nudges a camera, so what it does and does not permit should be stated.
+void TestAnimationControlEntriesAreAllowed()
+{
+    Require(Classify("ca_useADIKTargets 0") == Classification::sceneControl,
+        "animation-driven IK targets can be switched off");
+    Require(Classify("ca_DebugADIKTargets 1") == Classification::sceneControl,
+        "and drawn, which is how the targets get identified by looking");
+    Require(Classify("ca_NoAnim 1") == Classification::sceneControl,
+        "the animator can be frozen outright");
+    Require(Classify("a_poseAlignerEnable 0") == Classification::sceneControl,
+        "and Prey's own pose aligner disabled separately");
+    Require(Classify("ca_NoAnim") == Classification::query,
+        "each is readable with no argument, so a baseline can be captured first");
+}
+
+// The animation family is large -- 132 ca_/a_ cvars in the image -- and only four
+// are allowed. Prefix matching here would hand over the whole subsystem.
+void TestAnimationWideningIsExact()
+{
+    RequireDenied("ca_DisableAuxPhysics 1",
+        "a ca_ cvar that was not added is still denied");
+    RequireDenied("ca_UseAimIK 0",
+        "so is another plausible-sounding animation toggle");
+    RequireDenied("a_poseAlignerForceLock 1",
+        "a sibling of an allowed entry is not itself allowed");
+    RequireDenied("ca_NoAnimation 1",
+        "a name that merely extends an allowed one is denied");
+    RequireDenied("ca_NoAnim 1; quit",
+        "a separator cannot smuggle a command behind an animation toggle");
+}
+
 // Widening the list must not widen anything else. A near-miss name is still
 // denied, and the new entries are not an injection vector.
 void TestWeaponOffsetWideningIsExact()
@@ -164,6 +200,8 @@ int main()
     TestAllowedFormsClassify();
     TestWeaponOffsetEntriesAreAllowed();
     TestWeaponOffsetWideningIsExact();
+    TestAnimationControlEntriesAreAllowed();
+    TestAnimationWideningIsExact();
     TestCaseInsensitivity();
     TestSeparatorsCannotSmuggleCommands();
     TestExecIsDeniedExplicitly();

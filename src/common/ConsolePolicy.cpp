@@ -23,10 +23,33 @@ namespace {
 // person camera offset and `i_offset_*` are CryEngine's standard item viewmodel
 // offsets; both are reversible by setting them back, and neither reaches outside
 // the game.
-constexpr std::array<std::string_view, 18> kAllowlist{
+// **Animation control, added 2026-09-05 on an explicit decision.** These are a
+// second real widening, and a different kind from the weapon offsets above: they
+// do not move something, they *switch a subsystem off*.
+//
+// The reasoning is that the shipped mod does not want Prey's idle and weapon
+// animation at all -- motion controllers own the hands in the end state, so the
+// animator is not an obstacle to work around but a thing to disable. Three
+// sessions were spent trying to out-race it (R-082, R-083, and a producer chain
+// that recomputes at every level) before that was said out loud.
+//
+// `ca_DebugADIKTargets` earns its place separately: it *draws* the
+// animation-driven IK targets, which replaces a day of inferring things from
+// single-frame flickers with looking at them.
+//
+// All four are reversible by setting them back and none reaches outside the game,
+// which is the standard the weapon-offset entries were judged against. Expect
+// intermediate builds to look broken before they look right: hands with no IK may
+// fall to a bind pose or leave the weapon entirely, which is correct-but-ugly
+// rather than wrong.
+constexpr std::array<std::string_view, 22> kAllowlist{
     "SetWeaponCameraOffsetX",
     "SetWeaponCameraOffsetY",
     "SetWeaponCameraOffsetZ",
+    "a_poseAlignerEnable",
+    "ca_DebugADIKTargets",
+    "ca_NoAnim",
+    "ca_useADIKTargets",
     "e_CameraFreeze",
     "e_CoverageBufferDebugFreeze",
     "e_Recursion",
