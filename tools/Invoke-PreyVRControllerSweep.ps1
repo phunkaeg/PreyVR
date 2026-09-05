@@ -46,6 +46,12 @@
 param(
     [string]$XrSimRoot = 'D:\Dev Debug\xr-sim',
     [string]$StateName = 'preyvr',
+    # **The run's own state directory, and the reason it exists.** A run
+    # launched by Invoke-PreyVRLaunch.ps1 gets a unique XRSIM_DIR; pointing this
+    # at the shared default would observe a different session than the one being
+    # driven, which is how a stale probe capture became a "game" frame. The
+    # launcher prints the exact value to pass here.
+    [string]$StateDir = '',
     [string]$Out = "$env:TEMP\preyvr-sweep",
     [ValidateSet('yaw', 'pitch')]
     [string]$Axis = 'yaw',
@@ -64,7 +70,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$stateDir   = Join-Path $env:LOCALAPPDATA "xr-sim\$StateName"
+if ($StateDir) { $stateDir = $StateDir } else { $stateDir = Join-Path $env:LOCALAPPDATA "xr-sim\$StateName" }
 $statePath  = Join-Path $stateDir 'state.json'
 $cmdScript  = Join-Path $XrSimRoot 'tools\xrsim-cmd.ps1'
 $shotScript = Join-Path $XrSimRoot 'tools\xrsim-shot.ps1'
