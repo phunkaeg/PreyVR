@@ -22,6 +22,16 @@ bool Near(float a, float b, float epsilon = 1e-5f)
     return std::fabs(a - b) <= epsilon;
 }
 
+// Quaternions double-cover rotations: q and -q are the same orientation, so a
+// comparison that ignores that reports a false mismatch on half its inputs.
+bool NearQuat(Quaternion a, Quaternion b, float epsilon = 1e-4f)
+{
+    const float dot = a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
+    const float sign = dot < 0.0f ? -1.0f : 1.0f;
+    return std::fabs(a.x - sign*b.x) < epsilon && std::fabs(a.y - sign*b.y) < epsilon &&
+           std::fabs(a.z - sign*b.z) < epsilon && std::fabs(a.w - sign*b.w) < epsilon;
+}
+
 bool NearVec(Vec3 a, Vec3 b, float epsilon = 1e-5f)
 {
     return Near(a.x, b.x, epsilon) && Near(a.y, b.y, epsilon) && Near(a.z, b.z, epsilon);
@@ -94,6 +104,47 @@ void TestHandAndEyeShareAReferenceFrame()
         "the hand and the eye are composed through the same reference frame");
     Require(NearVec(hand.position, Vec3{50.0f, 60.5f, 70.0f}, 1e-4f),
         "a 90-degree reference yaw swings a rightward hand offset onto +Y");
+}
+
+// The composition-order test, written because this failure is silent and a
+// project on another engine lost real time to it.
+void TestMountCompositionOrder()
+{
+    // A 90-degree yaw authored mount, and no controller movement since
+    // calibration: the mount must come back unchanged.
+    const float halfPi = 3.14159265358979f * 0.25f;
+    const Quaternion mount{0.0f, 0.0f, std::sin(halfPi), std::cos(halfPi)};
+    const Quaternion aim{0.0f, 0.0f, 0.0f, 1.0f};
+    const auto still = MountRotationFromControllerDelta(mount, aim, aim);
+    Require(still.has_value(), "a zero delta is composable");
+    Require(NearQuat(*still, mount),
+        "with no controller movement the authored mount survives unchanged");
+
+    // Now rotate the controller by 90 degrees about Z. Composed correctly the
+    // result is delta * mount = 180 degrees; composed the WRONG way round it is
+    // also 180 here, so a symmetric case cannot tell them apart -- which is
+    // exactly why the real symptom is so confusing. Use an asymmetric axis.
+    const Quaternion pitch{std::sin(halfPi), 0.0f, 0.0f, std::cos(halfPi)};
+    const auto turned = MountRotationFromControllerDelta(mount, aim, pitch);
+    Require(turned.has_value(), "a real delta is composable");
+    const Quaternion right = Normalize(Multiply(pitch, mount));
+    const Quaternion wrong = Normalize(Multiply(mount, pitch));
+    Require(NearQuat(*turned, right), "the authored mount composes on the RIGHT");
+    Require(!NearQuat(right, wrong),
+        "the two orders differ on this input, so the test can actually fail");
+}
+
+// Fail closed: a degenerate rotation must not produce a plausible mount.
+void TestMountCompositionFailsClosed()
+{
+    const Quaternion good{0.0f, 0.0f, 0.0f, 1.0f};
+    const Quaternion zero{0.0f, 0.0f, 0.0f, 0.0f};
+    Require(!MountRotationFromControllerDelta(zero, good, good).has_value(),
+        "a zero-length authored mount is refused");
+    Require(!MountRotationFromControllerDelta(good, zero, good).has_value(),
+        "a zero-length calibration reference is refused");
+    Require(!MountRotationFromControllerDelta(good, good, zero).has_value(),
+        "a zero-length live aim is refused, so an untracked controller writes nothing");
 }
 
 void TestWeaponPoseAppliesGrip()
@@ -182,6 +233,8 @@ int main()
     TestAimFailsClosed();
     TestHandAndEyeShareAReferenceFrame();
     TestWeaponPoseAppliesGrip();
+    TestMountCompositionOrder();
+    TestMountCompositionFailsClosed();
     TestTwoHandedPose();
     TestTwoHandedFailsClosed();
     TestTurning();

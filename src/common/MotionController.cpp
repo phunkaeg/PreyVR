@@ -64,6 +64,36 @@ std::optional<AimRay> AimFromController(
     return AimRay{world.position, *direction};
 }
 
+namespace {
+
+bool IsUsableRotation(const Quaternion& q)
+{
+    const float lengthSquared = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w;
+    return std::isfinite(lengthSquared) && lengthSquared > 0.25f && lengthSquared < 4.0f;
+}
+
+Quaternion ConjugateOf(const Quaternion& q) { return Quaternion{-q.x, -q.y, -q.z, q.w}; }
+
+} // namespace
+
+std::optional<Quaternion> MountRotationFromControllerDelta(
+    const Quaternion& authoredMount,
+    const Quaternion& calibrationAim,
+    const Quaternion& currentAim)
+{
+    if (!IsUsableRotation(authoredMount) || !IsUsableRotation(calibrationAim) ||
+        !IsUsableRotation(currentAim)) {
+        return std::nullopt;
+    }
+    const Quaternion delta = Normalize(Multiply(currentAim, ConjugateOf(Normalize(calibrationAim))));
+    // Authored mount on the RIGHT: it is the basis being changed.
+    const Quaternion composed = Normalize(Multiply(delta, Normalize(authoredMount)));
+    if (!IsUsableRotation(composed)) {
+        return std::nullopt;
+    }
+    return composed;
+}
+
 Pose WeaponPoseFromController(
     const stereo::ReferenceFrame& reference,
     const Pose& openXrControllerPose,

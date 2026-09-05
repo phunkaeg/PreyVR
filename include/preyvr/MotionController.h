@@ -62,6 +62,30 @@ struct GripTransform {
     Pose controllerToWeapon{};
 };
 
+// The weapon mount, recomposed from how far the controller has rotated since
+// calibration.
+//
+// **This exists as a pure function because its failure mode is silent.** The
+// authored mount is a *basis change* and must be composed on the right --
+// `trackedDelta * authoredMount`. Composed the other way it becomes a meaningless
+// residual, and the symptom looks exactly like a sign error: BioshockVR loaded a
+// correct +90 degree grip offset, applied it on the wrong side, and then tried
+// +90000 and -90000 millidegrees without either being closer.
+//
+// **The diagnostic that identifies the class:** if both extremes of a signed
+// parameter fail symmetrically, the model is wrong rather than the sign.
+//
+// Used where an absolute model-space controller pose is not available -- the delta
+// form needs only a calibration reference, where `WeaponPoseFromController` needs
+// a solved model frame.
+//
+// Returns nothing when any input is not a usable rotation, so a caller keeps the
+// engine's own mount rather than writing a degenerate one.
+std::optional<Quaternion> MountRotationFromControllerDelta(
+    const Quaternion& authoredMount,
+    const Quaternion& calibrationAim,
+    const Quaternion& currentAim);
+
 Pose WeaponPoseFromController(
     const stereo::ReferenceFrame& reference,
     const Pose& openXrControllerPose,
