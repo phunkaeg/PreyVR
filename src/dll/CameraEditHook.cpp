@@ -304,6 +304,38 @@ void Reset()
 
 } // namespace eyehandoff
 
+// What the eye camera we just handed the renderer actually projects with.
+//
+// **This is the third quantity, and nothing outside the process can see it.**
+// xr-tape's own CHECKS.md says so: it can observe the FOV the runtime located and
+// the FOV we declared, but "the engine's own projection matrix never crosses the
+// OpenXR boundary, so no API layer can see it". The mod is the only place all
+// three coexist, so the comparison has to live here.
+//
+// Published from the one function every path uses to build an eye, so a route
+// that skips it cannot silently skip the check with it.
+std::atomic<float> gRenderedTanLeft{0.0f};
+std::atomic<float> gRenderedTanRight{0.0f};
+std::atomic<float> gRenderedTanUp{0.0f};
+std::atomic<float> gRenderedTanDown{0.0f};
+std::atomic<bool> gRenderedTangentsValid{false};
+
+void PublishRenderedTangents(
+    const std::array<std::uint8_t, cameraedit::kCameraSize>& edited)
+{
+    const auto view = stereoframe::TangentsFromCamera(
+        std::span<const std::uint8_t>(edited.data(), engine::CameraLayout::size));
+    if (!view) {
+        gRenderedTangentsValid.store(false, std::memory_order_release);
+        return;
+    }
+    gRenderedTanLeft.store(view->tanLeft, std::memory_order_relaxed);
+    gRenderedTanRight.store(view->tanRight, std::memory_order_relaxed);
+    gRenderedTanUp.store(view->tanUp, std::memory_order_relaxed);
+    gRenderedTanDown.store(view->tanDown, std::memory_order_relaxed);
+    gRenderedTangentsValid.store(true, std::memory_order_release);
+}
+
 bool BuildSyntheticEye(
     std::array<std::uint8_t, cameraedit::kCameraSize>& edited,
     int eye,
@@ -325,6 +357,11 @@ bool BuildSyntheticEye(
     // ratio and asymmetry stay exactly as it built them, so the rendered frustum
     // is still the one TangentsFromCamera reads and declares.
     if (gNativeProjection.load(std::memory_order_acquire)) {
+        // Prey's own frustum, unchanged -- so this should match what the
+        // submission path declares. Published anyway rather than assumed: an
+        // assert that only runs on the path you suspect proves nothing about the
+        // path you trust.
+        PublishRenderedTangents(edited);
         return true;
     }
 
@@ -354,6 +391,11 @@ bool BuildSyntheticEye(
     write(engine::CameraLayout::asymRight, projection->asymmetry.right);
     write(engine::CameraLayout::asymBottom, projection->asymmetry.bottom);
     write(engine::CameraLayout::asymTop, projection->asymmetry.top);
+    // The synthetic path REPLACED the projection. This is the case no external
+    // tool can catch: the declaration still reports Prey's frustum while the
+    // pixels came from this one. Measured 2026-09-05 as wall-eyed divergence,
+    // horizontal stretch, and a sun that swung with head yaw -- one cause.
+    PublishRenderedTangents(edited);
     return true;
 }
 
@@ -1862,6 +1904,18 @@ DWORD CameraEditStatusValue()
 unsigned long long CameraEditAppliedCount()
 {
     return gApplied.load(std::memory_order_acquire);
+}
+
+bool RenderedEyeTangents(float& tanLeft, float& tanRight, float& tanUp, float& tanDown)
+{
+    if (!gRenderedTangentsValid.load(std::memory_order_acquire)) {
+        return false;
+    }
+    tanLeft = gRenderedTanLeft.load(std::memory_order_relaxed);
+    tanRight = gRenderedTanRight.load(std::memory_order_relaxed);
+    tanUp = gRenderedTanUp.load(std::memory_order_relaxed);
+    tanDown = gRenderedTanDown.load(std::memory_order_relaxed);
+    return true;
 }
 
 unsigned long long CameraEditRestoreFailureCount()

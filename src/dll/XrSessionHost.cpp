@@ -22,7 +22,9 @@
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
 
+#include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <optional>
 #include <span>
 #include <chrono>
@@ -460,6 +462,67 @@ void LogOnce(const std::string& line)
 //
 // Returns nothing rather than guessing. Every caller must treat that as "do not
 // submit a layer".
+std::atomic<unsigned long long> gFovAgree{0};
+std::atomic<unsigned long long> gFovDiverge{0};
+std::atomic<unsigned int> gWorstDivergenceMilliTan{0};
+std::atomic<bool> gDivergenceLogged{false};
+
+// Compares what we are about to DECLARE against what we actually RENDERED with.
+//
+// **No tool outside this process can perform this check.** xr-tape sees the FOV
+// the runtime located and the FOV we declared; the engine's own projection never
+// crosses the OpenXR boundary. So `submitted_fov_matches_located` can be in its
+// correct state -- failing, which for an injector is the pass -- while the image
+// is still a lie, because the mod itself replaced the projection and left the
+// declaration behind. That is exactly what happened on 2026-09-05.
+//
+// Compared in **tangent** space, not degrees: every correct operation on a
+// frustum is linear in tangents, and a degrees-space comparison mis-weights the
+// edges where the error actually shows.
+//
+// Read-only and advisory. It counts and logs; it never edits a submission,
+// because a wrong declaration is a bug to fix at its source, not to paper over
+// at the boundary.
+void AssertDeclaredMatchesRendered(const XrFovf& declared)
+{
+    float tanLeft = 0.0f, tanRight = 0.0f, tanUp = 0.0f, tanDown = 0.0f;
+    if (!dll::RenderedEyeTangents(tanLeft, tanRight, tanUp, tanDown)) {
+        return;   // no eye built yet; silence is correct, not a pass
+    }
+    const float declaredTan[4] = {
+        std::tan(declared.angleLeft), std::tan(declared.angleRight),
+        std::tan(declared.angleUp), std::tan(declared.angleDown)};
+    const float renderedTan[4] = {tanLeft, tanRight, tanUp, tanDown};
+
+    float worst = 0.0f;
+    for (int i = 0; i < 4; ++i) {
+        if (!std::isfinite(declaredTan[i]) || !std::isfinite(renderedTan[i])) {
+            return;
+        }
+        worst = std::max(worst, std::abs(declaredTan[i] - renderedTan[i]));
+    }
+    // 0.01 in tangent is well under a degree near the axis and still catches the
+    // 50-vs-60 degree half-angle case, which differs by 0.54.
+    if (worst <= 0.01f) {
+        gFovAgree.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+    gFovDiverge.fetch_add(1, std::memory_order_relaxed);
+    gWorstDivergenceMilliTan.store(
+        static_cast<unsigned int>(worst * 1000.0f + 0.5f), std::memory_order_relaxed);
+    // Logged once. A per-frame line would bury the thing it is reporting.
+    if (!gDivergenceLogged.exchange(true, std::memory_order_relaxed)) {
+        std::ostringstream line;
+        line << "result=warning detail=declared_fov_differs_from_rendered"
+             << " worstTanDelta=" << worst
+             << " declaredTan=[" << declaredTan[0] << "," << declaredTan[1]
+             << "," << declaredTan[2] << "," << declaredTan[3] << "]"
+             << " renderedTan=[" << renderedTan[0] << "," << renderedTan[1]
+             << "," << renderedTan[2] << "," << renderedTan[3] << "]";
+        Log(line.str());
+    }
+}
+
 std::optional<XrFovf> DeclaredFovFromLiveCamera()
 {
     const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
@@ -543,6 +606,9 @@ bool SubmitStereoPair(
         // downstream may pair this image with any other frame's pose or FOV.
         gHost.eyePose[target] = views[target].pose;
         gHost.eyeFov[target] = declaredFov ? *declaredFov : views[target].fov;
+        // Checked here, at the one point the declaration is bound to the pixels
+        // it describes -- the same publication unit FAIL-STR-044 established.
+        AssertDeclaredMatchesRendered(gHost.eyeFov[target]);
         gHost.eyeDisplayTime[target] = displayTime;
         gHost.eyeImageValid[target] = true;
     }
@@ -941,6 +1007,10 @@ DWORD SetXrStereoSubmission(unsigned int enabled)
     Log(line.str());
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
 }
+
+unsigned long long DeclaredFovAgreeCount() { return gFovAgree.load(std::memory_order_relaxed); }
+unsigned long long DeclaredFovDivergeCount() { return gFovDiverge.load(std::memory_order_relaxed); }
+DWORD DeclaredFovWorstMilliTan() { return gWorstDivergenceMilliTan.load(std::memory_order_relaxed); }
 
 DWORD SetXrSwapEyes(unsigned int enabled)
 {

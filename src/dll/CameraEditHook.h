@@ -412,4 +412,14 @@ DWORD CameraEditStatusValue();
 unsigned long long CameraEditAppliedCount();
 unsigned long long CameraEditRestoreFailureCount();
 
+
+// The frustum the eye camera we last handed the renderer actually projects with,
+// as tangent half-extents. False before any eye has been built.
+//
+// **The third quantity.** xr-tape can see what the runtime located and what we
+// declared; it explicitly cannot see this, because the engine's projection never
+// crosses the OpenXR boundary. The mod is the only place all three coexist, which
+// is why the declared-vs-rendered assert has to live in-process.
+bool RenderedEyeTangents(float& tanLeft, float& tanRight, float& tanUp, float& tanDown);
+
 } // namespace preyvr::dll

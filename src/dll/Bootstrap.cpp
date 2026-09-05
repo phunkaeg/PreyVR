@@ -1517,3 +1517,30 @@ extern "C" __declspec(dllexport) DWORD PreyVR_GetWatchCaptureSlotPtr(void* index
     }
     return capture.slot;
 }
+
+// ---------------------------------------------------------------------------
+// The declared-vs-rendered assert. The one geometry check no external tool can
+// make: xr-tape sees what the runtime located and what we declared, never what
+// the engine rendered with.
+// ---------------------------------------------------------------------------
+
+// Frames where the declared frustum matched the rendered one within tolerance.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetDeclaredFovAgreeCount()
+{
+    return preyvr::dll::DeclaredFovAgreeCount();
+}
+
+// Frames where it did not. **Non-zero means the image is a lie**, even if every
+// XR-boundary check is in its correct state -- which for an injector means
+// submitted_fov_matches_located FAILING.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetDeclaredFovDivergeCount()
+{
+    return preyvr::dll::DeclaredFovDivergeCount();
+}
+
+// Worst per-edge tangent delta seen, in thousandths. The 50-vs-60 degree
+// half-angle case that shipped on 2026-09-05 reads about 540 here.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetDeclaredFovWorstMilliTan()
+{
+    return preyvr::dll::DeclaredFovWorstMilliTan();
+}

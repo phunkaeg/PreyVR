@@ -106,4 +106,14 @@ DWORD SetXrPreferSrgbFormat(unsigned int enabled);
 // no session is running.
 void ServiceXrFrame(void* renderer);
 
+// Declared-vs-rendered frustum agreement, counted per submitted eye.
+//
+// This is the check xr-tape's own CHECKS.md says no API layer can make: it can
+// see the FOV the runtime located and the FOV we declared, but never the
+// projection the engine actually rendered with. A non-zero diverge count means
+// the submitted image is a lie about its own geometry.
+unsigned long long DeclaredFovAgreeCount();
+unsigned long long DeclaredFovDivergeCount();
+DWORD DeclaredFovWorstMilliTan();
+
 } // namespace preyvr::dll
