@@ -258,13 +258,24 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         // move", because PostInputEvent returns void and the binding that would
         // consume it is a candidate rather than a proven active bind (R-089).
         const DWORD result = PostMenuAction(static_cast<unsigned int>(arg(1, 0)));
+        // `result=0` means **queued**. Delivery happens on the engine thread and
+        // acceptance is not observable from here at all: PostInputEvent returns
+        // void and the binding is a candidate (R-089). Read the screen.
         out << "menu result=" << result << " action=" << arg(1, 0)
-            << " posted=" << InputPostCount() << " refused=" << InputPostRefusedCount();
+            << " queued=" << InputQueueDepthEstimate()
+            << " posted=" << InputPostCount()
+            << " refused=" << InputPostRefusedCount()
+            << " dropped=" << InputQueueDroppedCount()
+            << " drainThread=" << InputDrainThreadId();
     } else if (verb == "input.key") {
         const DWORD result = PostRawInput(arg(1, 0), static_cast<unsigned int>(arg(2, 1)),
                                           arg(3, 1000));
         out << "input.key result=" << result << " keyid=" << arg(1, 0)
-            << " posted=" << InputPostCount() << " refused=" << InputPostRefusedCount();
+            << " queued=" << InputQueueDepthEstimate()
+            << " posted=" << InputPostCount()
+            << " refused=" << InputPostRefusedCount()
+            << " dropped=" << InputQueueDroppedCount()
+            << " drainThread=" << InputDrainThreadId();
     } else if (verb == "report") {
         WriteReport(out);
     } else {

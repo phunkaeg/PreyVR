@@ -17,9 +17,16 @@
     back as an image, with a JSON sidecar of the numbers behind it.
 
     **This attaches; it does not launch.** Prey must already be running under
-    xr-sim with the mod loaded and a level in view. Starting the game is the one
-    step that still needs a person: the main menu answers to a keyboard, and
-    nothing here can press one.
+    xr-sim with the mod loaded. Menus no longer need a person -- `InputPost`
+    drives them through the engine's own input layer -- but the launch and
+    injection still belong to a separate runner.
+
+    **It refuses a stale session.** state.json outlives the process that wrote
+    it, so `sessionRunning: true` and `FOCUSED` persist on disk long after the
+    run is gone. The PID is checked for real, the owning process must be the one
+    expected, frames must be advancing, and every capture needs a fresh sidecar,
+    a matching image and an advanced captureSeq. Without those, a leftover
+    probe's flat test pattern is indistinguishable from a game screen.
 
 .PARAMETER Steps
     How many samples across the range. The default walks a half circle in 15
@@ -47,7 +54,11 @@ param(
     [int]$Steps = 13,
     [ValidateSet('l', 'r')]
     [string]$Hand = 'r',
-    [int]$SettleMs = 350
+    [int]$SettleMs = 350,
+    # The process that must own the session. Defaults to the game: pointing this
+    # loop at a leftover probe is exactly how a flat red/blue test pattern gets
+    # reported as a Prey screen.
+    [string]$ExpectProcess = 'Prey'
 )
 
 Set-StrictMode -Version Latest
@@ -65,9 +76,13 @@ foreach ($required in @($cmdScript, $shotScript, $statePath)) {
     }
 }
 
-# Preflight, each check named for the failure it prevents. A sweep that runs
-# against a stopped session produces a folder of identical black frames and
-# looks like a mod that does nothing.
+# Preflight, each check named for the failure it prevents.
+#
+# **state.json outlives the process that wrote it.** A dead run leaves
+# `sessionRunning: true` and `sessionState: FOCUSED` on disk forever, so those
+# fields alone are worthless as liveness -- an audit found both state
+# directories claiming a running FOCUSED session whose PIDs no longer existed.
+# The process is checked, not the file's opinion of it.
 $state = Get-Content $statePath -Raw | ConvertFrom-Json
 if ($state.graphics -ne 'D3D11') {
     Write-Error "image capture needs the D3D11 backend; this session is $($state.graphics)"
@@ -81,10 +96,38 @@ if ($state.sessionState -ne 'FOCUSED' -and $state.sessionState -ne 'VISIBLE') {
     Write-Error "session is $($state.sessionState); a capture now would be black by construction"
     exit 1
 }
-Write-Host ("session ok: state={0} frame={1} graphics={2}" -f `
-    $state.sessionState, $state.frame, $state.graphics)
+
+$owner = $null
+try { $owner = Get-Process -Id $state.pid -ErrorAction Stop } catch { }
+if ($null -eq $owner) {
+    Write-Error ("state.json names PID {0}, which is not running. This file is stale; " -f $state.pid +
+                 'nothing here would be a live capture.')
+    exit 1
+}
+if ($ExpectProcess -and $owner.ProcessName -notlike "*$ExpectProcess*") {
+    Write-Error ("PID {0} is '{1}', not '{2}'. Refusing: a leftover probe session " -f `
+                 $state.pid, $owner.ProcessName, $ExpectProcess +
+                 'would return its own test pattern as if it were the game.')
+    exit 1
+}
+
+# Frames must be advancing. A live process parked on a stalled frame loop
+# captures the same image indefinitely.
+$frameBefore = $state.frame
+Start-Sleep -Milliseconds 400
+$frameAfter = (Get-Content $statePath -Raw | ConvertFrom-Json).frame
+if ($frameAfter -le $frameBefore) {
+    Write-Error ("frames are not advancing ({0} -> {1}); a sweep would capture one " -f `
+                 $frameBefore, $frameAfter + 'frame repeatedly')
+    exit 1
+}
+
+Write-Host ("session ok: pid={0} ({1}) state={2} frame={3}->{4} graphics={5}" -f `
+    $state.pid, $owner.ProcessName, $state.sessionState, $frameBefore, $frameAfter, $state.graphics)
 
 New-Item -ItemType Directory -Path $Out -Force | Out-Null
+$runTag = 'r{0:yyyyMMdd-HHmmss}' -f (Get-Date)
+Write-Host "run tag: $runTag" 
 
 if ($Steps -lt 2) { Write-Error 'a sweep needs at least two steps'; exit 1 }
 $stride = ($To - $From) / ($Steps - 1)
@@ -105,22 +148,46 @@ for ($i = 0; $i -lt $Steps; $i++) {
     & $cmdScript -Dir $stateDir -Quiet $command | Out-Null
     Start-Sleep -Milliseconds $SettleMs
 
-    $name = 'step-{0:d2}' -f $i
+    # **Names are unique per run.** Reusing `step-00` meant a previous session's
+    # sidecar could satisfy the existence check after a timed-out shot, and a
+    # probe's flat test pattern would be reported as a game capture. A name that
+    # cannot collide removes that path entirely rather than guarding it.
+    $name = '{0}-step-{1:d2}' -f $runTag, $i
     $target = Join-Path $Out $name
+    $requestedAt = Get-Date
+    $seqBefore = (Get-Content $statePath -Raw | ConvertFrom-Json).captureSeq
     $captured = $false
     try {
         & $shotScript -Dir $stateDir -Out $target -Quiet | Out-Null
         $captured = $true
     } catch {
         # The shot tool can time out waiting for its own sequence to advance
-        # while still having written the frame. Judge by the file, not the
-        # exception -- a discarded good capture is worse than a noisy one.
+        # while still having written the frame. Judge by the receipts below, not
+        # by the exception -- but existence alone is not a receipt.
         Write-Warning "$name : shot reported '$($_.Exception.Message)'"
     }
 
     $sidecar = Join-Path $stateDir "capture\$name.json"
+    $image   = Join-Path $stateDir "capture\${name}_sbs.png"
     if (-not (Test-Path -LiteralPath $sidecar)) {
         Write-Warning "$name : no capture landed"
+        continue
+    }
+    # Three receipts, because any one of them alone has been wrong before: the
+    # sidecar must be newer than the request, its image must exist beside it, and
+    # the runtime's own capture counter must have advanced.
+    $sidecarAge = (Get-Item -LiteralPath $sidecar).LastWriteTime
+    if ($sidecarAge -lt $requestedAt) {
+        Write-Warning "$name : sidecar predates the request - stale, ignoring"
+        continue
+    }
+    if (-not (Test-Path -LiteralPath $image)) {
+        Write-Warning "$name : sidecar without an image - ignoring"
+        continue
+    }
+    $seqAfter = (Get-Content $statePath -Raw | ConvertFrom-Json).captureSeq
+    if ($seqAfter -le $seqBefore) {
+        Write-Warning "$name : captureSeq did not advance ($seqBefore -> $seqAfter) - ignoring"
         continue
     }
     $meta = Get-Content $sidecar -Raw | ConvertFrom-Json
@@ -134,7 +201,7 @@ for ($i = 0; $i -lt $Steps; $i++) {
         NonBlackL = [Math]::Round($meta.stats.nonBlackPctL, 2)
         AimYprR   = ($meta.handR.aimYpr -join ',')
         Reported  = $captured
-        Sbs       = Join-Path $stateDir "capture\${name}_sbs.png"
+        Sbs       = $image
     }
     Write-Host ("{0} angle={1,7:n2} frame={2} luma={3}/{4} layers={5}" -f `
         $name, $angle, $meta.frameIndex, `

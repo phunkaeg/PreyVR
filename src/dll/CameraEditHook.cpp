@@ -1,5 +1,7 @@
 #include "CameraEditHook.h"
 
+#include "InputPost.h"
+
 #include "HeadTrackingHook.h"
 
 #include "FrameCaptureWin32.h"
@@ -955,6 +957,14 @@ void __fastcall RenderWithCameraEdit(void* system)
     // edit is armed, reports success, and never runs -- which is exactly what
     // happened on the first upstream run, and cost a test cycle to find because
     // "armed" and "applied" were only distinguishable by a counter.
+    // **Queued input is drained here, not on the thread that produced it.**
+    // `CSystem::Render` is the engine's main thread and, unlike the gameplay
+    // camera callback, it still runs while a menu is up -- which is exactly the
+    // case menu navigation needs. Deliberately ahead of the armed check below:
+    // driving a menu must not require stereo or head tracking to be enabled
+    // first, and the early return would otherwise skip it.
+    DrainQueuedInput();
+
     if ((!gArmed.load(std::memory_order_acquire) && !stereoArmed &&
          !gHeadRotationArmed.load(std::memory_order_acquire)) || system == nullptr) {
         if (original != nullptr) {

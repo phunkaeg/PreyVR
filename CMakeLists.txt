@@ -79,6 +79,7 @@ add_library(preyvr_core STATIC
     src/common/FrameDump.cpp
     src/common/FrameObserver.cpp
     src/common/InputEvent.cpp
+    src/common/InputQueue.cpp
     src/common/InteractionQuery.cpp
     src/common/Locomotion.cpp
     src/common/MotionController.cpp
@@ -320,6 +321,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_input_event_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_input_event_tests)
     add_test(NAME input_event COMMAND preyvr_input_event_tests)
+
+    add_executable(preyvr_input_queue_tests tests/InputQueueTests.cpp)
+    target_link_libraries(preyvr_input_queue_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_input_queue_tests)
+    add_test(NAME input_queue COMMAND preyvr_input_queue_tests)
 
     add_executable(preyvr_locomotion_tests tests/LocomotionTests.cpp)
     target_link_libraries(preyvr_locomotion_tests PRIVATE preyvr_core)

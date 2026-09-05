@@ -4,6 +4,7 @@
 #include "Logger.h"
 
 #include "preyvr/InputEvent.h"
+#include "preyvr/InputQueue.h"
 
 #include <atomic>
 #include <array>
@@ -24,8 +25,11 @@ using PostInputEventFn = void(__fastcall*)(void*, const void*, bool);
 std::atomic<bool> gEnabled{false};
 std::atomic<unsigned long long> gPosted{0};
 std::atomic<unsigned long long> gRefused{0};
+std::atomic<unsigned long> gDrainThread{0};
 
-// Resolved once and cached, so a per-event call does no discovery work.
+input::EventQueue gQueue;
+
+// Resolved once and cached, so the drain does no discovery work inside a frame.
 void* gInput = nullptr;
 PostInputEventFn gPost = nullptr;
 
@@ -63,8 +67,8 @@ bool Resolve()
 }
 
 // The guarded call, kept as a leaf with no C++ objects in scope: a function that
-// unwinds objects cannot host `__try`, and hoisting the logging out is what
-// keeps the guard where the fault would actually happen.
+// unwinds objects cannot host `__try`, and hoisting the logging out is what keeps
+// the guard where the fault would actually happen.
 //
 // `force` is false. The native producer does not force, and forcing would bypass
 // the engine's own posting-enabled check.
@@ -78,26 +82,52 @@ bool CallPost(PostInputEventFn function, void* input, const void* event)
     }
 }
 
-bool PostOne(const std::uint8_t* event)
+// Queued, never called here. The producer may be any thread; the engine's input
+// walk belongs to one.
+bool Enqueue(const std::uint8_t* event)
 {
-    if (!gEnabled.load(std::memory_order_acquire) || gPost == nullptr || gInput == nullptr) {
+    if (!gEnabled.load(std::memory_order_acquire)) {
         gRefused.fetch_add(1, std::memory_order_relaxed);
         return false;
     }
-    if (!CallPost(gPost, gInput, event)) {
+    return gQueue.Push(event);
+}
+
+} // namespace
+
+void DrainQueuedInput()
+{
+    if (!gEnabled.load(std::memory_order_acquire) || gPost == nullptr || gInput == nullptr) {
+        return;
+    }
+
+    // Recorded once so the ownership claim in the header can be *checked* against
+    // a live run rather than believed. If this ever prints a thread that is not
+    // the engine's main thread, the seam is wrong however well the counters read.
+    const unsigned long thread = GetCurrentThreadId();
+    unsigned long expected = 0;
+    if (gDrainThread.compare_exchange_strong(expected, thread)) {
+        Log("result=0 detail=drain_thread id=" + std::to_string(thread));
+    }
+
+    // **One per frame.** A menu that samples input once per frame would see a
+    // press and its release collapse into one update and could conclude the
+    // button was never held. Real input arrives on separate frames.
+    std::array<std::uint8_t, input::kEventSize> event{};
+    if (!gQueue.Pop(event.data())) {
+        return;
+    }
+    if (!CallPost(gPost, gInput, event.data())) {
         gRefused.fetch_add(1, std::memory_order_relaxed);
         // Disarmed rather than retried: a fault here means the call target or the
         // event shape is wrong, and repeating it every frame would turn one bad
         // assumption into a crash loop.
         gEnabled.store(false, std::memory_order_release);
         Log("result=failed detail=exception_in_post disarmed=1");
-        return false;
+        return;
     }
     gPosted.fetch_add(1, std::memory_order_relaxed);
-    return true;
 }
-
-} // namespace
 
 DWORD SetInputPostEnabled(unsigned int enabled)
 {
@@ -121,13 +151,13 @@ DWORD PostMenuAction(unsigned int action)
     if (count != 2) {
         return 3;
     }
-    // Press and release both, or neither is meaningful. If the press lands and
-    // the release does not, the engine believes the button is still held.
-    if (!PostOne(buffer.data())) {
+    // Both or neither. A press queued without its release would leave the engine
+    // believing the button is held for as long as the queue stays short.
+    if (!Enqueue(buffer.data())) {
         return 4;
     }
-    if (!PostOne(buffer.data() + input::kEventSize)) {
-        Log("result=failed detail=release_not_posted keyid=" +
+    if (!Enqueue(buffer.data() + input::kEventSize)) {
+        Log("result=failed detail=release_not_queued keyid=" +
             std::to_string(input::MenuActionKeyId(static_cast<input::MenuAction>(action))));
         return 5;
     }
@@ -153,10 +183,13 @@ DWORD PostRawInput(int keyId, unsigned int state, int valueMilli)
     if (!input::BuildEvent(fields, buffer.data(), buffer.size())) {
         return 3;
     }
-    return PostOne(buffer.data()) ? 0u : 4u;
+    return Enqueue(buffer.data()) ? 0u : 4u;
 }
 
 unsigned long long InputPostCount() { return gPosted.load(std::memory_order_relaxed); }
 unsigned long long InputPostRefusedCount() { return gRefused.load(std::memory_order_relaxed); }
+unsigned long long InputQueueDroppedCount() { return gQueue.Dropped(); }
+unsigned long long InputQueueDepthEstimate() { return gQueue.Pushed() - gQueue.Popped(); }
+unsigned long InputDrainThreadId() { return gDrainThread.load(std::memory_order_relaxed); }
 
 } // namespace preyvr::dll
