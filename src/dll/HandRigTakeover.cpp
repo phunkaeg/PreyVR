@@ -120,7 +120,19 @@ bool ControllerWorld(Hand hand, Vec3& out)
         right.x, forward.x, up.x, position.x,
         right.y, forward.y, up.y, position.y,
         right.z, forward.z, up.z, position.z}) - HeadTrackingReferenceYaw();
-    reference.worldPosition = position;
+    // **Origin, not the camera position.** The camera is offset +/-32mm PER EYE by
+    // the synthetic stereo, so anchoring here would make the controller's computed
+    // world position swing by the IPD every frame. Differencing that against a
+    // single calibration zero bakes an alternating translation into a MODEL-SPACE
+    // bone -- which is a constant screen offset at every depth, not parallax.
+    //
+    // A wearer diagnosed it exactly: "regardless of their distance from the camera
+    // they still render with the same offset."
+    //
+    // The delta is a difference of two controller positions, so a shared reference
+    // cancels and the origin is the right one. Yaw is safe to keep: native
+    // projection builds each eye by translation alone, so both eyes share it.
+    reference.worldPosition = Vec3{};
     out = controller::ControllerPoseInWorld(reference, state.gripPose).position;
     return true;
 }
