@@ -566,3 +566,50 @@ The first real-hardware run counted six of those correct refusals as **failures*
 because the probe asserted that a valid pose must yield a ray. The probe now
 asserts the opposite for the untracked case -- `untracked_pose_yields_no_ray` --
 which turns a false alarm into a contract that only a real runtime can exercise.
+
+
+## Seeing the game, not just measuring it (2026-09-05)
+
+Every live finding in this project has come back as a **sentence from whoever was
+wearing the headset** -- "weapon depth looks correct", "no change, looks
+identical", "the hands don't look stereo". That was treated as a fact of life. It
+was not: xr-sim composites and captures what it is handed, per eye, on D3D11, and
+those captures can be read back as images.
+
+**This was available the whole time and went unused**, because xr-sim was filed
+as "a runtime for probes" rather than "a headset that writes down what it saw".
+The consequence is not academic -- four separate times the instruments were green
+while the screen was wrong, and each was caught by a person looking.
+
+Verified end to end on 2026-09-05 against `preyvr_xr_session_probe`: session
+reached `FOCUSED` on D3D11, and `xrsim-shot.ps1` produced `_left`, `_right` and
+`_sbs` PNGs at 1032x1104 per eye plus a JSON sidecar carrying eye poses, per-eye
+FOV, layer count and type, IPD, and luminance statistics.
+
+### `Invoke-PreyVRControllerSweep.ps1`
+
+Commands a controller through a rotation and captures each step. It **attaches to
+a running session and does not launch anything** -- Prey must already be up under
+xr-sim with a level in view, because the main menu answers to a keyboard and
+nothing in this loop can press one.
+
+Two things it does that are not obvious:
+
+* **It judges a capture by the file, not by the tool's return.** `xrsim-shot.ps1`
+  can throw `timed out waiting for captureSeq+1` while having already written the
+  frame. In the first smoke run that happened on three steps out of five, so
+  trusting the exception would have discarded 60% of a good sweep.
+* **It warns when every frame has identical luminance.** A sweep where nothing
+  moved produces a folder of images that looks exactly like a successful run
+  until someone opens two of them. The warning fires correctly against the probe,
+  whose flat test colours do not respond to a controller.
+
+The smoke run confirmed commands arrive: the sidecar's `handR.aimYpr` read back
+`-60, -30, -0, 30, 60` for the five commanded angles.
+
+### What still needs a person
+
+Starting the game, and only that. Getting from the main menu into a save needs
+keyboard input, which means either a human or an approved desktop-control grant.
+Once a level is in view, the command channel, the sweep and the captures are all
+scriptable, so a session can be driven and **read** without anyone describing it.
