@@ -572,8 +572,17 @@ var PreyVR = (function () {
             new NativeFunction(module_().getExportByName('PreyVR_ReadDeclaredFovPtr'),
                                'uint32', ['pointer'])(fovBuf);
             // The export returns TANGENT half-extents, not angles.
-            var tanUp = fovBuf.add(8).readFloat(), tanDown = fovBuf.add(12).readFloat();
+            // **The buffer is offset by one field.** A live read returns
+            // [0, -1.7321, +1.7321, -0.9743]: index 0 is a leading value, then
+            // tanLeft, tanRight, tanUp. Treating indices 2 and 3 as the vertical
+            // pair mixes a HORIZONTAL tangent with a vertical one and yields
+            // 104.254 degrees, which was set live twice and looked wrong in a
+            // headset before the numbers were checked.
+            var tanRight = fovBuf.add(8).readFloat(), tanUp = fovBuf.add(12).readFloat();
+            var tanDown = tanUp;   // symmetric vertically; Prey reports no asymmetry
             var verticalDeg = (Math.atan(Math.abs(tanUp)) + Math.atan(Math.abs(tanDown))) * 180.0 / Math.PI;
+            // Sanity: Prey's own frustum is 120 x 88.507. A derived value far from
+            // 88.5 means the struct was misread, not that the FOV changed.
             if (verticalDeg > 20.0 && verticalDeg < 170.0) {
                 out.nearFovDegrees = Math.round(verticalDeg * 1000) / 1000;
                 out.nearFov = console_('r_DrawNearFoV ' + out.nearFovDegrees).lastResult;
