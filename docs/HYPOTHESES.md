@@ -360,3 +360,56 @@ are not crowded out by the two common ones. If a limb set -- legs, spine -- belo
 to only one of the two skeletons, that names it as the body and the other as the
 viewmodel. That distinction decides which rig a hand takeover should drive, so it
 is worth settling before anything is hooked.
+
+### H-010 bump results, 2026-09-05 -- suggestive, not confirmed
+
+Six bump attempts, writing the position of both hand IK targets at ~643 writes/s
+for 12 s each, while a wearer watched. Amplitudes from 0.5 m sine to 2.5 m square.
+
+| skeleton | stimulus | reported |
+| --- | --- | --- |
+| `0x…9f80` | 0.7 m sine | "flicker in the shadow… twice" |
+| `0x…9f80` | 2.5 m square | left then right hand flickered, **shadow only**; **gun shadow did not move** |
+| `0x…d680` | 0.5/0.7 m sine | nothing |
+| `0x…d680` | 2.5 m square | "flicker from the model hands", unprepared |
+| `0x…d680` | 2.5 m square, repeat | "left hand flicker away from its position for a frame" |
+
+**Reading, held loosely:** `…d680` drives the visible first-person body and
+`…9f80` drives the shadow proxy -- which is the wearer's own theory, arrived at
+from noticing the body mesh has no head while its shadow does.
+
+**Why this is not yet a finding.** Every observation is a **single-frame glimpse**
+by a human who, by the third run, knew what to expect. That is the weakest evidence
+class this project accepts, and it is exactly the shape that produced the
+"IK targets are static" error. It is recorded as a lead, and the honest status is
+that the mapping is *consistent with* the observations rather than demonstrated by
+them.
+
+**A method error worth keeping.** The first `…d680` runs used a third of the
+amplitude and a sine rather than a square, so "nothing on d680" was compared
+against a 2.5 m square result on `…9f80`. That comparison was invalid and nearly
+became the conclusion. Both were re-run under identical stimulus before anything
+was written down.
+
+**Blinding was not possible.** The tester can see the tool calls, so the skeleton
+under test is always visible to them. Repetition under a stated prediction is the
+substitute, and it is weaker.
+
+### The mechanism question is, however, settled
+
+Racing the animator does not work, and now has six negative-to-marginal attempts
+behind it rather than one. `0x87BC36` (R-082) overwrites every cycle, so a write
+survives only if it lands in the narrow window before consumption -- which at 643
+writes/s buys a frame or two in twelve seconds.
+
+**So the next step is not another bump.** Hooking `0x87BC36` and applying the
+offset after the engine's final write makes the displacement *hold*, which turns
+both open questions -- which mesh each skeleton drives, and whether the weapon
+follows the hands -- into things that can simply be looked at.
+
+The most interesting observation of the session points the same way: **the gun's
+shadow did not move when the hand shadows did.** If that survives a test that
+holds still, the weapon is not parented to the hands, and the bone names agree --
+`RHand2RiflePos_IKTarget` drives the hand *to* the rifle. That would make a weapon
+takeover the primary lane and hand IK a follower, which is a materially different
+design from the one H-005 assumed.
