@@ -1177,18 +1177,54 @@ void __fastcall RenderWithCameraEdit(void* system)
     // call, which the static hunt has not yet produced.
     const bool keepRotation =
         headRotationApplied && gKeepHeadRotation.load(std::memory_order_acquire);
-    if (!keepRotation) {
-        std::memcpy(camera, restore.bytes.data(), cameraedit::kCameraSize);
-    }
 
-    // Verified, not assumed. A restore that is merely performed is a hope.
-    if (!keepRotation && !cameraedit::MatchesRestorePoint(live, restore)) {
+    // **Restore everything, unconditionally.** The previous form skipped the
+    // restore whenever the rotation was being kept, which left the *eye
+    // translation and the projection* on the global camera too -- not what the
+    // paragraph above describes, and precisely the shape of FAIL-HAND-037: a
+    // half-IPD translation escaping into consumers that have no idea it is
+    // there, alternating every frame. Latent only because the flag defaults off.
+    std::memcpy(camera, restore.bytes.data(), cameraedit::kCameraSize);
+
+    // Verified, not assumed. A restore that is merely performed is a hope. This
+    // now runs on every path, including the keep-rotation one, because the
+    // comparison happens *before* the basis is deliberately put back.
+    if (!cameraedit::MatchesRestorePoint(live, restore)) {
         gRestoreFailures.fetch_add(1, std::memory_order_relaxed);
         gArmed.store(false, std::memory_order_release);
         gStereoIpd.store(0.0f, std::memory_order_release);
         SetFrameCaptureTagOverride(-1);
         lifecycle::Log("preyvr_camera_edit result=restore_failed detail=disarmed");
         return;
+    }
+
+    if (keepRotation) {
+        // Put back the **basis only**: columns 0-2 of the 3x4 are the axes,
+        // column 3 is the translation, which stays exactly as the engine left
+        // it. Built in our own memory and validated before it touches game
+        // state, the same discipline the edit itself uses -- and the frustum is
+        // recomputed so the struct we leave behind is self-consistent rather
+        // than carrying planes belonging to a different orientation.
+        std::array<std::uint8_t, cameraedit::kCameraSize> kept{};
+        std::memcpy(kept.data(), restore.bytes.data(), cameraedit::kCameraSize);
+        const stereo::Matrix34 rotated = stereo::ReadMatrix(edited);
+        stereo::Matrix34 keep = stereo::ReadMatrix(kept);
+        for (int row = 0; row < 3; ++row) {
+            for (int col = 0; col < 3; ++col) {
+                keep[row * 4 + col] = rotated[row * 4 + col];
+            }
+        }
+        if (stereo::WriteMatrix(kept, keep)) {
+            updateFrustum(kept.data());
+            if (cameraedit::RotationIsSafeToWrite(kept)) {
+                std::memcpy(camera, kept.data(), cameraedit::kCameraSize);
+            } else {
+                lifecycle::Log(
+                    "preyvr_camera_edit result=refused detail=keep_rotation_unsafe");
+            }
+        } else {
+            lifecycle::Log("preyvr_camera_edit result=refused detail=keep_rotation_write_failed");
+        }
     }
 
     const unsigned long long applied = gApplied.fetch_add(1, std::memory_order_relaxed) + 1;

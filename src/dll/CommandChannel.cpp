@@ -231,6 +231,23 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "weapon.calibrate result=" << CalibrateWeaponRotation();
     } else if (verb == "frame.capture") {
         out << "frame.capture result=" << SetRenderFrameCapture(arg(1, 1));
+    } else if (verb == "frame.near") {
+        // Dumps the capture table with RenderCHR's own near verdict per slot
+        // (R-089), so identifying the near character no longer needs an injector
+        // attached to the running game.
+        out << "frame.near result=0";
+        unsigned int listed = 0;
+        for (unsigned int i = 0; i < 8; ++i) {
+            unsigned long long character = 0;
+            bool nearest = false;
+            if (!RenderFrameSlot(i, &character, &nearest)) {
+                continue;
+            }
+            out << " slot" << i << "=0x" << std::hex << character << std::dec
+                << ",near=" << (nearest ? 1 : 0);
+            ++listed;
+        }
+        out << " listed=" << listed;
     } else if (verb == "report") {
         WriteReport(out);
     } else {

@@ -2,6 +2,30 @@
 
 Only confirmed or explicitly provisional build-specific locations belong here. Prefer a signature plus validation recipe over an RVA alone.
 
+### H-005C static additions — 2026-09-05
+
+No R-number allocation while the other agent owns the live lane. All new
+findings are static/source evidence against the Steam hash in
+`tools/re/verify_h005c_selection_origin_input.py` (19 landmarks, 9 fixtures).
+
+| RVA / field | Purpose and constraint |
+| --- | --- |
+| `0x81D127..0x81D15E` | RenderCHR's exact near predicate: params dword `+0x80` bit 23 OR character byte `+0xAC8` bit 1. False path clears the object bit; true path sets it. Available at entry `0x81D0D0`. |
+| `0xDF2BB0` | GetViewCamera returns `this+0x788`, the camera edited by CameraEditHook. |
+| `0x974735` / `0x97456F` | Ordinary character near branch reads camera position; camera-space-position branch reads basis only. Slot `+0x68` distinguishes them on this entity route. |
+| `0x9D6D30` (inherited R-080) | PostInputEvent, slot 12, RCX input/RDX event/R8B force, void return. Prey event size `0x38`, keyName `+0x10`, keyId `+0x18`, modifiers `+0x1C`, value `+0x20`, symbol `+0x28`, deviceIndex `+0x30`. |
+| `0x9D9EF0`, `0x9DAA20` | XInput symbol registration and native producer. Left X/Y: key IDs `0x210/0x211`, names `xi_thumblx/xi_thumbly`, device 3, state 8. |
+| `0x3D0960` | ActionMapManager input-listener entry; secondary base at manager+8. |
+| `0x3CEA70`, `0x3C5A80`, `0x3C6660` | Key-name CRC lookup; map/action and state/modifier gates. No generic device-type equality check in this inspected bind-matching path. |
+| `0x9D7430`, `0x3CFAA0` | Input listener dispatch and accepted action dispatch. Device/type/index blocking is upstream; actions reach registered listeners and one map-selected entity, not an actor loop. |
+| `0x3D2360` | Refire data copies the 56-byte event, including pointers; retain key-name storage. |
+| `0x158D1C0`, `0x1706DA0` | ArkPlayerInput and GameActions constructors connect `xi_movex/xi_movey` members `+0x2F0/+0x2F8` to their handlers. This does not prove an active XML key binding. |
+| `0x158FD20`, `0x158FD80` | Analog X/Y handlers write input-object movement `+0x5C/+0x60`; cinematic gate `+0x94`, clear digital flags `+0x6C`. |
+| `0x158F910`; vtable `0x1E580E8` | ArkPlayerInput::OnAction. Uses this player's handler table and stored player reference `+0x70`. |
+
+Full camera/near-VP composition, source publication issues and remaining live
+proofs: [H-005C report](RE-H005C-SELECTION-ORIGIN-INPUT-2026-09-05.md).
+
 ### H-005B static additions — 2026-09-05
 
 No R-number allocation: the other agent owns the live lane. Supported Steam hash
@@ -1205,3 +1229,77 @@ which by the equation above yields `J * inverse(B) * G` -- so it moves the weapo
 *relative to the animation* rather than placing it absolutely. That is adequate
 for a delta and is **not** absolute placement; the code and its header said more
 than it did, and both are corrected.
+
+## R-089 -- native near selection, the camera origin that cancels, and the input event
+
+Static, verified against this build by `tools/re/verify_h005c_selection_origin_input.py`
+(19 landmarks, 9 fixtures, `runtime_tested: false`, `active_bindings_verified: false`).
+Full analysis: [`RE-H005C-SELECTION-ORIGIN-INPUT-2026-09-05.md`](RE-H005C-SELECTION-ORIGIN-INPUT-2026-09-05.md).
+
+### Near-ness is decidable at `RenderCHR` entry -- the injector is no longer needed
+
+`RenderCHR` makes the decision itself at `0x81D127..0x81D189`, from arguments it
+already has on entry:
+
+```
+near == (ReadU32(params, 0x80) & 0x00800000) != 0      // SRendParams render flags
+     || (ReadU8 (character, 0xAC8) & 0x02)   != 0      // entity slot render flags
+```
+
+The false path **clears** `FOB_NEAREST` rather than leaving it, so a stale flag on
+a pooled render object cannot make an entry-time read wrong. This retires the
+mid-function marker at `0x81D377` for routine work, and with it the last reason to
+attach `frida-agent.dll` -- which crashed the host four times in one session.
+
+**Near is a render classification, not proof of player identity.** A held item and
+a viewmodel are both near. Keep the existing rig and player selection alongside it.
+
+Consumed by `RenderFrame::NearestFromArguments`.
+
+### The eye offset cancels when the origin and the matrix are the same sample
+
+`ISystem::GetViewCamera` at `0x974735` **does** read the `m_ViewCamera` this mod
+edits per eye. That much of the earlier worry was right. The conclusion drawn from
+it was not:
+
+```
+M      = T(-Cread) * W                  built from the camera read at 0x974743
+pModel = inverse(M) * (P - Cread)
+       = inverse(W) * T(+Cread) * (P - Cread)
+       = inverse(W) * P                 -- Cread cancels exactly
+```
+
+So a consumer that uses **the origin belonging to the matrix it is using** is
+unaffected by the per-eye translation, whatever that translation happens to be.
+The hazard is a **mismatched** origin/matrix pair, not absolute placement as such.
+
+> **Correction.** `HANDOVER-H005C` claimed that if the getter reads the edited
+> camera then *any* absolute model-space placement "inherits the bug rather than
+> merely risking it". That is wrong, and it is the same species of error as
+> FAIL-HAND-037 read backwards: the failure there was anchoring at a camera the
+> matrix was **not** built from. Matching samples is sufficient; avoiding absolute
+> placement was never the requirement.
+
+One real adjustment remains: our own `NearViewStereo` patch post-multiplies
+`T(-d)` onto the near view-projection, so the effective near origin is
+`Ceff = Ceye - d`. A consumer converting through the near matrix must include the
+**active** eye delta, and must capture origin, matrix and eye delta as one
+coherent tuple.
+
+### `SInputEvent` is 0x38 bytes, and CE5's public layout is wrong here
+
+| field | offset | note |
+|---|---|---|
+| `keyName` | `+0x10` | CE5 documents `+0x08`; **that is wrong for this fork** |
+| `keyId` | `+0x18` | |
+| `state` | -- | `8` for the analog/changed state used by the stick |
+| `value` | `+0x20` | float |
+| `deviceType` | -- | `3` = gamepad |
+
+Movement axes: `xi_thumblx` = `0x210`, `xi_thumbly` = `0x211`. The player-side
+handlers are `0x158FD20` and `0x158FD80`, storing to `playerInput+0x5C` and
+`+0x60`. `IInput::PostInputEvent` remains vtable slot 12, RVA `0x9D6D30` (R-080).
+
+**Which bindings are live is not byte-proven** -- the verifier reports
+`active_bindings_verified: false`. Scope any synthesised post to the player: the
+playbook's shot-redirection warning applies to input too.

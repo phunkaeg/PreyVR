@@ -7,6 +7,7 @@
 #include <array>
 #include <atomic>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <string>
 
@@ -37,8 +38,15 @@ constexpr unsigned int kSlots = 8;
 
 struct Slot {
     std::atomic<unsigned long long> character{0};
+    // **A seqlock, because the flag this replaces did not do what its comment
+    // claimed.** `valid=false; memcpy; valid=true` lets a reader observe `true`,
+    // begin its copy, and then race the writer's *next* `false` -- so it detected
+    // nothing and only looked like it did. An odd sequence means a write is in
+    // flight; a reader retries while it is odd or changes across the copy. Zero
+    // means never written, so no separate validity flag is needed.
+    std::atomic<unsigned long long> sequence{0};
     float matrix[12]{};
-    std::atomic<bool> valid{false};
+    std::atomic<bool> nearest{false};
 };
 
 std::array<Slot, kSlots> gSlots;
@@ -63,11 +71,37 @@ bool LooksLikeMatrix(const float* m)
     return xLen > 0.001f && xLen < 1000.0f;
 }
 
+// RenderCHR's own near predicate, read from arguments it already has (R-089).
+// This is the test the function itself performs at `0x81D127`/`0x81D141` before
+// setting or clearing `FOB_NEAREST` on the render object, so it needs no
+// mid-function marker and **no injector** -- which is the whole point, given that
+// `frida-agent.dll` crashed the host four times in one session.
+//
+// The false path *clears* the bit rather than leaving it, so a stale flag on a
+// pooled render object cannot make this read wrong.
+bool NearestFromArguments(const std::uint8_t* params, const std::uint8_t* character)
+{
+    __try {
+        if (params != nullptr &&
+            (*reinterpret_cast<const std::uint32_t*>(params + 0x80) & 0x00800000u) != 0u) {
+            return true;
+        }
+        if (character != nullptr && (*(character + 0xAC8) & 0x02u) != 0u) {
+            return true;
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+    }
+    return false;
+}
+
 void* __fastcall RenderCharacterObserved(void* character, void* params,
                                          const float* matrix, void* pass)
 {
     if (gEnabled.load(std::memory_order_acquire) && character != nullptr && matrix != nullptr) {
         __try {
+            const bool nearest = NearestFromArguments(
+                static_cast<const std::uint8_t*>(params),
+                static_cast<const std::uint8_t*>(character));
             if (LooksLikeMatrix(matrix)) {
                 const auto key = reinterpret_cast<unsigned long long>(character);
                 // Reuse this character's slot, else take a free one. A full table
@@ -92,14 +126,18 @@ void* __fastcall RenderCharacterObserved(void* character, void* params,
                 }
                 if (chosen >= 0) {
                     Slot& slot = gSlots[static_cast<std::size_t>(chosen)];
-                    // Cleared first so a reader cannot see a half-written matrix
-                    // as valid. This is a torn-read guard, not a full seqlock --
-                    // a reader may still miss an update, which is correct here
-                    // because a stale frame is better than a spliced one.
-                    slot.valid.store(false, std::memory_order_release);
-                    std::memcpy(slot.matrix, matrix, sizeof(slot.matrix));
-                    slot.valid.store(true, std::memory_order_release);
-                    gCaptures.fetch_add(1, std::memory_order_relaxed);
+                    // **A later non-near draw must not overwrite a near sample.**
+                    // One character can be drawn more than once per frame and the
+                    // near draw is the one this project selects, so ordering
+                    // within the frame would otherwise decide what we captured.
+                    if (nearest || !slot.nearest.load(std::memory_order_acquire)) {
+                        const auto seq = slot.sequence.load(std::memory_order_relaxed);
+                        slot.sequence.store(seq + 1, std::memory_order_release);   // odd: writing
+                        std::memcpy(slot.matrix, matrix, sizeof(slot.matrix));
+                        slot.nearest.store(nearest, std::memory_order_relaxed);
+                        slot.sequence.store(seq + 2, std::memory_order_release);   // even: settled
+                        gCaptures.fetch_add(1, std::memory_order_relaxed);
+                    }
                 }
             }
         } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -142,15 +180,37 @@ bool Install()
     return true;
 }
 
-const Slot* FindSlot(unsigned long long character)
+// Seqlock read: retry while a write is in flight, and refuse rather than hand
+// back a matrix spliced from two frames.
+bool ReadSlot(unsigned long long character, float out[12], bool* nearest)
 {
     for (unsigned int i = 0; i < kSlots; ++i) {
-        if (gSlots[i].character.load(std::memory_order_acquire) == character &&
-            gSlots[i].valid.load(std::memory_order_acquire)) {
-            return &gSlots[i];
+        Slot& slot = gSlots[i];
+        if (slot.character.load(std::memory_order_acquire) != character) {
+            continue;
         }
+        for (int attempt = 0; attempt < 8; ++attempt) {
+            const auto before = slot.sequence.load(std::memory_order_acquire);
+            if (before == 0ull) {
+                return false;           // never written
+            }
+            if ((before & 1ull) != 0ull) {
+                continue;               // writer mid-copy
+            }
+            float copy[12];
+            std::memcpy(copy, slot.matrix, sizeof(copy));
+            const bool isNear = slot.nearest.load(std::memory_order_relaxed);
+            if (slot.sequence.load(std::memory_order_acquire) == before) {
+                std::memcpy(out, copy, sizeof(copy));
+                if (nearest != nullptr) {
+                    *nearest = isNear;
+                }
+                return true;
+            }
+        }
+        return false;
     }
-    return nullptr;
+    return false;
 }
 
 } // namespace
@@ -168,12 +228,14 @@ DWORD SetRenderFrameCapture(unsigned int enabled)
 
 bool TryGetRenderMatrix(unsigned long long character, float out[12])
 {
-    const Slot* const slot = FindSlot(character);
-    if (slot == nullptr) {
-        return false;
-    }
-    std::memcpy(out, slot->matrix, sizeof(float) * 12);
-    return true;
+    return ReadSlot(character, out, nullptr);
+}
+
+bool RenderMatrixIsNear(unsigned long long character)
+{
+    float ignored[12]{};
+    bool nearest = false;
+    return ReadSlot(character, ignored, &nearest) && nearest;
 }
 
 bool RenderMatrixBasisIsOrthonormal(unsigned long long character)
@@ -202,13 +264,31 @@ bool RenderMatrixBasisIsOrthonormal(unsigned long long character)
            std::fabs(dot(y, z)) < square;
 }
 
+bool RenderFrameSlot(unsigned int index, unsigned long long* character, bool* nearest)
+{
+    if (index >= kSlots) {
+        return false;
+    }
+    Slot& slot = gSlots[index];
+    if (slot.sequence.load(std::memory_order_acquire) == 0ull) {
+        return false;
+    }
+    if (character != nullptr) {
+        *character = slot.character.load(std::memory_order_acquire);
+    }
+    if (nearest != nullptr) {
+        *nearest = slot.nearest.load(std::memory_order_acquire);
+    }
+    return true;
+}
+
 unsigned long long RenderFrameCaptureCount() { return gCaptures.load(std::memory_order_relaxed); }
 
 unsigned int RenderFrameTrackedCharacters()
 {
     unsigned int count = 0;
     for (unsigned int i = 0; i < kSlots; ++i) {
-        if (gSlots[i].valid.load(std::memory_order_acquire)) {
+        if (gSlots[i].sequence.load(std::memory_order_acquire) != 0ull) {
             ++count;
         }
     }

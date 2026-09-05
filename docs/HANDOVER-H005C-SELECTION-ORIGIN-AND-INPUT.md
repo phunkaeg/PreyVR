@@ -1,5 +1,16 @@
 # Handover — native near-selection, the camera origin, and the input event
 
+**Static answers added 2026-09-05:**
+[H-005C findings, formulas and bounded live proofs](RE-H005C-SELECTION-ORIGIN-INPUT-2026-09-05.md).
+Near selection is available at entry: params `+0x80 & 0x800000` OR character
+`+0xAC8 & 2`. The getter reads the edited camera, but the slot's camera-space
+position branch does not read its translation. Include the active near-VP eye
+delta in the inverse conversion; capture a coherent origin/matrix/eye tuple.
+Prey's 56-byte input event and analog movement handlers are located; active
+input-to-action bindings still need observation. Offline verification passes
+19 byte/string/vtable landmarks and 9 ABI/algebra fixtures. No live access or
+mod implementation changes were made by this investigation.
+
 **Written 2026-09-05**, after R-088 landed. Three questions, each with a specific
 consumer already written or blocked. Prior context:
 [`RE-H005B-MODEL-FRAME-ARM-CHAIN-2026-09-05.md`](RE-H005B-MODEL-FRAME-ARM-CHAIN-2026-09-05.md),
@@ -52,6 +63,14 @@ projection, translation-only). So:
 * **Does `0x974735` read the same `m_ViewCamera` this mod is offsetting per eye?**
   If yes, `Mnear` itself alternates by half an IPD every frame, and *any* absolute
   model-space placement inherits the bug rather than merely risking it.
+
+  > **ANSWERED, and the second half of that sentence was wrong (R-089).** It does
+  > read the edited camera. But `M = T(-Cread)*W` and `pModel = inverse(M)*(P-Cread)`
+  > reduce to `inverse(W)*P` — `Cread` **cancels exactly**. A consumer using the
+  > origin that belongs to its matrix is unaffected by the per-eye translation.
+  > The hazard is a **mismatched** origin/matrix pair, which is what FAIL-HAND-037
+  > actually was; absolute placement was never the thing to avoid. The one real
+  > adjustment is our own `NearViewStereo` `T(-d)`, giving `Ceff = Ceye - d`.
 * If so, **is there a cyclops sample available at that point** — an un-offset
   camera, or a stable origin captured before the eye edit — that a consumer could
   match instead?

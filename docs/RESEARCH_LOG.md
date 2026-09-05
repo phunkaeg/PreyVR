@@ -1630,3 +1630,34 @@ setter persistence; skinning-only hand edits do not change the attachment's J.
 `tools/re/verify_h005b_model_frame.py` passes 28 static landmarks and 8 synthetic
 transform fixtures. No process attachment, runtime write, deployment or headset
 test was performed by this investigation.
+
+## 2026-09-05 — H-005C near selection, origin matching and native movement input
+
+Resolved the RenderCHR entry predicate directly from instructions: params
+`+0x80 & 0x800000` OR character `+0xAC8 & 2`. It exactly drives the eventual
+object near bit, including an explicit clear for pooled objects. Slot near state
+is a separate upstream matrix decision and is not a universal replacement.
+
+GetViewCamera `0xDF2BB0` returns the edited `CSystem+0x788`. Ordinary entity near
+matrices subtract its position; the slot+0x68 camera-space-position branch reads
+only its basis. Matched native origins cancel eye translation algebraically.
+The current NearViewStereo patch additionally subtracts a near eye delta, so the
+consumer contract is `inverse(M) * (P - Ceye + d)`, simplifying to cyclops only
+when near/world deltas agree. Identified two relevant source limits: conditional
+keep-head-rotation skips the entire camera restore; RenderFrame's valid flag
+does not synchronize overlapping plain matrix copies. Recorded an owned tuple
+and bounded observation protocol rather than changing the owning agent's code.
+
+Mapped the 56-byte Prey SInputEvent using native producers, dispatchers and
+refire copies. Analog left axes are gamepad device 3, Changed state 8,
+`xi_thumblx/0x210` and `xi_thumbly/0x211`. Action constructors connect
+`xi_movex/xi_movey` to player handlers `0x158FD20/0x158FD80`, which write movement
+`+0x5C/+0x60`. The bind matcher hashes input names, while device/index blocking
+occurs upstream. Dispatch uses listeners and a map-selected entity, not every
+NPC. Active XML bindings, gameplay ownership and neutralization remain live
+checks; the installed PAKs were not readable as ordinary ZIPs.
+
+[H-005C report](RE-H005C-SELECTION-ORIGIN-INPUT-2026-09-05.md).
+`tools/re/verify_h005c_selection_origin_input.py` passes 19 static landmarks and
+9 ABI/transform fixtures. No live access, runtime edits, event posts, build,
+deployment or headset experiment was performed.

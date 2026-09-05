@@ -23,8 +23,14 @@
 // **The near character is camera-position-relative with world-oriented axes:**
 // `Mnear = T(-C) * W`. The basis is *not* rotated by the inverse camera, so for a
 // *difference* of two world positions the camera term cancels and only the basis
-// matters. For absolute placement the camera origin `C` must be matched to the
-// sample that built the matrix.
+// matters.
+//
+// **Absolute placement is fine too, provided the origin belongs to the matrix**
+// (R-089). `inverse(M) * (P - C)` reduces to `inverse(W) * P`, so `C` cancels
+// exactly -- including the per-eye translation this mod writes. What is *not*
+// safe is mixing an origin from one sample with a matrix from another, which is
+// what FAIL-HAND-037 actually was. Capture origin, matrix and the active
+// `NearViewStereo` eye delta `d` as one coherent tuple: `Ceff = Ceye - d`.
 //
 // **Two instances of one rig do not share a matrix.** R-085 selects one of exactly
 // such a pair, so this is keyed by character and must never be shared between them
@@ -43,6 +49,22 @@ bool TryGetRenderMatrix(unsigned long long character, float out[12]);
 // a full affine inverse and an explicit rotation-extraction policy instead, so
 // this is checked rather than assumed.
 bool RenderMatrixBasisIsOrthonormal(unsigned long long character);
+
+// Whether this character's captured sample was a **near** draw, using RenderCHR's
+// own predicate (R-089): `params+0x80 & 0x800000`, or the entity slot's render
+// flags at `character+0xAC8 & 2`. That is the test the function performs before
+// setting `FOB_NEAREST`, so reading it at entry removes the last injector
+// dependency from routine testing.
+//
+// Near is a **render classification, not proof of player identity** -- a held item
+// and a viewmodel are both near. Keep the existing rig and player selection
+// alongside it rather than substituting this for them.
+bool RenderMatrixIsNear(unsigned long long character);
+
+// One slot of the capture table, for dumping the whole thing over a text channel.
+// False when that slot has never been written. This is what lets a live session
+// answer "which character is the near one" **without a debugger attached**.
+bool RenderFrameSlot(unsigned int index, unsigned long long* character, bool* nearest);
 
 unsigned long long RenderFrameCaptureCount();
 unsigned int RenderFrameTrackedCharacters();

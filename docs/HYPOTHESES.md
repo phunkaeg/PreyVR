@@ -1,5 +1,18 @@
 # Hypotheses queue
 
+**H-005C static advance, 2026-09-05:** RenderCHR's near flag is computable at
+entry from params `+0x80 & 0x800000` OR character `+0xAC8 & 2`. The camera getter
+returns `CSystem+0x788`, but only the ordinary near matrix branch subtracts its
+position. With the current near-VP patch, conversion is
+`inverse(M) * (P - Ceye + nearDelta)`; cyclops is the simplification only when
+the actual deltas match. The conditional keep-head-rotation path skips the
+whole camera restore, and RenderFrame's valid flag does not protect concurrent
+matrix copies. These must be accounted for in the matched publication.
+Prey's 56-byte SInputEvent and native analog movement route are mapped, including
+player handlers `0x158FD20/0x158FD80`; active bindings and neutralization remain
+live proofs. [H-005C report](RE-H005C-SELECTION-ORIGIN-INPUT-2026-09-05.md),
+19 static landmarks and 9 synthetic fixtures; no new runtime acceptance claim.
+
 **H-005B static advance, 2026-09-05:** R-084/R-085/R-087 have since confirmed
 the earlier consumer route and controller translation in a headset. The next
 static contracts are now located: render object `+0` is the complete model
