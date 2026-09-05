@@ -1435,3 +1435,85 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetInputPathSlotRvaPtr(void* s
     return preyvr::dll::InputPathSlotRva(
         static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(slot)));
 }
+
+// ---------------------------------------------------------------------------
+// Ordered watch captures.
+//
+// `FoldProducers` aggregates by RVA, which answers "who writes this" and throws
+// away the thing that answers "who writes it LAST" -- the order. The ring already
+// records a monotonic sequence per trap, so ordering costs nothing but exposure.
+//
+// `stackTop` is included deliberately: two of the sites found on 2026-09-05 are a
+// dword-wise memberwise copy, which is a shared helper. RE-009's caveat is that a
+// helper's own RVA names nothing, and its caller is the real owner.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+bool ReadCaptureAt(unsigned int index, preyvr::dll::WatchCapture& out)
+{
+    return preyvr::dll::ReadWatchCapture(index, out);
+}
+
+unsigned long long ToPreyRva(unsigned long long address)
+{
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) {
+        return 0;
+    }
+    const auto base = reinterpret_cast<unsigned long long>(preyDll);
+    return address > base ? address - base : 0ull;
+}
+
+} // namespace
+
+// The trap's instruction pointer as a PreyDll RVA. Remember the write watch
+// reports AFTER the store retires, so the storing instruction precedes this.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetWatchCaptureRipRvaPtr(void* index)
+{
+    preyvr::dll::WatchCapture capture{};
+    if (!ReadCaptureAt(static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(index)), capture)) {
+        return 0;
+    }
+    return ToPreyRva(capture.rip);
+}
+
+// `[rsp]` at the trap, as a PreyDll RVA. A hint, not a proven caller -- it is only
+// a return address if the trap landed at a point where one is on top.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetWatchCaptureStackTopRvaPtr(void* index)
+{
+    preyvr::dll::WatchCapture capture{};
+    if (!ReadCaptureAt(static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(index)), capture)) {
+        return 0;
+    }
+    return ToPreyRva(capture.stackTop);
+}
+
+// Monotonic across every trap, so captures can be put back in the order they
+// happened regardless of which slot or thread produced them.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetWatchCaptureSequencePtr(void* index)
+{
+    preyvr::dll::WatchCapture capture{};
+    if (!ReadCaptureAt(static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(index)), capture)) {
+        return 0;
+    }
+    return capture.sequence;
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetWatchCaptureThreadIdPtr(void* index)
+{
+    preyvr::dll::WatchCapture capture{};
+    if (!ReadCaptureAt(static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(index)), capture)) {
+        return 0;
+    }
+    return capture.threadId;
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetWatchCaptureSlotPtr(void* index)
+{
+    preyvr::dll::WatchCapture capture{};
+    if (!ReadCaptureAt(static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(index)), capture)) {
+        return 0;
+    }
+    return capture.slot;
+}

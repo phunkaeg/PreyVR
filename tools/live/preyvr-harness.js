@@ -627,6 +627,51 @@ var PreyVR = (function () {
         return out;
     }
 
+    // Which of the producer sites writes LAST.
+    //
+    // `runIkProducerHunt` folds by RVA, which answers "who writes this" and throws
+    // away the only thing that answers "who writes it last" -- the order. The ring
+    // already carries a monotonic sequence per trap, so this reads it back in order
+    // instead of aggregating it.
+    //
+    // **The order is the evidence; the tally is not.** A site with the most hits is
+    // not the owner -- a helper called three times per frame outranks the single
+    // authoritative write. What matters is which RVA the repeating pattern ENDS on.
+    function runIkProducerOrder(targetAddress, seconds) {
+        var out = { step: 'ik-producer-order', target: String(targetAddress), seconds: seconds || 8 };
+        var armed = act('PreyVR_ArmIkProducerWatchPtr', ptr(targetAddress));
+        out.arm = armed.ok ? armed.returned : armed.error;
+        if (out.arm !== 0) {
+            out.verdict = 'REFUSED - nothing armed, so an empty result would have been a lie';
+            return out;
+        }
+        Thread.sleep(out.seconds);
+        act('PreyVR_DisarmIkProducerWatch');
+        out.health = watchHealth();
+
+        var total = Number(callTolerant('PreyVR_GetWatchCaptureCount', 'uint32', []).value);
+        var rows = [];
+        for (var i = 0; i < total; i++) {
+            var slot = Number(callTolerant('PreyVR_GetWatchCaptureSlotPtr', 'uint32', ['pointer'], [ptr(i)]).value);
+            if (slot !== 1) { continue; }   // 1 == the producer write watch
+            rows.push({
+                seq: Number(callTolerant('PreyVR_GetWatchCaptureSequencePtr', 'uint64', ['pointer'], [ptr(i)]).value),
+                rva: '0x' + callTolerant('PreyVR_GetWatchCaptureRipRvaPtr', 'uint64', ['pointer'], [ptr(i)]).value.toString(16),
+                caller: '0x' + callTolerant('PreyVR_GetWatchCaptureStackTopRvaPtr', 'uint64', ['pointer'], [ptr(i)]).value.toString(16),
+                tid: Number(callTolerant('PreyVR_GetWatchCaptureThreadIdPtr', 'uint32', ['pointer'], [ptr(i)]).value)
+            });
+        }
+        rows.sort(function (a, b) { return a.seq - b.seq; });
+        out.ordered = rows;
+        out.sequence = rows.map(function (r) { return r.rva; });
+        out.threads = rows.map(function (r) { return r.tid; })
+            .filter(function (v, i, a) { return a.indexOf(v) === i; });
+        out.verdict = rows.length > 1
+            ? 'read out.sequence as a cycle: the RVA the pattern ENDS on is the owner, not the one with most hits'
+            : 'too few captures to order - lengthen the window or move so the animator recomputes';
+        return out;
+    }
+
     return {
         status: status,
         watchHealth: watchHealth,
@@ -635,6 +680,7 @@ var PreyVR = (function () {
         runSixDof: runSixDof,
         runIkCapture: runIkCapture,
         runIkProducerHunt: runIkProducerHunt,
+        runIkProducerOrder: runIkProducerOrder,
         enableObserver: enableObserver,
         console: console_,
         capture: capture,
