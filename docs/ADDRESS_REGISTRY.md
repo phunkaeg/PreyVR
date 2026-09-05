@@ -848,3 +848,53 @@ agent owns live work. [Full contracts and proposed test](RE-H005-SKINNING-CONSUM
 | `0x1D2A3E8` | Default-skeleton vtable, installed by named destructor `0x8B99C0`. |
 | `0x8C1190`, `0x8BC330`, `0x8BC300` | Joint count, parent, name accessors at skeleton vtable +0x08/+0x10/+0x30. Record stride 0xA8, name pointer +0, signed parent +0x18. |
 | `0x877F79` | R-077 correction: active-path RSI = end-effector joint index * 0x1C, not a limb handle. |
+
+## R-084 -- the hand joints, confirmed by name 2026-09-05
+
+Captured passively at the pose consumer (`0x82EE10`) in mode 1, joints copied
+unchanged, 3,590 conversions forwarded and **zero refused**.
+
+### The decoding is confirmed, and by name rather than by geometry
+
+| observed `rsi` | `/ 0x1C` | joint name | parent |
+| --- | --- | --- | --- |
+| `0x4EC` | **45** | **`r_hand_jnt`** | 41 `r_lowerArm_jnt` |
+| `0x7E0` | **72** | **`l_hand_jnt`** | 68 `l_lowerArm_jnt` |
+
+Both are the **deforming wrist joints**, each with a 21-joint subtree: `thumb1-3`,
+`index1-3` + `indexBase`, `middle`, `ring`, `pinky`, and `handProp`. The subtrees
+are disjoint, which is what makes independent per-hand control possible at all.
+
+**The `*IKTarget`-style helpers are elsewhere** -- `r_hand_spine_target` and
+`l_hand_spine_target` at 38/39, `r_hand_spine_blend`/`l_hand_spine_blend` at 4/5.
+Selecting one of those instead of 45/72 would move a helper and deform nothing,
+which is precisely the substitution the H-005 investigation warned against.
+
+### The player rig is one of five skeletons being skinned
+
+Sampling across conversions found five distinct skeletons live at once:
+
+| joints | root | what it is |
+| --- | --- | --- |
+| **101** | `root_jnt` | **the rig with `r_hand_jnt`/`l_hand_jnt` -- the one that matters** |
+| 188 | `root_jnt` | a fuller character rig; `r_hand_jnt` sits at **48**, not 45 |
+| 103 | `root` | a Breather **face** rig -- `Breather1P*face_jnt`, no hands at all |
+| 18 | `root_jnt` | a keypad/panel prop |
+| 2 | `root_jnt` | `root_jnt` + `anchor_jnt` |
+
+**This is why joint indices cannot be used without checking the skeleton.** The
+first topology dump captured the 103-joint Breather face rig, where 45 and 72 are
+`Breather1P56face_jnt` and `Breather1P29face_jnt`. Read on its own that looks like
+a clean refutation of the whole decoding; it was the wrong character. And the
+188-joint rig puts `r_hand_jnt` at 48, so an index that is right for one skeleton
+is wrong for another.
+
+Select by **name**, resolve the index per instance, and never carry an index
+between skeletons.
+
+### Still open
+
+Which of these instances draws the *visible first-person* hands. Prey's remapped
+skinning aliases master bones between meshes, so shared buffers do not identify a
+mesh -- that needs explicit draw correlation, and it is the remaining question
+before a write means anything.
