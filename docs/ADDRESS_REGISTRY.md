@@ -1030,17 +1030,49 @@ instance only.
 | *"relative to the animation"* | by design: a delta on the animated pose, not a replacement |
 | *"depth looked very odd when I moved the hand"* | **new, and open** -- see below |
 
-### The depth oddity is the next real question
+### The depth oddity: diagnosed and fixed, 2026-09-05
 
-Displacement is resolved against a **yaw-only body frame**, which is an
-approximation of the character's true model frame. The exact transform is the
-render matrix `RenderCHR` receives in R8, which this hook does not see. A frame
-error shows up most in the axis the approximation gets wrong, which is consistent
-with depth reading strangely as the hand moves toward and away.
+**Cause: a per-eye camera reference leaking into a model-space transform.**
+`ControllerWorld` anchored the controller-to-world conversion at the **live view
+camera**, which synthetic stereo offsets by half the IPD per eye. Differencing
+that alternating position against a single calibration zero baked a per-eye
+translation into a bone.
 
-Two other candidates worth separating before chasing the frame: the near-pass
-per-eye offset was live at the same time (R-085/H-011), and there is no scale
-calibration between the wearer's arm length and the avatar's.
+A translation in model space is a **constant screen offset at every depth**, which
+is not parallax and cannot fuse. Fixed by anchoring the reference at the origin:
+the delta is a difference of two controller positions, so a shared reference
+cancels. Yaw is kept, because native projection builds each eye by translation
+alone and both eyes share it.
+
+**The diagnosis came from a wearer comparing the monitor against the headset.**
+With the near-pass offset disabled the weapon was rock solid -- correct for a pass
+with no stereo -- while the hand model still showed a left/right offset, which
+localised the fault to the hand code rather than the renderer. Then: *"regardless
+of their distance from the camera they still render with the same offset."* Real
+parallax scales with `1/distance`; a constant offset at every depth is a
+translation. That is chapter 09's near-versus-horizon discriminator applied to a
+bone instead of a camera, and it is now `FAIL-HAND-037` in the fleet playbook.
+
+**Confirmed fixed by the same test:** *"hands look correct now, depth scales with
+distance."* Displacements read 11-16 mm at rest -- hand tremor -- where the bug
+injected half an IPD every frame regardless of movement.
+
+**Every counter was healthy throughout.** Applied climbing, `noPose` frozen,
+`subtree` 42. The machinery worked perfectly and computed the wrong number, which
+is the fourth time in one session that the instruments agreed with each other and
+disagreed with the screen.
+
+### Remaining, and what each would cost
+
+Displacement is still resolved against a **yaw-only body frame**, which
+approximates the character's true model frame -- the exact transform is the render
+matrix `RenderCHR` receives in R8, which this hook does not see. That
+approximation survives contact with a headset, so it is a refinement rather than a
+blocker.
+
+Not built: wrist **rotation** (translation only, so hands do not turn), the
+upper-arm/forearm chain, arm-length calibration between wearer and avatar,
+cutscene suspension, and the weapon binding.
 
 ### An instrument lesson, again
 
