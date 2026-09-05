@@ -19,6 +19,7 @@
 #include "CommandChannel.h"
 #include "HandRigTakeover.h"
 #include "NearViewStereo.h"
+#include "RenderFrame.h"
 #include "WeaponAttachment.h"
 #include "DebugWatch.h"
 #include "OpenXRPreflightWin32.h"
@@ -1897,4 +1898,40 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetWeaponOffsetApplied()
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetWeaponOffsetRefused()
 {
     return preyvr::dll::WeaponOffsetRefusedCount();
+}
+
+// The character render matrix (R-088), captured at RenderCHR's own entry - which
+// is EARLIER than the skinning dispatch, and so avoids the timing hazard against
+// the existing 0x81D377 observation point.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetRenderFrameCapturePtr(void* enabled)
+{
+    return preyvr::dll::SetRenderFrameCapture(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetRenderFrameCaptures()
+{
+    return preyvr::dll::RenderFrameCaptureCount();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetRenderFrameTracked()
+{
+    return preyvr::dll::RenderFrameTrackedCharacters();
+}
+
+namespace { struct RenderBasisQuery { unsigned long long character; unsigned int index; }; }
+
+// Millionths, so a matrix can be read through a text channel without floats.
+extern "C" __declspec(dllexport) int PreyVR_GetRenderFrameBasisMicroPtr(const RenderBasisQuery* q)
+{
+    if (q == nullptr) { return 0; }
+    return preyvr::dll::RenderFrameBasisMicro(q->character, q->index);
+}
+
+// Whether inverse-by-transpose is legitimate for this character. R-088 warns that
+// scale or shear needs a full affine inverse instead, so this is checked.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetRenderFrameOrthonormalPtr(void* character)
+{
+    return preyvr::dll::RenderMatrixBasisIsOrthonormal(
+        reinterpret_cast<unsigned long long>(character)) ? 1u : 0u;
 }

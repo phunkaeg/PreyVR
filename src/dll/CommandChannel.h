@@ -65,6 +65,7 @@ DWORD StartCommandChannel();
 //     weapon.apply 1              write the offset; 0 restores the captured mount
 //     weapon.calibrate            record the controller aim rotation as zero
 //     weapon.rotate 1             weapon rotation follows the aim controller
+//     frame.capture 1             capture each character's render matrix (passive)
 //     console <command>           through the existing fail-closed allowlist
 //     report                      write every counter to the result file
 //

@@ -7,6 +7,7 @@
 #include "HeadTrackingHook.h"
 #include "Logger.h"
 #include "NearViewStereo.h"
+#include "RenderFrame.h"
 #include "WeaponAttachment.h"
 #include "XrSessionHost.h"
 
@@ -119,6 +120,8 @@ void WriteReport(std::ostringstream& out)
         << "," << WeaponMountPositionMillimetres(2)
         << " weaponApplied=" << WeaponOffsetAppliedCount()
         << " weaponRefused=" << WeaponOffsetRefusedCount()
+        << " frameCaptures=" << RenderFrameCaptureCount()
+        << " frameTracked=" << RenderFrameTrackedCharacters()
         << " channelProcessed=" << gProcessed.load(std::memory_order_relaxed)
         << " channelRejected=" << gRejected.load(std::memory_order_relaxed);
 }
@@ -226,6 +229,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "weapon.rotate result=" << SetWeaponRotationDrive(arg(1, 1));
     } else if (verb == "weapon.calibrate") {
         out << "weapon.calibrate result=" << CalibrateWeaponRotation();
+    } else if (verb == "frame.capture") {
+        out << "frame.capture result=" << SetRenderFrameCapture(arg(1, 1));
     } else if (verb == "report") {
         WriteReport(out);
     } else {
