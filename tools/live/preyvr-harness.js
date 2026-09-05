@@ -481,12 +481,17 @@ var PreyVR = (function () {
     // restarting the game. Measured 2026-09-05, and it cost a headset session.
     // The `Ptr` variants exist precisely so the whole sequence can run on a real
     // thread; use them.
+    // Paths here use FORWARD slashes deliberately. Windows accepts them and JS
+    // never treats them as escapes. The backslash form was silently mangled --
+    // the escape sequences were eaten, the manifest was never found, and it
+    // surfaced as an unavailable SESSION rather than as a bad path, which sent
+    // the first diagnosis at the headset instead of at a string.
     function startVr(opts) {
         var o = opts || {};
         var ipd = o.ipd || 0.064;          // wearer-chosen after a live sweep
         var halfFov = o.halfFov || 50.0;
         var manifest = o.manifest ||
-            'C:\Program Files\Virtual Desktop Streamer\OpenXR\virtualdesktop-openxr.json';
+            'C:/Program Files/Virtual Desktop Streamer/OpenXR/virtualdesktop-openxr.json';
         var out = { step: 'start-vr', ipd: ipd };
 
         // MinHook is initialised inside the observer's enable path and nowhere
@@ -519,7 +524,16 @@ var PreyVR = (function () {
         // on -- recorded in that section's heading rather than in its settings
         // table, which is exactly how rebuilding "the known-good config" from the
         // table missed it.
-        out.nativeProjection = act('PreyVR_SetNativeProjectionPtr', ptr(1)).returned;
+        // Cumulative for the session, so baseline it: a stale count from an
+        // earlier arm would either raise a false alarm or mask a real one.
+        var divergeBefore = Number(callTolerant('PreyVR_GetDeclaredFovDivergeCount', 'uint64', []).value);
+        // `nativeProjection: false` deliberately arms the configuration that
+        // shipped broken on 2026-09-05. It exists so the guard below can be
+        // shown to FIRE -- a check that has only ever returned "fine" is
+        // decoration, and this project has shipped that mistake before.
+        var wantNative = (o.nativeProjection === false) ? 0 : 1;
+        out.nativeProjection = act('PreyVR_SetNativeProjectionPtr', ptr(wantNative)).returned;
+        out.nativeProjectionRequested = wantNative;
 
         var args = Memory.alloc(8);
         args.writeFloat(ipd); args.add(4).writeFloat(halfFov);
@@ -540,7 +554,36 @@ var PreyVR = (function () {
         out.aa = console_('r_AntialiasingMode 3').lastResult;
         Thread.sleep(2);
         out.frames = String(callTolerant('PreyVR_GetXrSubmittedFrameCount', 'uint64', []).value);
-        out.verdict = 'stereo running - now runSixDof observe/rotation/position';
+
+        // **The geometry check no external tool can make.** xr-tape sees what the
+        // runtime located and what we declared, never what the engine rendered
+        // with -- so its checks can all be in their correct state while the image
+        // is a lie. A non-zero delta here means the declared frustum does not
+        // describe these pixels, and the run is not worth a person's time.
+        //
+        // Proven able to fail before being trusted: with native projection off it
+        // reads 140 diverged in 4 s at 732 milli-tan, and freezes the moment the
+        // flag goes back on (2026-09-05).
+        out.fovDiverged = Number(callTolerant('PreyVR_GetDeclaredFovDivergeCount', 'uint64', []).value) - divergeBefore;
+        out.fovAgreed = String(callTolerant('PreyVR_GetDeclaredFovAgreeCount', 'uint64', []).value);
+        // **Session high-water mark, not this run's.** Reported under a name that
+        // says so, because a worst-case number printed beside a passing verdict
+        // reads as this run's and is the exact shape of metric that has misled
+        // this project before.
+        out.fovWorstMilliTanSession = Number(callTolerant('PreyVR_GetDeclaredFovWorstMilliTan', 'uint32', []).value);
+        if (out.fovDiverged > 0) {
+            out.verdict = 'STOP - declared frustum does not match what was rendered (' +
+                out.fovDiverged + ' frames, ' + out.fovWorstMilliTanSession +
+                ' milli-tan session worst). Do not judge depth, scale or comfort through this; fix the declaration first.';
+            return out;
+        }
+        if (out.fovAgreed === '0') {
+            // Silence is not a pass. If nothing was compared, the check proved
+            // nothing -- which is the failure shape this project keeps meeting.
+            out.verdict = 'stereo running, but the frustum check never ran (no eye built yet). Re-check after a few seconds.';
+            return out;
+        }
+        out.verdict = 'stereo running, declared frustum matches rendered - now runSixDof observe/rotation/position';
         return out;
     }
 

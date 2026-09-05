@@ -595,3 +595,65 @@ R-078 read it from a printf, this reads it from the arithmetic.
   own RVA -- exactly the `RE-009` caveat.
 * Addresses are heap and session-specific; reach targets through the capture every
   run, never cached.
+
+## R-082 -- which producer owns the final value: `0x87BC36`, 2026-09-05
+
+R-081 named seven writers. The question that decides where a takeover goes is
+which of them writes **last**, and the fold by RVA could not answer it -- a helper
+called three times a frame outranks the single authoritative write, so the hit
+tally is actively misleading here.
+
+Reading the capture ring in order instead answers it directly.
+
+### The cycles
+
+Two shapes appeared, and both end the same way:
+
+```
+long     f97dc1dc f97dc1dc 87c956 87c956 87beab 7de723 7dee09 7dee09 7dee09 87c996 87BC36
+steady   f97dc1dc f97dc1dc 7dbe74 7dcf56 87BC36                        (repeated 3x)
+```
+
+**Replicated across two targets on two different skeletons.** The first run showed
+one complete long cycle and the start of a second; the second run, on the other
+skeleton, showed the long cycle, a partial, then three consecutive steady cycles.
+Every cycle in both runs ends on `0x87BC36`. `foreignTraps=0` throughout.
+
+### Why `0x87BC36` is the answer and not just the last row
+
+Its store, from R-081's disassembly, is three consecutive float writes:
+
+```
+movss [rdx+r9],   xmm6
+movss [rdx+r9+4], xmm7
+movss [rdx+r9+8], xmm2      <- the trap reports here
+```
+
+That is a **`Vec3`**, written whole -- a position, not a partial update and not a
+copy loop. So the site that writes last is also the site that writes the complete
+value, which is what a takeover needs to displace.
+
+### `0xF97DC1DC` is explained, and it is not a producer
+
+R-081 recorded it as an unexplained non-PreyDll RVA. Its callers are now visible
+and they are constant: `0x87C849` and `0x87C92C`, both inside PreyDll's animation
+region. So it is an **out-of-module helper** -- a CRT `memcpy`-class routine --
+called from the pose code. Exactly `RE-009`'s caveat that a shared helper's own
+address names nothing while its caller names the owner.
+
+### Two cautions worth keeping
+
+* **`stackTop` is a hint and must stay one.** `0x7DBE74` reported a caller of
+  `0x3CE0903A62641692`, which is data, not an address. Mid-function traps have no
+  return address on top of the stack, and any tooling that promotes `[rsp]` to
+  "caller" without a range check will invent call graphs.
+* **The animation update is multi-threaded.** Traps came from thread ids 85416,
+  57032 and 47068 within a single run, so this is job-system work. A takeover hook
+  here must be thread-safe by construction, not by assuming one caller.
+
+### Still open
+
+Nothing is hooked. `0x87BC36` is where the final write happens; whether the right
+takeover is a hook there, a hook on its caller, or the consumer downstream is a
+design question this does not settle. The containing function has not been
+identified, and it should be before anything is written.
