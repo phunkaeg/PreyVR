@@ -8,6 +8,7 @@
 #include "Logger.h"
 #include "NearViewStereo.h"
 #include "RenderFrame.h"
+#include "InputPost.h"
 #include "WeaponAttachment.h"
 #include "XrSessionHost.h"
 
@@ -248,6 +249,22 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             ++listed;
         }
         out << " listed=" << listed;
+    } else if (verb == "input.post") {
+        out << "input.post result=" << SetInputPostEnabled(arg(1, 1));
+    } else if (verb == "menu") {
+        // Menu navigation through the engine's own input layer. `arg(1)` is the
+        // MenuAction index; 0=up 1=down 2=left 3=right 4=accept 5=cancel 6=start.
+        // A non-zero result means refused -- it can never mean "the menu did not
+        // move", because PostInputEvent returns void and the binding that would
+        // consume it is a candidate rather than a proven active bind (R-089).
+        const DWORD result = PostMenuAction(static_cast<unsigned int>(arg(1, 0)));
+        out << "menu result=" << result << " action=" << arg(1, 0)
+            << " posted=" << InputPostCount() << " refused=" << InputPostRefusedCount();
+    } else if (verb == "input.key") {
+        const DWORD result = PostRawInput(arg(1, 0), static_cast<unsigned int>(arg(2, 1)),
+                                          arg(3, 1000));
+        out << "input.key result=" << result << " keyid=" << arg(1, 0)
+            << " posted=" << InputPostCount() << " refused=" << InputPostRefusedCount();
     } else if (verb == "report") {
         WriteReport(out);
     } else {

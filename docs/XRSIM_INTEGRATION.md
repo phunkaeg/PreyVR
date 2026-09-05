@@ -607,9 +607,29 @@ Two things it does that are not obvious:
 The smoke run confirmed commands arrive: the sidecar's `handR.aimYpr` read back
 `-60, -30, -0, 30, 60` for the five commanded angles.
 
-### What still needs a person
+### Driving the menus, which is a product feature rather than a workaround
 
-Starting the game, and only that. Getting from the main menu into a save needs
-keyboard input, which means either a human or an approved desktop-control grant.
-Once a level is in view, the command channel, the sweep and the captures are all
-scriptable, so a session can be driven and **read** without anyone describing it.
+The first version of this section said getting from the main menu into a save
+needed a human at a keyboard. That was solving the problem at the wrong layer.
+The mod is already **inside the process**, `IInput::PostInputEvent` is resolved
+and its vtable alignment measured, and the end state is "no mouse" -- so a
+controller that cannot drive a menu is an unfinished mod, not a testing gap.
+Menu navigation through the engine's own input layer is what the controller
+binding *is*; that it also makes the loop self-driving is a consequence.
+
+`InputPost` posts native gamepad events; `menu <n>` and `input.key <id>` reach it
+through the command channel. So the loop is: post a key, capture, look at the
+frame.
+
+Two honest limits travel with it. **Reaching or returning from PostInputEvent is
+not acceptance evidence** -- its native return is void, and the action manager
+hashes input names against configured binds that were never extracted from the
+PAKs (R-089). And the menu key ids come from the PDB-derived enum, cross-checked
+against the single value the disassembly proves independently
+(`xi_thumblx = 0x210`). Whether a given screen listens to `xi_dpad_up` is
+therefore a candidate, and the first live run is empirical: post, capture, look.
+That is precisely what the observation loop is for.
+
+**Gameplay input is deliberately not wired.** A menu is modal and its effect is
+immediately visible; an unscoped gameplay post reaches every consumer a real
+button does, and the playbook's shot-redirection warning applies to input too.

@@ -78,6 +78,7 @@ add_library(preyvr_core STATIC
     src/common/EngineMap.cpp
     src/common/FrameDump.cpp
     src/common/FrameObserver.cpp
+    src/common/InputEvent.cpp
     src/common/InteractionQuery.cpp
     src/common/Locomotion.cpp
     src/common/MotionController.cpp
@@ -133,6 +134,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/HotkeyBridge.cpp
         src/dll/IkTargetProbe.cpp
         src/dll/InputPathProbe.cpp
+        src/dll/InputPost.cpp
         src/dll/CommandChannel.cpp
         src/dll/HandRigTakeover.cpp
         src/dll/NearViewStereo.cpp
@@ -313,6 +315,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_motion_controller_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_motion_controller_tests)
     add_test(NAME motion_controller COMMAND preyvr_motion_controller_tests)
+
+    add_executable(preyvr_input_event_tests tests/InputEventTests.cpp)
+    target_link_libraries(preyvr_input_event_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_input_event_tests)
+    add_test(NAME input_event COMMAND preyvr_input_event_tests)
 
     add_executable(preyvr_locomotion_tests tests/LocomotionTests.cpp)
     target_link_libraries(preyvr_locomotion_tests PRIVATE preyvr_core)
