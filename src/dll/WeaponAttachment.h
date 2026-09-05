@@ -71,6 +71,17 @@ DWORD SetWeaponOffsetEnabled(unsigned int enabled);
 // The diagnostic, recorded here so it is not rediscovered: **if both extremes of a
 // signed parameter fail symmetrically, the model is wrong, not the sign.** Stop
 // bisecting and re-derive which transform the value belongs to.
+// **Cross-checked against the tested pure layer.** `WeaponPoseFromController` in
+// `preyvr::controller` is `Compose(hand, grip.controllerToWeapon)` -- the same
+// `hand * grip` order, with a passing test (`TestWeaponPoseAppliesGrip`). This
+// lane composes a *delta from calibration* rather than an absolute pose, because
+// the model frame here is approximated rather than solved; when the character's
+// true render matrix is captured, the absolute form is the one to move to.
+//
+// `TwoHandedWeaponPose` also already exists and is the next refinement: Prey's
+// disruptor is held with both hands (the support hand sits under the grip, which
+// is why limb `0x7E0` tracks it), and a rifle should point where the *supporting*
+// hand is rather than where the wrist is angled.
 DWORD SetWeaponRotationDrive(unsigned int enabled);
 
 // Records the controller's current aim rotation as the zero, alongside the mount
