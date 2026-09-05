@@ -16,6 +16,7 @@
 #include "HotkeyBridge.h"
 #include "IkTargetProbe.h"
 #include "InputPathProbe.h"
+#include "NearViewStereo.h"
 #include "DebugWatch.h"
 #include "OpenXRPreflightWin32.h"
 #include "RuntimeSnapshotWin32.h"
@@ -1655,4 +1656,59 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetWatchCaptureRegisterPtr(
         case 15: return c.r15;
         default: return 0;
     }
+}
+
+// ---------------------------------------------------------------------------
+// H-011: a per-eye viewpoint for the near/viewmodel pass.
+//
+// Prey builds a translation-FREE view for near geometry (0xFB0B70 zeroes the
+// translation row), so the weapon is camera-relative by construction and cannot
+// receive stereo separation from moving the camera. This edits the finished near
+// view-projection instead, which is narrow: patching the translation clear would
+// restore translation to every camera-relative product.
+// ---------------------------------------------------------------------------
+
+extern "C" __declspec(dllexport) DWORD PreyVR_SetNearViewStereoPtr(void* enabled)
+{
+    return preyvr::dll::SetNearViewStereo(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_SetNearViewHalfIpdMmPtr(void* millimetres)
+{
+    return preyvr::dll::SetNearViewHalfIpdMillimetres(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(millimetres)));
+}
+
+// The zero-delta control: every code path armed, displacement zero. A correct
+// implementation is pixel-identical to no edit, so any visible change under this
+// flag is the edit being wrong rather than stereo appearing.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetNearViewZeroDeltaControlPtr(void* enabled)
+{
+    return preyvr::dll::SetNearViewZeroDeltaControl(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetNearViewApplied()
+{
+    return preyvr::dll::NearViewAppliedCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetNearViewRefused()
+{
+    return preyvr::dll::NearViewRefusedCount();
+}
+
+// Non-zero with applied at zero means the camera hook is not publishing an eye --
+// a different fault from the hook not running at all.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetNearViewNoEye()
+{
+    return preyvr::dll::NearViewNoEyeCount();
+}
+
+// Signed, in micrometres. This is what shows the two eyes receive OPPOSITE
+// displacements rather than the same one.
+extern "C" __declspec(dllexport) int PreyVR_GetNearViewLastDeltaMicrometres()
+{
+    return preyvr::dll::NearViewLastDeltaMicrometres();
 }
