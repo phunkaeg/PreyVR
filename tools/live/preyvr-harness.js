@@ -472,6 +472,60 @@ var PreyVR = (function () {
         return out;
     }
 
+    // The full bring-up, in the order the engine requires it.
+    //
+    // **Every step here goes through `act`, and that is not stylistic.** Calling
+    // the float-taking `PreyVR_SetSyntheticStereo` directly from Frida aborts
+    // (F-009) *while holding the camera-edit mutex*, which then refuses every
+    // later control call with `detail=busy` and cannot be released without
+    // restarting the game. Measured 2026-09-05, and it cost a headset session.
+    // The `Ptr` variants exist precisely so the whole sequence can run on a real
+    // thread; use them.
+    function startVr(opts) {
+        var o = opts || {};
+        var ipd = o.ipd || 0.064;          // wearer-chosen after a live sweep
+        var halfFov = o.halfFov || 50.0;
+        var manifest = o.manifest ||
+            'C:\Program Files\Virtual Desktop Streamer\OpenXR\virtualdesktop-openxr.json';
+        var out = { step: 'start-vr', ipd: ipd };
+
+        // MinHook is initialised inside the observer's enable path and nowhere
+        // else, so no other hook can install until this has run.
+        out.observer = enableObserver();
+        if (!out.observer.enabled) {
+            out.verdict = 'ABORTED: frame observer did not enable, so no hook can install';
+            return out;
+        }
+        // Both of these must precede StartXrSession. Prey inherits Steam's
+        // environment, so the runtime has to be chosen rather than assumed.
+        out.runtime = act('PreyVR_SetXrRuntimeManifest', Memory.allocUtf8String(manifest)).returned;
+        out.srgb = act('PreyVR_SetXrPreferSrgbFormatPtr', ptr(1)).returned;
+        out.session = act('PreyVR_StartXrSession', NULL, 25).returned;
+        if (out.session !== 1) {
+            out.verdict = 'ABORTED: session status ' + out.session +
+                ' (2 = adapter mismatch, and that needs r_overrideDXGIAdapter set BEFORE launch)';
+            return out;
+        }
+        var args = Memory.alloc(8);
+        args.writeFloat(ipd); args.add(4).writeFloat(halfFov);
+        out.stereo = act('PreyVR_SetSyntheticStereoPtr', args).returned;
+        out.cameraEdit = Number(callTolerant('PreyVR_GetCameraEditStatus', 'uint32', []).value);
+        if (out.cameraEdit !== 2) {
+            out.verdict = 'ABORTED: synthetic stereo did not arm (status ' + out.cameraEdit +
+                '). If the log says detail=busy, the control mutex is held and only a restart clears it.';
+            return out;
+        }
+        out.submission = act('PreyVR_SetXrStereoSubmissionPtr', ptr(1)).returned;
+        // Motion blur is a requirement, not a preference: it read as a focus
+        // artifact on near geometry. TAA 3 was chosen over the other three modes.
+        out.motionBlur = console_('r_MotionBlur 0').lastResult;
+        out.aa = console_('r_AntialiasingMode 3').lastResult;
+        Thread.sleep(2);
+        out.frames = String(callTolerant('PreyVR_GetXrSubmittedFrameCount', 'uint64', []).value);
+        out.verdict = 'stereo running - now runSixDof observe/rotation/position';
+        return out;
+    }
+
     // The native input path (H-006 / R-070). Read-only: resolves and validates,
     // calls nothing. Safe to run any time, including at a menu.
     function resolveInputPath() {
@@ -558,6 +612,7 @@ var PreyVR = (function () {
     return {
         status: status,
         watchHealth: watchHealth,
+        startVr: startVr,
         resolveInputPath: resolveInputPath,
         runSixDof: runSixDof,
         runIkCapture: runIkCapture,

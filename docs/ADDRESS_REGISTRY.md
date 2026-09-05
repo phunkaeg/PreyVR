@@ -480,3 +480,67 @@ playbook owns transferable method.
 Nothing has been captured yet -- this is the instrument, not a result. The
 execute watch has not been fired against a running game, so the claim that `r12`
 carries a live target at this site is still R-078's, inherited and not re-proved.
+
+## R-080 -- `IInput::PostInputEvent`, confirmed live 2026-09-05
+
+The last open item in R-070. Locomotion needs a native input endpoint, and this
+is it -- confirmed by shape from a live vtable, not counted off a header.
+
+| | |
+| --- | --- |
+| `gEnv` | RVA `0x224D980` (R-044) |
+| `gEnv->pInput` | `gEnv+0x58` -- **already in our own receipts**, `SYSTEM_VTABLE.md` slot 84 `GetIInput` |
+| `IInput::PostInputEvent` | vtable **slot 12**, RVA **`0x9D6D30`** |
+
+The `pInput` half was never actually open. `SYSTEM_VTABLE.md` recorded it as one
+of the 24 `gEnv`-relaying accessors that each landed on its correctly-named
+member; H-006 listed it as unknown only because that work happened separately and
+nobody joined the two. Worth remembering as a cost of not re-reading your own
+receipts before going looking.
+
+### Confirmed by two independent setter/getter pairs
+
+The alignment technique from R-043 and R-054, applied to a live table:
+
+| slot | disassembly | reading |
+| --- | --- | --- |
+| 7 | `mov [rcx+0x48], rdx ; ret` | `SetExclusiveListener` |
+| 8 | `mov rax, [rcx+0x48] ; ret` | `GetExclusiveListener` -- **same member** |
+| 10 | `mov byte [rcx+0x78], dl ; ...` | `EnableEventPosting` |
+| 11 | `movzx eax, byte [rcx+0x78] ; ret` | `IsEventPostingEnabled` -- **same member** |
+| 12 | `push rbx ; push rdi ; sub rsp,0x88 ; mov rbx,rdx` | `PostInputEvent`, taking a struct ref in `rdx` |
+
+Two pairs on two different members fix the table far harder than one. The rest
+corroborates: slots 1/2 both work `[rcx+0x28]`, slots 3/4 both work `[rcx+0x38]`,
+slot 14 is a bare `ret 0` stub.
+
+**The whole table matches the CryEngine 5 public header, including the touch-event
+pair at slots 5 and 6** that the probe's comment predicted an older fork might
+lack. The guess was right; that it was right is only known because it was checked.
+
+### The probe's shape test was too narrow, and this is the transferable part
+
+`ResolveInputPath` reported `alignmentConfirmed=false` while the pair sat at
+slots 10/11. Two wrong assumptions, both about the **compiler** rather than the
+interface:
+
+* the setter was required to `RET` immediately -- Prey's `EnableEventPosting`
+  continues into a global check;
+* the getter was required to be `MOV AL,[RCX+d]` (`8A 41 dd`) -- MSVC emits
+  `MOVZX EAX, BYTE PTR [RCX+d]` (`0F B6 41 dd`), which is the ordinary way to
+  return a `bool`.
+
+The **shared displacement** was always the load-bearing part; the surrounding
+encodings were decoration that got promoted to requirements. Widened 2026-09-05.
+
+The probe's fail-closed reporting is what made this cheap rather than dangerous:
+it refused to confirm, published the RVA as an explicit guess, and dumped the
+slots -- so the correction took one read-only disassembly instead of a wrong
+virtual call on a live engine object.
+
+### Still not established
+
+**Nothing has been called.** The address is confirmed; the calling convention,
+the `SInputEvent` layout and the `bForce` argument have not been exercised, and
+the vtable address itself is heap and session-specific -- reach it through
+`gEnv+0x58` every time, never cached across runs.

@@ -93,10 +93,11 @@ std::string Hex(unsigned long long value)
 // every version of this interface and act on the **same** member. So a correctly
 // aligned vtable shows, at some slot n and n+1:
 //
-//     n     MOV [RCX+d], DL   ; 88 51 dd   then RET
-//     n+1   MOV AL, [RCX+d]   ; 8A 41 dd   then RET
+//     n     MOV [RCX+d], DL          ; 88 51 dd
+//     n+1   MOVZX EAX, BYTE [RCX+d]  ; 0F B6 41 dd  RET   (or MOV AL, 8A 41 dd)
 //
-// with the *same* displacement `d`. That is the identical trick R-043 used to
+// with the *same* displacement `d` -- which is the only load-bearing part; see
+// the encodings note in the body, which cost a test cycle to learn. That is the identical trick R-043 used to
 // confirm the CSystem vtable and R-054 used for C3DEngine -- a setter and getter
 // on one member, predicted by name and matching independently. Finding that pair
 // fixes the whole table, and PostInputEvent is then n+2 by construction.
@@ -111,15 +112,41 @@ unsigned int FindEventPostingPair(std::uintptr_t vtable)
             !ReadPointer(vtable + (slot + 1) * sizeof(std::uintptr_t), getter)) {
             continue;
         }
-        std::uint8_t s[4]{};
-        std::uint8_t g[4]{};
+        std::uint8_t s[8]{};
+        std::uint8_t g[8]{};
         if (!ReadBytes(setter, s, sizeof(s)) || !ReadBytes(getter, g, sizeof(g))) {
             continue;
         }
-        // MOV [RCX+disp8], DL  /  MOV AL, [RCX+disp8]  -- same displacement.
-        const bool setterShape = s[0] == 0x88 && s[1] == 0x51 && s[3] == 0xC3;
-        const bool getterShape = g[0] == 0x8A && g[1] == 0x41 && g[3] == 0xC3;
-        if (setterShape && getterShape && s[2] == g[2]) {
+        // **Both shapes are wider than the obvious guess, measured live
+        // 2026-09-05.** The first version of this test looked for
+        // `MOV [RCX+d],DL; RET` against `MOV AL,[RCX+d]; RET` and found nothing,
+        // while the pair was sitting at slots 10/11 the whole time. Two wrong
+        // assumptions, both about the compiler rather than the interface:
+        //
+        //   * the setter does **not** return immediately -- Prey's
+        //     `EnableEventPosting` continues into a global check, so requiring a
+        //     `RET` at byte 3 rejected it;
+        //   * the getter is `MOVZX EAX, BYTE PTR [RCX+d]` (`0F B6 41 dd`), not
+        //     `MOV AL, [RCX+d]` (`8A 41 dd`). Returning a bool as a zero-extended
+        //     int is the normal thing for MSVC to emit; `MOV AL` was the guess.
+        //
+        // So: match the setter's store only, and accept either getter encoding.
+        // The load-bearing part was always the **shared displacement**, and that
+        // is what is still required.
+        const bool setterShape = s[0] == 0x88 && s[1] == 0x51;      // mov [rcx+d], dl
+        const std::uint8_t setterDisp = s[2];
+
+        bool getterShape = false;
+        std::uint8_t getterDisp = 0;
+        if (g[0] == 0x0F && g[1] == 0xB6 && g[2] == 0x41) {          // movzx eax, byte [rcx+d]
+            getterShape = g[4] == 0xC3;
+            getterDisp = g[3];
+        } else if (g[0] == 0x8A && g[1] == 0x41) {                   // mov al, [rcx+d]
+            getterShape = g[3] == 0xC3;
+            getterDisp = g[2];
+        }
+
+        if (setterShape && getterShape && setterDisp == getterDisp) {
             return slot;
         }
     }
