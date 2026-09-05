@@ -1,5 +1,13 @@
 # Hypotheses queue
 
+**H-005 static advance, 2026-09-05:** the finished-pose consumer and GPU/software
+handoff are located: **`0x82EE10`** accepts a character's absolute joint poses,
+builds skinning dual quaternions and publishes them. A private input substitution
+is the proposed per-hand seam. Joint candidates 45/72 follow from correcting
+R-077's RSI byte-offset interpretation; mesh ownership still needs live proof.
+[Exact contract, register corrections and next experiment](RE-H005-SKINNING-CONSUMER-2026-09-05.md).
+The historical H-005 producer findings below do not supersede this consumer route.
+
 | ID | Question | Why it matters | Cheapest discriminating evidence | State |
 | --- | --- | --- | --- | --- |
 | H-001 | Does the shipping renderer expose or retain a stereo/multi-view rendering path? | Engine scene re-entry or native multi-view can avoid per-draw replay. | Search `PreyDll.dll` for renderer/stereo strings, interfaces, and call paths; validate with a bounded runtime trace. | **Closed negative for the stock/exposed route.** The image-wide search found zero `r_Stereo*` cvars, no `IHmdDevice`/`HMD` layer, and no CryVR plugin. A live read-only R-026 probe found one orthonormal camera per frame slot rather than a resident eye pair. This justifies a mod-owned per-eye path; it does not rule out every possible scene re-entry or dynamically constructed multi-view seam. |

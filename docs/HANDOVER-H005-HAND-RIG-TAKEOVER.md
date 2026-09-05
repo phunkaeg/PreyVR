@@ -1,5 +1,14 @@
 # Handover — H-005: independent control of the first-person hand rig
 
+**Static answer added 2026-09-05:** the finished-pose consumer is
+`CCharInstance::SkinningTransformationsComputation`, Steam RVA **`0x82EE10`**.
+Substitute a private absolute-joint input at entry, before it builds and publishes
+skinning data. The complete argument contract, joint topology, mesh mapping and
+first live proof are in [the consumer investigation](RE-H005-SKINNING-CONSUMER-2026-09-05.md).
+This is static evidence, not a live hand-control result; the running process was
+left to the other agent. The report also corrects RSI/RDI/R13 capture labels and
+the assumption that distinct meshes must have distinct bone buffers.
+
 **Written 2026-09-05.** Self-contained. The live lane is stuck; the remaining
 question suits static analysis, which is why this is being handed over.
 
@@ -23,10 +32,15 @@ here. Per-hand articulation is the requirement.
 * **R-077** — a `QuatT` + blend is logged at `0x878744` (containing function
   `0x877B50`), guarded by a debug switch at `0x2257810`. Layout: `rot` at `+0x00`
   (unit quaternion, verified), `pos` at `+0x10`, stride `0x1C`.
-* **R-078** — four live IK targets per capture, two skeletons, two limbs each.
-  `rsi` carries the limb id: `0x4EC` is the trigger hand, `0x7E0` the support
-  hand, matching rig names `Bip01 RHand2RiflePos_IKTarget` and
-  `Bip01 LHand2Weapon_IKTarget`.
+* **R-078** — four live IK targets per capture, grouped into two pose-buffer
+  sets, originally interpreted as two skeletons. **Static correction:** on the
+  active IK path, `rsi` is an end-effector joint byte offset (`0x877F79`), so
+  `0x4EC` / `0x7E0` imply candidate joint indices **45 / 72**. The low-blend path
+  gives RSI a different meaning. The trigger/support labels and observed target
+  names `Bip01 RHand2RiflePos_IKTarget` / `Bip01 LHand2Weapon_IKTarget` remain
+  useful observations; resolve the actual deforming joint names at the consumer.
+  RDI is a relative-pose array and R13 a default skeleton at R-077, so neither
+  proves character-instance identity. See the investigation for exact loads.
 * **Limb identification independently confirmed 2026-09-05** by a weapon swap:
   target addresses persisted while values moved sharply, and the support-hand
   target swung down and out to the side (`[33,247,1501]` -> `[-325,-2,952]` mm)
@@ -71,12 +85,15 @@ here. Per-hand articulation is the requirement.
 
 **What reads the finished pose to produce pixels?** The producer side is a
 pipeline where every level is recomputed each frame — three levels were walked and
-each had a producer above it. The consumer side has no such regress: there is one
-consumer per frame and nothing overwrites after it.
+each had a producer above it. The static answer is now `0x82EE10`: it reads the
+final absolute pose, converts it to skinning dual quaternions and publishes to
+software jobs before returning. GPU upload follows a job wait at `0xF3CC20`.
 
-Concretely: the skinning / joint matrices the renderer consumes for the
-first-person character. Finding those would also settle the skeleton mapping for
-free, since the two meshes must read different matrices.
+The remaining live question is which character/mesh consumes those bones for the
+visible first-person body. **Mapping is not automatic:** Prey's remapped meshes
+can share the master bones and GPU buffer. Correlate explicit character ownership,
+attachment remaps, render-object skinning pointers and pass flags as described in
+the investigation. There may be multiple draw consumers of one cached pose.
 
 A useful adjacent anchor: `CArkWeapon::AttachToHand` consumes the resolved
 `IAttachment*` at weapon `+0x2B0`. And the tester's observation that **the gun's

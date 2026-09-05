@@ -328,7 +328,51 @@ float and the next sample's first. The blend is passed separately.
 Every quaternion sampled had magnitude 1.0000, which is what identifies the field
 as a rotation rather than four unrelated floats.
 
-### Two limbs, named by a register
+### CORRECTION 2026-09-05 -- `rsi` is a byte offset, not a limb id
+
+**The whole "limb id" reading below is wrong.** At `0x877F79`,
+`IMUL RSI, R10, 0x1C` makes `rsi` a **byte offset into the joint array**, with
+`R10` coming from the last joint-chain record. So the observed values decode as
+**joint indices**, not handles:
+
+| observed `rsi` | / `0x1C` | joint |
+| --- | --- | --- |
+| `0x4EC` (1260) | | **45** |
+| `0x7E0` (2016) | | **72** |
+
+Both divide exactly, which is the tell that was there to be noticed and was not.
+The rig names `Bip01 RHand2RiflePos_IKTarget` / `LHand2Weapon_IKTarget` matched
+the *geometry* of what was sampled, and that agreement was taken as confirmation
+of a decoding that had never been checked.
+
+Two further consequences, from the same investigation:
+
+* **On the low/invalid-blend path** (`0x877CBF`/`0x877CD5` -> `0x878708`) the
+  multiply is skipped and `rsi` retains a weight-joint index instead. So not every
+  log record decodes the same way, and treating them uniformly mixes two meanings.
+* **R-077's register labels do not identify character instances.** `rdi` is
+  `poseData+0x10` (relative poses) and `rbx` is `poseData+0x18` (absolute). Distinct
+  `rdi` values prove **distinct pose buffers**, not distinct characters -- so the
+  "two skeletons" language throughout R-078 and H-010 claims more than the evidence
+  supports. Identity has to be reacquired at the consumer, where the instance is an
+  actual argument.
+
+Do not substitute a joint named `*IKTarget` for the deforming hand joint on the
+strength of its name. Resolve 45 and 72 through the skeleton's own name accessor
+(`0x8BC300`) before acting on either.
+
+Full analysis: [`RE-H005-SKINNING-CONSUMER-2026-09-05.md`](RE-H005-SKINNING-CONSUMER-2026-09-05.md),
+16 static landmarks verified against this build.
+
+### ~~Two limbs, named by a register~~ (decoding wrong, see above)
+
+**Static correction, 2026-09-05:** on the active IK path RSI is a byte offset,
+set by `IMUL RSI,R10,0x1C` at `0x877F79`; `0x4EC` / `0x7E0` therefore imply
+end-effector joint candidates 45 / 72. A low-blend branch skips this multiply,
+so the interpretation is path-dependent. At R-077, RDI is the relative-pose array,
+RBX the absolute array, and R13 the default skeleton, not the character instance.
+The observations below stand, but their original identity labels do not. See
+[H-005's consumer route and corrected register map](RE-H005-SKINNING-CONSUMER-2026-09-05.md).
 
 `rsi` carries a limb identifier, consistent across every skeleton:
 
@@ -783,3 +827,24 @@ evidence files and the near-only test are in
 R-069 follow-up: the direct consumers of the **latched member** are `0xF43D70`,
 `0xFB4280`, and deferred-shadow setup `0xF054F0`. The five name lookups in the
 original H-011 handover were not a complete renderer-consumer census.
+
+## H-005 static skinning landmarks — 2026-09-05
+
+**Static-only**, supported Steam hash. No numbered R entry reserved while another
+agent owns live work. [Full contracts and proposed test](RE-H005-SKINNING-CONSUMER-2026-09-05.md).
+`py -3 tools/re/verify_h005_skinning.py` verifies 16 byte/vtable landmarks on disk.
+
+| Steam RVA | Finding |
+|---|---|
+| `0x82EE10` | Finished absolute-pose -> dual-quaternion conversion. Entry RCX=character, RDX=master skinning, R8=default skeleton, R9D=LOD, stack +0x28=pose-data, +0x30=movement pointer. Proposed input-substitution seam, untested live. |
+| `0x82D7A0`, `0x82E580` | Skinning job builder and wrapper; final pose-data is character+0x960, absolute pointer +0x978. |
+| `0x82F860`, `0x82F88B` | Publishes finished bone data, then starts queued software jobs. A post-return edit can race software consumers. |
+| `0x81BB60`, `0x81D0D0` | Master skinning cache / RenderCHR. Object+0x98 receives skinning at `0x81D377`; object+0x40 contains FOB_NEAREST. |
+| `0xFE06B0`, `0xFE05F0` | Master/remapped skinning allocators, renderer vtable +0x800/+0x808. Remapped headers share master bones, jobs and CB. |
+| `0x7AC9F0`, `0x7AABE0` | Attachment skinning-data getter and draw path. Master character through attachment+0x30 -> +0x18, remap at attachment+0x38. |
+| `0xF39450` | Character CB allocator, renderer vtable +0xAA0; allocates 0x6000-byte bone buffer. |
+| `0xF3CC20` | Waits for skinning job, uploads nNumBones*0x20 bytes through `0x107EE50` at `0xF3CCA5`. |
+| `0xF0EE30` | Skinned draw batch follows each object's +0x98 to skinning, selects remap, binds current/previous character buffers. |
+| `0x1D2A3E8` | Default-skeleton vtable, installed by named destructor `0x8B99C0`. |
+| `0x8C1190`, `0x8BC330`, `0x8BC300` | Joint count, parent, name accessors at skeleton vtable +0x08/+0x10/+0x30. Record stride 0xA8, name pointer +0, signed parent +0x18. |
+| `0x877F79` | R-077 correction: active-path RSI = end-effector joint index * 0x1C, not a limb handle. |

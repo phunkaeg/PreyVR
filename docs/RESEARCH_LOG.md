@@ -1578,3 +1578,24 @@ remaining runtime proof. The user reserved the running process for another
 agent; no hooks or game-state edits were made, and work continued statically.
 A synthetic matrix check verified the proposed eye-relative translation formula
 and inverse-depth disparity; it is not a gameplay or headset result.
+
+## 2026-09-05 — H-005 finished-pose consumer located; capture identities corrected
+
+Located `CCharInstance::SkinningTransformationsComputation` at Steam `0x82EE10`
+from its job-name string and wrapper. It consumes character+0x960's absolute
+pose, performs inverse-bind DualQuat conversion, and publishes to software
+skinning before returning. `FX_UpdateCharCBs` (`0xF3CC20`) waits and uploads the
+same bones; `FX_DrawBatchSkinned` (`0xF0EE30`) follows render-object+0x98 to them.
+The proposed takeover supplies private modified absolute joints at conversion
+entry. No live process access or deployment; the other agent owns that lane.
+
+Two material corrections: remapped meshes share master bones/jobs/CB, so distinct
+matrix pointers cannot be required for body/shadow mapping; R-077's active-path
+RSI is a joint byte offset, making observed 0x4EC/0x7E0 candidate joint IDs 45/72.
+RDI is a relative-pose array and R13 the default skeleton, not instance identity.
+The joint-name/parent/count accessors and record layout are now byte-verified.
+
+[Investigation, exact layouts and live discriminator](RE-H005-SKINNING-CONSUMER-2026-09-05.md).
+The standalone read-only verifier `tools/re/verify_h005_skinning.py` passes 16
+instruction/vtable checks against the supported module. This proves static
+landmarks only; independent rendered-hand control remains untested.
