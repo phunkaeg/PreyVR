@@ -16,6 +16,7 @@
 #include "HotkeyBridge.h"
 #include "IkTargetProbe.h"
 #include "InputPathProbe.h"
+#include "HandRigTakeover.h"
 #include "NearViewStereo.h"
 #include "DebugWatch.h"
 #include "OpenXRPreflightWin32.h"
@@ -1711,4 +1712,81 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetNearViewNoEye()
 extern "C" __declspec(dllexport) int PreyVR_GetNearViewLastDeltaMicrometres()
 {
     return preyvr::dll::NearViewLastDeltaMicrometres();
+}
+
+// ---------------------------------------------------------------------------
+// H-005: independent hand control at the pose CONSUMER.
+//
+// The producer side is a regress -- every level recomputes each frame, which six
+// live bump attempts and three walked levels established. This substitutes the
+// input to CCharInstance::SkinningTransformationsComputation (0x82EE10) instead,
+// and lets the engine do its own inverse-bind conversion.
+// ---------------------------------------------------------------------------
+
+// 0 off, 1 passthrough, 2 apply. **Passthrough is the control**: it exercises the
+// hook, the copy and the private pose view with joints unchanged, so a correct
+// build is pixel-identical to no hook.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetHandRigModePtr(void* mode)
+{
+    return preyvr::dll::SetHandRigTakeoverMode(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(mode)));
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_SetHandRigJointPtr(void* jointIndex)
+{
+    return preyvr::dll::SetHandRigJoint(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(jointIndex)));
+}
+
+namespace {
+struct HandRigOffsetArgs { int x, y, z; };
+} // namespace
+
+extern "C" __declspec(dllexport) DWORD PreyVR_SetHandRigOffsetMmPtr(const HandRigOffsetArgs* args)
+{
+    if (args == nullptr) {
+        return 1;
+    }
+    return preyvr::dll::SetHandRigOffsetMillimetres(args->x, args->y, args->z);
+}
+
+// Passive topology, captured at the consumer. **Read this before choosing a
+// joint**: indices 45 and 72 are end-effector candidates and may be *IKTarget
+// helpers rather than the joints that deform the mesh.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetHandRigJointCount()
+{
+    return preyvr::dll::HandRigJointCount();
+}
+
+extern "C" __declspec(dllexport) DWORD PreyVR_GetHandRigJointNamePtr(void* request)
+{
+    return preyvr::dll::HandRigJointNamePtr(request);
+}
+
+extern "C" __declspec(dllexport) int PreyVR_GetHandRigJointParentPtr(void* index)
+{
+    return preyvr::dll::HandRigJointParent(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(index)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetHandRigForwarded()
+{
+    return preyvr::dll::HandRigForwardedCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetHandRigApplied()
+{
+    return preyvr::dll::HandRigAppliedCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetHandRigRefused()
+{
+    return preyvr::dll::HandRigRefusedCount();
+}
+
+// Joints moved by the last applied delta. **One means the descendant walk found
+// nothing**, which would tear the hand rather than move it.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetHandRigLastSubtreeSize()
+{
+    return preyvr::dll::HandRigLastSubtreeSize();
 }
