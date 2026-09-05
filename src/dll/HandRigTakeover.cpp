@@ -2,6 +2,7 @@
 
 #include "HeadTrackingHook.h"
 #include "Logger.h"
+#include "WeaponAttachment.h"
 #include "XrInput.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/MotionController.h"
@@ -378,6 +379,13 @@ void* __fastcall ComputeWithHandTakeover(void* charInstance, void* skinningData,
             }
         }
         gLastSubtree.store(moved, std::memory_order_relaxed);
+
+        // The weapon rides the same batch. The playbook's rule is that a solve
+        // clocked differently from the animation it corrects reads as jitter in
+        // the hands specifically -- so the weapon mount is updated here rather
+        // than from a timer, and shares the controller basis as well as the
+        // cadence.
+        UpdateWeaponMountFromController();
     }
 
     // A private pose-data view: the prefix copied, with the absolute-array pointer

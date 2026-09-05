@@ -55,6 +55,33 @@ int WeaponMountQuaternionMilli(unsigned int component);  // 0 x, 1 y, 2 z, 3 w
 DWORD SetWeaponOffsetMillimetres(int x, int y, int z);
 DWORD SetWeaponOffsetEnabled(unsigned int enabled);
 
+// --- Controller-driven rotation -------------------------------------------
+//
+// **Driven from the same `aimPose` the aim lane uses**, so the weapon points where
+// the shots go. The playbook is explicit that the visible model and the aim ray
+// are separate surfaces that must not be retuned against each other -- but they
+// should *share one basis*, and this is that basis.
+//
+// **Composition order is `currentController * authoredMount`.** The captured
+// mount is a basis change applied BEFORE the tracked delta, not added after.
+// Getting this backwards produces a symptom that looks exactly like a sign error
+// and cannot be fixed by flipping signs; BioshockVR lost time to it with a
+// correctly-loaded offset composed on the wrong side.
+//
+// The diagnostic, recorded here so it is not rediscovered: **if both extremes of a
+// signed parameter fail symmetrically, the model is wrong, not the sign.** Stop
+// bisecting and re-derive which transform the value belongs to.
+DWORD SetWeaponRotationDrive(unsigned int enabled);
+
+// Records the controller's current aim rotation as the zero, alongside the mount
+// captured at equip. Hold the controller as if aiming naturally.
+DWORD CalibrateWeaponRotation();
+
+// Called once per animation batch by the hand rig, so the weapon and the hands
+// share a cadence as well as a basis -- the playbook's rule that an IK solve
+// running at a different rate from the animation it corrects reads as jitter.
+void UpdateWeaponMountFromController();
+
 unsigned long long WeaponOffsetAppliedCount();
 // Writes refused because the mount did not look like a plausible `QuatT` -- a
 // non-unit quaternion or a non-finite translation. Non-zero means the pointer is

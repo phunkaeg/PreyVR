@@ -1,6 +1,12 @@
 #include "WeaponAttachment.h"
 
+#include "HeadTrackingHook.h"
 #include "Logger.h"
+#include "XrInput.h"
+#include "preyvr/EngineMap.h"
+#include "preyvr/MotionController.h"
+#include "preyvr/StereoCamera.h"
+#include "preyvr/VrMath.h"
 
 #include <MinHook.h>
 
@@ -8,6 +14,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstring>
+#include <span>
 #include <string>
 
 namespace preyvr::dll {
@@ -57,6 +64,47 @@ std::atomic<float> gOffsetX{0.0f}, gOffsetY{0.0f}, gOffsetZ{0.0f};
 std::atomic<unsigned long long> gApplied{0}, gRefused{0};
 QuatT gBaseline{};
 std::atomic<bool> gHaveBaseline{false};
+
+std::atomic<bool> gRotationDrive{false};
+std::atomic<bool> gRotationCalibrated{false};
+Quaternion gZeroAim{};
+std::atomic<unsigned long long> gRotationApplied{0}, gRotationNoPose{0};
+
+Quaternion Conjugate(const Quaternion& q) { return Quaternion{-q.x, -q.y, -q.z, q.w}; }
+
+// The controller's aim rotation in world terms, through the same reference the
+// aim lane uses. Origin-anchored: the camera is offset per eye by the synthetic
+// stereo, and anchoring there leaks half an IPD into the result (FAIL-HAND-037).
+bool ControllerAimRotation(Quaternion& out, float& bodyYaw)
+{
+    ControllerState state{};
+    if (!TryGetControllerState(Hand::right, state)) {
+        return false;
+    }
+    if (!state.aimValidity.orientationTracked) {
+        return false;
+    }
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) {
+        return false;
+    }
+    const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+    auto* const systemPtr =
+        *reinterpret_cast<std::uint8_t**>(base + engine::SystemLayout::pointerRva);
+    if (systemPtr == nullptr) {
+        return false;
+    }
+    const auto* const camera = reinterpret_cast<const std::uint8_t*>(
+        reinterpret_cast<std::uintptr_t>(systemPtr) + engine::SystemLayout::viewCamera);
+    const stereo::Matrix34 m =
+        stereo::ReadMatrix(std::span<const std::uint8_t>(camera, engine::CameraLayout::size));
+    bodyYaw = stereo::CameraYawOf(m) - HeadTrackingReferenceYaw();
+    stereo::ReferenceFrame reference{};
+    reference.yawRadians = bodyYaw;
+    reference.worldPosition = Vec3{};
+    out = controller::ControllerPoseInWorld(reference, state.aimPose).orientation;
+    return true;
+}
 
 bool ReadMount(void* attachment, QuatT& out)
 {
@@ -230,6 +278,75 @@ DWORD SetWeaponOffsetEnabled(unsigned int enabled)
     gApplied.fetch_add(1, std::memory_order_relaxed);
     Log(std::string("result=0 detail=offset_enabled value=") + (on ? "1" : "0"));
     return 0;
+}
+
+DWORD SetWeaponRotationDrive(unsigned int enabled)
+{
+    gRotationDrive.store(enabled != 0u, std::memory_order_release);
+    gRotationNoPose.store(0, std::memory_order_relaxed);
+    Log(std::string("result=0 detail=rotation_drive value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+
+DWORD CalibrateWeaponRotation()
+{
+    Quaternion aim{};
+    float yaw = 0.0f;
+    if (!ControllerAimRotation(aim, yaw)) {
+        Log("result=refused detail=aim_pose_untracked");
+        return 1;
+    }
+    if (!gHaveBaseline.load(std::memory_order_acquire)) {
+        Log("result=refused detail=no_mount note=equip_or_reequip_a_weapon");
+        return 2;
+    }
+    gZeroAim = aim;
+    gRotationCalibrated.store(true, std::memory_order_release);
+    Log("result=0 detail=rotation_calibrated");
+    return 0;
+}
+
+void UpdateWeaponMountFromController()
+{
+    if (!gRotationDrive.load(std::memory_order_acquire) ||
+        !gRotationCalibrated.load(std::memory_order_acquire) ||
+        !gHaveBaseline.load(std::memory_order_acquire)) {
+        return;
+    }
+    auto* const attachment =
+        reinterpret_cast<void*>(gAttachment.load(std::memory_order_acquire));
+    if (attachment == nullptr) {
+        return;
+    }
+    Quaternion aim{};
+    float yaw = 0.0f;
+    if (!ControllerAimRotation(aim, yaw)) {
+        gRotationNoPose.fetch_add(1, std::memory_order_relaxed);
+        return;   // untracked: leave the engine's own mount alone
+    }
+    // The tracked delta since calibration, in world terms.
+    const Quaternion delta = Normalize(Multiply(aim, Conjugate(gZeroAim)));
+
+    QuatT value = gBaseline;
+    // **currentController * authoredMount.** The mount is the basis being changed,
+    // so it goes on the RIGHT. Composing it the other way is the failure that
+    // looks like a sign error and survives every sign flip.
+    const Quaternion composed = Normalize(Multiply(delta, Quaternion{
+        gBaseline.x, gBaseline.y, gBaseline.z, gBaseline.w}));
+    if (!std::isfinite(composed.x) || !std::isfinite(composed.y) ||
+        !std::isfinite(composed.z) || !std::isfinite(composed.w)) {
+        gRefused.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+    value.x = composed.x; value.y = composed.y; value.z = composed.z; value.w = composed.w;
+    value.px += gOffsetX.load(std::memory_order_relaxed);
+    value.py += gOffsetY.load(std::memory_order_relaxed);
+    value.pz += gOffsetZ.load(std::memory_order_relaxed);
+    if (WriteMount(attachment, value)) {
+        gRotationApplied.fetch_add(1, std::memory_order_relaxed);
+    } else {
+        gRefused.fetch_add(1, std::memory_order_relaxed);
+    }
 }
 
 unsigned long long WeaponOffsetAppliedCount() { return gApplied.load(std::memory_order_relaxed); }

@@ -222,6 +222,10 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << SetWeaponOffsetMillimetres(arg(1, 0), arg(2, 0), arg(3, 0));
     } else if (verb == "weapon.apply") {
         out << "weapon.apply result=" << SetWeaponOffsetEnabled(arg(1, 1));
+    } else if (verb == "weapon.rotate") {
+        out << "weapon.rotate result=" << SetWeaponRotationDrive(arg(1, 1));
+    } else if (verb == "weapon.calibrate") {
+        out << "weapon.calibrate result=" << CalibrateWeaponRotation();
     } else if (verb == "report") {
         WriteReport(out);
     } else {

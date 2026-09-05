@@ -60,6 +60,11 @@ DWORD StartCommandChannel();
 //     hand.drive 1                controller-driven instead of a fixed offset
 //     hand.scale <percent>        displacement scale; 100 is one-to-one
 //     hand.character <hex>        restrict to one character instance
+//     weapon.observe 1            capture the equipped weapon's attachment
+//     weapon.offset <x> <y> <z>   model-space millimetres for the mount
+//     weapon.apply 1              write the offset; 0 restores the captured mount
+//     weapon.calibrate            record the controller aim rotation as zero
+//     weapon.rotate 1             weapon rotation follows the aim controller
 //     console <command>           through the existing fail-closed allowlist
 //     report                      write every counter to the result file
 //
