@@ -24,7 +24,33 @@
 // same producer-overwrite pattern this project hit twice (R-083, R-087) -- here
 // documented in advance rather than discovered by losing a session.
 //
-// So this uses **`SetAttAbsoluteDefault`**, model-space, computed manually.
+// So this uses **`SetAttAbsoluteDefault`**, model-space.
+//
+// **CORRECTION, R-088: this writes a DEFAULT pose, not the current transform.**
+// The attachment update composes it as
+//
+//     currentMount = J * inverse(B) * absoluteDefault
+//
+// with `B` the bind joint pose and `J` the current joint pose. Writing a desired
+// pose `G` straight in -- which is what this file does -- therefore produces
+// `J * inverse(B) * G`, so the weapon **retains the animation's motion** and is
+// displaced relative to it rather than placed absolutely.
+//
+// That is adequate for a controller-driven *delta*, which is what this lane is,
+// and it is **not** absolute placement. For that the write must be
+// `B * inverse(J) * G`, with `J` taken from the attachment's own owning character
+// and its consumed pose -- not from our privately edited hand pose, which the
+// attachment update never reads.
+//
+// Prey also right-multiplies orientation by a quaternion `K` at attachment
+// `+0x14C` on the normal static/execute paths, so an exact orientation needs
+// `G0 = { qG * inverse(K), tG }`.
+//
+// **Persistence is confirmed only for the inspected update paths.** They rebuild
+// the *relative* default from the absolute one rather than overwriting it. But
+// `AlignJointAttachment` (vtable `+0xB8`) does overwrite the absolute default, and
+// static analysis could not rule out a per-frame virtual caller -- so a mount that
+// stops holding is a known possibility rather than a surprise.
 //
 // **The vtable is aligned, not assumed.** R-024 recorded months ago that Prey
 // installs the weapon binding through attachment vtable slot `+0xD8`; the
