@@ -75,6 +75,41 @@ unsigned long long HandRigLastCharacter();
 unsigned long long HandRigMatchedCount();
 unsigned long long HandRigSkippedCount();
 
+// --- Controller drive -----------------------------------------------------
+//
+// Both hands, independently: the right controller drives one joint's subtree and
+// the left drives another. That independence is the whole point -- the near-render
+// camera could have moved the viewmodel far more easily, and was rejected because
+// it moves both arms and the body together.
+
+// Which joint each hand drives. Defaults to none; set from the topology dump,
+// **by name**, since indices are not portable between skeletons (R-084).
+DWORD SetHandRigRightJoint(unsigned int jointIndex);
+DWORD SetHandRigLeftJoint(unsigned int jointIndex);
+
+// 0 = the fixed offset used for the first discriminator, 1 = controller-driven.
+DWORD SetHandRigControllerDrive(unsigned int enabled);
+
+// Records where the controllers are **now** as the zero point, so the hands stay
+// where the animation put them until you move. Without this the first frame would
+// snap the hands to wherever the controllers happen to be relative to an
+// arbitrary origin.
+//
+// Call it with your hands in a comfortable neutral pose.
+DWORD CalibrateHandRig();
+
+// Displacement scale in percent; 100 is one-to-one. Exists because a hand that
+// moves too little or too much is judged in a headset, not here.
+DWORD SetHandRigScalePercent(unsigned int percent);
+
+// Last applied displacement per hand, in millimetres, so a hand that is not
+// moving can be told apart from a hand whose delta is not reaching the seam.
+int HandRigLastRightMillimetres();
+int HandRigLastLeftMillimetres();
+// Conversions where a controller pose was unusable -- untracked, stale, or before
+// calibration. The hands keep the engine's animation on those frames.
+unsigned long long HandRigNoPoseCount();
+
 // --- Topology, captured passively at the consumer -------------------------
 //
 // Step one of the protocol, and it must happen before any write: the joint whose

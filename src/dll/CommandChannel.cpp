@@ -107,6 +107,9 @@ void WriteReport(std::ostringstream& out)
         << " handApplied=" << HandRigAppliedCount()
         << " handRefused=" << HandRigRefusedCount()
         << " handSubtree=" << HandRigLastSubtreeSize()
+        << " handRightMm=" << HandRigLastRightMillimetres()
+        << " handLeftMm=" << HandRigLastLeftMillimetres()
+        << " handNoPose=" << HandRigNoPoseCount()
         << " handJoints=" << HandRigJointCount()
         << " handLastCharacter=0x" << std::hex << HandRigLastCharacter() << std::dec
         << " channelProcessed=" << gProcessed.load(std::memory_order_relaxed)
@@ -164,6 +167,16 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     } else if (verb == "hand.offset") {
         out << "hand.offset result="
             << SetHandRigOffsetMillimetres(arg(1, 0), arg(2, 0), arg(3, 0));
+    } else if (verb == "hand.right") {
+        out << "hand.right result=" << SetHandRigRightJoint(arg(1, 0));
+    } else if (verb == "hand.left") {
+        out << "hand.left result=" << SetHandRigLeftJoint(arg(1, 0));
+    } else if (verb == "hand.drive") {
+        out << "hand.drive result=" << SetHandRigControllerDrive(arg(1, 1));
+    } else if (verb == "hand.calibrate") {
+        out << "hand.calibrate result=" << CalibrateHandRig();
+    } else if (verb == "hand.scale") {
+        out << "hand.scale result=" << SetHandRigScalePercent(arg(1, 100));
     } else if (verb == "hand.character" && args.size() >= 2) {
         unsigned long long pointer = 0;
         if (!ParseU64(args[1], pointer)) {

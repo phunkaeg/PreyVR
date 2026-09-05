@@ -1,6 +1,11 @@
 #include "HandRigTakeover.h"
 
+#include "HeadTrackingHook.h"
 #include "Logger.h"
+#include "XrInput.h"
+#include "preyvr/EngineMap.h"
+#include "preyvr/MotionController.h"
+#include "preyvr/StereoCamera.h"
 
 #include <MinHook.h>
 
@@ -8,6 +13,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstring>
+#include <span>
 #include <string>
 
 namespace preyvr::dll {
@@ -57,6 +63,122 @@ std::atomic<unsigned int> gLastSubtree{0};
 std::atomic<unsigned long long> gSelectedCharacter{0};
 std::atomic<unsigned long long> gLastCharacter{0};
 std::atomic<unsigned long long> gMatched{0}, gSkipped{0};
+
+// Controller drive.
+std::atomic<int> gRightJoint{-1}, gLeftJoint{-1};
+std::atomic<bool> gControllerDrive{false};
+std::atomic<bool> gCalibrated{false};
+std::atomic<float> gScale{1.0f};
+std::atomic<unsigned long long> gNoPose{0};
+std::atomic<int> gLastRightMm{0}, gLastLeftMm{0};
+Vec3 gZeroRight{}, gZeroLeft{};
+
+// The engine's own camera basis. Used twice: to build the reference frame the
+// controller conversion needs, and to turn a world displacement into the
+// character's frame.
+bool CameraBasis(Vec3& right, Vec3& forward, Vec3& up, Vec3& position)
+{
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) {
+        return false;
+    }
+    const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+    auto* const systemPtr =
+        *reinterpret_cast<std::uint8_t**>(base + engine::SystemLayout::pointerRva);
+    if (systemPtr == nullptr) {
+        return false;
+    }
+    const auto* const camera = reinterpret_cast<const std::uint8_t*>(
+        reinterpret_cast<std::uintptr_t>(systemPtr) + engine::SystemLayout::viewCamera);
+    const stereo::Matrix34 m =
+        stereo::ReadMatrix(std::span<const std::uint8_t>(camera, engine::CameraLayout::size));
+    right   = Vec3{m[0], m[4], m[8]};
+    forward = Vec3{m[1], m[5], m[9]};
+    up      = Vec3{m[2], m[6], m[10]};
+    position = Vec3{m[3], m[7], m[11]};
+    const float len = std::sqrt(right.x*right.x + right.y*right.y + right.z*right.z);
+    return std::isfinite(len) && len > 0.9f && len < 1.1f;
+}
+
+// A controller's position in world space, through the same reference frame the
+// aim lane uses -- one recenter resolved one way for every lane (CAM-003).
+bool ControllerWorld(Hand hand, Vec3& out)
+{
+    ControllerState state{};
+    if (!TryGetControllerState(hand, state)) {
+        return false;
+    }
+    if (!state.gripValidity.positionTracked) {
+        return false;   // untracked: keep the engine's animation rather than guess
+    }
+    Vec3 right{}, forward{}, up{}, position{};
+    if (!CameraBasis(right, forward, up, position)) {
+        return false;
+    }
+    stereo::ReferenceFrame reference{};
+    reference.yawRadians = stereo::CameraYawOf(stereo::Matrix34{
+        right.x, forward.x, up.x, position.x,
+        right.y, forward.y, up.y, position.y,
+        right.z, forward.z, up.z, position.z}) - HeadTrackingReferenceYaw();
+    reference.worldPosition = position;
+    out = controller::ControllerPoseInWorld(reference, state.gripPose).position;
+    return true;
+}
+
+// World displacement into the character's frame.
+//
+// **Yaw-only, and anchored to the BODY rather than the head.** The obvious
+// implementation projects onto the live camera basis, and the fleet playbook says
+// plainly why that is wrong: "parenting the shoulders to the HMD is the obvious
+// implementation and it is wrong... every head movement then drags the shoulders."
+// Our camera *carries head tracking*, so a camera-basis projection rotates the
+// hand frame every time the wearer looks around, and the hands swim.
+//
+// The body yaw is the camera yaw minus the head's own contribution -- the same
+// composition the view seam performs, run backwards. Pitch and roll are dropped
+// entirely: a shoulder girdle does not pitch when you look at your feet.
+//
+// Still an approximation of the true model frame, which is the character's render
+// matrix (`RenderCHR` receives it in R8 and this hook does not see it). Good
+// enough to tell whether the hand follows the controller; not good enough to ship.
+bool BodyYaw(float& out)
+{
+    Vec3 right{}, forward{}, up{}, position{};
+    if (!CameraBasis(right, forward, up, position)) {
+        return false;
+    }
+    const float cameraYaw = stereo::CameraYawOf(stereo::Matrix34{
+        right.x, forward.x, up.x, position.x,
+        right.y, forward.y, up.y, position.y,
+        right.z, forward.z, up.z, position.z});
+    Pose head{};
+    unsigned long long age = 0;
+    if (!TryReadHeadPose(head, age)) {
+        // No head pose: the camera has no head contribution to subtract, so its
+        // own yaw IS the body yaw.
+        out = cameraYaw;
+        return true;
+    }
+    const auto headYaw = stereo::RecenterYawFromHeadPose(head);
+    if (!headYaw) {
+        out = cameraYaw;
+        return true;
+    }
+    out = cameraYaw - (*headYaw - HeadTrackingReferenceYaw());
+    return true;
+}
+
+Vec3 WorldDeltaToModel(const Vec3& delta, float bodyYaw)
+{
+    // CryEngine convention: forward is +Y, right is +X, up is +Z, yaw about Z.
+    const float s = std::sin(bodyYaw), c = std::cos(bodyYaw);
+    const Vec3 right{c, s, 0.0f};
+    const Vec3 forward{-s, c, 0.0f};
+    return Vec3{
+        delta.x*right.x   + delta.y*right.y,
+        delta.x*forward.x + delta.y*forward.y,
+        delta.z};   // up is world up; a body does not roll
+}
 
 // Topology of the most recent conversion, for the passive dump.
 std::atomic<unsigned int> gTopologyCount{0};
@@ -168,47 +290,80 @@ void* __fastcall ComputeWithHandTakeover(void* charInstance, void* skinningData,
 
     unsigned int moved = 0;
     if (mode == 2) {
-        const int joint = gJoint.load(std::memory_order_relaxed);
-        if (joint < 0 || static_cast<unsigned int>(joint) >= count) {
-            gRefused.fetch_add(1, std::memory_order_relaxed);
-            return forward();
-        }
-        // The subtree: every joint whose parent chain reaches the selected one.
-        // Moving the wrist without its descendants tears the hand, so this is not
-        // an optimisation -- it is the difference between a displaced hand and a
-        // broken one.
-        std::memset(tInSubtree.data(), 0, count);
-        tInSubtree[static_cast<std::size_t>(joint)] = 1;
-        for (unsigned int j = 0; j < count; ++j) {
-            int walk = static_cast<int>(j);
-            for (unsigned int guard = 0; guard < count && walk >= 0; ++guard) {
-                if (walk == joint) {
-                    tInSubtree[j] = 1;
-                    break;
+        // Displace one joint's subtree by a model-space delta. Factored out
+        // because both hands need it and they must not share the mask.
+        const auto displace = [&](int joint, const Vec3& delta) -> unsigned int {
+            if (joint < 0 || static_cast<unsigned int>(joint) >= count) {
+                return 0;
+            }
+            std::memset(tInSubtree.data(), 0, count);
+            for (unsigned int j = 0; j < count; ++j) {
+                int walk = static_cast<int>(j);
+                for (unsigned int guard = 0; guard < count && walk >= 0; ++guard) {
+                    if (walk == joint) { tInSubtree[j] = 1; break; }
+                    walk = gJointParents[static_cast<std::size_t>(walk)];
                 }
-                walk = gJointParents[static_cast<std::size_t>(walk)];
             }
-        }
-        const float dx = gOffsetX.load(std::memory_order_relaxed);
-        const float dy = gOffsetY.load(std::memory_order_relaxed);
-        const float dz = gOffsetZ.load(std::memory_order_relaxed);
-        for (unsigned int j = 0; j < count; ++j) {
-            if (!tInSubtree[j]) {
-                continue;
+            unsigned int n = 0;
+            for (unsigned int j = 0; j < count; ++j) {
+                if (!tInSubtree[j]) { continue; }
+                float* const pos = reinterpret_cast<float*>(
+                    tScratch.data() + static_cast<std::size_t>(j) * kQuatTStride + kQuatTPosition);
+                if (!std::isfinite(pos[0]) || !std::isfinite(pos[1]) || !std::isfinite(pos[2])) {
+                    return 0;
+                }
+                // Translation only. Rotations stay exactly as the animator
+                // produced them, so this is a displacement rather than a pose --
+                // wrist orientation is the next piece, not this one.
+                pos[0] += delta.x; pos[1] += delta.y; pos[2] += delta.z;
+                ++n;
             }
-            float* const pos = reinterpret_cast<float*>(
-                tScratch.data() + static_cast<std::size_t>(j) * kQuatTStride + kQuatTPosition);
-            if (!std::isfinite(pos[0]) || !std::isfinite(pos[1]) || !std::isfinite(pos[2])) {
-                gRefused.fetch_add(1, std::memory_order_relaxed);
-                return forward();
+            return n;
+        };
+
+        if (!gControllerDrive.load(std::memory_order_acquire)) {
+            // The fixed offset, which is what the first discriminator used.
+            const Vec3 fixed{gOffsetX.load(std::memory_order_relaxed),
+                             gOffsetY.load(std::memory_order_relaxed),
+                             gOffsetZ.load(std::memory_order_relaxed)};
+            moved = displace(gJoint.load(std::memory_order_relaxed), fixed);
+        } else if (!gCalibrated.load(std::memory_order_acquire)) {
+            // Refusing before calibration is deliberate: the first frame would
+            // otherwise snap the hands to wherever the controllers sit relative
+            // to an arbitrary origin.
+            gNoPose.fetch_add(1, std::memory_order_relaxed);
+        } else {
+            float bodyYaw = 0.0f;
+            if (!BodyYaw(bodyYaw)) {
+                gNoPose.fetch_add(1, std::memory_order_relaxed);
+            } else {
+                const float scale = gScale.load(std::memory_order_relaxed);
+                Vec3 world{};
+                if (ControllerWorld(Hand::right, world)) {
+                    const Vec3 d = WorldDeltaToModel(
+                        Vec3{world.x - gZeroRight.x, world.y - gZeroRight.y, world.z - gZeroRight.z},
+                        bodyYaw);
+                    const Vec3 scaled{d.x * scale, d.y * scale, d.z * scale};
+                    moved += displace(gRightJoint.load(std::memory_order_relaxed), scaled);
+                    gLastRightMm.store(static_cast<int>(
+                        std::sqrt(scaled.x*scaled.x + scaled.y*scaled.y + scaled.z*scaled.z) * 1000.0f),
+                        std::memory_order_relaxed);
+                } else {
+                    gNoPose.fetch_add(1, std::memory_order_relaxed);
+                }
+                if (ControllerWorld(Hand::left, world)) {
+                    const Vec3 d = WorldDeltaToModel(
+                        Vec3{world.x - gZeroLeft.x, world.y - gZeroLeft.y, world.z - gZeroLeft.z},
+                        bodyYaw);
+                    const Vec3 scaled{d.x * scale, d.y * scale, d.z * scale};
+                    moved += displace(gLeftJoint.load(std::memory_order_relaxed), scaled);
+                    gLastLeftMm.store(static_cast<int>(
+                        std::sqrt(scaled.x*scaled.x + scaled.y*scaled.y + scaled.z*scaled.z) * 1000.0f),
+                        std::memory_order_relaxed);
+                } else {
+                    gNoPose.fetch_add(1, std::memory_order_relaxed);
+                }
             }
-            // A pure translation is a rigid delta whose rotation is identity, so
-            // only positions change. Rotations are left exactly as the animator
-            // produced them, which keeps this a displacement rather than a pose.
-            pos[0] += dx;
-            pos[1] += dy;
-            pos[2] += dz;
-            ++moved;
         }
         gLastSubtree.store(moved, std::memory_order_relaxed);
     }
@@ -317,6 +472,62 @@ DWORD SetHandRigOffsetMillimetres(int x, int y, int z)
         " y=" + std::to_string(y) + " z=" + std::to_string(z));
     return 0;
 }
+
+DWORD SetHandRigRightJoint(unsigned int jointIndex)
+{
+    if (jointIndex >= kMaxJoints) { return 1; }
+    gRightJoint.store(static_cast<int>(jointIndex), std::memory_order_relaxed);
+    Log("result=0 detail=right_joint value=" + std::to_string(jointIndex));
+    return 0;
+}
+
+DWORD SetHandRigLeftJoint(unsigned int jointIndex)
+{
+    if (jointIndex >= kMaxJoints) { return 1; }
+    gLeftJoint.store(static_cast<int>(jointIndex), std::memory_order_relaxed);
+    Log("result=0 detail=left_joint value=" + std::to_string(jointIndex));
+    return 0;
+}
+
+DWORD SetHandRigControllerDrive(unsigned int enabled)
+{
+    gControllerDrive.store(enabled != 0u, std::memory_order_release);
+    gNoPose.store(0, std::memory_order_relaxed);
+    Log(std::string("result=0 detail=controller_drive value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+
+DWORD CalibrateHandRig()
+{
+    Vec3 r{}, l{};
+    const bool haveRight = ControllerWorld(Hand::right, r);
+    const bool haveLeft = ControllerWorld(Hand::left, l);
+    if (!haveRight || !haveLeft) {
+        // Both or neither: a half-calibrated pair would move one hand from a real
+        // zero and the other from a stale one, which looks like a broken rig
+        // rather than an untracked controller.
+        Log("result=refused detail=controller_untracked right=" + std::to_string(haveRight) +
+            " left=" + std::to_string(haveLeft));
+        return 1;
+    }
+    gZeroRight = r;
+    gZeroLeft = l;
+    gCalibrated.store(true, std::memory_order_release);
+    Log("result=0 detail=calibrated");
+    return 0;
+}
+
+DWORD SetHandRigScalePercent(unsigned int percent)
+{
+    if (percent < 10u || percent > 400u) { return 1; }
+    gScale.store(static_cast<float>(percent) / 100.0f, std::memory_order_relaxed);
+    Log("result=0 detail=scale_percent value=" + std::to_string(percent));
+    return 0;
+}
+
+int HandRigLastRightMillimetres() { return gLastRightMm.load(std::memory_order_relaxed); }
+int HandRigLastLeftMillimetres() { return gLastLeftMm.load(std::memory_order_relaxed); }
+unsigned long long HandRigNoPoseCount() { return gNoPose.load(std::memory_order_relaxed); }
 
 DWORD SetHandRigCharacterPtr(void* character)
 {

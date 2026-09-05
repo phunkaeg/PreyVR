@@ -54,6 +54,11 @@ DWORD StartCommandChannel();
 //     hand.mode <0|1|2>           off / passthrough control / apply
 //     hand.joint <index>          which joint's subtree moves
 //     hand.offset <x> <y> <z>     model-space millimetres
+//     hand.right <index>          joint whose subtree the RIGHT controller drives
+//     hand.left <index>           joint whose subtree the LEFT controller drives
+//     hand.calibrate              record where the controllers are now as zero
+//     hand.drive 1                controller-driven instead of a fixed offset
+//     hand.scale <percent>        displacement scale; 100 is one-to-one
 //     hand.character <hex>        restrict to one character instance
 //     console <command>           through the existing fail-closed allowlist
 //     report                      write every counter to the result file
