@@ -180,7 +180,20 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         for (std::size_t i = 2; i < args.size(); ++i) {
             command += " " + args[i];
         }
-        out << "console result=" << QueueConsoleCommand(command.c_str())
+        // **The console queue holds exactly one command.** Firing them back to
+        // back returns `busy` for every one after the first, which is what
+        // happened on this channel's first run: motion blur landed and the two
+        // commands behind it were silently dropped with a code nobody read.
+        //
+        // The observer drains the queue once per frame, so retrying briefly is
+        // enough. Bounded, because a game that has stopped rendering will never
+        // drain it and this must not spin forever.
+        DWORD result = QueueConsoleCommand(command.c_str());
+        for (int attempt = 0; attempt < 40 && result == 4u; ++attempt) {
+            Sleep(25);
+            result = QueueConsoleCommand(command.c_str());
+        }
+        out << "console result=" << result
             << " command=\"" << command << "\"";
     } else if (verb == "report") {
         WriteReport(out);
