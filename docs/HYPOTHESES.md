@@ -320,3 +320,43 @@ open all session because it was recorded as an assumption and never converted in
 a question anyone could answer cheaply. **Two earlier notes even described the
 evidence for it** -- human-scale IK target heights, and a comfortable physical IPD --
 without either being turned into a measurement.
+
+## H-010 -- Prey has a full first-person body rig, and there are two skeletons
+
+**Raised 2026-09-05 from a wearer's observation**, once 6DoF head tracking made it
+possible to look down: *"it's been clear from looking around in VR that we HAVE a
+full body rig underneath us."*
+
+That matters more than a curiosity. Most flat games give the first-person camera
+floating arms and nothing else; a real body makes VRIK-style full-body presence a
+possibility rather than a fantasy, and it changes what a hand takeover is *for*.
+
+**The evidence was already in hand and half-read.** The first head-tracking attempt
+was reported as *"we could see the entire player body rotating in front of us"*.
+That was recorded purely as a composition bug -- which it was -- and the other half
+of what it proved was missed: you cannot watch a body rotate unless there is one.
+
+### What the IK capture shows, and what it does not
+
+Every capture finds **two skeletons** under one owner (`ArkPlayer`-side object,
+constant across runs), each carrying the same limb pair `0x4EC`/`0x7E0`, with
+similar-but-offset positions. That is the shape of a viewmodel rig and a body rig
+posed from the same animation, which is the obvious reading -- and it is not yet
+tested.
+
+**It cannot be tested with the current capture.** The ring **saturates**: a 14 s
+window returns byte-identical structure to a 6 s one -- four rows, exactly 16 hits
+each, 72 hits against a 64-slot ring. It fills in a fraction of a second and stops.
+
+So the earlier observation of rare limb ids `0xB1`/`0xB2` (~5 hits against ~1130)
+cannot be reproduced or refuted here, and **their absence from these captures is
+not evidence of absence**. Same failure shape as the stationary-player sample and
+the even-frame capture stride: conditions that cannot show the thing being asked.
+
+### The test that would settle it
+
+Raise the capture cap, or sample by limb id rather than first-come, so rare limbs
+are not crowded out by the two common ones. If a limb set -- legs, spine -- belongs
+to only one of the two skeletons, that names it as the body and the other as the
+viewmodel. That distinction decides which rig a hand takeover should drive, so it
+is worth settling before anything is hooked.
