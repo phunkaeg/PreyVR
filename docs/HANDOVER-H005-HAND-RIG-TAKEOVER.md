@@ -94,6 +94,51 @@ parented to the hands — consistent with the rig names, where the hand is drive
   R-077's guarded log site and restores the guard.
 * Console bridge with a fail-closed allowlist; renderer cvars work.
 
+## The rakes — every one of these was stepped on
+
+Grouped by what they look like when you hit them, because none of them announces
+itself. **Every one produced a confident, plausible, wrong result.**
+
+### Instrument returns a number that means nothing
+
+| rake | how it presents | the check |
+|---|---|---|
+| A misaligned data breakpoint **never fires** | "nothing writes this" | refuse to arm unaligned; `RE-009`/`FAIL-RE-024` |
+| `DR6` is sticky and handler edits are dropped without `CONTEXT_DEBUG_REGISTERS` | later traps attributed to slots that never fired | set the flag explicitly; `FAIL-RE-025` |
+| A write watch reports `RIP` **after** the store retires | the "writing instruction" is the one *following* | scan back; publish which convention you report |
+| `ArmIkProducerWatch` adds `0x10` itself | watching `base+0x20`, the **next entry's rotation** | pass the `QuatT` base, never a pre-offset address |
+| The capture ring **saturates at `maxCaptures`** by design | a 14 s window returns byte-identical results to a 6 s one | check `captures` against the cap before reading absence as evidence |
+| A watch **self-disarms** when its quota fills | an override works for 16 traps then stops, counters still green | exempt applying slots; already fixed in `DebugWatch` |
+| `stackTop` is `[rsp]`, a hint and not a caller | one trap reported a "caller" of `0x3CE0903A62641692`, which is data | range-check against the module before calling it a caller |
+
+### Measurement taken under conditions that cannot show the thing
+
+| rake | how it presents | the check |
+|---|---|---|
+| **Animator frozen** — menu, pause, or game in the background | zero traps, frozen values, indistinguishable from a real negative | sample trap activity for a second and **refuse**; hit three times in one session |
+| **Stationary player** | IK targets look static; R-078 originally concluded exactly this and was wrong | move, then sample |
+| **Console `lastResult=0`** | means *our queue submitted the string*, not that the engine implemented it | name an observable before the run; see H-012 |
+| **Unfair comparison between arms of a test** | one skeleton tested at 0.7 m sine, the other at 2.5 m square; "nothing on the first" was meaningless | identical stimulus, or it is not a comparison |
+| **Single-frame glimpses by someone who knows the expected answer** | two "flickers" in twelve seconds, reported after a stated prediction | weakest class here; blinding is impossible because the tester sees the tool calls |
+
+### Environment and tooling
+
+| rake | how it presents | the check |
+|---|---|---|
+| **MinHook is initialised only inside the frame observer's enable path** | every other hook silently fails to install | `PreyVR_SetFrameObserverEnabled(1)` first, always |
+| **The module pins itself** and refuses to hook if pinning fails | `FreeLibrary` cannot unload it; new code needs a **new process** | inject from a staged copy so the build output stays unlocked |
+| **F-009**: a Frida `NativeFunction` abort can leave a control mutex held | every later control call returns `detail=busy`, unfixable without restart | use the `*Ptr` exports on a real thread |
+| **`frida-agent.dll` crashed the host three times** with three different symptoms | wedged session, null deref, wild-pointer read | check the dump's **module list**; do not assume it was the mod |
+| **Heap addresses are session-specific** | a cached target from a previous run is a wild write | re-capture every run; validate the quaternion is unit before writing |
+
+### Reasoning
+
+| rake | how it presents |
+|---|---|
+| **The producer side is a regress** — every level is recomputed each frame; three were walked before that was noticed |
+| **A cvar existing proves nothing** — four registered, all inert (H-012) |
+| **The answer may already be in the registry** — `gEnv->pInput` and the `renderer+0x95B4` latch were both already recorded when work was sent looking for them |
+
 ## Cautions from this project
 
 * **Confirm the animator is running before believing any zero.** A menu, a pause or
