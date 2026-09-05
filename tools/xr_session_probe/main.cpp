@@ -25,6 +25,8 @@
 #ifndef XR_USE_GRAPHICS_API_D3D11
 #define XR_USE_GRAPHICS_API_D3D11
 #endif
+#include "preyvr/Locomotion.h"
+
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
 
@@ -110,6 +112,7 @@ struct Probe {
     XrAction gripPoseAction = XR_NULL_HANDLE;
     XrAction triggerAction = XR_NULL_HANDLE;
     XrAction selectAction = XR_NULL_HANDLE;
+    XrAction thumbstickAction = XR_NULL_HANDLE;
     XrPath handPath[2]{};                     // 0 = left, 1 = right
     XrSpace aimSpace[2]{XR_NULL_HANDLE, XR_NULL_HANDLE};
     XrSpace gripSpace[2]{XR_NULL_HANDLE, XR_NULL_HANDLE};
@@ -379,6 +382,9 @@ bool Probe::CreateInput()
             "action_trigger");
     REQUIRE(makeAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "select", "Select", &selectAction),
             "action_select");
+    REQUIRE(makeAction(XR_ACTION_TYPE_VECTOR2F_INPUT, "thumbstick", "Thumbstick",
+                       &thumbstickAction),
+            "action_thumbstick");
 
     const auto path = [&](const char* text) {
         XrPath p{};
@@ -393,12 +399,17 @@ bool Probe::CreateInput()
         const char* name;
         const char* trigger;
         const char* select;
+        // **The simple controller has no stick.** Locomotion therefore cannot be
+        // bound on the one profile every conformant runtime must support, which
+        // is a fact about the product and not about this probe: a stick-driven
+        // build needs a real controller profile to be offered and accepted.
+        const char* stick;
     };
     const Profile profiles[] = {
         {"/interaction_profiles/khr/simple_controller", nullptr,
-         "/input/select/click"},
+         "/input/select/click", nullptr},
         {"/interaction_profiles/oculus/touch_controller", "/input/trigger/value",
-         "/input/trigger/value"},
+         "/input/trigger/value", "/input/thumbstick"},
     };
 
     int accepted = 0;
@@ -413,6 +424,9 @@ bool Probe::CreateInput()
             }
             if (profile.select != nullptr) {
                 bindings.push_back({selectAction, path((base + profile.select).c_str())});
+            }
+            if (profile.stick != nullptr) {
+                bindings.push_back({thumbstickAction, path((base + profile.stick).c_str())});
             }
         }
 
@@ -597,6 +611,41 @@ void Probe::ReadInput(XrTime displayTime, int frameIndex)
         get.action = selectAction;
         XrActionStateBoolean selectState{XR_TYPE_ACTION_STATE_BOOLEAN};
         xrGetActionStateBoolean(session, &get, &selectState);
+
+        // **Locomotion, from a stick the runtime actually reported.** The shaping
+        // is unit-tested against invented numbers; what is untested without a
+        // runtime is that a real Vector2f action reaches it and survives the
+        // trip. One shaper per hand, because the state that makes a release emit
+        // its zero must not be shared between two sticks.
+        static preyvr::locomotion::StickAxis stickAxis[2];
+        get.action = thumbstickAction;
+        XrActionStateVector2f stickState{XR_TYPE_ACTION_STATE_VECTOR2F};
+        if (XR_SUCCEEDED(xrGetActionStateVector2f(session, &get, &stickState)) &&
+            stickState.isActive) {
+            float shapedX = 0.0f;
+            float shapedY = 0.0f;
+            const bool shaped = preyvr::locomotion::ShapeStick(
+                stickState.currentState.x, stickState.currentState.y,
+                preyvr::locomotion::StickPolicy{}.deadzone, &shapedX, &shapedY);
+            preyvr::locomotion::AxisEvent events[2];
+            const unsigned int emitted =
+                stickAxis[hand].Update(stickState.currentState.x, stickState.currentState.y,
+                                       events);
+            Fact("stick frame=%d hand=%s raw=%.6f,%.6f shaped=%.6f,%.6f emitted=%u",
+                 frameIndex, label, stickState.currentState.x, stickState.currentState.y,
+                 shapedX, shapedY, emitted);
+            Expect(shaped, "stick_shaping_accepted_a_live_reading",
+                   "a reading the runtime called active must be shapeable");
+            for (unsigned int e = 0; e < emitted; ++e) {
+                Expect(events[e].keyId == preyvr::locomotion::kKeyThumbLX ||
+                           events[e].keyId == preyvr::locomotion::kKeyThumbLY,
+                       "stick_event_key_is_an_axis",
+                       "a synthesised event must name one of the two stick axes");
+                Expect(events[e].deviceType == preyvr::locomotion::kDeviceGamepad,
+                       "stick_event_claims_gamepad",
+                       "the action map filters by device, so the event must claim gamepad");
+            }
+        }
 
         XrSpaceLocation location{XR_TYPE_SPACE_LOCATION};
         const XrResult located = xrLocateSpace(aimSpace[hand], space, displayTime, &location);

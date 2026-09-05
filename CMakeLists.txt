@@ -79,6 +79,7 @@ add_library(preyvr_core STATIC
     src/common/FrameDump.cpp
     src/common/FrameObserver.cpp
     src/common/InteractionQuery.cpp
+    src/common/Locomotion.cpp
     src/common/MotionController.cpp
     src/common/OpenXRBootstrap.cpp
     src/common/RenderFrameTable.cpp
@@ -312,6 +313,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_motion_controller_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_motion_controller_tests)
     add_test(NAME motion_controller COMMAND preyvr_motion_controller_tests)
+
+    add_executable(preyvr_locomotion_tests tests/LocomotionTests.cpp)
+    target_link_libraries(preyvr_locomotion_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_locomotion_tests)
+    add_test(NAME locomotion COMMAND preyvr_locomotion_tests)
 
     add_executable(preyvr_render_frame_table_tests tests/RenderFrameTableTests.cpp)
     target_link_libraries(preyvr_render_frame_table_tests PRIVATE preyvr_core)

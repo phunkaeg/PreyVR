@@ -1,5 +1,6 @@
 #include "preyvr/RenderFrameTable.h"
 
+#include <cstdint>
 #include <cstring>
 
 namespace preyvr::renderframe {
@@ -12,6 +13,29 @@ namespace {
 constexpr int kReadAttempts = 8;
 
 } // namespace
+
+bool NearestFromRenderArguments(const void* params, const void* character)
+{
+    if (params != nullptr) {
+        std::uint32_t flags = 0;
+        std::memcpy(&flags, static_cast<const std::uint8_t*>(params) + kRenderFlagsOffset,
+                    sizeof(flags));
+        if ((flags & kNearestFlagBit) != 0u) {
+            return true;
+        }
+    }
+    if (character != nullptr) {
+        const std::uint8_t slotFlags =
+            *(static_cast<const std::uint8_t*>(character) + kSlotFlagsOffset);
+        if ((slotFlags & kSlotNearBit) != 0u) {
+            return true;
+        }
+    }
+    // Either argument alone can say yes; neither saying yes is a no. The engine
+    // *clears* the flag on this path rather than leaving it, so a stale bit on a
+    // pooled render object cannot make the answer wrong.
+    return false;
+}
 
 bool MatrixTable::Capture(unsigned long long character, const float matrix[kMatrixFloats],
                           bool nearest)

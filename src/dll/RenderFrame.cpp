@@ -71,19 +71,15 @@ bool LooksLikeMatrix(const float* m)
 //
 // The false path *clears* the bit rather than leaving it, so a stale flag on a
 // pooled render object cannot make this read wrong.
-bool NearestFromArguments(const std::uint8_t* params, const std::uint8_t* character)
+// The decoding lives in `preyvr_core` and is fixture-tested; this adds only the
+// fault guard, which cannot live in a translation unit a portable test links.
+bool NearestFromArguments(const void* params, const void* character)
 {
     __try {
-        if (params != nullptr &&
-            (*reinterpret_cast<const std::uint32_t*>(params + 0x80) & 0x00800000u) != 0u) {
-            return true;
-        }
-        if (character != nullptr && (*(character + 0xAC8) & 0x02u) != 0u) {
-            return true;
-        }
+        return renderframe::NearestFromRenderArguments(params, character);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
     }
-    return false;
 }
 
 void* __fastcall RenderCharacterObserved(void* character, void* params,
@@ -91,9 +87,7 @@ void* __fastcall RenderCharacterObserved(void* character, void* params,
 {
     if (gEnabled.load(std::memory_order_acquire) && character != nullptr && matrix != nullptr) {
         __try {
-            const bool nearest = NearestFromArguments(
-                static_cast<const std::uint8_t*>(params),
-                static_cast<const std::uint8_t*>(character));
+            const bool nearest = NearestFromArguments(params, character);
             if (LooksLikeMatrix(matrix)) {
                 const auto key = reinterpret_cast<unsigned long long>(character);
                 if (gTable.Capture(key, matrix, nearest)) {

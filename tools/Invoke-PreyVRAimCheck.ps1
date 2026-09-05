@@ -41,6 +41,14 @@ param(
     [double]$Tolerance = 0.02
 )
 
+$stickCases = @(
+    [pscustomobject]@{ Name = 'centre';   X = 0.0; Y = 0.0 },
+    [pscustomobject]@{ Name = 'full_x';   X = 1.0; Y = 0.0 },
+    [pscustomobject]@{ Name = 'half_y';   X = 0.0; Y = 0.5 },
+    # Inside the radial deadzone: must shape to a hard zero, not a small crawl.
+    [pscustomobject]@{ Name = 'deadzone'; X = 0.1; Y = 0.0 }
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -111,6 +119,26 @@ try {
 
         # Wait past the command frame by more than one reporting interval, so a
         # reading attributed to this case cannot have been taken before it.
+        $target = $applied + (2 * $InputEvery)
+        $spun = 0.0
+        while ($spun -lt 20 -and (Get-SimFrame) -lt $target) {
+            Start-Sleep -Milliseconds 100
+            $spun += 0.1
+        }
+    }
+
+    # Locomotion, commanded on the same session. The stick is the last unbuilt
+    # product lane and xr-sim can drive it, so the shaping does not have to wait
+    # for a headset day to be exercised on a reading a runtime actually reported.
+    foreach ($case in $stickCases) {
+        # Invariant formatting on purpose: `-f` would render 0.5 as "0,5" under a
+        # comma-decimal locale and the simulator would reject or misread it.
+        $command = [string]::Format([cultureinfo]::InvariantCulture,
+                                    'stick r {0} {1}', $case.X, $case.Y)
+        & $cmdScript -Dir $stateDir -Quiet $command | Out-Null
+        $applied = Get-SimFrame
+        Add-Member -InputObject $case -NotePropertyName 'CommandFrame' -NotePropertyValue $applied
+        Write-Host ("commanded stick $($case.Name) at frame $applied")
         $target = $applied + (2 * $InputEvery)
         $spun = 0.0
         while ($spun -lt 20 -and (Get-SimFrame) -lt $target) {
@@ -291,7 +319,75 @@ if ($mountRows.Count -gt 0) {
     $mountRows | Format-Table -AutoSize | Out-String | Write-Host
 }
 
+# --- locomotion: commanded stick through the real action system ---------------
+#
+# Two things are asserted, and they fail differently. `raw` proves the command
+# reached the simulator and came back out of an OpenXR Vector2f action at all --
+# the failure this harness has already had once, where every case returned the
+# same reading and the rows measured nothing. `shaped` proves the shipping
+# deadzone and rescale agree with the geometry for that reading.
+$stickDeadzone = 0.15
+function Get-ShapedStick($x, $y, $deadzone) {
+    $m = [Math]::Sqrt(($x * $x) + ($y * $y))
+    if ($m -le $deadzone) { return @(0.0, 0.0) }
+    $clamped = [Math]::Min($m, 1.0)
+    $scale = ($clamped - $deadzone) / (1.0 - $deadzone)
+    return @((($x / $m) * $scale), (($y / $m) * $scale))
+}
+
+$stickReadings = @()
+foreach ($line in $output) {
+    if ("$line" -match 'stick frame=(\d+) hand=right raw=(-?[\d.]+),(-?[\d.]+) shaped=(-?[\d.]+),(-?[\d.]+)') {
+        $stickReadings += [pscustomobject]@{
+            Frame = [int]$Matches[1]
+            RawX = [double]$Matches[2]; RawY = [double]$Matches[3]
+            ShapedX = [double]$Matches[4]; ShapedY = [double]$Matches[5]
+        }
+    }
+}
+
+$stickFailures = 0
+$stickRows = @()
+if ($stickReadings.Count -eq 0) {
+    Write-Warning 'no right-hand stick readings - the locomotion lane was not exercised'
+    $stickFailures++
+} else {
+    foreach ($case in $stickCases) {
+        $next = @($stickCases | Where-Object { $_.CommandFrame -gt $case.CommandFrame } |
+            Sort-Object CommandFrame | Select-Object -First 1)
+        $upper = if ($next.Count -eq 1) { $next[0].CommandFrame } else { [int]::MaxValue }
+        $hit = @($stickReadings |
+            Where-Object { $_.Frame -gt $case.CommandFrame -and $_.Frame -lt $upper } |
+            Sort-Object Frame | Select-Object -First 1)
+        if ($hit.Count -ne 1) {
+            Write-Warning "stick case $($case.Name): no reading in its frame window"
+            $stickFailures++
+            continue
+        }
+        $r = $hit[0]
+        $want = Get-ShapedStick $case.X $case.Y $stickDeadzone
+        $arrived = ([Math]::Abs($r.RawX - $case.X) -lt $Tolerance) -and
+                   ([Math]::Abs($r.RawY - $case.Y) -lt $Tolerance)
+        $correct = ([Math]::Abs($r.ShapedX - $want[0]) -lt $Tolerance) -and
+                   ([Math]::Abs($r.ShapedY - $want[1]) -lt $Tolerance)
+        if (-not ($arrived -and $correct)) { $stickFailures++ }
+        $stickRows += [pscustomobject]@{
+            Case = $case.Name; Frame = $r.Frame
+            RawX = [Math]::Round($r.RawX, 4); RawY = [Math]::Round($r.RawY, 4)
+            ShapedX = [Math]::Round($r.ShapedX, 4); ShapedY = [Math]::Round($r.ShapedY, 4)
+            WantX = [Math]::Round($want[0], 4); WantY = [Math]::Round($want[1], 4)
+            Arrived = $arrived; Pass = $correct
+        }
+    }
+}
+
+if ($stickRows.Count -gt 0) {
+    Write-Host 'locomotion, commanded stick to shaped axis:'
+    $stickRows | Format-Table -AutoSize | Out-String | Write-Host
+}
+
 Write-Host ''
 Write-Host ("aim check: {0} case(s), {1} failure(s)" -f $results.Count, $failures)
 Write-Host ("mount check: {0} case(s), {1} failure(s)" -f $mountRows.Count, $mountFailures)
-if (($failures + $mountFailures) -gt 0) { exit 1 }
+Write-Host ("stick check: {0} case(s), {1} failure(s)" -f $stickRows.Count, $stickFailures)
+if (($failures + $mountFailures + $stickFailures) -gt 0) { exit 1 }

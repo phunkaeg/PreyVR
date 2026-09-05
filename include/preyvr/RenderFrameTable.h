@@ -19,6 +19,28 @@
 // rather than returning a blend of two.
 namespace preyvr::renderframe {
 
+// RenderCHR's own near predicate (R-089), as pure field reads so the **offsets
+// and bit positions** can be tested rather than only argued about. The function
+// itself performs this at `0x81D127`/`0x81D141` before setting or clearing
+// `FOB_NEAREST`, which is what makes it readable at entry and removes the last
+// injector dependency from routine testing.
+//
+// This is the half that can be checked offline. That Prey's structures really
+// carry these fields at these offsets is a *static* claim, gated by the landmark
+// verifier -- a fixture proves the decoding, never the layout. This project has
+// twice mistaken one for the other (an `rsi` byte offset read as a limb id, an
+// FOV field read one slot across), so the distinction is load-bearing.
+//
+// Pointers are raw and unvalidated: the caller is responsible for the fault
+// guard, because structured exception handling cannot live in a translation unit
+// a portable test links.
+inline constexpr unsigned int kRenderFlagsOffset = 0x80;   // in SRendParams
+inline constexpr unsigned int kNearestFlagBit = 0x00800000; // FOB_NEAREST, bit 23
+inline constexpr unsigned int kSlotFlagsOffset = 0xAC8;    // in the character
+inline constexpr unsigned int kSlotNearBit = 0x02;
+
+bool NearestFromRenderArguments(const void* params, const void* character);
+
 inline constexpr unsigned int kSlots = 8;
 inline constexpr unsigned int kMatrixFloats = 12;
 

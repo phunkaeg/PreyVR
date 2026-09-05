@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -141,6 +142,64 @@ void TestSlotEnumerationAndReset()
     Require(!table.Read(0x6000, out, nullptr), "and a reset character no longer reads");
 }
 
+// --- the near predicate, at the offsets it claims -----------------------------
+//
+// A fixture proves the *decoding*: that this code reads the field it says it
+// reads, at the offset and bit it says. It cannot prove Prey's structures carry
+// those fields there -- that is the landmark verifier's job. Both of this
+// project's worst RE errors were a correct-looking decode of the wrong bytes, so
+// the two are kept separate on purpose.
+
+void TestNearPredicateReadsTheFieldsItClaims()
+{
+    unsigned char params[0x100]{};
+    unsigned char character[0xB00]{};
+
+    const auto setRenderFlags = [&params](std::uint32_t value) {
+        std::memcpy(params + 0x80, &value, sizeof(value));
+    };
+
+    Require(!NearestFromRenderArguments(params, character), "cleared flags are not near");
+
+    // FOB_NEAREST is bit 23 of the u32 at params+0x80.
+    setRenderFlags(0x00800000u);
+    Require(NearestFromRenderArguments(params, character), "the render flag alone says near");
+
+    // A neighbouring bit must not be mistaken for it. Off by one in a bit index
+    // is invisible in a decompiler listing and total in effect.
+    setRenderFlags(0x00400000u);
+    Require(!NearestFromRenderArguments(params, character), "bit 22 is not FOB_NEAREST");
+    setRenderFlags(0x01000000u);
+    Require(!NearestFromRenderArguments(params, character), "bit 24 is not FOB_NEAREST");
+    setRenderFlags(0u);
+
+    // The entity slot near bit is 0x02 at character+0xAC8.
+    character[0xAC8] = 0x02;
+    Require(NearestFromRenderArguments(params, character), "the slot flag alone says near");
+    character[0xAC8] = 0x01;
+    Require(!NearestFromRenderArguments(params, character), "bit 0 is not the near bit");
+    character[0xAC8] = 0x04;
+    Require(!NearestFromRenderArguments(params, character), "bit 2 is not the near bit");
+    character[0xAC8] = 0x00;
+
+    // Neighbouring bytes must not be read by mistake. An off-by-one on a struct
+    // offset is exactly the class of error that cost this project two findings,
+    // and it replicated cleanly both times before anyone noticed.
+    character[0xAC7] = 0xFF;
+    character[0xAC9] = 0xFF;
+    Require(!NearestFromRenderArguments(params, character), "adjacent bytes must not be read");
+    character[0xAC7] = 0x00;
+    character[0xAC9] = 0x00;
+
+    // Either argument alone can answer, and either may be absent.
+    character[0xAC8] = 0x02;
+    Require(NearestFromRenderArguments(nullptr, character), "a null params still allows a verdict");
+    character[0xAC8] = 0x00;
+    setRenderFlags(0x00800000u);
+    Require(NearestFromRenderArguments(params, nullptr), "a null character still allows a verdict");
+    Require(!NearestFromRenderArguments(nullptr, nullptr), "with nothing to read, not near");
+}
+
 // --- the splice detector ----------------------------------------------------
 //
 // Every element of a published matrix carries the same generation stamp, so a
@@ -268,6 +327,7 @@ int main()
     TestNearSampleSurvivesALaterNonNearDraw();
     TestFullTableStopsTrackingRatherThanEvicting();
     TestSlotEnumerationAndReset();
+    TestNearPredicateReadsTheFieldsItClaims();
     TestDetectorActuallyDetects();
     TestSeqlockNeverSplices();
     std::cout << "render frame table tests passed\n";
