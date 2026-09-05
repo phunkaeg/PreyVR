@@ -949,3 +949,60 @@ move when the near instance is displaced.
 
 Character pointers are session-specific; the discriminator is the flag, and the
 mapping has to be re-observed each run.
+
+
+## R-086 -- independent per-hand control, REPRODUCED live 2026-09-05
+
+**H-005's core question is answered.** A hand moves on screen, independently, and
+stays moved.
+
+### The run
+
+| step | result |
+| --- | --- |
+| Draw correlation | near instance `…45ce0`, world instance `…47300`, **1700 draws each** |
+| Selection + passthrough (control) | matched 363, skipped 1452, **refused 0** |
+| Joint 45 `r_hand_jnt`, +200 mm model Z | applied 452, **subtree 21**, refused 0 |
+| Switch to joint 72 `l_hand_jnt` | subtree 21, refused 0 |
+
+### What a wearer observed, against predictions stated before the run
+
+| prediction | observed |
+| --- | --- |
+| the right hand displaces and **holds** | **yes** |
+| the **shadow does not move** | **yes** |
+| the weapon does not follow | **yes** |
+| switching joints moves the other hand instead | **yes** |
+
+Every one of those is a *discriminator*, not a confirmation: a moving shadow would
+have meant the wrong instance, a torn hand would have meant a broken subtree walk,
+and a following weapon would have meant the binding runs through the hand.
+
+### The weapon is not parented to the hand -- confirmed
+
+This was predicted from two independent places and both were right: the wearer
+noticed the gun's **shadow** did not move when the hand shadows did, and the rig
+names drive the hand **to** the rifle (`RHand2RiflePos_IKTarget`), not the reverse.
+
+`CArkWeapon::AttachToHand` (R-024) is therefore a **separate lane**. A hand can be
+driven by a controller while the weapon keeps its own transform, and the product
+needs both.
+
+### Why this worked where a day of other attempts did not
+
+Everything before this fought the **producer**: six bump attempts, an override at
+the last writer in the cycle, and three levels of a chain that recomputes every
+frame. This substitutes the **consumer's input** and lets the engine do its own
+inverse-bind conversion. Nothing recomputes afterwards, so there is no race to
+win -- the write simply holds.
+
+### Not yet done
+
+* Only a fixed translation. Real control needs the wrist **rotation** solved and
+  the upper-arm/forearm chain to follow, or the arm stretches at the elbow.
+* Controller poses are not wired; `ControllerPoseInWorld` exists and tested, but
+  the world-to-model-frame mapping and grip calibration do not.
+* Gameplay aim, collision, attachment transforms and animation bounds are all
+  untouched -- this is a **visual** seam.
+* Character pointers are session-specific, so the draw correlation must be
+  re-observed every run.
