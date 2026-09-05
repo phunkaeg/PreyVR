@@ -413,3 +413,52 @@ holds still, the weapon is not parented to the hands, and the bone names agree -
 `RHand2RiflePos_IKTarget` drives the hand *to* the rifle. That would make a weapon
 takeover the primary lane and hand IK a follower, which is a materially different
 design from the one H-005 assumed.
+
+## H-011 -- the near/viewmodel pass receives no per-eye offset
+
+**Found in a headset 2026-09-05, by a test I would not have thought to run.** With
+stereo, head tracking and positional tracking all live, the wearer lined up
+overlapping detail between the left and right eye images and reported:
+
+* the **weapon model has no per-eye offset** -- identical in both eyes, zero parallax;
+* the **shadows cast by the weapon do** separate correctly per eye.
+
+That pair is the whole diagnosis. World geometry and shadow rendering receive the
+per-eye camera offset; the near pass does not.
+
+### Mechanism -- `INFERENCE`, not established
+
+CryEngine draws first-person/near geometry with a `FOB_NEAREST`-style path that
+transforms relative to the camera. Geometry rendered that way is **invariant to
+camera translation** by construction, so a per-eye offset applied to the camera
+moves the world and moves the viewmodel with it -- net zero parallax -- while
+shadows, computed in world space, separate normally.
+
+That explains both halves exactly, and **it is still inference.** A string search
+for `CameraSpace`, `camera space` and `FOB_NEAREST` found nothing; CryEngine flags
+this in code rather than in a string. Do not record it as fact until the near-pass
+transform is actually read.
+
+### `i_offset_front` / `_right` / `_up` are vestigial -- closed negative
+
+Registered since the R-076 survey with no consumer ever found. Driven live for the
+first time on 2026-09-05 at 0.25 m and then **1.0 m on all three axes**, with a
+wearer watching: **no movement at any magnitude.** They join `g_detachCamera`
+(R-056) as registered Crysis-era GameSDK leftovers that Prey does not consume.
+
+The lead is closed rather than open, which is worth as much as a positive here --
+it was the obvious route to per-eye weapon separation and it does not exist.
+
+### Why this matters more than the hand work
+
+Even a perfect bone-level hand takeover leaves the **weapon flat in stereo**. This
+is upstream of H-005: until the near pass receives a per-eye offset, the weapon
+cannot sit at a believable depth however its bones are driven.
+
+### The next hunt, and it is well motivated
+
+`r_DrawNearFoV` is looked up by name at five `IConsole::GetCVar` sites (`0x2EE2E1`,
+`0x1490DBF`, `0x1490F0E`, `0x17267BA`, `0x1727043`). One of them is the near-pass
+setup, and that is where the pass builds the transform this hypothesis is about.
+Unlike the IK chase, the symptom is known in advance, so the right site is the one
+whose transform explains **zero parallax with correct shadows**.
