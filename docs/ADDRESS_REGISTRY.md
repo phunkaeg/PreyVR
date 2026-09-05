@@ -544,3 +544,54 @@ virtual call on a live engine object.
 the `SInputEvent` layout and the `bForce` argument have not been exercised, and
 the vtable address itself is heap and session-specific -- reach it through
 `gEnv+0x58` every time, never cached across runs.
+
+## R-081 -- the IK target producers, named live 2026-09-05
+
+**H-005's blocker is cleared.** R-078 established that a write to the IK targets
+races the animator and loses, and concluded a takeover "has to write at a point in
+the frame the game does not overwrite afterwards, which means hooking the producer
+or the consumer". The producer had no name. It does now.
+
+Method: `runIkCapture` harvested four live targets through R-077's guarded log
+site, then a **hardware write watchpoint** on `target+0x10` (`pos.x`, 4-aligned as
+`RE-009`/`FAIL-RE-024` require) caught the writers. 25 traps in 8 s, 7 distinct
+sites, `foreignTraps=0`, log gate restored.
+
+### The sites, with the store that trapped
+
+`rip` is reported **after** the store retires, so the instruction below is the one
+*before* each captured address.
+
+| RVA | store | reading |
+| --- | --- | --- |
+| `0x87BC36` | `movss [rdx+r9], xmm6` / `+4, xmm7` / `+8, xmm2` | three consecutive floats -- a **Vec3** |
+| `0x87BEAB` | `movss [r8+rdx-0xC], xmm2`, between `addss xmm11, xmm12/xmm14` | a **blended** pose write |
+| `0x7DE723` | `movss [r8+rdx-0x10]`, then `[r8+rdx-0xC], xmm11` | same addressing, second region |
+| `0x7DEE09` | `movss [r8+rdx-0x10]`, `[r8+rdx-0xC]`, `movsd [r8+rdx-4]` | same, wider store |
+| `0x87C956`, `0x87C996` | `mov [rdx+4], eax` from `[r8+4]` | dword-wise memberwise copy |
+
+Two clusters: `0x87B...`-`0x87C...`, which is the **same region as R-077's log
+site** (`0x878744`, containing function `0x877B50`), and `0x7DE...`, sharing the
+`[r8+rdx-0x10]`/`-0xC` addressing -- so probably one pose-blend routine present
+twice, inlined or duplicated.
+
+The addressing corroborates the R-078 layout independently: with stride `0x1C` and
+`r8+rdx` pointing at the **next** entry, `-0x10` is `rot.w` and `-0xC/-0x8/-0x4`
+are `pos.x/y/z`. That is the same struct arrived at from the opposite direction --
+R-078 read it from a printf, this reads it from the arithmetic.
+
+### Honest limits
+
+* **`0xF97DC1DC` was also reported, and is not a PreyDll RVA at all** -- the module
+  is `0x2E20000` bytes. It is a write from some other module, or a computation
+  artifact where the address sat below the image base. Recorded, not explained,
+  and it must not be treated as a producer.
+* **25 traps, 16 attributed.** The other 9 fell outside the capture's distinct-writer
+  cap. The list is therefore a lower bound on the producer set, not a census.
+* **Nothing has been hooked.** These are the sites that write; which of them owns
+  the *final* value in a frame is a separate question, and it is the one that
+  decides where a takeover goes. The dword-copy pair looks like a shared helper
+  rather than the animation source, so its return address matters more than its
+  own RVA -- exactly the `RE-009` caveat.
+* Addresses are heap and session-specific; reach targets through the capture every
+  run, never cached.

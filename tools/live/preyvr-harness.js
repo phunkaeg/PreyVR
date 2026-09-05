@@ -506,8 +506,26 @@ var PreyVR = (function () {
                 ' (2 = adapter mismatch, and that needs r_overrideDXGIAdapter set BEFORE launch)';
             return out;
         }
+        // **Before arming stereo, so the first eye built already uses it.**
+        // Without this the eye camera's projection is REPLACED with a synthetic
+        // halfFov frustum carrying mirrored asymmetry, while the submission path
+        // still declares Prey's own 120x88.5 -- so we declare one frustum over an
+        // image rendered with another. In a headset that reads as wall-eyed
+        // divergence plus a horizontal stretch, and it also makes the dynamic sun
+        // swing with head yaw. Measured 2026-09-05; all three cleared the instant
+        // this was set.
+        //
+        // It defaults to FALSE, and the run STEREO_ROUTE records as PASSED had it
+        // on -- recorded in that section's heading rather than in its settings
+        // table, which is exactly how rebuilding "the known-good config" from the
+        // table missed it.
+        out.nativeProjection = act('PreyVR_SetNativeProjectionPtr', ptr(1)).returned;
+
         var args = Memory.alloc(8);
         args.writeFloat(ipd); args.add(4).writeFloat(halfFov);
+        // halfFov is inert while native projection is on: the eye is built by
+        // translation alone and Prey's own projection is left untouched. It is
+        // still passed so the call is valid if native projection is ever off.
         out.stereo = act('PreyVR_SetSyntheticStereoPtr', args).returned;
         out.cameraEdit = Number(callTolerant('PreyVR_GetCameraEditStatus', 'uint32', []).value);
         if (out.cameraEdit !== 2) {
