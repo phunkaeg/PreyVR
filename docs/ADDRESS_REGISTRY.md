@@ -1006,3 +1006,55 @@ win -- the write simply holds.
   untouched -- this is a **visual** seam.
 * Character pointers are session-specific, so the draw correlation must be
   re-observed every run.
+
+## R-087 -- controller-driven independent hands, live 2026-09-05
+
+**The product requirement, working.** A wearer drove the left and right hand
+independently with motion controllers, in game, with the full VR stack live.
+
+> *"to start with I was driving the position of the right and left hand using the
+> motion controller"*
+
+Route: controller grip pose -> `ControllerPoseInWorld` -> displacement from a
+calibration zero -> resolved against **body yaw** -> applied to the wrist subtree
+at the skinning consumer (`0x82EE10`), per hand, on the `FOB_NEAREST` character
+instance only.
+
+### What the wearer reported alongside it, all expected
+
+| observation | status |
+| --- | --- |
+| both hands driven independently | **the requirement, met** |
+| *"no rig"* -- hands move without the arm following | expected: translation only, no elbow solve |
+| *"wrench didn't track"* | expected: the weapon is a separate binding (R-086) |
+| *"relative to the animation"* | by design: a delta on the animated pose, not a replacement |
+| *"depth looked very odd when I moved the hand"* | **new, and open** -- see below |
+
+### The depth oddity is the next real question
+
+Displacement is resolved against a **yaw-only body frame**, which is an
+approximation of the character's true model frame. The exact transform is the
+render matrix `RenderCHR` receives in R8, which this hook does not see. A frame
+error shows up most in the axis the approximation gets wrong, which is consistent
+with depth reading strangely as the hand moves toward and away.
+
+Two other candidates worth separating before chasing the frame: the near-pass
+per-eye offset was live at the same time (R-085/H-011), and there is no scale
+calibration between the wearer's arm length and the avatar's.
+
+### An instrument lesson, again
+
+The counters read `handApplied=0` immediately after calibration and I concluded
+the lane was dead. It was not -- the wearer simply had not moved yet, so the
+delta was zero. **A counter sampled before the input exists reports the same
+thing as a broken mechanism.** This is the same shape as the frozen-animator
+readings, arriving from the opposite direction: the machinery was working and the
+number said otherwise.
+
+The wearer's report is what corrected it, for the third time today.
+
+### Not yet built
+
+Wrist **rotation** (translation only, so the hand does not turn), the
+upper-arm/forearm chain, arm-length calibration, cutscene suspension, and the
+weapon binding.
