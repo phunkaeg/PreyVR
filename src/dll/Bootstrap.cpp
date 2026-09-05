@@ -16,6 +16,7 @@
 #include "HotkeyBridge.h"
 #include "IkTargetProbe.h"
 #include "InputPathProbe.h"
+#include "CommandChannel.h"
 #include "HandRigTakeover.h"
 #include "NearViewStereo.h"
 #include "DebugWatch.h"
@@ -250,6 +251,13 @@ DWORD RunBootstrap(HMODULE self)
                << " loader=\"" << Narrow(openxr.loader.wstring()) << "\""
                << " action=none";
     lifecycle::Log(openxrLine.str());
+
+    // The command channel starts only after the landmark gate has passed, so an
+    // unsupported build never gets one. It then does nothing until someone
+    // writes a command file, which is what keeps "always started" acceptable.
+    if (StartCommandChannel() == 0) {
+        lifecycle::Log("preyvr_channel result=0 detail=armed");
+    }
 
     if (!PinCurrentModule()) {
         lifecycle::Log("preyvr_smoke_result status=unsupported reason=module_pin_failed hooks=disabled");
@@ -1815,4 +1823,25 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetHandRigMatched()
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetHandRigSkipped()
 {
     return preyvr::dll::HandRigSkippedCount();
+}
+
+// The file-based command channel, so routine testing needs no injector.
+// frida-agent crashed the host four times in one session; both ways of calling
+// into the DLL through it cost a run.
+extern "C" __declspec(dllexport) DWORD PreyVR_GetCommandChannelRunning()
+{
+    return preyvr::dll::CommandChannelRunning();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetCommandChannelProcessed()
+{
+    return preyvr::dll::CommandChannelProcessedCount();
+}
+
+// Verbs that were not recognised. Reported rather than ignored, because a typo
+// that silently does nothing is indistinguishable from a mechanism that does not
+// work -- a confusion this project has paid for repeatedly.
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetCommandChannelRejected()
+{
+    return preyvr::dll::CommandChannelRejectedCount();
 }
