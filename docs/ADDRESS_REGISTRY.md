@@ -619,6 +619,38 @@ one complete long cycle and the start of a second; the second run, on the other
 skeleton, showed the long cycle, a partial, then three consecutive steady cycles.
 Every cycle in both runs ends on `0x87BC36`. `foreignTraps=0` throughout.
 
+### Replicated across weapons and limbs, 2026-09-05
+
+Extended at the tester's suggestion, which was the right control to ask for --
+the limb ids `0x4EC`/`0x7E0` map to a *two-handed* grip, so a one-handed weapon
+could plausibly have driven a different path.
+
+| weapon | limb | cycle ends on |
+| --- | --- | --- |
+| Disruptor pistol (two-handed: support hand under the grip) | `0x4EC` skel A | `0x87BC36` |
+| Disruptor pistol | `0x4EC` skel B | `0x87BC36` (long cycle + 3 steady) |
+| Wrench | `0x4EC` | `0x87BC36` |
+| Wrench | `0x7E0` | `0x87BC36` |
+
+Four combinations, two weapons, both limbs, two skeletons, two cycle shapes,
+`foreignTraps=0` throughout. **So the last-writer site is a property of the pose
+system, not of the weapon** -- which is what a takeover needs it to be.
+
+### The same swap independently confirms R-078's limb identification
+
+Target addresses did not change across the weapon swap -- the skeletons persist --
+but the *values* moved sharply:
+
+| limb | pistol | wrench |
+| --- | --- | --- |
+| `0x4EC` trigger | `[123, 220, 1524]` | `[328, 128, 1492]` |
+| `0x7E0` support | `[33, 247, 1501]` | `[-325, -2, 952]` |
+
+The support-hand target swings down and out to the side once it is no longer on a
+grip. The tester notes the wrench idle animates the left hand independently, so
+that value is being *driven*, not parked -- which is what makes it a second live
+sample rather than a stale one.
+
 ### Why `0x87BC36` is the answer and not just the last row
 
 Its store, from R-081's disassembly, is three consecutive float writes:
