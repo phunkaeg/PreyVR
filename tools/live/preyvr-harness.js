@@ -723,21 +723,35 @@ var PreyVR = (function () {
     // written earlier is overwritten before use. Applying inside the trap for that
     // instruction lands AFTER its store retires, which is the one point in the
     // frame nothing overwrites.
-    function runIkTakeover(targetAddress, dx, dy, dz, seconds) {
-        var out = { step: 'ik-takeover', target: String(targetAddress),
+    // `matchRva` selects which write site the offset is applied after. It is a
+    // parameter and not a constant because there is more than one: measured
+    // 2026-09-05, this target is written by TWO alternating code paths, and the
+    // steady-state one ends on 0x87BBA0 while 0x87BC36 ends a much rarer variant.
+    // Matching the wrong one applies nothing and looks identical to a broken hook.
+    function runIkTakeover(targetAddress, dx, dy, dz, seconds, matchRva) {
+        var out = { step: 'ik-takeover', quatTBase: String(targetAddress),
                     offset: [dx, dy, dz], seconds: seconds || 20 };
         // The watch must be armed first -- ArmApplyOffset refuses a slot that is
         // not trapping, because an override on a silent slot would report success
         // and never run.
-        var watch = act('PreyVR_ArmIkProducerWatchPtr', ptr(targetAddress));
+        // **`targetAddress` is the QuatT BASE, not the position.** The DLL adds
+        // the 0x10 position offset itself, so passing an already-offset address
+        // watches base+0x20 -- which, at a 0x1C stride, is the NEXT entry's
+        // rotation. Deriving both uses from the base here is what stops the watch
+        // and the write from disagreeing about what they are pointed at.
+        var base = ptr(targetAddress);
+        var vec3 = base.add(0x10);
+        var watch = act('PreyVR_ArmIkProducerWatchPtr', base);
         out.watch = watch.ok ? watch.returned : watch.error;
         if (out.watch !== 0) {
             out.verdict = 'REFUSED - the write watch did not arm, so nothing would trap';
             return out;
         }
         var args = Memory.alloc(40);
-        args.writeU64(ptr(targetAddress));                 // vec3 address (pos.x)
-        args.add(8).writeU64(0x87BC36);                    // match RVA, resolved live in the DLL
+        // writePointer, not writeU64: Frida's writeU64 wants a UInt64 object and
+        // rejects a NativePointer outright rather than coercing it.
+        args.writePointer(vec3);                           // vec3 address (pos.x)
+        args.add(8).writePointer(ptr(matchRva || 0x87BBA0));   // steady-state last writer
         args.add(16).writeFloat(dx);
         args.add(20).writeFloat(dy);
         args.add(24).writeFloat(dz);
@@ -751,7 +765,25 @@ var PreyVR = (function () {
             act('PreyVR_DisarmIkProducerWatch');
             return out;
         }
-        Thread.sleep(3);
+        // **Precondition: the animator must actually be running.**
+        // A menu, a pause, or the game sitting in the background all freeze it,
+        // and every one of those produces a confident zero that looks exactly
+        // like "the override does not work". That mistake has now been made three
+        // times in one session, so it is a refusal rather than a caution.
+        Thread.sleep(1.0);
+        var earlyTraps = Number(callTolerant('PreyVR_GetIkApplySkippedCount', 'uint64', []).value) +
+                         Number(callTolerant('PreyVR_GetIkApplyAppliedCount', 'uint64', []).value);
+        if (earlyTraps === 0) {
+            act('PreyVR_DisarmIkApplyOffsetPtr', ptr(1));
+            act('PreyVR_DisarmIkProducerWatch');
+            out.verdict = 'REFUSED - the animator is not running (menu, paused, or the game is in ' +
+                'the background). Nothing was measured, because a zero here would have been ' +
+                'indistinguishable from the override failing.';
+            out.animatorLive = false;
+            return out;
+        }
+        out.animatorLive = true;
+        Thread.sleep(2);
         out.applied = String(callTolerant('PreyVR_GetIkApplyAppliedCount', 'uint64', []).value);
         out.skipped = String(callTolerant('PreyVR_GetIkApplySkippedCount', 'uint64', []).value);
         out.health = watchHealth();
@@ -761,7 +793,7 @@ var PreyVR = (function () {
         out.verdict = Number(out.applied) > 0
             ? 'APPLYING - offset is landing after the final write; look now, it should HOLD rather than flicker'
             : (Number(out.skipped) > 0
-                ? 'NOT MATCHING: traps are happening but never at 0x87BC36 - the match address is wrong'
+                ? 'NOT MATCHING: traps happen but never at the match site - try the other path (0x87BC36 / 0x87BBA0)'
                 : 'NO TRAPS at all - the watch is armed but the site is not being written');
         return out;
     }
