@@ -689,3 +689,74 @@ Nothing is hooked. `0x87BC36` is where the final write happens; whether the righ
 takeover is a hook there, a hook on its caller, or the consumer downstream is a
 design question this does not settle. The containing function has not been
 identified, and it should be before anything is written.
+
+## R-082 CORRECTION and R-083 -- the targets are a scratch destination
+
+**R-082 above is wrong in two ways, both found 2026-09-05 by building the
+takeover it recommended.** It is left in place because the reasoning is worth not
+repeating.
+
+### Correction 1 -- it was measured at the wrong address
+
+`ArmIkProducerWatch` adds the `0x10` position offset **itself**. Every producer
+hunt passed `base + 0x10`, so the watch landed on `base + 0x20` -- which, at a
+`0x1C` stride, is the **next entry's rotation field**, not this entry's position.
+
+The mistake was invisible in every result it produced. The cycles looked clean and
+replicated across two weapons, two limbs and two skeletons, because an adjacent
+field in the same struct is written by the same code in the same order. It
+surfaced only when the takeover applied **zero** times.
+
+### Correction 2 -- there are two paths, and `0x87BC36` is the rare one
+
+Watching the real position address shows **two alternating code paths**:
+
+| path | sites | ends on | frequency in one window |
+| --- | --- | --- | --- |
+| A | `87C956` `87BEAB` `7DE723` `7DEE09` `87C996` | `0x87BC36` | **1** |
+| B | `87C96F` `87BEBD` `7DE731` `87C9C5` `7DEE10` | **`0x87BBA0`** | **18** |
+
+So the steady-state last writer is **`0x87BBA0`**. `0x87BC36` ends a much rarer
+variant, which is why a takeover matching it applied nothing and looked exactly
+like a broken hook.
+
+## R-083 -- the write lands, and the value does not survive
+
+With the match corrected to `0x87BBA0` the override applies reliably -- 60 applies
+against 540 skips in three seconds, animator confirmed live by a precondition
+check. **And it changes nothing.**
+
+Read back while applying `+1.5 m` to `pos.z`:
+
+```
+before   1410 1410 1410 1410      (mm)
+during   1420 1411 1411 1411 1410 1409 1409 1409 1411 1412
+```
+
+`+1500 mm` was applied 60 times and the value never leaves `~1410`. Nothing moved
+on screen either, watched deliberately.
+
+### What that means
+
+The ordering already carries the explanation: **`0xF97DC1DC` -- the out-of-module
+memcpy -- fires twice at the *start* of every cycle**, copying *into* this
+location. So the QuatT we have been treating as the IK target is a **per-cycle
+scratch destination, refreshed from somewhere else**, not the value the solver
+consumes.
+
+**This retires R-078's outstanding caveat as a negative.** It said plainly: *"That
+these are the targets the IK solves toward is inferred from the rig names and the
+geometry; it is not proven until a write moves a hand on screen."* A write has now
+moved nothing, reliably, at the one point in the cycle where nothing overwrites it.
+The inference was wrong.
+
+### The next step, and it is cheap
+
+The memcpy names its own source. On the Win64 ABI `memcpy(dst, src, n)` passes
+`rcx=dst, rdx=src`, and the capture ring **already records every register** -- they
+are simply not exported yet. Exporting `rdx` at the `0xF97DC1DC` traps names the
+buffer these targets are refreshed from, and that buffer is the next candidate for
+the real target.
+
+Six memcpy traps were present in a three-second sample, so the data is there as
+soon as the accessor exists.
