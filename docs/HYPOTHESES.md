@@ -464,8 +464,46 @@ cannot sit at a believable depth however its bones are driven.
 
 ### The next hunt, and it is well motivated
 
-`r_DrawNearFoV` is looked up by name at five `IConsole::GetCVar` sites (`0x2EE2E1`,
-`0x1490DBF`, `0x1490F0E`, `0x17267BA`, `0x1727043`). **Corrected 2026-09-05:**
-the near setup need not look it up by name; R-069's renderer `+0x95B4` latch
-leads directly to `0xF43D70` and `0xFB4280`. The next proof is the actual weapon
-draw's use of the translation-free near VP, with its shadow as the control.
+~~The five `GetCVar` string references were the recommended route.~~ **Superseded 2026-09-05.** Two of them manage the FOV *setting*, not the near render camera. The real consumers hang off the per-frame latch at `renderer+0x95B4` -- **which R-069 had already recorded** -- and are `0xF43D70` (near camera switching), `0xFB4280` (view-info construction) and `0xF054F0` (deferred shadow setup); `0xF7D710` writes the latch. Same lesson as `gEnv->pInput` earlier the same day: check this project's own registry before sending anyone down a static path.
+
+
+## H-012 -- Prey's release build keeps cvars whose implementations were stripped
+
+**Established 2026-09-05 by four consecutive live negatives.** A cvar existing in
+the shipped image -- as a name string, with help text, and accepted by the engine --
+says **nothing** about whether anything still consumes it.
+
+| cvar | intended effect | observed |
+| --- | --- | --- |
+| `g_detachCamera` (R-056) | detach the camera | no consumer found; inert |
+| `i_offset_front` / `_right` / `_up` | move the item viewmodel | **nothing at 0.25 m or 1.0 m on all three axes** |
+| `ca_DebugADIKTargets` | draw the animation-driven IK targets | **nothing drawn** |
+| `ca_useADIKTargets 0` | stop animation driving the IK targets | **hands still animating** |
+
+All four were registered, all four reached the engine, none did anything.
+
+### The measurement trap this creates
+
+Our console bridge reports `lastResult=0` when **our queue submitted the string**,
+not when the engine implemented the behaviour. So the success path of an inert
+cvar is indistinguishable from the success path of a working one. Every one of the
+four above reported success.
+
+**A cvar test is only meaningful with an observable**, and the observable has to be
+named before running it. That is why each row above has an "observed" column
+recorded by a person looking at the screen rather than a counter.
+
+### What still works, for contrast
+
+`r_DrawNearFoV`, `r_MotionBlur`, `r_AntialiasingMode` and `t_Scale` all demonstrably
+work. So this is not "Prey ignores cvars" -- it is specifically the **GameSDK and
+animation-debug surface** that is vestigial, while the renderer surface is live.
+That split is the useful prior: expect `r_*` to work and `ca_*`/`a_*`/`g_*` to be
+dead until shown otherwise.
+
+### Consequence for H-005
+
+The wrench is not available through cvars. Freezing or bypassing Prey's animation
+would have to be done by hooking, which is far more invasive than a console
+setting -- and that cost should be weighed against simply accepting the pipeline
+and hooking the consumer instead.
