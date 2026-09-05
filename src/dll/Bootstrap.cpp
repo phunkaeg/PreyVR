@@ -19,6 +19,7 @@
 #include "CommandChannel.h"
 #include "HandRigTakeover.h"
 #include "NearViewStereo.h"
+#include "WeaponAttachment.h"
 #include "DebugWatch.h"
 #include "OpenXRPreflightWin32.h"
 #include "RuntimeSnapshotWin32.h"
@@ -1844,4 +1845,56 @@ extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetCommandChannelProcessed()
 extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetCommandChannelRejected()
 {
     return preyvr::dll::CommandChannelRejectedCount();
+}
+
+// The weapon model, moved in its own frame (the playbook's "kinematic, local"
+// route). Separate from the hand rig because displacing hand joints moves the
+// hand mesh and nothing else - confirmed in a headset by R-086.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetWeaponAttachObservingPtr(void* enabled)
+{
+    return preyvr::dll::SetWeaponAttachmentObserving(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetWeaponAttachmentPointer()
+{
+    return preyvr::dll::WeaponAttachmentPointer();
+}
+
+extern "C" __declspec(dllexport) int PreyVR_GetWeaponMountPosMmPtr(void* axis)
+{
+    return preyvr::dll::WeaponMountPositionMillimetres(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(axis)));
+}
+
+extern "C" __declspec(dllexport) int PreyVR_GetWeaponMountQuatMilliPtr(void* component)
+{
+    return preyvr::dll::WeaponMountQuaternionMilli(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(component)));
+}
+
+namespace { struct WeaponOffsetArgs { int x, y, z; }; }
+
+extern "C" __declspec(dllexport) DWORD PreyVR_SetWeaponOffsetMmPtr(const WeaponOffsetArgs* args)
+{
+    if (args == nullptr) { return 1; }
+    return preyvr::dll::SetWeaponOffsetMillimetres(args->x, args->y, args->z);
+}
+
+// Disarming writes the captured baseline back, so this is reversible by
+// construction rather than by remembering the previous value.
+extern "C" __declspec(dllexport) DWORD PreyVR_SetWeaponOffsetEnabledPtr(void* enabled)
+{
+    return preyvr::dll::SetWeaponOffsetEnabled(
+        static_cast<unsigned int>(reinterpret_cast<std::uintptr_t>(enabled)));
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetWeaponOffsetApplied()
+{
+    return preyvr::dll::WeaponOffsetAppliedCount();
+}
+
+extern "C" __declspec(dllexport) ULONGLONG PreyVR_GetWeaponOffsetRefused()
+{
+    return preyvr::dll::WeaponOffsetRefusedCount();
 }

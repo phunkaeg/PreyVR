@@ -7,6 +7,7 @@
 #include "HeadTrackingHook.h"
 #include "Logger.h"
 #include "NearViewStereo.h"
+#include "WeaponAttachment.h"
 #include "XrSessionHost.h"
 
 #include <atomic>
@@ -112,6 +113,12 @@ void WriteReport(std::ostringstream& out)
         << " handNoPose=" << HandRigNoPoseCount()
         << " handJoints=" << HandRigJointCount()
         << " handLastCharacter=0x" << std::hex << HandRigLastCharacter() << std::dec
+        << " weaponAttachment=0x" << std::hex << WeaponAttachmentPointer() << std::dec
+        << " weaponMountMm=" << WeaponMountPositionMillimetres(0)
+        << "," << WeaponMountPositionMillimetres(1)
+        << "," << WeaponMountPositionMillimetres(2)
+        << " weaponApplied=" << WeaponOffsetAppliedCount()
+        << " weaponRefused=" << WeaponOffsetRefusedCount()
         << " channelProcessed=" << gProcessed.load(std::memory_order_relaxed)
         << " channelRejected=" << gRejected.load(std::memory_order_relaxed);
 }
@@ -208,6 +215,13 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         }
         out << "console result=" << result
             << " command=\"" << command << "\"";
+    } else if (verb == "weapon.observe") {
+        out << "weapon.observe result=" << SetWeaponAttachmentObserving(arg(1, 1));
+    } else if (verb == "weapon.offset") {
+        out << "weapon.offset result="
+            << SetWeaponOffsetMillimetres(arg(1, 0), arg(2, 0), arg(3, 0));
+    } else if (verb == "weapon.apply") {
+        out << "weapon.apply result=" << SetWeaponOffsetEnabled(arg(1, 1));
     } else if (verb == "report") {
         WriteReport(out);
     } else {

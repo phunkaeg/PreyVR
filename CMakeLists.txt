@@ -134,6 +134,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/CommandChannel.cpp
         src/dll/HandRigTakeover.cpp
         src/dll/NearViewStereo.cpp
+        src/dll/WeaponAttachment.cpp
         src/dll/PassCameraProbe.cpp
         src/dll/ReticleFollow.cpp
         src/dll/XrInput.cpp
