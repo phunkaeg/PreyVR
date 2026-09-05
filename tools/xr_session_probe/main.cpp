@@ -685,6 +685,40 @@ void Probe::ReadInput(XrTime displayTime, int frameIndex)
         Expect(agreement > 0.999f, "aim_matches_pose_forward",
                "the ray must be the pose's own forward, not a second opinion");
 
+        // **The weapon-mount lane, driven by a real located pose.**
+        //
+        // `MountRotationFromControllerDelta` is well covered by unit tests, but
+        // every one of those feeds it a quaternion we invented -- the same gap
+        // the action system had before this probe existed. What is untested is
+        // the *pipeline*: a runtime-located aim reaching the shipping function
+        // and carrying the rotation that was actually commanded.
+        //
+        // The authored mount is deliberately **not identity**, so the
+        // composition is real rather than a pass-through. The check the script
+        // then performs is the angle between the returned mount and that
+        // authored baseline, which must equal the commanded rotation -- and is
+        // invariant under the basis change, so it does not quietly depend on
+        // whether this is measured in OpenXR or engine space.
+        static std::optional<preyvr::Quaternion> calibrationAim[2];
+        if (!calibrationAim[hand].has_value()) {
+            calibrationAim[hand] = enginePose.orientation;
+            Fact("mount_calibrated frame=%d hand=%s", frameIndex, label);
+        }
+        // 30 degrees about engine X.
+        const preyvr::Quaternion authoredMount{0.258819f, 0.0f, 0.0f, 0.9659258f};
+        const auto mount = preyvr::controller::MountRotationFromControllerDelta(
+            authoredMount, *calibrationAim[hand], enginePose.orientation);
+        if (mount) {
+            Fact("mount frame=%d hand=%s mount=%.6f,%.6f,%.6f,%.6f "
+                 "authored=%.6f,%.6f,%.6f,%.6f",
+                 frameIndex, label, mount->x, mount->y, mount->z, mount->w,
+                 authoredMount.x, authoredMount.y, authoredMount.z, authoredMount.w);
+        } else {
+            // A located, fully-tracked pose must compose. Silence here would be
+            // the weapon keeping its animated mount forever with nothing said.
+            Expect(false, "mount_composed", "a tracked aim yielded no mount rotation");
+        }
+
         // The basis change, stated as the axis images it is defined by. OpenXR is
         // right-handed Y-up with -Z forward; CryEngine is right-handed Z-up with
         // +Y forward. Rx(+90) is the only rotation that carries one to the other,

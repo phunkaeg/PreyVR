@@ -209,6 +209,89 @@ foreach ($probeCase in @(
     }
 }
 
+# --- the weapon mount, composed from these same commanded poses ---------------
+#
+# `MountRotationFromControllerDelta` has unit tests, but every one of them feeds
+# it a quaternion we invented. This measures the shipping function on a pose the
+# runtime actually located, driven by a rotation we commanded.
+#
+# **Measured between cases, not against the calibration latch.** The probe latches
+# its reference on the first tracked frame, which is xr-sim's rest pose -- a
+# 40-degree downward tilt. An absolute angle would therefore be asserting that
+# tilt rather than the thing under test. Differencing two mounts cancels both the
+# calibration and the authored baseline and leaves exactly the commanded
+# rotation, which is also why this holds whichever space the pose was measured in.
+$mountTolerance = 1.0
+
+$mountReadings = @()
+foreach ($line in $output) {
+    if ("$line" -match 'mount frame=(\d+) hand=right mount=(-?[\d.]+),(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)') {
+        $mountReadings += [pscustomobject]@{
+            Frame = [int]$Matches[1]
+            X = [double]$Matches[2]; Y = [double]$Matches[3]
+            Z = [double]$Matches[4]; W = [double]$Matches[5]
+        }
+    }
+}
+
+$mountFailures = 0
+$mountRows = @()
+if ($mountReadings.Count -eq 0) {
+    Write-Warning 'no right-hand mount rotations in the probe output - the weapon mount lane was not exercised'
+    $mountFailures++
+} else {
+    $perCase = @{}
+    foreach ($case in $cases) {
+        $next = @($cases | Where-Object { $_.CommandFrame -gt $case.CommandFrame } |
+            Sort-Object CommandFrame | Select-Object -First 1)
+        $upper = if ($next.Count -eq 1) { $next[0].CommandFrame } else { [int]::MaxValue }
+        $hit = @($mountReadings |
+            Where-Object { $_.Frame -gt $case.CommandFrame -and $_.Frame -lt $upper } |
+            Sort-Object Frame | Select-Object -First 1)
+        if ($hit.Count -eq 1) { $perCase[$case.Name] = $hit[0] }
+    }
+
+    $reference = $perCase['forward']
+    if ($null -eq $reference) {
+        Write-Warning 'no mount reading for the forward case - nothing to measure the others against'
+        $mountFailures++
+    } else {
+        foreach ($case in @($cases | Where-Object { $_.Name -ne 'forward' })) {
+            $m = $perCase[$case.Name]
+            if ($null -eq $m) {
+                Write-Warning "mount case $($case.Name): no reading in its frame window"
+                $mountFailures++
+                continue
+            }
+            # Angle between two unit quaternions, double-cover aware: q and -q
+            # are the same rotation, so the absolute dot is the correct one.
+            $dot = ($m.X * $reference.X) + ($m.Y * $reference.Y) +
+                   ($m.Z * $reference.Z) + ($m.W * $reference.W)
+            $dot = [Math]::Min(1.0, [Math]::Abs($dot))
+            $angle = 2.0 * [Math]::Acos($dot) / $rad
+            if ($case.Pitch -eq 0) {
+                $expected = [Math]::Abs($case.Yaw)
+            } else {
+                $expected = [Math]::Abs($case.Pitch)
+            }
+            $ok = [Math]::Abs($angle - $expected) -lt $mountTolerance
+            if (-not $ok) { $mountFailures++ }
+            $mountRows += [pscustomobject]@{
+                Case = $case.Name; Frame = $m.Frame
+                AngleDeg = [Math]::Round($angle, 3)
+                ExpectedDeg = $expected
+                Pass = $ok
+            }
+        }
+    }
+}
+
+if ($mountRows.Count -gt 0) {
+    Write-Host 'weapon mount, angle from the forward case:'
+    $mountRows | Format-Table -AutoSize | Out-String | Write-Host
+}
+
 Write-Host ''
 Write-Host ("aim check: {0} case(s), {1} failure(s)" -f $results.Count, $failures)
-if ($failures -gt 0) { exit 1 }
+Write-Host ("mount check: {0} case(s), {1} failure(s)" -f $mountRows.Count, $mountFailures)
+if (($failures + $mountFailures) -gt 0) { exit 1 }
