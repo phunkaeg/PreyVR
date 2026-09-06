@@ -1553,3 +1553,49 @@ this flag rather than on rig identity.
 `CArkWeapon::AttachToHand` never fires and the weapon translation and rotation
 lanes remain unexercised. They need a spawn or save that carries a weapon, which
 is what the action-map binding question (R-092) still gates.
+
+## R-094 -- the weapon lane moves the model, and melee is a different class
+
+Confirmed in a real save (the user's own loaded game, mod injected into a session
+this project did not launch). All three previously untested lanes are now
+exercised.
+
+### `CArkWeapon::AttachToHand` covers guns, not the wrench
+
+`weapon.observe 1` was armed and the player switched to the **wrench**:
+`weaponAttachment` stayed `0x0` and the hook never fired. The player then
+switched to the **GLOO cannon**: `weaponAttachment=0x1E87B3F52E0`,
+`weaponMountMm=551,89,1058`.
+
+The hooked RVA `0x16914F0` is correct -- Ghidra already carries it as
+`CArkWeapon::AttachToHand` with a matching plate comment, and its only
+non-virtual caller is `FUN_18169B450`. It is also a **virtual** (data reference
+at `0x182D609B8`), and hooking the implementation body catches every dispatch to
+*that* implementation. So the wrench does not reach it: **melee weapons are a
+separate class with their own override**, and a hand/weapon lane that must cover
+the wrench needs that sibling located. This was found by a live A/B, not by
+reading the class hierarchy.
+
+### The offset lane works, and it is an attachment default
+
+`weapon.offset 150 0 0` then `weapon.apply 1` produced a **visible shift of the
+GLOO cannon to the right**, confirmed by a wearer looking at the screen.
+
+`weaponApplied` went to **1** and stayed there -- it did not climb per frame,
+because this writes through `SetAttAbsoluteDefault`, an attachment *default*
+rather than a per-frame transform. **That is a product-relevant limit, not a
+detail:** a mount written once at attach time cannot track a moving controller.
+The rotation lane needs a per-frame seam, or a mechanism that re-applies, before
+a controller can own the weapon continuously.
+
+Reverting to `0,0,0` and disabling took `weaponApplied` to 2 and left the session
+intact. Nothing was written to the save file; the change lived on the live
+attachment only.
+
+### Near count tracks what is in hand
+
+Empty lobby spawn: **one** character flagged near. Loaded save holding a weapon:
+**two**, stable across passes. That is the viewmodel arms plus the held weapon --
+exactly the caveat R-089 wrote into its own header, now observed. In both
+sessions the hand rig matched a `near=0` character, so the rig it grabs is not
+the near instance.
