@@ -1833,6 +1833,33 @@ while every counter read success.
 contribute one (Enter 13, Space 32, Escape 27, WASD), and arrows and pad buttons
 return 0 rather than an invented code point.
 
-**Untested live.** The mapping of arrow keys to whatever Scaleform expects is not
-established -- they contribute no character, so menu *navigation* may need a
-different route from menu *confirmation*.
+### Tested live 2026-09-07: necessary, and NOT sufficient
+
+A UI event carrying `inputChar = 13` was posted at the main menu (launcher
+override null, so mode 3 confirmed) and **the menu did not move** -- captures
+before and after identical at luma 22.16.
+
+So the `inputChar` fix is correct and required -- the UI listener demonstrably
+reads that field and nothing else -- but it does not by itself drive the menu.
+The claim in this entry that it "explains every menu-input failure" is therefore
+**too strong**: it explains why the UI path could never have worked, not that it
+is the only thing wrong.
+
+Everything between the post and the UI listener was eliminated live, in one
+session, and none of it should be re-checked:
+
+| stage | measured |
+|---|---|
+| console listeners (`pInput+0x38`) | count **1**, and its handler is the false-return leaf `0x16D2100` |
+| exclusive listener | `CGame::OnInputEventUI` `0x1701710`, override null at the menu, returns false |
+| normal listeners 1-4 | all have `0x16D2100` at vtable `+0x10` for UI events |
+| listener 5's gate | `global+0x1DC` read **0**; the getter is `movzx eax,[rcx+0x1DC]; ret` at `0xE216D0` |
+| listener 5's own guards | `+0xC0` = 0, receiver tree at `+0xB0` **non-empty** |
+
+**So the event reaches `0x2D0320` and the failure is inside its receiver
+dispatch.** That function walks the receiver tree and, per receiver, calls
+`vtable+0xF8(receiver, 4)` as a predicate before dispatching the char through
+`vtable+0x310`. The open question is now exactly that predicate: which receivers
+answer `+0xF8(4)`, and what the Flash layer does with a bare character.
+
+That is a bounded static question, not another guess.
