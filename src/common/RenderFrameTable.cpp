@@ -1,5 +1,6 @@
 #include "preyvr/RenderFrameTable.h"
 
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 
@@ -35,6 +36,60 @@ bool NearestFromRenderArguments(const void* params, const void* character)
     // *clears* the flag on this path rather than leaving it, so a stale bit on a
     // pooled render object cannot make the answer wrong.
     return false;
+}
+
+bool ApplyRenderMatrixOverride(float matrix[12], float offsetX, float offsetY, float offsetZ,
+                               float turnX, float turnY, float turnZ, float turnW)
+{
+    if (matrix == nullptr) {
+        return false;
+    }
+    for (int i = 0; i < 12; ++i) {
+        if (!std::isfinite(matrix[i])) {
+            return false;
+        }
+    }
+    if (!std::isfinite(offsetX) || !std::isfinite(offsetY) || !std::isfinite(offsetZ) ||
+        !std::isfinite(turnX) || !std::isfinite(turnY) || !std::isfinite(turnZ) ||
+        !std::isfinite(turnW)) {
+        return false;
+    }
+    const float norm = std::sqrt(turnX*turnX + turnY*turnY + turnZ*turnZ + turnW*turnW);
+    if (norm < 1.0e-6f) {
+        return false;   // a degenerate rotation would collapse the basis
+    }
+    const float qx = turnX / norm, qy = turnY / norm, qz = turnZ / norm, qw = turnW / norm;
+
+    // Rotate each basis column. Written out rather than routed through a matrix
+    // multiply so the column convention stays visible: getting it wrong here
+    // transposes the object and reads as a mirrored model.
+    const auto rotate = [&](float x, float y, float z, float& ox, float& oy, float& oz) {
+        const float tx = 2.0f * (qy * z - qz * y);
+        const float ty = 2.0f * (qz * x - qx * z);
+        const float tz = 2.0f * (qx * y - qy * x);
+        ox = x + qw * tx + (qy * tz - qz * ty);
+        oy = y + qw * ty + (qz * tx - qx * tz);
+        oz = z + qw * tz + (qx * ty - qy * tx);
+    };
+
+    float out[12];
+    for (int col = 0; col < 3; ++col) {
+        rotate(matrix[col], matrix[col + 4], matrix[col + 8],
+               out[col], out[col + 4], out[col + 8]);
+    }
+    // Translation is not rotated: the object turns about its own origin, so its
+    // placement in the world is unchanged by `turn` and moved only by the offset.
+    out[3] = matrix[3] + offsetX;
+    out[7] = matrix[7] + offsetY;
+    out[11] = matrix[11] + offsetZ;
+
+    for (int i = 0; i < 12; ++i) {
+        if (!std::isfinite(out[i])) {
+            return false;   // refuse whole rather than write a partial transform
+        }
+    }
+    std::memcpy(matrix, out, sizeof(out));
+    return true;
 }
 
 bool MatrixTable::Capture(unsigned long long character, const float matrix[kMatrixFloats],

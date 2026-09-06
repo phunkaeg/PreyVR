@@ -61,6 +61,23 @@ bool RenderMatrixBasisIsOrthonormal(unsigned long long character);
 // alongside it rather than substituting this for them.
 bool RenderMatrixIsNear(unsigned long long character);
 
+// --- the per-frame transform seam -------------------------------------------
+//
+// **This is what `SetAttAbsoluteDefault` could not be.** That writes an
+// attachment default the engine samples at attach time, so a mount written every
+// frame still does not move the drawn weapon (H-017). `RenderCHR` copies its
+// matrix argument into `CRenderObject+0x00` on every draw, so editing it at the
+// hook's entry moves the object for that frame and the next one too.
+//
+// The character is named explicitly. Holding a weapon produces **two** near
+// objects, the viewmodel arms and the weapon, so selecting on the near flag
+// alone would pick one by draw order.
+DWORD SetRenderFrameOverrideCharacter(unsigned long long character);
+DWORD SetRenderFrameOffsetMillimetres(int x, int y, int z);
+DWORD SetRenderFrameOverrideEnabled(unsigned int enabled);
+unsigned long long RenderFrameOverrideAppliedCount();
+unsigned long long RenderFrameOverrideRefusedCount();
+
 // One slot of the capture table, for dumping the whole thing over a text channel.
 // False when that slot has never been written. This is what lets a live session
 // answer "which character is the near one" **without a debugger attached**.

@@ -1,5 +1,6 @@
 #include "CommandChannel.h"
 
+#include "AimTakeover.h"
 #include "CameraEditHook.h"
 #include "ConsoleBridgeWin32.h"
 #include "FrameObserverHook.h"
@@ -120,6 +121,8 @@ void WriteReport(std::ostringstream& out)
         << " handCalibrated=" << HandRigCalibrationDone()
         << " handRightJoint=" << HandRigSelectedRightJoint()
         << " handLeftJoint=" << HandRigSelectedLeftJoint()
+        << " handWristArmed=" << HandRigWristDriveArmed()
+        << " handWristApplied=" << HandRigWristAppliedCount()
         << " handZeroRightMm=" << HandRigZeroRightMm(0) << "," << HandRigZeroRightMm(1)
         << "," << HandRigZeroRightMm(2)
         << " handWorldRightMm=" << HandRigWorldRightMm(0) << "," << HandRigWorldRightMm(1)
@@ -139,8 +142,15 @@ void WriteReport(std::ostringstream& out)
         << " weaponRotCalib=" << WeaponRotationCalibrated()
         << " weaponBaseline=" << WeaponBaselineCaptured()
         << " weaponAimUsable=" << WeaponAimPoseUsable()
+        << " aimApplied=" << AimTakeoverAppliedCount()
+        << " aimNoPose=" << AimTakeoverRejectedNoPose()
+        << " aimNoPlayer=" << AimTakeoverRejectedNoPlayer()
+        << " aimCompose=" << AimTakeoverRejectedCompose()
+        << " aimNativeMagMilli=" << AimTakeoverNativeDirectionMagnitude()
         << " frameCaptures=" << RenderFrameCaptureCount()
         << " frameTracked=" << RenderFrameTrackedCharacters()
+        << " frameOverrideApplied=" << RenderFrameOverrideAppliedCount()
+        << " frameOverrideRefused=" << RenderFrameOverrideRefusedCount()
         << " menuActions=" << MenuNavigationActionCount()
         << " inputPosted=" << InputPostCount()
         << " inputDropped=" << InputQueueDroppedCount()
@@ -247,6 +257,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "hand.left result=" << SetHandRigLeftJoint(arg(1, 0));
     } else if (verb == "hand.drive") {
         out << "hand.drive result=" << SetHandRigControllerDrive(arg(1, 1));
+    } else if (verb == "hand.wrist") {
+        out << "hand.wrist result=" << SetHandRigWristDrive(arg(1, 1));
     } else if (verb == "hand.calibrate") {
         out << "hand.calibrate result=" << CalibrateHandRig();
     } else if (verb == "hand.scale") {
@@ -282,6 +294,15 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         }
         out << "console result=" << result
             << " command=\"" << command << "\"";
+    } else if (verb == "aim.enable") {
+        // The detached-aim lane, reachable from the channel at last. H-004 is
+        // reproduced against two native consumers -- the wrench contact moved
+        // 0.127165 units and the interaction selector committed a different
+        // entity -- but both used synthetic angle offsets driven from a
+        // debugger. This is what lets a *controller* drive it.
+        out << "aim.enable result=" << SetAimTakeoverEnabled(arg(1, 1))
+            << " applied=" << AimTakeoverAppliedCount()
+            << " nativeMagMilli=" << AimTakeoverNativeDirectionMagnitude();
     } else if (verb == "weapon.observe") {
         out << "weapon.observe result=" << SetWeaponAttachmentObserving(arg(1, 1));
     } else if (verb == "weapon.offset") {
@@ -295,6 +316,20 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "weapon.calibrate result=" << CalibrateWeaponRotation();
     } else if (verb == "frame.capture") {
         out << "frame.capture result=" << SetRenderFrameCapture(arg(1, 1));
+    } else if (verb == "frame.character" && args.size() >= 2) {
+        unsigned long long pointer = 0;
+        if (!ParseU64(args[1], pointer)) {
+            out << "frame.character result=2 detail=parse";
+        } else {
+            out << "frame.character result=" << SetRenderFrameOverrideCharacter(pointer);
+        }
+    } else if (verb == "frame.offset") {
+        out << "frame.offset result="
+            << SetRenderFrameOffsetMillimetres(arg(1, 0), arg(2, 0), arg(3, 0));
+    } else if (verb == "frame.apply") {
+        out << "frame.apply result=" << SetRenderFrameOverrideEnabled(arg(1, 1))
+            << " applied=" << RenderFrameOverrideAppliedCount()
+            << " refused=" << RenderFrameOverrideRefusedCount();
     } else if (verb == "frame.near") {
         // Dumps the capture table with RenderCHR's own near verdict per slot
         // (R-089), so identifying the near character no longer needs an injector

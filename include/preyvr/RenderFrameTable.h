@@ -41,6 +41,29 @@ inline constexpr unsigned int kSlotNearBit = 0x02;
 
 bool NearestFromRenderArguments(const void* params, const void* character);
 
+// --- the per-frame transform seam -------------------------------------------
+//
+// **`RenderCHR` copies its matrix argument straight into `CRenderObject+0x00`**
+// -- twelve float stores, verified by decompiling `0x81D0D0`. So editing those
+// twelve floats at the hook's entry *is* a per-frame transform for that
+// character, which is what `SetAttAbsoluteDefault` could never be: that writes
+// an attachment default the engine samples at attach time (H-017), and a mount
+// written once cannot track a moving controller.
+//
+// Layout is row-major 3x4 with the **basis vectors as columns** (R-088): X at
+// indices 0,4,8; Y at 1,5,9; Z at 2,6,10; translation at 3,7,11.
+//
+// `offsetMetres` is added to the translation column. `turn` rotates the basis
+// columns, which rotates the object about its own origin rather than about the
+// world -- the same choice `RotateJointAboutPivot` makes, and for the same
+// reason: rotating about the world origin would fling a near object across the
+// screen.
+//
+// False when the matrix is unusable, leaving it untouched; a refusal must not
+// half-write a transform the renderer is about to consume.
+bool ApplyRenderMatrixOverride(float matrix[12], float offsetX, float offsetY, float offsetZ,
+                               float turnX, float turnY, float turnZ, float turnW);
+
 inline constexpr unsigned int kSlots = 8;
 inline constexpr unsigned int kMatrixFloats = 12;
 

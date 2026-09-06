@@ -176,4 +176,17 @@ float SmoothTurn(float currentYawRadians, float stickX, float radiansPerSecond, 
     return WrapAngle(currentYawRadians + stickX * radiansPerSecond * deltaSeconds);
 }
 
+JointPose RotateJointAboutPivot(const JointPose& joint, const Vec3& pivot,
+                                const Quaternion& rotation)
+{
+    const Vec3 offset{joint.position.x - pivot.x,
+                      joint.position.y - pivot.y,
+                      joint.position.z - pivot.z};
+    const Vec3 turned = Rotate(rotation, offset);
+    JointPose out;
+    out.position = Vec3{pivot.x + turned.x, pivot.y + turned.y, pivot.z + turned.z};
+    out.rotation = Normalize(Multiply(rotation, joint.rotation));
+    return out;
+}
+
 } // namespace preyvr::controller

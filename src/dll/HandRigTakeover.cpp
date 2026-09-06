@@ -41,6 +41,7 @@ constexpr std::array<std::uint8_t, 24> kComputePrologue{
 };
 
 // Byte-verified layouts from the H-005 investigation.
+constexpr std::size_t kPoseRelativeArray = 0x10;   // QuatT*, stride 0x1C
 constexpr std::size_t kPoseAbsoluteArray = 0x18;   // QuatT*, stride 0x1C
 constexpr std::size_t kPosePrefixBytes   = 0x20;   // enough for the one field read
 constexpr std::size_t kSkeletonJointArray = 0x08;
@@ -70,6 +71,13 @@ std::atomic<unsigned long long> gMatched{0}, gSkipped{0};
 std::atomic<int> gRightJoint{-1}, gLeftJoint{-1};
 std::atomic<bool> gControllerDrive{false};
 std::atomic<bool> gCalibrated{false};
+// Wrist rotation. Separate from the positional drive because the two fail
+// differently: a wrong position is a hand in the wrong place, a wrong rotation
+// is a hand that looks broken, and they should be armable one at a time.
+std::atomic<bool> gWristDrive{false};
+Quaternion gZeroRightRot{0.0f, 0.0f, 0.0f, 1.0f};
+Quaternion gZeroLeftRot{0.0f, 0.0f, 0.0f, 1.0f};
+std::atomic<unsigned long long> gWristApplied{0};
 // H-016 diagnostics: the operands behind `handRightMm`.
 std::atomic<int> gLastWorldRight[3]{};
 std::atomic<int> gCalibYawMilli{0};
@@ -150,6 +158,32 @@ bool ControllerWorld(Hand hand, Vec3& out)
     return true;
 }
 
+// The same conversion as ControllerWorld, kept beside it, but returning the
+// orientation. Split rather than merged so the positional lane -- which is
+// proven exact to the millimetre -- is not disturbed by the rotation work.
+bool ControllerWorldRotation(Hand hand, Quaternion& out)
+{
+    ControllerState state{};
+    if (!TryGetControllerState(hand, state)) {
+        return false;
+    }
+    if (!state.gripValidity.orientationTracked) {
+        return false;
+    }
+    Vec3 right{}, forward{}, up{}, position{};
+    if (!CameraBasis(right, forward, up, position)) {
+        return false;
+    }
+    stereo::ReferenceFrame reference{};
+    reference.yawRadians = stereo::CameraYawOf(stereo::Matrix34{
+        right.x, forward.x, up.x, position.x,
+        right.y, forward.y, up.y, position.y,
+        right.z, forward.z, up.z, position.z}) - HeadTrackingReferenceYaw();
+    reference.worldPosition = Vec3{};
+    out = controller::ControllerPoseInWorld(reference, state.gripPose).orientation;
+    return true;
+}
+
 // World displacement into the character's frame.
 //
 // **Yaw-only, and anchored to the BODY rather than the head.** The obvious
@@ -214,6 +248,14 @@ std::array<int, kMaxJoints> gJointParents{};
 // share a scratch buffer; the investigation is explicit that each invocation needs
 // its own, and the storage has to outlive the forwarded call.
 thread_local std::array<std::uint8_t, kMaxJoints * kQuatTStride> tScratch{};
+// **The relative array is cloned too, which is what unblocks the arm chain.**
+// R-088 found the native two-bone solver at `0x871CA0` reads relative at
+// `pose+0x10` and absolute at `pose+0x18` and **writes both**. Redirecting only
+// `+0x18` left `+0x10` pointing at engine memory, so calling that solver through
+// our view would have had it write into the engine's own relative pose while we
+// believed we were working on a private copy. Cloning both is the precondition
+// for using the native solver at all.
+thread_local std::array<std::uint8_t, kMaxJoints * kQuatTStride> tRelativeScratch{};
 thread_local std::array<std::uint8_t, kPosePrefixBytes> tPoseView{};
 thread_local std::array<unsigned char, kMaxJoints> tInSubtree{};
 
@@ -317,7 +359,8 @@ void* __fastcall ComputeWithHandTakeover(void* charInstance, void* skinningData,
     if (mode == 2) {
         // Displace one joint's subtree by a model-space delta. Factored out
         // because both hands need it and they must not share the mask.
-        const auto displace = [&](int joint, const Vec3& delta) -> unsigned int {
+        const auto displace = [&](int joint, const Vec3& delta,
+                                  const Quaternion& turn) -> unsigned int {
             if (joint < 0 || static_cast<unsigned int>(joint) >= count) {
                 return 0;
             }
@@ -329,19 +372,52 @@ void* __fastcall ComputeWithHandTakeover(void* charInstance, void* skinningData,
                     walk = gJointParents[static_cast<std::size_t>(walk)];
                 }
             }
+            // **The pivot is read before anything moves.** It is the driven
+            // joint's own position, so that joint is a fixed point and its
+            // descendants orbit it. Reading it inside the loop would use a
+            // position this same loop had already rewritten.
+            const float* const pivotSrc = reinterpret_cast<const float*>(
+                tScratch.data() + static_cast<std::size_t>(joint) * kQuatTStride + kQuatTPosition);
+            if (!std::isfinite(pivotSrc[0]) || !std::isfinite(pivotSrc[1]) ||
+                !std::isfinite(pivotSrc[2])) {
+                return 0;
+            }
+            const Vec3 pivot{pivotSrc[0], pivotSrc[1], pivotSrc[2]};
+            const bool turning = std::fabs(turn.w) < 0.99999f;   // not identity
+
             unsigned int n = 0;
             for (unsigned int j = 0; j < count; ++j) {
                 if (!tInSubtree[j]) { continue; }
-                float* const pos = reinterpret_cast<float*>(
-                    tScratch.data() + static_cast<std::size_t>(j) * kQuatTStride + kQuatTPosition);
+                std::uint8_t* const entry =
+                    tScratch.data() + static_cast<std::size_t>(j) * kQuatTStride;
+                float* const pos = reinterpret_cast<float*>(entry + kQuatTPosition);
+                float* const rot = reinterpret_cast<float*>(entry);
                 if (!std::isfinite(pos[0]) || !std::isfinite(pos[1]) || !std::isfinite(pos[2])) {
                     return 0;
                 }
-                // Translation only. Rotations stay exactly as the animator
-                // produced them, so this is a displacement rather than a pose --
-                // wrist orientation is the next piece, not this one.
+                if (turning) {
+                    // **Rigid, about the pivot.** Rotating a wrist in an
+                    // *absolute* pose array does not carry its children -- each
+                    // holds its own model-space transform and would be left
+                    // behind. That is the tearing failure this header warns
+                    // about, seen from the rotation side.
+                    controller::JointPose in;
+                    in.rotation = Quaternion{rot[0], rot[1], rot[2], rot[3]};
+                    in.position = Vec3{pos[0], pos[1], pos[2]};
+                    const controller::JointPose out =
+                        controller::RotateJointAboutPivot(in, pivot, turn);
+                    if (!std::isfinite(out.position.x) || !std::isfinite(out.rotation.w)) {
+                        return 0;
+                    }
+                    rot[0] = out.rotation.x; rot[1] = out.rotation.y;
+                    rot[2] = out.rotation.z; rot[3] = out.rotation.w;
+                    pos[0] = out.position.x; pos[1] = out.position.y; pos[2] = out.position.z;
+                }
                 pos[0] += delta.x; pos[1] += delta.y; pos[2] += delta.z;
                 ++n;
+            }
+            if (turning) {
+                gWristApplied.fetch_add(1, std::memory_order_relaxed);
             }
             return n;
         };
@@ -351,7 +427,7 @@ void* __fastcall ComputeWithHandTakeover(void* charInstance, void* skinningData,
             const Vec3 fixed{gOffsetX.load(std::memory_order_relaxed),
                              gOffsetY.load(std::memory_order_relaxed),
                              gOffsetZ.load(std::memory_order_relaxed)};
-            moved = displace(gJoint.load(std::memory_order_relaxed), fixed);
+            moved = displace(gJoint.load(std::memory_order_relaxed), fixed, Quaternion{0.0f, 0.0f, 0.0f, 1.0f});
         } else if (!gCalibrated.load(std::memory_order_acquire)) {
             // Refusing before calibration is deliberate: the first frame would
             // otherwise snap the hands to wherever the controllers sit relative
@@ -364,12 +440,27 @@ void* __fastcall ComputeWithHandTakeover(void* charInstance, void* skinningData,
             } else {
                 const float scale = gScale.load(std::memory_order_relaxed);
                 Vec3 world{};
+                // The wrist turn since calibration, or identity when the
+                // rotation lane is not armed. Identity is checked for inside
+                // `displace`, so an unarmed rotation costs nothing.
+                Quaternion rightTurn = Quaternion{0.0f, 0.0f, 0.0f, 1.0f};
+                Quaternion leftTurn = Quaternion{0.0f, 0.0f, 0.0f, 1.0f};
+                if (gWristDrive.load(std::memory_order_acquire)) {
+                    Quaternion now{};
+                    if (ControllerWorldRotation(Hand::right, now)) {
+                        rightTurn = Normalize(Multiply(now, stereo::Conjugate(gZeroRightRot)));
+                    }
+                    if (ControllerWorldRotation(Hand::left, now)) {
+                        leftTurn = Normalize(Multiply(now, stereo::Conjugate(gZeroLeftRot)));
+                    }
+                }
                 if (ControllerWorld(Hand::right, world)) {
                     const Vec3 d = WorldDeltaToModel(
                         Vec3{world.x - gZeroRight.x, world.y - gZeroRight.y, world.z - gZeroRight.z},
                         bodyYaw);
                     const Vec3 scaled{d.x * scale, d.y * scale, d.z * scale};
-                    moved += displace(gRightJoint.load(std::memory_order_relaxed), scaled);
+                    moved += displace(gRightJoint.load(std::memory_order_relaxed),
+                                      scaled, rightTurn);
                     gLastRightMm.store(static_cast<int>(
                         std::sqrt(scaled.x*scaled.x + scaled.y*scaled.y + scaled.z*scaled.z) * 1000.0f),
                         std::memory_order_relaxed);
@@ -381,7 +472,8 @@ void* __fastcall ComputeWithHandTakeover(void* charInstance, void* skinningData,
                         Vec3{world.x - gZeroLeft.x, world.y - gZeroLeft.y, world.z - gZeroLeft.z},
                         bodyYaw);
                     const Vec3 scaled{d.x * scale, d.y * scale, d.z * scale};
-                    moved += displace(gLeftJoint.load(std::memory_order_relaxed), scaled);
+                    moved += displace(gLeftJoint.load(std::memory_order_relaxed),
+                                      scaled, leftTurn);
                     gLastLeftMm.store(static_cast<int>(
                         std::sqrt(scaled.x*scaled.x + scaled.y*scaled.y + scaled.z*scaled.z) * 1000.0f),
                         std::memory_order_relaxed);
@@ -406,6 +498,27 @@ void* __fastcall ComputeWithHandTakeover(void* charInstance, void* skinningData,
     // not be treated as one.
     std::memcpy(tPoseView.data(), poseData, kPosePrefixBytes);
     *reinterpret_cast<std::uint8_t**>(tPoseView.data() + kPoseAbsoluteArray) = tScratch.data();
+
+    // The relative array, cloned on the same terms. Absent this, any native
+    // solver invoked through this view writes the engine's relative pose
+    // directly -- silently, and outside the substitution this hook is built on.
+    // Cloned only when the source is readable; a null or unreadable pointer
+    // leaves the view's field as the engine set it, which is the fail-closed
+    // choice because the alternative is aiming the solver at our empty buffer.
+    {
+        auto* const relative =
+            *reinterpret_cast<std::uint8_t* const*>(poseData + kPoseRelativeArray);
+        if (relative != nullptr && bytes <= tRelativeScratch.size()) {
+            __try {
+                std::memcpy(tRelativeScratch.data(), relative, bytes);
+                *reinterpret_cast<std::uint8_t**>(tPoseView.data() + kPoseRelativeArray) =
+                    tRelativeScratch.data();
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                // Unreadable: leave the original pointer in place rather than
+                // hand the engine a buffer we never filled.
+            }
+        }
+    }
 
     // Exactly once. Calling the original a second time on the same skinning packet
     // would repeat its publication protocol after that state has changed.
@@ -554,6 +667,23 @@ int HandRigLastYawMilli() { return gLastYawMilli.load(std::memory_order_relaxed)
 int HandRigSelectedRightJoint() { return gRightJoint.load(std::memory_order_relaxed); }
 int HandRigSelectedLeftJoint() { return gLeftJoint.load(std::memory_order_relaxed); }
 
+DWORD SetHandRigWristDrive(unsigned int enabled)
+{
+    gWristDrive.store(enabled != 0u, std::memory_order_release);
+    Log(std::string("result=0 detail=wrist_drive value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+
+unsigned long long HandRigWristAppliedCount()
+{
+    return gWristApplied.load(std::memory_order_relaxed);
+}
+
+unsigned int HandRigWristDriveArmed()
+{
+    return gWristDrive.load(std::memory_order_acquire) ? 1u : 0u;
+}
+
 DWORD SetHandRigControllerDrive(unsigned int enabled)
 {
     gControllerDrive.store(enabled != 0u, std::memory_order_release);
@@ -574,6 +704,13 @@ DWORD CalibrateHandRig()
         Log("result=refused detail=controller_untracked right=" + std::to_string(haveRight) +
             " left=" + std::to_string(haveLeft));
         return 1;
+    }
+    // Orientations are captured in the same call, so a wrist turn is measured
+    // from the same instant as the displacement and the two cannot disagree.
+    Quaternion rr{}, lr{};
+    if (ControllerWorldRotation(Hand::right, rr) && ControllerWorldRotation(Hand::left, lr)) {
+        gZeroRightRot = rr;
+        gZeroLeftRot = lr;
     }
     gZeroRight = r;
     gZeroLeft = l;

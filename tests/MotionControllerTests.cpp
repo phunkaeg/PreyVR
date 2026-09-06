@@ -227,12 +227,114 @@ void TestTurning()
 
 } // namespace
 
+// --- rigid subtree rotation -------------------------------------------------
+
+Quaternion AxisAngle(Vec3 axis, float radians)
+{
+    const float len = std::sqrt(axis.x*axis.x + axis.y*axis.y + axis.z*axis.z);
+    const float s = std::sin(radians * 0.5f) / len;
+    return Quaternion{axis.x*s, axis.y*s, axis.z*s, std::cos(radians * 0.5f)};
+}
+
+// **The driven joint must not move.** It is the pivot, so a rotation about it
+// leaves its position alone and turns only its orientation. If this fails the
+// hand translates when the player only rotated their wrist.
+void TestPivotJointStaysPut()
+{
+    const Vec3 pivot{1.0f, 2.0f, 3.0f};
+    JointPose wrist;
+    wrist.position = pivot;
+    wrist.rotation = Quaternion{0.0f, 0.0f, 0.0f, 1.0f};
+
+    const Quaternion turn = AxisAngle(Vec3{0.0f, 0.0f, 1.0f}, 1.2f);
+    const JointPose out = RotateJointAboutPivot(wrist, pivot, turn);
+    Require(Near(out.position.x, pivot.x) && Near(out.position.y, pivot.y) &&
+            Near(out.position.z, pivot.z), "the pivot joint must not translate");
+    Require(NearQuat(out.rotation, turn), "and its rotation must be the applied turn");
+}
+
+// A child orbits the pivot: distance preserved, angle applied.
+void TestChildOrbitsThePivot()
+{
+    const Vec3 pivot{0.0f, 0.0f, 0.0f};
+    JointPose finger;
+    finger.position = Vec3{1.0f, 0.0f, 0.0f};
+    finger.rotation = Quaternion{0.0f, 0.0f, 0.0f, 1.0f};
+
+    // 90 degrees about Z takes +X to +Y.
+    const Quaternion turn = AxisAngle(Vec3{0.0f, 0.0f, 1.0f}, 3.14159265f * 0.5f);
+    const JointPose out = RotateJointAboutPivot(finger, pivot, turn);
+    Require(Near(out.position.x, 0.0f, 1e-4f) && Near(out.position.y, 1.0f, 1e-4f),
+            "a child must orbit the pivot, not stay behind");
+
+    // **Rigid** means the distance to the pivot is unchanged. A subtree that
+    // stretches is the tearing failure in a different disguise.
+    const float before = 1.0f;
+    const float after = std::sqrt(out.position.x*out.position.x +
+                                  out.position.y*out.position.y +
+                                  out.position.z*out.position.z);
+    Require(Near(after, before, 1e-4f), "the rotation must be rigid");
+}
+
+// Two joints keep their separation: the hand does not deform.
+void TestSubtreeKeepsItsShape()
+{
+    const Vec3 pivot{0.5f, -0.25f, 2.0f};
+    const Quaternion turn = AxisAngle(Vec3{0.3f, 1.0f, -0.2f}, 0.9f);
+
+    JointPose a; a.position = Vec3{0.9f, 0.1f, 2.4f};
+    JointPose b; b.position = Vec3{1.3f, -0.6f, 1.7f};
+    const auto dist = [](const Vec3& p, const Vec3& q) {
+        const float dx = p.x-q.x, dy = p.y-q.y, dz = p.z-q.z;
+        return std::sqrt(dx*dx + dy*dy + dz*dz);
+    };
+    const float before = dist(a.position, b.position);
+    const JointPose ra = RotateJointAboutPivot(a, pivot, turn);
+    const JointPose rb = RotateJointAboutPivot(b, pivot, turn);
+    Require(Near(dist(ra.position, rb.position), before, 1e-4f),
+            "the distance between two joints must survive the rotation");
+}
+
+// Identity is a no-op, which is the control: a correct implementation with no
+// rotation must be indistinguishable from not running at all.
+void TestIdentityChangesNothing()
+{
+    JointPose j;
+    j.position = Vec3{2.0f, -1.0f, 0.5f};
+    j.rotation = AxisAngle(Vec3{1.0f, 0.0f, 0.0f}, 0.4f);
+    const JointPose out = RotateJointAboutPivot(j, Vec3{9.0f, 9.0f, 9.0f},
+                                                Quaternion{0.0f, 0.0f, 0.0f, 1.0f});
+    Require(Near(out.position.x, j.position.x) && Near(out.position.y, j.position.y) &&
+            Near(out.position.z, j.position.z), "identity must not move a joint");
+    Require(NearQuat(out.rotation, j.rotation), "identity must not turn a joint");
+}
+
+// Composition order, the same trap the weapon mount has: R*rot, not rot*R.
+void TestCompositionOrderIsBasisChangeOnTheLeft()
+{
+    JointPose j;
+    j.position = Vec3{};
+    j.rotation = AxisAngle(Vec3{1.0f, 0.0f, 0.0f}, 1.1f);
+    const Quaternion turn = AxisAngle(Vec3{0.2f, 1.0f, 0.4f}, 0.7f);
+    const JointPose out = RotateJointAboutPivot(j, Vec3{}, turn);
+    Require(NearQuat(out.rotation, Normalize(Multiply(turn, j.rotation))),
+            "the turn composes on the left");
+    Require(!NearQuat(Normalize(Multiply(turn, j.rotation)),
+                      Normalize(Multiply(j.rotation, turn))),
+            "and the two orders must actually differ, or this proves nothing");
+}
+
 int main()
 {
     TestAimRayFromController();
     TestAimFailsClosed();
     TestHandAndEyeShareAReferenceFrame();
     TestWeaponPoseAppliesGrip();
+    TestPivotJointStaysPut();
+    TestChildOrbitsThePivot();
+    TestSubtreeKeepsItsShape();
+    TestIdentityChangesNothing();
+    TestCompositionOrderIsBasisChangeOnTheLeft();
     TestMountCompositionOrder();
     TestMountCompositionFailsClosed();
     TestTwoHandedPose();

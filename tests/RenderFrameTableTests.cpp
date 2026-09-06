@@ -2,10 +2,12 @@
 
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <thread>
 #include <vector>
 
@@ -318,6 +320,80 @@ void TestSeqlockNeverSplices()
               << result.refusals << " refusal(s)\n";
 }
 
+
+// --- the per-frame transform override ----------------------------------------
+
+void Identity(float m[12])
+{
+    for (int i = 0; i < 12; ++i) { m[i] = 0.0f; }
+    m[0] = 1.0f; m[5] = 1.0f; m[10] = 1.0f;
+}
+
+void TestOffsetLandsOnTheTranslationColumn()
+{
+    float m[12];
+    Identity(m);
+    Require(ApplyRenderMatrixOverride(m, 0.25f, -0.5f, 1.5f, 0, 0, 0, 1), "identity turn, offset only");
+    // Translation is the COLUMN at 3,7,11. Writing 0,1,2 instead would scale and
+    // shear the object rather than move it, which reads as a corrupted model.
+    Require(m[3] == 0.25f && m[7] == -0.5f && m[11] == 1.5f, "offset goes to indices 3,7,11");
+    Require(m[0] == 1.0f && m[5] == 1.0f && m[10] == 1.0f, "the basis is untouched by an offset");
+}
+
+void TestTurnRotatesTheBasisNotTheTranslation()
+{
+    float m[12];
+    Identity(m);
+    m[3] = 5.0f; m[7] = 6.0f; m[11] = 7.0f;
+    // 90 degrees about Z: X column goes to +Y.
+    const float s = std::sin(3.14159265f * 0.25f), c = std::cos(3.14159265f * 0.25f);
+    Require(ApplyRenderMatrixOverride(m, 0, 0, 0, 0, 0, s, c), "quarter turn about Z");
+
+    Require(std::fabs(m[0]) < 1e-4f && std::fabs(m[4] - 1.0f) < 1e-4f,
+            "the X column must rotate into Y");
+    // **The object turns about its own origin.** Rotating the translation too
+    // would fling a near object across the screen, since its translation is
+    // camera-relative and large.
+    Require(m[3] == 5.0f && m[7] == 6.0f && m[11] == 7.0f,
+            "the translation must not be rotated");
+}
+
+void TestBasisStaysOrthonormalUnderRotation()
+{
+    float m[12];
+    Identity(m);
+    const float s = std::sin(0.4f), c = std::cos(0.4f);
+    Require(ApplyRenderMatrixOverride(m, 0, 0, 0, 0.3f * s, s, 0.1f * s, c), "arbitrary turn");
+    const auto col = [&](int i, float v[3]) { v[0] = m[i]; v[1] = m[i+4]; v[2] = m[i+8]; };
+    float x[3], y[3], z[3];
+    col(0, x); col(1, y); col(2, z);
+    const auto dot = [](const float a[3], const float b[3]) {
+        return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+    };
+    // A rotation that quietly scales would change every distance the renderer
+    // draws, and an inverse-by-transpose elsewhere would then be wrong.
+    Require(std::fabs(dot(x, x) - 1.0f) < 1e-3f, "X stays unit length");
+    Require(std::fabs(dot(y, y) - 1.0f) < 1e-3f, "Y stays unit length");
+    Require(std::fabs(dot(x, y)) < 1e-3f, "the columns stay perpendicular");
+    Require(std::fabs(dot(x, z)) < 1e-3f, "and so do X and Z");
+}
+
+void TestRefusalsLeaveTheMatrixUntouched()
+{
+    float m[12];
+    Identity(m);
+    m[3] = 4.0f;
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    Require(!ApplyRenderMatrixOverride(m, nan, 0, 0, 0, 0, 0, 1), "a NaN offset is refused");
+    Require(m[3] == 4.0f, "and the matrix is left exactly as it was");
+    Require(!ApplyRenderMatrixOverride(m, 0, 0, 0, 0, 0, 0, 0), "a zero quaternion is refused");
+    Require(m[3] == 4.0f, "still untouched");
+    m[5] = nan;
+    Require(!ApplyRenderMatrixOverride(m, 1, 0, 0, 0, 0, 0, 1),
+            "an already-corrupt matrix is refused rather than propagated");
+    Require(!ApplyRenderMatrixOverride(nullptr, 0, 0, 0, 0, 0, 0, 1), "null is refused");
+}
+
 } // namespace
 
 int main()
@@ -328,6 +404,10 @@ int main()
     TestFullTableStopsTrackingRatherThanEvicting();
     TestSlotEnumerationAndReset();
     TestNearPredicateReadsTheFieldsItClaims();
+    TestOffsetLandsOnTheTranslationColumn();
+    TestTurnRotatesTheBasisNotTheTranslation();
+    TestBasisStaysOrthonormalUnderRotation();
+    TestRefusalsLeaveTheMatrixUntouched();
     TestDetectorActuallyDetects();
     TestSeqlockNeverSplices();
     std::cout << "render frame table tests passed\n";

@@ -124,4 +124,35 @@ float SmoothTurn(float currentYawRadians, float stickX, float radiansPerSecond, 
 // session and lose float precision.
 float WrapAngle(float radians);
 
+// ---------------------------------------------------------------------------
+// Rigid rotation of a joint subtree
+// ---------------------------------------------------------------------------
+
+// One joint of a model-space pose: an absolute rotation and an absolute
+// position, which is what `CPoseData`'s absolute array holds (QuatT, stride
+// `0x1C`, position at `+0x10`).
+struct JointPose {
+    Quaternion rotation{};
+    Vec3 position{};
+};
+
+// Rotates one joint of a subtree rigidly about a pivot.
+//
+// **Why a pivot at all.** The absolute array stores every joint's own
+// model-space transform, so rotating a wrist does *not* carry its children --
+// each child holds its own absolute position and would stay exactly where it
+// was. Turning the wrist without this is the tearing failure the hand-rig
+// header warns about, seen from the other side: the translation case needed the
+// subtree displaced, and the rotation case needs it *orbited*.
+//
+//   position = pivot + R * (position - pivot)
+//   rotation = R * rotation
+//
+// The pivot is the driven joint's own position, so that joint is a fixed point
+// and its descendants swing around it. Composition is `R * rotation`, the same
+// "basis change on the left" the weapon mount uses -- writing it the other way
+// is the error that looks like a sign flip and survives every sign flip.
+JointPose RotateJointAboutPivot(const JointPose& joint, const Vec3& pivot,
+                                const Quaternion& rotation);
+
 } // namespace preyvr::controller

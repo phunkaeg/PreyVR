@@ -90,6 +90,17 @@ DWORD SetHandRigLeftJoint(unsigned int jointIndex);
 // 0 = the fixed offset used for the first discriminator, 1 = controller-driven.
 DWORD SetHandRigControllerDrive(unsigned int enabled);
 
+// Wrist rotation, armed separately from the positional drive.
+//
+// **Separate because they fail differently.** A wrong position is a hand in the
+// wrong place and is obvious; a wrong rotation is a hand that looks broken and
+// is easy to misread as the takeover being wrong altogether. Arming them one at
+// a time keeps the positional lane -- proven exact to the millimetre -- as a
+// control while the rotation is brought up.
+DWORD SetHandRigWristDrive(unsigned int enabled);
+unsigned long long HandRigWristAppliedCount();
+unsigned int HandRigWristDriveArmed();
+
 // Records where the controllers are **now** as the zero point, so the hands stay
 // where the animation put them until you move. Without this the first frame would
 // snap the hands to wherever the controllers happen to be relative to an

@@ -23,7 +23,7 @@ void Log(const std::string& line)
 }
 
 // RenderCHR: RCX character, RDX SRendParams*, R8 Matrix34*, R9 pass info.
-using RenderCharacterFn = void*(__fastcall*)(void*, void*, const float*, void*);
+using RenderCharacterFn = void*(__fastcall*)(void*, void*, float*, void*);
 
 constexpr std::uintptr_t kRenderCharacterRva = 0x81D0D0;
 
@@ -44,6 +44,17 @@ constexpr std::array<std::uint8_t, 18> kRenderCharacterPrologue{
 // plausible numbers. See `preyvr/RenderFrameTable.h`.
 renderframe::MatrixTable gTable;
 std::atomic<unsigned long long> gCaptures{0};
+
+// --- the per-frame transform override ---------------------------------------
+//
+// The character is named explicitly rather than inferred from the near flag.
+// Holding a weapon produces **two** near objects -- the viewmodel arms and the
+// weapon -- so "drive the near one" would pick one of them by draw order, which
+// is exactly the kind of silent wrong choice the near predicate exists to end.
+std::atomic<unsigned long long> gOverrideCharacter{0};
+std::atomic<bool> gOverrideEnabled{false};
+std::atomic<int> gOverrideMm[3]{};
+std::atomic<unsigned long long> gOverrideApplied{0}, gOverrideRefused{0};
 
 void* gTarget = nullptr;
 std::atomic<RenderCharacterFn> gOriginal{nullptr};
@@ -84,7 +95,7 @@ bool NearestFromArguments(const void* params, const void* character)
 }
 
 void* __fastcall RenderCharacterObserved(void* character, void* params,
-                                         const float* matrix, void* pass)
+                                         float* matrix, void* pass)
 {
     if (gEnabled.load(std::memory_order_acquire) && character != nullptr && matrix != nullptr) {
         __try {
@@ -93,6 +104,25 @@ void* __fastcall RenderCharacterObserved(void* character, void* params,
                 const auto key = reinterpret_cast<unsigned long long>(character);
                 if (gTable.Capture(key, matrix, nearest)) {
                     gCaptures.fetch_add(1, std::memory_order_relaxed);
+                }
+                // **Edited before forwarding, which is the whole point.**
+                // `RenderCHR` copies these twelve floats into `CRenderObject+0x00`
+                // further down its own body, so a write here is a per-frame
+                // transform rather than an attachment default (H-017).
+                if (gOverrideEnabled.load(std::memory_order_acquire) &&
+                    gOverrideCharacter.load(std::memory_order_acquire) == key) {
+                    const float x = static_cast<float>(
+                        gOverrideMm[0].load(std::memory_order_relaxed)) / 1000.0f;
+                    const float y = static_cast<float>(
+                        gOverrideMm[1].load(std::memory_order_relaxed)) / 1000.0f;
+                    const float z = static_cast<float>(
+                        gOverrideMm[2].load(std::memory_order_relaxed)) / 1000.0f;
+                    if (renderframe::ApplyRenderMatrixOverride(matrix, x, y, z,
+                                                               0.0f, 0.0f, 0.0f, 1.0f)) {
+                        gOverrideApplied.fetch_add(1, std::memory_order_relaxed);
+                    } else {
+                        gOverrideRefused.fetch_add(1, std::memory_order_relaxed);
+                    }
                 }
             }
         } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -155,6 +185,47 @@ DWORD SetRenderFrameCapture(unsigned int enabled)
 bool TryGetRenderMatrix(unsigned long long character, float out[12])
 {
     return gTable.Read(character, out, nullptr);
+}
+
+DWORD SetRenderFrameOverrideCharacter(unsigned long long character)
+{
+    gOverrideCharacter.store(character, std::memory_order_release);
+    Log("result=0 detail=override_character value=" + std::to_string(character));
+    return 0;
+}
+
+DWORD SetRenderFrameOffsetMillimetres(int x, int y, int z)
+{
+    gOverrideMm[0].store(x, std::memory_order_relaxed);
+    gOverrideMm[1].store(y, std::memory_order_relaxed);
+    gOverrideMm[2].store(z, std::memory_order_relaxed);
+    Log("result=0 detail=override_offset_mm x=" + std::to_string(x) +
+        " y=" + std::to_string(y) + " z=" + std::to_string(z));
+    return 0;
+}
+
+DWORD SetRenderFrameOverrideEnabled(unsigned int enabled)
+{
+    const bool on = enabled != 0u;
+    if (on && gOverrideCharacter.load(std::memory_order_acquire) == 0) {
+        // Refused rather than defaulted: an override with no subject would
+        // either do nothing or, worse, be pointed at whatever came first.
+        Log("result=refused detail=no_override_character");
+        return 1;
+    }
+    gOverrideEnabled.store(on, std::memory_order_release);
+    Log(std::string("result=0 detail=override_enabled value=") + (on ? "1" : "0"));
+    return 0;
+}
+
+unsigned long long RenderFrameOverrideAppliedCount()
+{
+    return gOverrideApplied.load(std::memory_order_relaxed);
+}
+
+unsigned long long RenderFrameOverrideRefusedCount()
+{
+    return gOverrideRefused.load(std::memory_order_relaxed);
 }
 
 bool RenderMatrixIsNear(unsigned long long character)
