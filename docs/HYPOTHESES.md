@@ -600,3 +600,27 @@ That is an *absence of observed error*, not a filter, and it is worth saying whi
 one it is. If a future scene introduces a near-flagged secondary view, this would
 bite without warning, and owner or view-type filtering is the fix. But the
 acceptance test as specified has passed, and the lane is closed rather than open.
+
+
+## H-013 — a synthesised SInputEvent cannot reach Prey's front end
+
+**Status:** open, handed to a static investigation
+([`HANDOVER-H013-INPUT-CONSUMER.md`](HANDOVER-H013-INPUT-CONSUMER.md)).
+
+**Claim.** The title screen's listener rejects or never sees a synthesised event
+for a reason on the *consumer* side, not on ours.
+
+**What supports it.** R-090 decoded the whole path and found it permissive: the
+posting gate, the `keyId != -1` test, the blocking query (empty list, returns 0
+immediately) and the null `pSymbol` tolerance all pass, so normal listeners are
+walked with our event. Five live attempts across two devices, both digital
+states, the UI state and `force=true` were each delivered and each ignored.
+
+**What would falsify it.** Finding a check on our side that all five attempts
+happened to fail together — the most plausible being a non-null `pSymbol`
+requirement inside a listener rather than in `PostInputEvent`.
+
+**The most valuable outcome is arguably a negative:** if the front end reads the
+Windows message loop rather than `IInput`, no synthesised `SInputEvent` will ever
+drive it, and the menu lane needs a different seam. That also bounds what
+locomotion can expect from the same route.
