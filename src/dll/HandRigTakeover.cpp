@@ -227,6 +227,23 @@ bool BodyYaw(float& out)
     return true;
 }
 
+// A constant yaw between the body frame the position lane computes and the frame
+// the bone rotations actually live in.
+//
+// **Exposed rather than assumed.** The body-yaw conversion above is required for
+// correctness on its own, but whether a *further* fixed offset remains is a
+// property of the rig's authored convention, and the honest way to settle it is
+// one command in a headset rather than a guess compiled in. 180 degrees is the
+// leading candidate: it is what the first wearer report describes exactly, and
+// it is what a rig authored facing -Y against a world forward of +Y would give.
+std::atomic<int> gModelTurnYawDeciDegrees{0};
+
+float ModelTurnYawOffsetRadians()
+{
+    return static_cast<float>(gModelTurnYawDeciDegrees.load(std::memory_order_relaxed)) *
+           0.1f * 3.14159265358979f / 180.0f;
+}
+
 Vec3 WorldDeltaToModel(const Vec3& delta, float bodyYaw)
 {
     // CryEngine convention: forward is +Y, right is +X, up is +Z, yaw about Z.
@@ -447,11 +464,21 @@ void* __fastcall ComputeWithHandTakeover(void* charInstance, void* skinningData,
                 Quaternion leftTurn = Quaternion{0.0f, 0.0f, 0.0f, 1.0f};
                 if (gWristDrive.load(std::memory_order_acquire)) {
                     Quaternion now{};
+                    // The turn is taken in world terms and must be carried into
+                    // the model frame by the SAME yaw the position lane uses, or
+                    // the hand's travel and its twist are read against different
+                    // bases. A missing yaw conversion shows up as correct yaw
+                    // with inverted pitch and roll -- the 2026-09-07 wearer
+                    // report -- because conjugating by a yaw preserves the
+                    // rotation's own Z term.
+                    const float turnYaw = bodyYaw + ModelTurnYawOffsetRadians();
                     if (ControllerWorldRotation(Hand::right, now)) {
-                        rightTurn = Normalize(Multiply(now, stereo::Conjugate(gZeroRightRot)));
+                        rightTurn = controller::WorldTurnToModel(
+                            Normalize(Multiply(now, stereo::Conjugate(gZeroRightRot))), turnYaw);
                     }
                     if (ControllerWorldRotation(Hand::left, now)) {
-                        leftTurn = Normalize(Multiply(now, stereo::Conjugate(gZeroLeftRot)));
+                        leftTurn = controller::WorldTurnToModel(
+                            Normalize(Multiply(now, stereo::Conjugate(gZeroLeftRot))), turnYaw);
                     }
                 }
                 if (ControllerWorld(Hand::right, world)) {
@@ -672,6 +699,22 @@ DWORD SetHandRigWristDrive(unsigned int enabled)
     gWristDrive.store(enabled != 0u, std::memory_order_release);
     Log(std::string("result=0 detail=wrist_drive value=") + (enabled ? "1" : "0"));
     return 0;
+}
+
+DWORD SetHandRigTurnYaw(int deciDegrees)
+{
+    if (deciDegrees < -3600 || deciDegrees > 3600) {
+        Log("result=1 detail=turn_yaw_out_of_range");
+        return 1;
+    }
+    gModelTurnYawDeciDegrees.store(deciDegrees, std::memory_order_release);
+    Log("result=0 detail=turn_yaw deciDegrees=" + std::to_string(deciDegrees));
+    return 0;
+}
+
+int HandRigTurnYawDeciDegrees()
+{
+    return gModelTurnYawDeciDegrees.load(std::memory_order_relaxed);
 }
 
 unsigned long long HandRigWristAppliedCount()

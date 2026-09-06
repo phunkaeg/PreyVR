@@ -807,3 +807,74 @@ weapon stays put. That is now observable: `weaponRotApplied`, `weaponRotNoPose`,
 `weaponRotDrive`, `weaponRotCalib`, `weaponBaseline` and `weaponAimUsable` are
 all in `report`. If `weaponRotApplied` instead stays at zero, the elimination
 above is wrong somewhere and the gate it names should be believed over this note.
+
+## H-019 -- the GLOO cannon's ammo display separates between the eyes
+
+**Observed by a wearer, 2026-09-07. Not diagnosed.** Recorded now because it is a
+stereo correctness bug and those are the ones that cannot be seen on a monitor.
+
+> "the display on the gloo gun sometimes renders offset from the gun itself.
+> Depending on which way the gun is aiming, the blue ammo display offset in the
+> left and right eye OR just renders in the correct position. I wonder if its a
+> draw order thing and sometimes its just not syncing with the alternating eye"
+
+### Why the wearer's reading is plausible
+
+This mod produces stereo by **writing `CSystem::m_ViewCamera` per eye** and
+letting the engine render twice. Anything that samples the view camera at a
+*different point in the frame* than the geometry it annotates will be built
+against the wrong eye's camera. A holographic readout carried on the weapon is
+exactly that kind of element: it is a Flash/Scaleform surface positioned against
+a projection, not a skinned part of the weapon mesh.
+
+That also explains the aim dependence. A separation along the view axis is
+invisible; the same error becomes visible as the weapon turns and the offset
+rotates into the horizontal, which is the axis stereo disparity is read on. So
+"sometimes correct" is what a *constant* frame error looks like from a moving
+weapon -- it does not require the fault itself to be intermittent.
+
+It is the FAIL-HAND-037 class again, one layer up: a mismatched camera/geometry
+pair that stays plausible until something rotates.
+
+### Two cheap discriminators, both one command in a headset
+
+Neither needs a rebuild, and they separate our stereo from the engine's own
+draw order:
+
+* **`near.enable 0`** removes the near-pass eye delta `T(-d)`. If the display
+  stops separating, the fault is that delta reaching this element inconsistently
+  with the weapon it belongs to.
+* **`xr.stereo 0 50`** collapses the IPD to zero. If the offset survives a zero
+  IPD it is **not** our per-eye camera at all, and the search moves to the
+  engine's own UI projection -- a much more valuable negative, because it would
+  mean no camera-side fix can help.
+
+Run the zero-IPD test first: it is the one that can eliminate an entire lane.
+
+## H-020 -- native weapon animation has to be suppressed, and the cvar route is already dead
+
+Raised 2026-09-07: *"we still need to supress some of the native weapon
+animations."* Correct, and it needs saying that the obvious approach is
+**already eliminated**.
+
+**H-012 is a standing negative: four animation cvars reach the engine and do
+nothing.** They exist, they accept values, and no behaviour changes. So this
+cannot be solved by finding the right cvar, and a pass spent looking for one is a
+pass already spent.
+
+Two seams this project actually owns, in increasing order of reach:
+
+* **The pose view in `HandRigTakeover`.** Both arrays are cloned (`+0x10`
+  relative, `+0x18` absolute), so joint-level animation can be overridden per
+  joint before the engine consumes the pose. This is the right seam for *bone*
+  animation -- reload cycles, finger movement, anything that moves the rig.
+* **The `RenderCHR` matrix override (R-095/R-100).** This wins on the whole
+  object's placement every frame and the engine cannot reassert it, so it already
+  defeats any animation expressed as a transform of the drawn object -- weapon
+  sway and bob, if those are carried on the object rather than the bones.
+
+**Which animations matter has not been established**, and that determines which
+seam applies. The next step is a wearer naming the specific motions that fight
+the controller, not a general suppression switch -- "some of the native
+animations" is not yet a target, and building a blanket freeze risks killing
+motion that should stay, such as the weapon's own firing action.

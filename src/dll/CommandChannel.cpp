@@ -123,6 +123,7 @@ void WriteReport(std::ostringstream& out)
         << " handLeftJoint=" << HandRigSelectedLeftJoint()
         << " handWristArmed=" << HandRigWristDriveArmed()
         << " handWristApplied=" << HandRigWristAppliedCount()
+        << " handTurnYaw=" << HandRigTurnYawDeciDegrees()
         << " handZeroRightMm=" << HandRigZeroRightMm(0) << "," << HandRigZeroRightMm(1)
         << "," << HandRigZeroRightMm(2)
         << " handWorldRightMm=" << HandRigWorldRightMm(0) << "," << HandRigWorldRightMm(1)
@@ -259,6 +260,11 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "hand.drive result=" << SetHandRigControllerDrive(arg(1, 1));
     } else if (verb == "hand.wrist") {
         out << "hand.wrist result=" << SetHandRigWristDrive(arg(1, 1));
+    } else if (verb == "hand.turnyaw") {
+        // Tenths of a degree, so 1800 is a half turn. Reported back so a wearer
+        // reading the channel can see what is actually set.
+        out << "hand.turnyaw result=" << SetHandRigTurnYaw(arg(1, 0))
+            << " deciDegrees=" << HandRigTurnYawDeciDegrees();
     } else if (verb == "hand.calibrate") {
         out << "hand.calibrate result=" << CalibrateHandRig();
     } else if (verb == "hand.scale") {

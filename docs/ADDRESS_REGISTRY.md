@@ -2009,3 +2009,65 @@ wearer designed, not by anything in the instrumentation.
 Identify the weapon's render character **by ownership**, not by the near flag:
 holding a weapon shows two near characters and neither is identifiable from the
 flag alone (H-018 §1).
+
+## R-101 -- wrist rotation reaches the hand, and the turn was in the wrong frame
+
+Confirmed in a headset, 2026-09-07, with `hand.mode 2` and `hand.wrist 1`.
+Counters for the accepted run: `handSubtree=21 handWristApplied=273
+handRightMm=214 handCalibrated=1`, against `handMatched=22260
+handSkipped=276156`.
+
+### What the wearer saw
+
+> "hand rotates with my wrist, fingers move together"
+
+That is both halves of the lane at once. The wrist follows the controller's
+orientation, and the **rigid subtree orbit holds** -- 21 joints carried as one
+body, so the fingers travel with the wrist instead of being left behind. Leaving
+them behind is the tearing failure `RotateJointAboutPivot` exists to prevent, and
+this is the first evidence it works against a real rig rather than a fixture.
+
+### The defect the same report exposed
+
+> "the hand has the Yaw rotation correct, however the roll is inverted and the
+> pitch is inverted"
+
+**The rotation lane and the position lane were in different frames.** The
+position delta is projected onto the body basis by `WorldDeltaToModel(delta,
+bodyYaw)` before it displaces a joint. The rotation delta was composed with the
+joint **raw, in world terms** -- so a displacement and a turn taken from the same
+controller in the same instant were interpreted against two different bases.
+
+The wearer's signature identifies the missing operation exactly. A rotation
+changes basis by conjugation, and conjugating by a yaw about the model's up axis
+**preserves the rotation's own Z term while rotating the other two**. So a
+missing yaw conversion reads as *correct yaw with wrong pitch and roll*, and at
+exactly 180 degrees pitch and roll come back cleanly inverted:
+
+    q = (w, x, y, z)  ->  (w, -x, -y, z)
+
+which is conjugation by the half-turn about Z, and also -- since negating a
+quaternion names the same rotation -- a Z-axis handedness flip. Both readings
+give the same correction.
+
+**Fixed as a frame conversion, not as sign flips.** `WorldTurnToModel` takes the
+same `bodyYaw` the position lane uses, so the two cannot drift apart again.
+Negating two Euler terms would have matched the report and then failed the moment
+the wrist left the axis the signs were fitted on; the test suite asserts the
+inversion signature *and* that the turn and delta lanes agree for an arbitrary
+axis, which a sign flip cannot satisfy.
+
+**The residual is a live knob, not a guess.** Whether a further fixed offset
+remains between the body frame and the rig's authored frame is a property of the
+rig, and 180 degrees is only the leading candidate -- it is what the report
+describes and what a rig authored facing -Y would give. `hand.turnyaw <tenths of
+a degree>` settles it in one headset command instead of a rebuild, and `report`
+carries `handTurnYaw` so the set value is visible rather than remembered.
+
+### Still open on this lane
+
+`handNoPose` climbed roughly 290 per 3 s during the accepted run, so controller
+tracking is dropping intermittently even while the result looked right. Not
+diagnosed. It is a *producer* problem -- the lane behaves correctly on the frames
+it gets a pose -- so it does not block the rotation work, but it will read as
+stutter to a wearer.

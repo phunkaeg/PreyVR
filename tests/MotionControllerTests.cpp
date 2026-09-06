@@ -237,6 +237,16 @@ Quaternion AxisAngle(Vec3 axis, float radians)
 }
 
 // **The driven joint must not move.** It is the pivot, so a rotation about it
+
+// `WorldDeltaToModel` from the hand lane, which lives in the DLL. Duplicated
+// rather than linked so this stays a pure test; if it drifts from the original
+// the agreement test below is what fails.
+Vec3 ToBodyFrame(const Vec3& delta, float bodyYaw)
+{
+    const float s = std::sin(bodyYaw), c = std::cos(bodyYaw);
+    return Vec3{delta.x * c + delta.y * s, delta.x * -s + delta.y * c, delta.z};
+}
+
 // leaves its position alone and turns only its orientation. If this fails the
 // hand translates when the player only rotated their wrist.
 void TestPivotJointStaysPut()
@@ -324,6 +334,63 @@ void TestCompositionOrderIsBasisChangeOnTheLeft()
             "and the two orders must actually differ, or this proves nothing");
 }
 
+
+// The wearer's 2026-09-07 report, encoded as a test: with the model frame a half
+// turn from the body frame, a wrist yaw survives while pitch and roll come back
+// inverted. This is the *symptom*, and asserting it here is what makes the fix a
+// frame conversion rather than two fitted sign flips -- the signs would only be
+// right on the axes they were fitted on, and this shows why.
+void TestMissingYawInvertsPitchAndRoll()
+{
+    const float kPi = 3.14159265358979f;
+    // A pure yaw passes through a half-turn conjugation untouched.
+    const Quaternion yaw = AxisAngle(Vec3{0.0f, 0.0f, 1.0f}, 0.7f);
+    Require(NearQuat(WorldTurnToModel(yaw, kPi), yaw, 1e-4f),
+            "yaw must survive the frame change, which is why it read as correct");
+
+    // Pitch (about X) and roll (about Y) come back negated.
+    const Quaternion pitch = AxisAngle(Vec3{1.0f, 0.0f, 0.0f}, 0.7f);
+    Require(NearQuat(WorldTurnToModel(pitch, kPi),
+                     AxisAngle(Vec3{1.0f, 0.0f, 0.0f}, -0.7f), 1e-4f),
+            "pitch must invert under a half turn");
+    const Quaternion roll = AxisAngle(Vec3{0.0f, 1.0f, 0.0f}, 0.7f);
+    Require(NearQuat(WorldTurnToModel(roll, kPi),
+                     AxisAngle(Vec3{0.0f, 1.0f, 0.0f}, -0.7f), 1e-4f),
+            "and roll with it");
+}
+
+// The conversion must agree with the position lane it is paired with. Both take
+// the same `bodyYaw`, so rotating a vector by the turn and then converting must
+// equal converting both and rotating -- otherwise a hand's travel and its twist
+// diverge whenever the player is not facing the calibration heading, which is
+// the failure that only shows up after someone walks around a corner.
+void TestTurnConversionAgreesWithTheDeltaLane()
+{
+    const float bodyYaw = 0.9f;
+    const Quaternion turn = AxisAngle(Vec3{0.3f, -0.5f, 0.8f}, 1.1f);
+    const Vec3 v{0.4f, -0.2f, 0.7f};
+
+    // Rotate in world, then change frame.
+    const Vec3 worldThenModel = ToBodyFrame(Rotate(turn, v), bodyYaw);
+    // Change frame, then rotate with the converted turn.
+    const Vec3 modelThenRotate =
+        Rotate(WorldTurnToModel(turn, bodyYaw), ToBodyFrame(v, bodyYaw));
+
+    Require(Near(worldThenModel.x, modelThenRotate.x, 1e-4f) &&
+            Near(worldThenModel.y, modelThenRotate.y, 1e-4f) &&
+            Near(worldThenModel.z, modelThenRotate.z, 1e-4f),
+            "the turn and delta lanes must live in the same frame");
+}
+
+// Zero offset must be exactly a no-op, so the tunable knob cannot quietly rotate
+// anything when nobody has set it.
+void TestZeroYawIsIdentity()
+{
+    const Quaternion turn = AxisAngle(Vec3{0.2f, 0.9f, -0.3f}, 0.6f);
+    Require(NearQuat(WorldTurnToModel(turn, 0.0f), Normalize(turn), 1e-5f),
+            "an unset offset must change nothing");
+}
+
 int main()
 {
     TestAimRayFromController();
@@ -340,6 +407,9 @@ int main()
     TestTwoHandedPose();
     TestTwoHandedFailsClosed();
     TestTurning();
+    TestMissingYawInvertsPitchAndRoll();
+    TestTurnConversionAgreesWithTheDeltaLane();
+    TestZeroYawIsIdentity();
     std::cout << "PreyVR motion controller tests passed\n";
     return 0;
 }

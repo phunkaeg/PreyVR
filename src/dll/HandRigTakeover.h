@@ -98,6 +98,13 @@ DWORD SetHandRigControllerDrive(unsigned int enabled);
 // a time keeps the positional lane -- proven exact to the millimetre -- as a
 // control while the rotation is brought up.
 DWORD SetHandRigWristDrive(unsigned int enabled);
+
+// A constant yaw, in tenths of a degree, between the body frame and the frame the
+// bone rotations live in. See `WorldTurnToModel`: the body-yaw conversion is
+// required regardless, and this is the residual rig convention on top of it,
+// left tunable so a wearer can settle it in one session instead of a rebuild.
+DWORD SetHandRigTurnYaw(int deciDegrees);
+int HandRigTurnYawDeciDegrees();
 unsigned long long HandRigWristAppliedCount();
 unsigned int HandRigWristDriveArmed();
 

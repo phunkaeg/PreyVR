@@ -189,4 +189,16 @@ JointPose RotateJointAboutPivot(const JointPose& joint, const Vec3& pivot,
     return out;
 }
 
+Quaternion WorldTurnToModel(const Quaternion& worldTurn, float bodyYaw)
+{
+    // `WorldDeltaToModel` projects onto the body basis, which is the transpose
+    // of a yaw by `bodyYaw` -- so a vector is rotated by `-bodyYaw`. Match it
+    // exactly: the two lanes must agree or the hand's turn and its travel
+    // disagree the moment the player faces anywhere but the calibration
+    // heading, and that reads as the wrist twisting on its own while walking.
+    const float half = -bodyYaw * 0.5f;
+    const Quaternion basis{0.0f, 0.0f, std::sin(half), std::cos(half)};
+    return Normalize(Multiply(Multiply(basis, worldTurn), ConjugateOf(basis)));
+}
+
 } // namespace preyvr::controller

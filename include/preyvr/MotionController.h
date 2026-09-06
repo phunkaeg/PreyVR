@@ -155,4 +155,26 @@ struct JointPose {
 JointPose RotateJointAboutPivot(const JointPose& joint, const Vec3& pivot,
                                 const Quaternion& rotation);
 
+// The rotation counterpart of the hand lane's `WorldDeltaToModel`.
+//
+// **The two lanes were in different frames, which is a defect on its own.** The
+// position delta is projected onto the body basis before it displaces a joint;
+// the rotation delta was composed with the joint *raw, in world terms*. A
+// displacement and a turn taken from the same controller in the same instant
+// were being interpreted against two different bases.
+//
+// A rotation changes basis by conjugation, `qB * q * qB^-1`. Conjugating by a
+// yaw about the model's up axis leaves the rotation's own Z component alone and
+// rotates the other two, so the observable signature of a *missing* yaw
+// conversion is **correct yaw with wrong pitch and roll** -- and at exactly 180
+// degrees, pitch and roll come back cleanly inverted. That is what a wearer
+// reported on 2026-09-07 for the first working wrist test, and it is why the
+// fix is a frame conversion rather than a pair of sign flips: negating two Euler
+// terms is not a rotation, and it would break the moment the wrist left the
+// axis the signs were fitted on.
+//
+// `bodyYaw` is the same angle the position lane uses, so the two cannot drift
+// apart again.
+Quaternion WorldTurnToModel(const Quaternion& worldTurn, float bodyYaw);
+
 } // namespace preyvr::controller
