@@ -1453,3 +1453,48 @@ after. Do not treat that as a cause without testing it.
 
 **The lesson worth keeping:** the counter said the same thing in both cases. Only
 a native state read told them apart.
+
+## R-092 -- the active action-map binding cannot be read statically
+
+Investigated without launching, after R-091 proved the attract screen accepts a
+synthesised keypress but the menu did not respond to one.
+
+### The profile override is empty, so the shipped defaults are what is active
+
+`C:\Users\meise\Saved Games\Arkane Studios\Prey\Profiles\default\actionmaps.xml`
+is **28 bytes**: `<ActionMaps version="73"/>`. Nothing is rebound, so whatever
+the game ships with *is* the live binding. That also means there is no local
+example of the binding schema to copy -- writing a hand-made `actionmaps.xml`
+would be guessing at a format, on the file that owns the user's controls.
+
+### The defaults are in Arkane-encrypted PAKs
+
+`GameSDK/*.pak` do not begin with `PK\x03\x04`. `GameData.pak` starts
+`b2 23 7f c9 1f 11 24 98`, `Scripts.pak` starts `dc bc 6d da dd bd e2 da`. This
+is why R-089 could not extract the default profile, and the reason is
+encryption, not a corrupt archive. `tools/Chairloader-src` carries headers and
+vendored libraries only -- no PAK reader, no key, no extracted XML.
+
+### `loadLastSave` is an action, not a console command
+
+The string at `0x1E78568` looked like a console command by naming convention. Its
+**only** cross-reference is `FUN_181706DA0`, the GameActions constructor -- the
+same function that registers `menu_confirm`, `menu_up`, `menu_back` and
+`menu_exit`. So it is bound through the action map like everything else and
+inherits exactly the same unknown. `quicksave`, `QuickLoad`, `RestartGame` and
+`sys_restart` exist as strings and were not chased further.
+
+### Consequence
+
+**This one genuinely needs a running game, or a PAK decryptor.** The binding is
+XML parsed into `CActionMapManager` at load time; it is not a constant in the
+DLL, so no amount of static reading will produce it. The cheap version is a
+single live read of the loaded action map -- not another posting experiment.
+
+**But the menu may not be on the critical path at all.** `+map <level>` already
+bypasses it (see `XRSIM_INTEGRATION.md`), and R-091 established that a device-0
+pressed event dismisses the launcher's attract handler with no binding required.
+Whether the prompt that `+map` lands on is that same handler is one launch to
+find out, and if it is, gameplay is reachable without ever navigating a menu.
+The open question then becomes whether a fresh `+map` spawn carries a weapon,
+which is what the untested weapon lanes actually need -- not a save as such.
