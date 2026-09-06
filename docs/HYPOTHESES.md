@@ -700,7 +700,43 @@ a shipping defect and not a testing inconvenience.
 
 ## H-016 — the hand displacement magnitude is ~4.4x the commanded controller move
 
-**Status:** open, found while closing H-014.
+**Status: CLOSED. Not a bug — a broken test procedure, mine.**
+
+`hand r follow off` in xr-sim does not freeze the controller where it is. It
+drops it to the **origin**: with follow off, `state.json` read
+`handR pos [0.0000, 0.0000, 0.0000], valid: true`. So the calibration zero of
+`(0,0,0)` was correct, the mod was reading the controller correctly, and the
+"367 mm move" was really a 1633 mm move from the origin. The 4.45 factor was the
+ratio between the move I thought I commanded and the one I actually did.
+
+Re-run with an explicit rest position instead of `follow off`:
+
+```text
+calibrated at rest:  zero=349,-199,1300   world=349,-199,1300   handRightMm=0
+after a commanded 367 mm move:
+                     zero=349,-199,1300   world=249,-449,1550   handRightMm=367
+                     handApplied=5294  handSubtree=21
+                     handCalibYawMdeg=-89999  handLastYawMdeg=-89999
+```
+
+`delta = (-100,-250,250)`, `|delta| = 367.4 mm`. **The lane is exact to the
+millimetre.** The yaw hypothesis is dead too: both samples were taken at the same
+yaw, so the reference frame was never the problem.
+
+Also verified in passing: the OpenXR to engine conversion. OpenXR
+`(0.20, 1.30, -0.35)` became engine `(349, -199, 1300)` mm — the `(x, -z, y)`
+relabelling followed by the play-space yaw of -90 degrees. Magnitude is preserved
+across the conversion, which is the property that actually matters.
+
+### What this and H-014 have in common
+
+Two consecutive "defects" that were both **operator error**, one after the other:
+mode 1 instead of mode 2, then a test fixture that teleported the controller.
+Both were found in minutes once the instrument reported its *inputs* rather than
+only its output. The code was right both times; the procedure was the weak link,
+and the counters could not tell me so until they carried the operands.
+
+### Original report, kept for the record
 
 The right controller was moved from its rest pose `[0.20, 1.30, -0.35]` to
 `[0.45, 1.55, -0.25]` — a delta of `(0.25, 0.25, 0.10)`, magnitude **367 mm**.
