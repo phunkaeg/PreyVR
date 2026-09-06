@@ -1863,3 +1863,70 @@ dispatch.** That function walks the receiver tree and, per receiver, calls
 answer `+0xF8(4)`, and what the Flash layer does with a bare character.
 
 That is a bounded static question, not another guess.
+
+## R-099 -- the Scaleform route is dead, and the action-map route is green but silent
+
+Continues R-098. **The menu still does not respond, and this entry does not
+explain why.** It records what is now measured so none of it is re-tested.
+
+### The receiver predicate is a flag test, decoded from bytes
+
+`0x2FC940` is not a defined function; from its bytes:
+
+```asm
+mov  rax, rcx                    ; this
+test edx, 0x000F0000             ; an "inherited" mask range
+je   tail
+mov  rcx, [rcx+0xC0]             ; owner element
+test rcx, rcx
+je   tail
+mov  rax, [rcx]
+jmp  qword ptr [rax+0xF8]        ; delegate to the owner
+tail:
+mov  rax, [rax+0x78]             ; this->flags
+movsxd rcx, edx
+and  rax, rcx
+cmp  rax, rcx
+sete al                          ; return (flags & mask) == mask
+```
+
+`0x2D0320` calls it with mask **4** before dispatching a character, and with
+**`0x40`** afterwards to decide whether to stop. Against CryEngine's
+`IFlashUIElement` flags those are `eFUI_KEYEVENTS` and `eFUI_EVENTS_EXCLUSIVE`,
+which is consistent with every use here.
+
+### Live: the only receiver refuses keyboard events
+
+At the main menu the listener's receiver tree holds **one** distinct receiver
+(vtable RVA `0x1CAB358`), and its flags at `+0x78` are **`0x80`** --
+`eFUI_RENDER_LOCKLESS` alone. `KEYEVENTS` is clear, so the predicate returns
+false. The fallback branch also fails: owner `+0xC0` is null, `+0x1F8` is null
+and the `+0x1E0` byte is zero.
+
+**So the Scaleform character route cannot drive this menu**, and no amount of
+`inputChar` work will change that. R-098's fix stays -- the field is genuinely
+read and was genuinely always zero -- but it is not the path to the menu.
+
+### The action-map route's gates are all green, and it is still silent
+
+Both gate functions were decoded and read live at the main menu:
+
+| gate | implementation | live value | verdict |
+|---|---|---|---|
+| action map, `vtable+0x130` `0xE21C40` | `return [this+0x170] == [this+0x174]` | `0` vs `300` -> returns 0 | **passes** (OnInputEvent needs 0) |
+| UI listener, `vtable+0xE0` `0xE216D0` | `movzx eax,[rcx+0x1DC]; ret` | `0` | **passes** |
+
+With `menu_confirm` bound to `enter` at activation mask 1, no modifiers, on an
+enabled unfiltered map (R-097), a posted press-state `enter` at the main menu
+still changed nothing.
+
+### What is eliminated, and what is left
+
+Eliminated and not to be re-tested: the binding, the activation mask, the
+modifiers, the filters, listener ordering, the console stage, the exclusive
+stage, both gates, and the Scaleform character path.
+
+Left: `Prey_ActionMap_FindEventBindings` and the dispatcher `0x3CFAA0` that
+follows it -- whether the CRC lookup actually matches a synthesised event, and
+what the dispatcher requires beyond the activation mask. That is the next static
+question and it has not been asked yet.
