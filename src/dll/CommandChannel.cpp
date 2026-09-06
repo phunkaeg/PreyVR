@@ -132,6 +132,36 @@ void WriteReport(std::ostringstream& out)
         << " channelRejected=" << gRejected.load(std::memory_order_relaxed);
 }
 
+// **A status is not a result code, and printing one as the other is how a
+// working session gets reported as a failure.** `xr.start` returns
+// `XrSessionStatus`, where 1 means *running*; `observer` returns
+// `FrameObserverRuntimeStatus`, where 2 means *enabled*. Both were read as
+// errors during a live run, and a correction had to be issued for each. These
+// print the name alongside the number so the reading needs no lookup.
+const char* XrStatusName(DWORD value)
+{
+    switch (value) {
+        case 0: return "idle";
+        case 1: return "running";
+        case 2: return "adapter_mismatch";
+        case 3: return "unavailable";
+        case 4: return "failed";
+        case 5: return "stopped";
+        default: return "unknown";
+    }
+}
+
+const char* ObserverStatusName(DWORD value)
+{
+    switch (value) {
+        case 0: return "unavailable";
+        case 1: return "ready";
+        case 2: return "enabled";
+        case 3: return "failed";
+        default: return "unknown";
+    }
+}
+
 // One verb, one operation. Deliberately not a name-to-export lookup: that would
 // be a call-anything primitive whose argument is a text file.
 void Execute(const std::vector<std::string>& args, std::ostringstream& out)
@@ -146,13 +176,15 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     };
 
     if (verb == "observer") {
-        out << "observer result=" << SetFrameObserverEnabled(arg(1, 1));
+        const DWORD status = SetFrameObserverEnabled(arg(1, 1));
+        out << "observer status=" << ObserverStatusName(status) << "(" << status << ")";
     } else if (verb == "xr.runtime" && args.size() >= 2) {
         out << "xr.runtime result=" << SetXrRuntimeManifest(args[1].c_str());
     } else if (verb == "xr.srgb") {
         out << "xr.srgb result=" << SetXrPreferSrgbFormat(arg(1, 1));
     } else if (verb == "xr.start") {
-        out << "xr.start result=" << StartXrSession();
+        const DWORD status = StartXrSession();
+        out << "xr.start status=" << XrStatusName(status) << "(" << status << ")";
     } else if (verb == "xr.native") {
         out << "xr.native result=" << SetNativeProjection(arg(1, 1));
     } else if (verb == "xr.stereo") {
@@ -161,7 +193,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         const float halfFov = static_cast<float>(arg(2, 50));
         out << "xr.stereo result=" << SetSyntheticStereo(ipd, halfFov);
     } else if (verb == "xr.submit") {
-        out << "xr.submit result=" << SetXrStereoSubmission(arg(1, 1));
+        const DWORD status = SetXrStereoSubmission(arg(1, 1));
+        out << "xr.submit status=" << XrStatusName(status) << "(" << status << ")";
     } else if (verb == "view.observe") {
         out << "view.observe result=" << SetViewHookObserving(arg(1, 1));
     } else if (verb == "view.recenter") {

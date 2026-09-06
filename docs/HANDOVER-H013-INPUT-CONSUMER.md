@@ -87,6 +87,18 @@ the screen byte-identical, compared as per-eye captures rather than by eye:
 **So it is not the device, not the posting gate, not the UI state, and not
 `force`.** Please do not spend a pass re-establishing any of those.
 
+**A second gate, same answer (added later on 2026-09-06).** Prey accepts
+`+map <level>` on its command line, which loads a level with no menu interaction
+at all -- `Adding BuildInfo [CurrentLevel]=Campaign/Research/Lobby` followed by
+`Loading level Campaign/Research/Lobby`. The level loads and then stops on an
+**in-level prompt panel**, a different screen from the title. Six more events
+posted there, three keys across both devices, and it did not move either.
+
+That matters for scope: the rejection is **not a property of the title screen**.
+It is how Prey's front end consumes input generally, so whatever is found here
+should be expected to apply to the in-level prompt and, by extension, to any
+menu the shipped mod has to drive.
+
 ## A route that should be mechanical
 
 The listener list is `pInput+0x28`. Find the function that **inserts** into it —

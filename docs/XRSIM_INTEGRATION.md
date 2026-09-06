@@ -633,3 +633,38 @@ That is precisely what the observation loop is for.
 **Gameplay input is deliberately not wired.** A menu is modal and its effect is
 immediately visible; an unscoped gameplay post reaches every consumer a real
 button does, and the playbook's shot-redirection warning applies to input too.
+
+
+## `+map` loads a level with no menu at all (2026-09-06)
+
+Prey keeps CryEngine's command-line console-command convention, so
+`Invoke-PreyVRLaunch.ps1 -ExtraArgs '+map Campaign/Research/Lobby'` goes straight
+to a level:
+
+```text
+Adding BuildInfo [CurrentLevel]=Campaign/Research/Lobby
+====================== Loading level Campaign/Research/Lobby ======================
+Closing pak file modes/menucommon_sp.pak
+```
+
+Level names are the paths under `GameSDK/Levels`, e.g. `Campaign/Research/Lobby`,
+`Campaign/Research/Psychotronics`, `Campaign/Station/...`.
+
+**It does not remove the need for input.** The level loads and stops on an
+in-level prompt panel that behaves exactly like the title screen: events are
+delivered and ignored (H-013). So this shortens the path to gameplay by a whole
+menu tree and is worth using, but the front-end input question still gates
+anything past that prompt.
+
+### Two instrument corrections worth keeping
+
+* **A status is not a result code.** `xr.start` returns `XrSessionStatus` (1 is
+  *running*) and `observer` returns `FrameObserverRuntimeStatus` (2 is
+  *enabled*), while every other verb on the channel uses 0 for success. Both were
+  read as failures during a live run and both needed a correction. They now print
+  `status=running(1)` and `status=enabled(2)`.
+* **Renderer-up is not "ready to submit".** Starting the XR session before the
+  game has finished loading leaves the submitted layer black indefinitely and it
+  does not recover; two runs were lost to it. `Game.log` stops at the same line
+  either way, so it cannot distinguish the two states. Wait for the log to go
+  quiet, then confirm with a capture before trusting anything downstream.
