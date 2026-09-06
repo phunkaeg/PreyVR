@@ -1957,3 +1957,55 @@ Left: `Prey_ActionMap_FindEventBindings` and the dispatcher `0x3CFAA0` that
 follows it -- whether the CRC lookup actually matches a synthesised event, and
 what the dispatcher requires beyond the activation mask. That is the next static
 question and it has not been asked yet.
+
+## R-100 -- the per-frame weapon transform works, and its translation is WORLD space
+
+Confirmed in a headset, 2026-09-07. **Closes H-017** and unblocks the weapon
+position and rotation lanes together, since the same twelve floats carry both.
+
+### The seam holds where the attachment default could not
+
+With `frame.character` pointed at the weapon's own render character and
+`frame.offset` set, `frameOverrideApplied` climbs continuously (511 applications
+in 4 s) and the wearer reported the weapon **stayed offset while turning the head
+and walking**, then returned exactly to normal at `0,0,0`.
+
+That is the distinction from R-094/H-017: `SetAttAbsoluteDefault` writes an
+attachment *default* the engine samples at attach time, so it moved the weapon
+once and `weaponApplied` stopped at 1. `RenderCHR` copies its matrix argument
+into `CRenderObject+0x00` on every draw (R-095), so editing it at the hook's
+entry is a transform the engine cannot reassert.
+
+### The translation column is world-oriented, proven by a reversal control
+
+`X = 400` pushed the weapon **away** from the player. The wearer then turned the
+character 180 degrees and the same offset pushed it **backwards into the player
+body**.
+
+So the offset is applied in **world axes, not the character's frame** -- exactly
+what R-088 predicts for the near matrix (`Mnear = T(-C) * W`, "camera-position
+relative with world-oriented axes"), and the first measurement only looked
+character-relative because the player happened to be facing along +X.
+
+**Consequence for the product:** a fixed placement such as "10 cm right of the
+hand" must be rotated through the body basis before it is written, or the weapon
+swings to the wrong side whenever the player turns. A controller *delta* taken in
+world space needs no conversion, which is the simpler path. This is the
+FAIL-HAND-037 failure class exactly -- a mismatched frame that produces a
+plausible result until someone turns around -- and it was caught by a control the
+wearer designed, not by anything in the instrumentation.
+
+### Two reporting failures on the way to this, both mine
+
+* **"Nothing moved"**, twice, while the mechanism was already correct. The
+  targeted character simply was not being drawn: 186 applications per 4 s before
+  the weapon was re-equipped versus 511 after. A low rate was read as noise when
+  it was the signal.
+* Earlier the same day, **"the menu does not respond"**, concluded from
+  `meanLumaL` -- a whole-frame statistic that cannot see a highlight move one
+  row. Both times an instrument that could not detect success was reported as
+  evidence of failure.
+
+Identify the weapon's render character **by ownership**, not by the near flag:
+holding a weapon shows two near characters and neither is identifiable from the
+flag alone (H-018 §1).
