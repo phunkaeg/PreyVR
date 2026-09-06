@@ -624,3 +624,44 @@ requirement inside a listener rather than in `PostInputEvent`.
 Windows message loop rather than `IInput`, no synthesised `SInputEvent` will ever
 drive it, and the menu lane needs a different seam. That also bounds what
 locomotion can expect from the same route.
+
+## H-014 — the controller pose does not reach the hand lane under xr-sim
+
+**Status:** open. Found 2026-09-06 in a gameplay session driven entirely without
+a human.
+
+**What was verified on the outside.** xr-sim had the right controller at the
+commanded position — `handR pos [0.45, 1.55, -0.25], valid: true,
+followsHead: false` — with `sessionState: FOCUSED` and `actionsAttached: true`.
+The mod had `preyvr_xr_input result=0 detail=input_created
+profile=oculus/touch_controller`, `controller_drive value=1`, a completed
+`calibrated`, a selected character and `right_joint value=45`.
+
+**What the mod computed.** `handRightMm=0`, `handApplied=0`, `handSubtree=0`,
+across a 20 cm commanded move. `handMatched` climbed to 3216, so the skinning
+hook is firing and the character restriction works — `handSkipped=1228` while
+restricted, which is the two-instance filter doing its job.
+
+So the displacement is zero at the point it is computed, not refused after the
+fact. The break is **between `XrInput`'s located pose and the hand lane's read of
+it**, inside our own code. This is a source investigation, not another live run.
+
+Worth checking first: whether `UpdateXrInput` is actually called on the frames
+that matter, and whether the hand lane samples the same publication it writes.
+`xrFrames` was advancing (39,531), so the frame service itself was alive.
+
+## H-015 — stereo submission may block the in-level prompt from being dismissed
+
+**Status:** open, and deliberately not claimed as established.
+
+Twice, a posted keypress dismissed a gate while stereo submission was off and
+did nothing while it was on. The second time, `xr.submit 0` plus four posted keys
+cleared the `+map` prompt and gameplay appeared at luma 90.6.
+
+**Two variables moved together** — submission was disabled *and* four different
+keys were tried instead of one — so which mattered is not isolated. The clean
+experiment is one key, twice, with submission the only difference. Do that before
+building anything on it.
+
+It matters because if submission does interfere with the game's UI input, that is
+a shipping defect and not a testing inconvenience.
