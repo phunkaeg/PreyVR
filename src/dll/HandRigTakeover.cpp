@@ -514,6 +514,21 @@ DWORD SetHandRigLeftJoint(unsigned int jointIndex)
     return 0;
 }
 
+unsigned int HandRigMode() { return gMode.load(std::memory_order_acquire); }
+
+unsigned int HandRigControllerDriveArmed()
+{
+    return gControllerDrive.load(std::memory_order_acquire) ? 1u : 0u;
+}
+
+unsigned int HandRigCalibrationDone()
+{
+    return gCalibrated.load(std::memory_order_acquire) ? 1u : 0u;
+}
+
+int HandRigSelectedRightJoint() { return gRightJoint.load(std::memory_order_relaxed); }
+int HandRigSelectedLeftJoint() { return gLeftJoint.load(std::memory_order_relaxed); }
+
 DWORD SetHandRigControllerDrive(unsigned int enabled)
 {
     gControllerDrive.store(enabled != 0u, std::memory_order_release);

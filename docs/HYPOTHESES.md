@@ -627,8 +627,39 @@ locomotion can expect from the same route.
 
 ## H-014 — the controller pose does not reach the hand lane under xr-sim
 
-**Status:** open. Found 2026-09-06 in a gameplay session driven entirely without
-a human.
+**Status: CLOSED, and it was not a defect. Operator error.** The hand lane was
+armed at `hand.mode 1`, which the header defines as
+`0 off, 1 passthrough, 2 apply` — passthrough is the deliberate control that
+copies the joints and changes nothing. The entire drive block, `ControllerWorld`
+included, sits inside `if (mode == 2)`, so it never executed.
+
+Re-run at `hand.mode 2`, same commanded controller move:
+
+```text
+handMode=2 handDriveArmed=1 handCalibrated=1 handRightJoint=45
+handApplied=560  handSubtree=21  handRightMm=1633  handNoPose=217
+```
+
+560 applications and a **21-joint subtree** — the wrist and its descendants, so
+fingers travel with the hand rather than being left behind, which is the failure
+the header warns about.
+
+**The instrument was the real defect, and it is fixed.** In passthrough,
+`handApplied`, `handSubtree`, `handRightMm` and `handNoPose` are all zero *by
+design*, which is indistinguishable from mode 2 with a dead controller. I read
+`handNoPose=0` as positive evidence that a controller pose had arrived, when the
+code that would have incremented it had not run. `report` now carries
+`handMode`, `handDriveArmed`, `handCalibrated`, `handRightJoint` and
+`handLeftJoint`, and `hand.mode` prints
+`mode=1(passthrough_changes_nothing)` rather than a bare `1` that reads like
+"on". This is the third instrument in one day to permit a wrong conclusion, after
+`xr.start result=1` and `inputPosted`.
+
+**Not visually confirmed.** The `+map Campaign/Research/Lobby` spawn carries no
+weapon and draws no first-person arms, so nothing was on screen to check the
+counters against. Visual confirmation needs a spawn or save with visible hands.
+
+### Original report, kept for the record
 
 **What was verified on the outside.** xr-sim had the right controller at the
 commanded position — `handR pos [0.45, 1.55, -0.25], valid: true,
@@ -665,3 +696,28 @@ building anything on it.
 
 It matters because if submission does interfere with the game's UI input, that is
 a shipping defect and not a testing inconvenience.
+
+
+## H-016 — the hand displacement magnitude is ~4.4x the commanded controller move
+
+**Status:** open, found while closing H-014.
+
+The right controller was moved from its rest pose `[0.20, 1.30, -0.35]` to
+`[0.45, 1.55, -0.25]` — a delta of `(0.25, 0.25, 0.10)`, magnitude **367 mm**.
+The lane reported `handRightMm=1633`, a factor of **4.45**.
+
+A rotation cannot change a magnitude, so `WorldDeltaToModel`'s yaw is not it, and
+`unitsPerMetre = 1` is corroborated twice. The leading suspect is that the
+calibration zero and the live sample were taken through **different camera yaws**:
+`ControllerWorld` builds its reference frame from the live camera each call, so if
+the body yaw moved between calibrating and reading, the difference of the two
+world positions is not a pure controller delta.
+
+Cheap test: calibrate and read with the game camera held still, then repeat while
+deliberately yawing the camera between the two. If the error tracks the yaw
+change, the fix is to capture the reference frame once at calibration rather than
+per sample.
+
+**This matters more than it looks.** A hand that moves 4.4x too far is not a
+scale nuisance — it is the difference between a hand that tracks and a hand that
+flies off, and it would be read in a headset as "the takeover is broken".

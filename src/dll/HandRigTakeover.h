@@ -135,4 +135,17 @@ unsigned long long HandRigRefusedCount();
 // moved and the descendant walk found nothing -- which would tear the hand.
 DWORD HandRigLastSubtreeSize();
 
+// **The armed configuration, because its absence let a control run be read as a
+// broken feature.** Passthrough (mode 1) leaves every displacement counter at
+// zero by design, which is indistinguishable from mode 2 with a dead controller
+// -- and `handNoPose=0` was once cited as evidence a controller pose had arrived
+// when the drive block had not executed at all. Reporting the mode, the drive
+// flag and whether calibration has happened makes "nothing moved" separable from
+// "nothing was asked to move".
+unsigned int HandRigMode();
+unsigned int HandRigControllerDriveArmed();
+unsigned int HandRigCalibrationDone();
+int HandRigSelectedRightJoint();
+int HandRigSelectedLeftJoint();
+
 } // namespace preyvr::dll

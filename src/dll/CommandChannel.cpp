@@ -115,6 +115,11 @@ void WriteReport(std::ostringstream& out)
         << " handLeftMm=" << HandRigLastLeftMillimetres()
         << " handNoPose=" << HandRigNoPoseCount()
         << " handJoints=" << HandRigJointCount()
+        << " handMode=" << HandRigMode()
+        << " handDriveArmed=" << HandRigControllerDriveArmed()
+        << " handCalibrated=" << HandRigCalibrationDone()
+        << " handRightJoint=" << HandRigSelectedRightJoint()
+        << " handLeftJoint=" << HandRigSelectedLeftJoint()
         << " handLastCharacter=0x" << std::hex << HandRigLastCharacter() << std::dec
         << " weaponAttachment=0x" << std::hex << WeaponAttachmentPointer() << std::dec
         << " weaponMountMm=" << WeaponMountPositionMillimetres(0)
@@ -210,7 +215,15 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     } else if (verb == "near.zero") {
         out << "near.zero result=" << SetNearViewZeroDeltaControl(arg(1, 1));
     } else if (verb == "hand.mode") {
-        out << "hand.mode result=" << SetHandRigTakeoverMode(arg(1, 0));
+        const int requested = arg(1, 0);
+        const DWORD result = SetHandRigTakeoverMode(requested);
+        // Named, because "1" reads like "on" and is actually the control that
+        // deliberately changes nothing.
+        const char* name = requested == 0 ? "off"
+                         : requested == 1 ? "passthrough_changes_nothing"
+                         : requested == 2 ? "apply"
+                                          : "unknown";
+        out << "hand.mode result=" << result << " mode=" << requested << "(" << name << ")";
     } else if (verb == "hand.joint") {
         out << "hand.joint result=" << SetHandRigJoint(arg(1, 0));
     } else if (verb == "hand.offset") {
