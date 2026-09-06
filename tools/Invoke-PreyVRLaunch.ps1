@@ -52,6 +52,10 @@ param(
     # the documented way into a level without touching a menu. Whether Prey
     # kept that is a question this parameter exists to answer, not an assumption.
     [string]$ExtraArgs = '',
+    # Leave the machine's own OpenXR runtime alone, for a real headset session.
+    # Without this the launcher pins XR_RUNTIME_JSON to xr-sim, which is right
+    # for unattended capture and wrong when someone is wearing a Quest.
+    [switch]$Headset,
     [switch]$DryRun
 )
 
@@ -108,7 +112,6 @@ $childEnv = [ordered]@{
     # F-004: without this, Steam relaunches through its own path and the direct
     # child dies immediately, which reads as "the game refused to start".
     'SteamAppId'      = '480490'
-    'XR_RUNTIME_JSON' = (Resolve-Path -LiteralPath $XrSimRuntime).Path
     'XRSIM_DIR'       = $xrsimDir
     # **A file path, not a directory.** The mod resolves this straight to its log
     # file and derives the command channel from `parent_path()`, so handing it a
@@ -117,6 +120,13 @@ $childEnv = [ordered]@{
     # alongside the log, which is what gives the run its own commands.txt and
     # results.txt rather than sharing Documents\PreyVR with every other run.
     'PREYVR_LOG_PATH' = (Join-Path $logDir 'PreyVR.log')
+}
+if (-not $Headset) {
+    # xr-sim, for unattended runs. Inserted after SteamAppId so the ordering of
+    # the printed block still reads sensibly.
+    $childEnv['XR_RUNTIME_JSON'] = (Resolve-Path -LiteralPath $XrSimRuntime).Path
+} else {
+    Write-Host 'headset mode: leaving XR_RUNTIME_JSON alone (machine runtime, e.g. VirtualDesktopXR)'
 }
 if ($useTape) {
     $childEnv['XR_API_LAYER_PATH'] = (Resolve-Path -LiteralPath $XrTapeLayer).Path

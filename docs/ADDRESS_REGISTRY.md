@@ -1864,7 +1864,34 @@ answer `+0xF8(4)`, and what the Flash layer does with a bare character.
 
 That is a bounded static question, not another guess.
 
-## R-099 -- the Scaleform route is dead, and the action-map route is green but silent
+## R-099 -- CORRECTED: menu input works; luminance was the wrong instrument
+
+**The conclusion below is wrong.** Reading the capture instead of its statistics
+showed the **in-game pause menu** -- RESUME / QUICK SAVE / QUICK LOAD / SAVE GAME
+/ LOAD GAME / OPTIONS / TUTORIALS / EXIT over a blurred game world -- with
+**TUTORIALS highlighted**, seven rows down from the default. The selection had
+moved. Synthesised input had been navigating menus the whole time.
+
+**Why it was called silent:** every judgement was made on `meanLumaL`. A menu
+highlight moving one row changes a few hundred pixels out of 1.1 million, so the
+mean luminance is identical to two decimal places. The metric could not have
+detected success, and "before and after are identical at luma 22.16" was
+therefore never evidence of anything. This is the same failure as the counters --
+an instrument that reports a number which cannot distinguish the outcomes -- and
+it is the second time in this project that only looking at the picture settled it.
+
+**Rule for the observation loop:** for anything whose visible effect is small and
+local -- a highlight, a reticle, a hand at the edge of frame -- compare the
+*image*, not a whole-frame statistic. Luminance is fit for "is the screen black"
+and nothing finer.
+
+The static findings below stand: the receiver predicate is decoded correctly, the
+Scaleform character route really is closed off by `KEYEVENTS`, and both gates
+really do pass. What is retracted is the claim that nothing responded.
+
+### Original entry, kept for the record
+
+## R-099 (original) -- the Scaleform route is dead, and the action-map route is green but silent
 
 Continues R-098. **The menu still does not respond, and this entry does not
 explain why.** It records what is now measured so none of it is re-tested.
