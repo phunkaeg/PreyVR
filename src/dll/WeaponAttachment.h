@@ -119,6 +119,25 @@ DWORD CalibrateWeaponRotation();
 // running at a different rate from the animation it corrects reads as jitter.
 void UpdateWeaponMountFromController();
 
+// **The rotation lane's own counters.** They existed as internals and were never
+// exposed, so `weaponApplied` -- which counts the *offset* path -- was the only
+// visible number and it reads zero whatever the rotation does. A lane that
+// cannot be observed cannot be debugged: a live run showed the weapon not
+// rotating with no way to tell a missing baseline from an untracked aim pose.
+unsigned long long WeaponRotationAppliedCount();
+unsigned long long WeaponRotationNoPoseCount();
+
+// The three gates `UpdateWeaponMountFromController` returns on, so a silent
+// no-op names itself instead of having to be bisected.
+unsigned int WeaponRotationDriveArmed();
+unsigned int WeaponRotationCalibrated();
+unsigned int WeaponBaselineCaptured();
+
+// Whether the controller's *aim* pose is usable. The hand lane uses grip and is
+// proven working; the weapon lane uses aim, and the two have independent
+// validity flags.
+unsigned int WeaponAimPoseUsable();
+
 unsigned long long WeaponOffsetAppliedCount();
 // Writes refused because the mount did not look like a plausible `QuatT` -- a
 // non-unit quaternion or a non-finite translation. Non-zero means the pointer is

@@ -354,6 +354,38 @@ void UpdateWeaponMountFromController()
     }
 }
 
+unsigned long long WeaponRotationAppliedCount()
+{
+    return gRotationApplied.load(std::memory_order_relaxed);
+}
+
+unsigned long long WeaponRotationNoPoseCount()
+{
+    return gRotationNoPose.load(std::memory_order_relaxed);
+}
+
+unsigned int WeaponRotationDriveArmed()
+{
+    return gRotationDrive.load(std::memory_order_acquire) ? 1u : 0u;
+}
+
+unsigned int WeaponRotationCalibrated()
+{
+    return gRotationCalibrated.load(std::memory_order_acquire) ? 1u : 0u;
+}
+
+unsigned int WeaponBaselineCaptured()
+{
+    return gHaveBaseline.load(std::memory_order_acquire) ? 1u : 0u;
+}
+
+unsigned int WeaponAimPoseUsable()
+{
+    Quaternion aim{};
+    float yaw = 0.0f;
+    return ControllerAimRotation(aim, yaw) ? 1u : 0u;
+}
+
 unsigned long long WeaponOffsetAppliedCount() { return gApplied.load(std::memory_order_relaxed); }
 unsigned long long WeaponOffsetRefusedCount() { return gRefused.load(std::memory_order_relaxed); }
 

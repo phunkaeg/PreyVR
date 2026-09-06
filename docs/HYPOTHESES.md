@@ -757,3 +757,53 @@ per sample.
 **This matters more than it looks.** A hand that moves 4.4x too far is not a
 scale nuisance — it is the difference between a hand that tracks and a hand that
 flies off, and it would be read in a headset as "the takeover is broken".
+
+## H-017 — `SetAttAbsoluteDefault` is the wrong seam for continuous tracking
+
+**Status:** strongly indicated by elimination; one confirming run outstanding.
+
+The rotation lane was driven in a live save with the GLOO cannon attached: aim
+calibrated, `weapon.rotate 1` armed, a 45 degree controller yaw commanded. Two
+captures either side are **pixel-identical** — the weapon did not move.
+
+### Why the write almost certainly happened anyway
+
+`UpdateWeaponMountFromController` can only skip `WriteMount` through paths that
+increment one of two counters, and both are accounted for:
+
+| gate | evidence |
+|---|---|
+| `gRotationDrive` | logged `rotation_drive value=1` |
+| `gRotationCalibrated` | logged `rotation_calibrated` |
+| `gHaveBaseline` | set in the **same success block** as `gAttachment`, which read `0x2750D7395D0` |
+| `attachment != nullptr` | same |
+| `ControllerAimRotation` fails | increments `gRotationNoPose`; **`weaponAimUsable=1` measured live** |
+| non-finite composition | increments `gRefused`; `weaponRefused=0` |
+| `WriteMount` returns false | increments `gRefused`; `weaponRefused=0` |
+
+Every escape either fires a counter that read zero or depends on the aim pose,
+which was separately measured usable in a level with no weapon at all. So the
+composed rotation reached `SetAttAbsoluteDefault` and the engine did not render
+it.
+
+### Which is exactly what R-094 warned
+
+The offset lane behaved the same way: `weaponApplied` went to **1** and stopped,
+because `SetAttAbsoluteDefault` writes an attachment *default* rather than a
+per-frame transform. R-094 recorded the consequence and this is it arriving —
+**a mount written after attach does not move the drawn weapon.** The visible
+150 mm shift in R-094 worked because the value was in place when the attachment
+was next evaluated, not because the write animates anything.
+
+**Consequence for the product:** a controller cannot own the weapon through this
+seam. The rotation lane needs a per-frame transform — the render matrix captured
+at `RenderCHR` entry (R-089/R-093) is the obvious candidate, since it is already
+hooked, already per-frame, and already knows which instance is the near one.
+
+### The confirming run
+
+With a weapon attached, `weaponRotApplied` should climb continuously while the
+weapon stays put. That is now observable: `weaponRotApplied`, `weaponRotNoPose`,
+`weaponRotDrive`, `weaponRotCalib`, `weaponBaseline` and `weaponAimUsable` are
+all in `report`. If `weaponRotApplied` instead stays at zero, the elimination
+above is wrong somewhere and the gate it names should be believed over this note.
