@@ -2,6 +2,34 @@
 
 Only confirmed or explicitly provisional build-specific locations belong here. Prefer a signature plus validation recipe over an RVA alone.
 
+### H-013 static additions — 2026-09-06
+
+No R-number allocation while the other agent owns the live lane. These are
+static facts against the supported Steam hash; the offline verifier
+`tools/re/verify_h013_input_consumer.py` passes 24 byte/vtable/call-target checks.
+
+| RVA / field | Purpose and constraint |
+| --- | --- |
+| `0x9D5D20`; IInput slot 1 | AddEventListener: normal list at input+0x28, node listener+0x10, descending priority. Virtual registrations are not enumerated by direct function callers alone. |
+| `0x9843B0`; IInput slot 7 | SetExclusiveListener: whole body `48 89 51 48 C3`, writing input+0x48. |
+| `0x16FEE32..0x16FEE45` | CGame::Init installs game+0x18 as the exclusive listener through IInput+0x38. The title route is not a normal-list ActiveUserManager listener. |
+| Global `0x2C16840`; game+0x18 | CGame pointer and its IInputEventListener secondary base; input-interface vtable `0x1E76AA8`. |
+| `0x1701540`; `0x17016D5/0x17016E9` | CGame::OnInputEvent loads override at listenerThis+0x130 = game+0x148 and calls override vtable+8. Keyboard/mouse branch has no key/symbol/index rejection; gamepad branch has exclusive-controller checks. |
+| `0x138B3F2`; game+0x148 | Attract transition writes launcher+0x40 as the override. Launcher mode is +0x80: attract 2, main menu 3; UI element+0x78. |
+| `0x138A930`; launcher+0x40 | ArkLauncherMenu::OnInputEvent, input vtable `0x1E2C298`. Entire predicate: unsigned device <= 1 and state == 1; calls `0x138BDA0` and returns true. Does not read pSymbol/keyName/keyId/deviceIndex/value. |
+| `0x1701710`; launcher UI slot `0x1E2C2A8` | CGame UI-state forwarding uses override+0x10. Launcher UI method is `0x16D2100`, always false. |
+| `0x138BDA0` | SetMainMenuMode: native attract exit clears game+0x148 at `0x138BDF0`, builds actual menu and sets mode 3 at `0x138BE75`. |
+| `0x138A4A0`; launcher+0x18 | Blocking action listener; attract accepts `menu_confirm` (GameActions+0x668, string `0x1E79270`). This does not prove a live xi_a binding. |
+| `0x1324A60`; game+0x448 | ActiveUserManager SetListening writes manager+0x20; it does not register an input listener. Constructed manager vtable `0x1E24F10`: registration/clear/ensure no-op `0x1706520`, logged-in returns true `0xACF540`. |
+| `0x9D7790` | Blocking query now created as a function in Ghidra, with bool return in AL. No new live blocking test. |
+
+**R-090 qualification:** a posted counter or a normal-list walk does not prove
+the title consumer ran. A pressed keyboard event accepted through the intact
+exclusive/override chain returns true before normal listeners are visited.
+The exact discrepancy in the prior live run remains unmeasured; no input gate
+is promoted to live success here. [Full consumer proof and bounded next
+observation](RE-H013-INPUT-CONSUMER-2026-09-06.md).
+
 ### H-005C static additions — 2026-09-05
 
 No R-number allocation while the other agent owns the live lane. All new
@@ -1366,3 +1394,62 @@ what its own handler requires that a synthesised event does not supply.
 
 Do not re-test the device, the posting gate, the UI state or `force` -- all four
 are recorded negatives from the live run.
+
+## R-091 -- synthesised input is accepted: the title screen, proven live
+
+**The first time this project has driven Prey's UI with an event it made up.**
+Confirms H-013's static answer
+([`RE-H013-INPUT-CONSUMER-2026-09-06.md`](RE-H013-INPUT-CONSUMER-2026-09-06.md),
+24/24 offline checks pass against the installed DLL).
+
+### The receipt is a native state transition, not a counter
+
+Our `inputPosted` counter only records returning from a `void` call -- Codex was
+right to reject it as evidence. The receipt that settles it is the launcher's own
+mode, read passively before and after a single posted keypress:
+
+| | before | after |
+|---|---|---|
+| `game+0x148` (input override) | `0x2061f7f7aa0` | **`0x0`** |
+| launcher `+0x80` (mode) | **2** (attract) | **3** (main menu) |
+
+`SetMainMenuMode` `0x138BDA0` is the only thing that clears that override and
+writes mode 3. The captured frame agrees: the title screen became the menu, with
+CONTINUE / LOAD GAME / NEW GAME / OPTIONS / EXIT.
+
+### The routing, verified live against the static prediction
+
+Read passively from a running game, all matching H-013 exactly:
+
+```text
+pInput            = *(PreyDll + 0x224D9D8)
+*(pInput + 0x48)  = game + 0x18            exclusive listener, vtable RVA 0x1E76AA8
+game              = *(PreyDll + 0x2C16840)
+*(game + 0x148)   = launcher + 0x40        override,          vtable RVA 0x1E2C298
+launcher          = override - 0x40        mode +0x80, UI element +0x78
+```
+
+The consumer is `ArkLauncherMenu::OnInputEvent` `0x138A930`, whose whole
+predicate is `deviceType <= 1 && state == 1`. A pressed keyboard event satisfies
+it: no key id, key name, value, modifiers, `pSymbol` or device index is read.
+
+### What this does and does not unblock
+
+**Attract screen: solved.** A device-0 pressed event dismisses it, no action-map
+binding required.
+
+**Menu navigation: not solved.** In mode 3 the launcher's raw handler is out of
+the picture and input routes through the action map -- `menu_confirm`,
+`menu_up/down/left/right`, `menu_back` (names byte-confirmed in the GameActions
+constructor `0x1706DA0`). A posted `enter` at the menu changed nothing, which is
+consistent: whether the active profile binds it to `menu_confirm` is the
+unresolved action-map question from R-089, not a defect in the event or the post.
+
+**Why the earlier attempts failed is still open.** The chain was verified intact
+immediately before the successful post and was never checked during the failures,
+so the difference is unmeasured. One systematic difference is recorded but not
+established: the successful post happened *before* `xr.start`, every failed one
+after. Do not treat that as a cause without testing it.
+
+**The lesson worth keeping:** the counter said the same thing in both cases. Only
+a native state read told them apart.

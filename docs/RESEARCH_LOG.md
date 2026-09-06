@@ -1661,3 +1661,30 @@ checks; the installed PAKs were not readable as ordinary ZIPs.
 `tools/re/verify_h005c_selection_origin_input.py` passes 19 static landmarks and
 9 ABI/transform fixtures. No live access, runtime edits, event posts, build,
 deployment or headset experiment was performed.
+
+## 2026-09-06 — H-013 title-screen input consumer, static lane
+
+Resolved the two log-string anchors and followed actual constructors/vtables.
+CGame::Init installs game+0x18 as IInput's exclusive listener; its handler
+`0x1701540` forwards through game+0x148. Attract mode sets that override to
+launcher+0x40. ArkLauncherMenu::OnInputEvent `0x138A930` accepts unsigned
+device <= 1 and state == 1, calls SetMainMenuMode `0x138BDA0`, and returns true.
+It reads no key name, key ID, symbol, value or device index. Thus the existing
+keyboard Pressed event is sufficient at the consumer; normal-list delivery
+does not prove that this earlier exclusive route ran.
+
+Separated the UI-state method (launcher always returns false) and gamepad
+action route (`menu_confirm`, binding still unverified). ActiveUserManager's
+SetListening does not register an input listener; this PC constructor uses
+no-op registration/clear/ensure methods and a logged-in method returning true.
+The log also appears after the main menu opens, so it cannot identify title
+ownership on its own. Added a passive pointer snapshot and bounded consumer
+entry/return protocol for the owning live lane, preserving the prior failed
+run as unexplained until those receipts exist.
+
+Created the previously undefined blocking-query function at `0x9D7790` in
+Ghidra and corrected its bool prototype; named the two input handlers and
+saved the database. `tools/re/verify_h013_input_consumer.py` passes 24 static
+byte/vtable/call-target checks against the installed Steam DLL. No live attach,
+launch, injection, input post, runtime source edit or deployment.
+[Full report](RE-H013-INPUT-CONSUMER-2026-09-06.md).

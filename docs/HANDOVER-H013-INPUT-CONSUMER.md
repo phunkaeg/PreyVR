@@ -1,5 +1,13 @@
 # Handover — which listener gates the title screen, and what its handler requires
 
+**Static answer, 2026-09-06:** [H-013 consumer report](RE-H013-INPUT-CONSUMER-2026-09-06.md).
+The title's raw keyboard route is CGame's **exclusive** listener -> the override
+at game+0x148 -> ArkLauncherMenu::OnInputEvent (`0x138A930`). It accepts device
+0/1 with state 1 and needs no symbol, key-name bind or device index. The existing
+pressed-space event satisfies it. The report names the exact routing pointers
+and two consumer call sites needed to explain the earlier live negative;
+that live failure is not claimed fixed. 24 offline byte/vtable checks pass.
+
 **Written 2026-09-06**, after R-090. One question, with a consumer already built
 and waiting. Prior context: [R-089 and R-090 in `ADDRESS_REGISTRY.md`](ADDRESS_REGISTRY.md),
 [`RE-H005C-SELECTION-ORIGIN-INPUT-2026-09-05.md`](RE-H005C-SELECTION-ORIGIN-INPUT-2026-09-05.md),
