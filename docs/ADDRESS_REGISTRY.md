@@ -2057,6 +2057,19 @@ the wrist left the axis the signs were fitted on; the test suite asserts the
 inversion signature *and* that the turn and delta lanes agree for an arbitrary
 axis, which a sign flip cannot satisfy.
 
+**CONFIRMED in a headset the same day, with `handTurnYaw=0`.** The wearer's
+verdict after the conversion landed: *"hand rotates correctly now!"* -- with the
+residual offset still at zero. So the missing body-yaw conversion was the
+**entire** defect, and the rig carries no constant offset on top of it. The
+frame-conversion reading was right and the "leading candidate" 180 degrees was
+not needed.
+
+That is also the strongest available evidence the fix is a *frame* correction
+rather than a fitted one: the body yaw during the confirming run moved from
+80.09 degrees at calibration through 142.69 degrees, so the conjugation was
+carrying a materially different angle from the one it was calibrated at, and the
+result stayed correct.
+
 **The residual is a live knob, not a guess.** Whether a further fixed offset
 remains between the body frame and the rig's authored frame is a property of the
 rig, and 180 degrees is only the leading candidate -- it is what the report
@@ -2066,8 +2079,23 @@ carries `handTurnYaw` so the set value is visible rather than remembered.
 
 ### Still open on this lane
 
-`handNoPose` climbed roughly 290 per 3 s during the accepted run, so controller
-tracking is dropping intermittently even while the result looked right. Not
-diagnosed. It is a *producer* problem -- the lane behaves correctly on the frames
-it gets a pose -- so it does not block the rotation work, but it will read as
-stutter to a wearer.
+**The hand is placed *additively*, not absolutely.** `hand.calibrate` captures a
+zero reference and every later frame *adds* a delta to whatever the animation
+produced. So the hand sits at `animated pose + controller delta`, not where the
+controller actually is, and the base differs per weapon because each weapon
+animates the arm differently. A wearer put it exactly right on 2026-09-07: *"or
+every pose for each weapon will be different?"* -- yes, under the additive
+scheme, they will be.
+
+**The arm chain is unsolved above the wrist** -- *"the arm rig is still goo from
+the wrist (no ik, or full arm rig)"*. Driving a wrist without solving the elbow
+and shoulder stretches the limb. This is H-018 Gap 4: the native two-bone solver
+is located and connected at `0x871CA0`, both pose arrays are cloned so calling it
+is possible, and the missing piece is the **`IKLimb` layout** -- which fields
+index root/mid/end and which the solver reads versus writes.
+
+`handNoPose` is **not** evidence of intermittent tracking, contrary to what was
+written here first: it is cumulative and accrued while the controllers were
+asleep. Measured as a rate with the controllers held up, both located on 270 of
+270 syncs. Held low they drop to about 59 percent, which is a tracking-volume
+property and not a bug in this lane.
