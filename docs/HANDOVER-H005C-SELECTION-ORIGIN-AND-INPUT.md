@@ -118,3 +118,45 @@ thumbstick value published by `XrInput`. Nothing consumes them.
 * **Do not re-walk the producer side of the pose** (R-083), the animation cvars
   (H-012), or the near-render camera as a hand lever (rejected on product
   grounds).
+
+
+## Live result, 2026-09-06: delivery confirmed, acceptance not
+
+Driven unattended: launcher, Frida injection, 33 landmarks matched, XR session
+against xr-sim, per-eye captures read back. `PostInputEvent` is reached and
+returns. **Nothing the title screen listens to has responded.**
+
+The input path resolved against a running game and agrees with R-080 exactly:
+`alignment_pair_slot=10 confirmed=1 post_input_event_slot=12 rva=0x9d6d30`.
+
+What was tried, all with `inputPosted` incrementing and the screen unchanged
+(luma and non-black percentage identical across before/after):
+
+| attempt | key | state | device | result |
+|---|---|---|---|---|
+| gamepad accept | `xi_a` `0x20A` | pressed/released | 3 | no change |
+| keyboard space | `space` `0x38` | pressed/released | 0 | no change |
+| keyboard space, forced | `space` `0x38` | pressed/released | 0 | no change |
+| keyboard space, UI state | `space` `0x38` | 16 | 0 | no change |
+| keyboard enter | `enter` `0x1B` | pressed/released | 0 | no change |
+
+So it is **not** the device (keyboard and gamepad both), **not** the
+posting-enabled gate (`force=true` behaves identically), and **not** simply the
+UI state.
+
+**A false positive worth recording.** `Game.log` showing
+`levels/campaign/research/lobby` loading was read as the input having worked. It
+had not: Prey preloads the intro level in the background while sitting at the
+title, and the capture still said "Press Any Key". The luma jump from 22.8 to
+66.3 was a viewport change, not a screen change. **Only the image settled it** --
+which is the whole argument for the capture loop, turned against a conclusion it
+had itself suggested.
+
+### Where to look next, statically
+
+`SendEventToListeners` `0x9D7430` visits console listeners, the exclusive
+listener, the input-blocking query, then normal listeners. Read that chain and
+find which one returns early for a synthesised event. `CGame::RemoveExclusiveController`
+appears in `Game.log` with `deviceIndex: -1`, and `ActiveUserManagerBase
+SetListening(true)` is what holds the title screen -- that listener is the
+specific consumer to decode. Blind live shots have run out of value here.

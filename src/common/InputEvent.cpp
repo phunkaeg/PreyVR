@@ -39,9 +39,32 @@ constexpr NamedKey kNames[] = {
     {kButtonY, "xi_y"},
     {kThumbLX, "xi_thumblx"},
     {kThumbLY, "xi_thumbly"},
+    // Keyboard names as CryEngine's keyboard device registers them.
+    {kKeyEscape, "escape"},
+    {kKeyW, "w"},
+    {kKeyEnter, "enter"},
+    {kKeyA, "a"},
+    {kKeyS, "s"},
+    {kKeyD, "d"},
+    {kKeySpace, "space"},
+    {kKeyUp, "up"},
+    {kKeyLeft, "left"},
+    {kKeyRight, "right"},
+    {kKeyDown, "down"},
 };
 
 } // namespace
+
+std::uint32_t DeviceForKeyId(int keyId)
+{
+    if (keyId < 0x100) {
+        return kDeviceKeyboard;
+    }
+    if (keyId < 0x200) {
+        return kDeviceMouse;
+    }
+    return kDeviceGamepad;
+}
 
 const char* KeyNameFor(int keyId)
 {

@@ -44,6 +44,13 @@ DWORD SetInputPostEnabled(unsigned int enabled);
 //
 // 0 when both events were **queued** -- not when anything was delivered, and
 // certainly not when a menu moved. Non-zero when refused.
+// Diagnostic only. `PostInputEvent` tests posting-enabled before doing anything;
+// `force` skips that test. It distinguishes "the engine never saw the event"
+// from "the engine saw it and chose not to act", which is not observable from
+// our own counters. The native producers do not force, so this is not the
+// shipping default.
+DWORD SetInputPostForce(unsigned int force);
+
 DWORD PostMenuAction(unsigned int action);
 
 // One raw event, for finding out which keys a given screen actually listens to.

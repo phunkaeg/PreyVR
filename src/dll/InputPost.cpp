@@ -27,6 +27,12 @@ std::atomic<bool> gEnabled{false};
 std::atomic<unsigned long long> gPosted{0};
 std::atomic<unsigned long long> gRefused{0};
 std::atomic<unsigned long> gDrainThread{0};
+// **Diagnostic.** `PostInputEvent` checks posting-enabled first and drops the
+// event when it is off; `force` bypasses that check. The native producers do not
+// force, so this is not the shipping default -- it exists to tell "the engine
+// never saw it" apart from "the engine saw it and did not act", which counters
+// on our side cannot distinguish.
+std::atomic<bool> gForce{false};
 
 input::EventQueue gQueue;
 
@@ -80,10 +86,10 @@ bool Resolve()
 //
 // `force` is false. The native producer does not force, and forcing would bypass
 // the engine's own posting-enabled check.
-bool CallPost(PostInputEventFn function, void* input, const void* event)
+bool CallPost(PostInputEventFn function, void* input, const void* event, bool force)
 {
     __try {
-        function(input, event, false);
+        function(input, event, force);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
@@ -125,7 +131,7 @@ void DrainQueuedInput()
     if (!gQueue.Pop(event.data())) {
         return;
     }
-    if (!CallPost(gPost, gInput, event.data())) {
+    if (!CallPost(gPost, gInput, event.data(), gForce.load(std::memory_order_acquire))) {
         gRefused.fetch_add(1, std::memory_order_relaxed);
         // Disarmed rather than retried: a fault here means the call target or the
         // event shape is wrong, and repeating it every frame would turn one bad
@@ -135,6 +141,13 @@ void DrainQueuedInput()
         return;
     }
     gPosted.fetch_add(1, std::memory_order_relaxed);
+}
+
+DWORD SetInputPostForce(unsigned int force)
+{
+    gForce.store(force != 0u, std::memory_order_release);
+    Log(std::string("result=0 detail=force value=") + (force ? "1" : "0"));
+    return 0;
 }
 
 DWORD SetInputPostEnabled(unsigned int enabled)
@@ -181,7 +194,9 @@ DWORD PostRawInput(int keyId, unsigned int state, int valueMilli)
         return 2;
     }
     input::EventFields fields;
-    fields.device = input::kDeviceGamepad;
+    // Derived, not assumed: a keyboard key posted as a gamepad event is a pairing
+    // no real device produces, and the listener walk filters on device.
+    fields.device = input::DeviceForKeyId(keyId);
     fields.state = state;
     fields.keyName = name;
     fields.keyId = keyId;

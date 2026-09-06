@@ -71,6 +71,28 @@ inline constexpr int kButtonY = 0x20D;
 inline constexpr int kThumbLX = 0x210;
 inline constexpr int kThumbLY = 0x211;
 
+// Keyboard, same enum. `eKI_W = 0x10` is corroborated independently by the
+// disassembly (R-089 reads `moveforward` bound to w / 0x10), which is a second
+// cross-check on this header after `xi_thumblx = 0x210`.
+inline constexpr int kKeyEscape = 0x00;
+inline constexpr int kKeyW = 0x10;
+inline constexpr int kKeyEnter = 0x1B;
+inline constexpr int kKeyA = 0x1D;
+inline constexpr int kKeyS = 0x1E;
+inline constexpr int kKeyD = 0x1F;
+inline constexpr int kKeySpace = 0x38;
+inline constexpr int kKeyUp = 0x61;
+inline constexpr int kKeyLeft = 0x63;
+inline constexpr int kKeyRight = 0x64;
+inline constexpr int kKeyDown = 0x66;
+
+// **The device follows the key id, it is not a caller's choice.** The id ranges
+// are the enum's own partition -- keyboard below `0x100`, mouse `0x100..0x1FF`,
+// XInput from `0x200` -- and the native producers set the matching device. A
+// keyboard key posted as a gamepad event is a combination no real device
+// produces, and `SendEventToListeners` filters on device.
+std::uint32_t DeviceForKeyId(int keyId);
+
 struct EventFields {
     std::uint32_t device = kDeviceGamepad;
     std::uint32_t state = kStatePressed;

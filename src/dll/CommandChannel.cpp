@@ -256,6 +256,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << " listed=" << listed;
     } else if (verb == "input.post") {
         out << "input.post result=" << SetInputPostEnabled(arg(1, 1));
+    } else if (verb == "input.force") {
+        out << "input.force result=" << SetInputPostForce(static_cast<unsigned int>(arg(1, 1)));
     } else if (verb == "menu") {
         // Menu navigation through the engine's own input layer. `arg(1)` is the
         // MenuAction index; 0=up 1=down 2=left 3=right 4=accept 5=cancel 6=start.

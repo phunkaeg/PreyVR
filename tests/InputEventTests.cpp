@@ -119,6 +119,24 @@ void TestKeyNamesAreStableStorage()
             "the byte-proven axis name must match");
 }
 
+void TestDeviceFollowsTheKeyIdRange()
+{
+    // The enum partitions the id space and the native producers set the matching
+    // device. Posting a keyboard key as a gamepad event is a pairing no real
+    // device produces, and the listener walk filters on device.
+    Require(DeviceForKeyId(kKeySpace) == kDeviceKeyboard, "space is a keyboard key");
+    Require(DeviceForKeyId(kKeyEscape) == kDeviceKeyboard, "escape is at id 0 and still keyboard");
+    Require(DeviceForKeyId(kKeyW) == kDeviceKeyboard, "w is a keyboard key");
+    Require(DeviceForKeyId(0x10D) == kDeviceMouse, "the 0x100 block is the mouse");
+    Require(DeviceForKeyId(kThumbLX) == kDeviceGamepad, "the 0x200 block is XInput");
+    Require(DeviceForKeyId(kButtonA) == kDeviceGamepad, "including the face buttons");
+
+    // And the keyboard names must be present, or a raw post is refused rather
+    // than inventing a string the refire path would keep a pointer to.
+    Require(KeyNameFor(kKeySpace) != nullptr, "space must have a stable name");
+    Require(KeyNameFor(kKeyEnter) != nullptr, "enter must have a stable name");
+}
+
 void TestMenuTapIsPressThenRelease()
 {
     std::uint8_t buffer[kEventSize * 2];
@@ -166,6 +184,7 @@ int main()
     TestEventLandsAtTheDocumentedOffsets();
     TestRefusalsRatherThanQuestionableEvents();
     TestKeyNamesAreStableStorage();
+    TestDeviceFollowsTheKeyIdRange();
     TestMenuTapIsPressThenRelease();
     TestEveryMenuActionIsMapped();
     std::cout << "input event tests passed\n";
