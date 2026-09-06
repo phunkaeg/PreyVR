@@ -1498,3 +1498,58 @@ Whether the prompt that `+map` lands on is that same handler is one launch to
 find out, and if it is, gameplay is reachable without ever navigating a menu.
 The open question then becomes whether a fresh `+map` spawn carries a weapon,
 which is what the untested weapon lanes actually need -- not a save as such.
+
+## R-093 -- native near selection confirmed in gameplay, with no injector
+
+First live confirmation of R-089's entry-time predicate, and the first time this
+project has reached gameplay unattended.
+
+### Getting there: `+map` needs no menu and no save
+
+`Invoke-PreyVRLaunch.ps1 -ExtraArgs '+map Campaign/Research/Lobby'` reaches a
+playable first-person view of the Research Lobby. A capture shows the corridor,
+GLOO foam and a HUD element -- gameplay, not a menu.
+
+**The prompt `+map` lands on is not the launcher attract handler.** Read live at
+that prompt: the exclusive listener is intact (`game+0x18`, vtable RVA
+`0x1E76AA8`) but **`game+0x148` is null**. `CGame::OnInputEvent` loads that
+override, finds nothing and returns false, which is exactly why the six events
+posted at this prompt in the previous session did nothing. That failure is now
+explained rather than open. Whatever owns the prompt, the level proceeds to
+gameplay regardless.
+
+### The predicate selects one character out of five, stably
+
+With `frame.capture 1`:
+
+```text
+frame.near slot0=0x19c62f0c1a0,near=1
+           slot1=0x19c62f30bf0,near=0
+           slot2=0x19c5d819750,near=0
+           slot3=0x19c62f300e0,near=0
+           slot4=0x19c62f32d20,near=0   listed=5
+```
+
+Identical across three passes separated by ~96,000 further captures
+(`frameCaptures` 9,792 -> 106,351). One near, four not, no drift. **This is the
+`RenderCHR`-entry predicate `(params+0x80 & 0x800000) || (character+0xAC8 & 2)`
+doing the job that previously required attaching a debugger at `0x81D377`** --
+and `frida-agent.dll` crashed the host four times in one session doing that.
+
+### The near character is not the hand rig's character
+
+Arming `hand.mode 1` in the same session: `handMatched=1985`, `handJoints=103`,
+`handLastCharacter=0x19C62F32D20` -- **slot4, flagged `near=0`**.
+
+So the humanoid skeleton the hand lane matches and the near-flagged instance are
+different objects. That is consistent with R-085/R-088's near/world instance pair
+and is the first time the two have been told apart *natively*, without a
+debugger. Any lane that must act on the first-person instance should select on
+this flag rather than on rig identity.
+
+### Still untested
+
+`weaponAttachment=0x0` at this spawn: the player carries no weapon there, so
+`CArkWeapon::AttachToHand` never fires and the weapon translation and rotation
+lanes remain unexercised. They need a spawn or save that carries a weapon, which
+is what the action-map binding question (R-092) still gates.
