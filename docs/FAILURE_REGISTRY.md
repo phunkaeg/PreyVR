@@ -848,3 +848,96 @@ watch how many times Prey itself runs prepare when it renders the world twice, a
 holds while it does. If native runs prepare once for its second render, our model is right and the
 remaining work is finding the release. If native re-runs it, a whole-frame reset is mandatory and A7
 is the shape to perfect rather than abandon.
+
+---
+
+# F-009 -- the viewmodel character pointer is EPHEMERAL, and pinning it is a trap
+
+**2026-09-07. Cost most of a headset session, twice over, and the record shows it
+had already cost one before that.**
+
+## The rule, first, because it is the only part worth remembering
+
+> **The first-person arms are a different `ICharacterInstance` after every weapon
+> change. Any character pointer captured before an equip is dead after it.**
+> Do not pin a viewmodel character and then change weapons. If a hand or weapon
+> lane reports healthy counters and a wearer sees nothing, **suspect a stale pin
+> before suspecting the seam.**
+
+## How it presents -- and why it reads as a broken feature
+
+Every instrument says the lane is working:
+
+```
+handMatched=270/3s  handApplied=270/3s  handRefused=0  handSubtree=21
+```
+
+270 of 270 matched conversions applied, at the exact controller sync rate, zero
+refusals. And the wearer sees a completely default hand. Nothing in the counter
+set can tell you that you are writing, perfectly and continuously, to a rig that
+is not on screen -- because the writes really are landing, on a real rig with
+real hand joints.
+
+The tell is only visible from outside: **change weapons and the effect appears.**
+That is what happened here -- *"changing weapons caused the hand to go up in the
+air!"* -- because the equip built a new viewmodel instance and the lane was
+unpinned at that moment, so it caught the new one.
+
+## The joint indices never changed -- 45 and 72, as they always were
+
+**Recorded wrongly here on the first pass, and corrected the same session by the
+only instrument that could see it.** Having found that a *stale pin* was the
+fault, I then found a second, 188-joint rig carrying `r_hand_jnt` at 48 and
+concluded that it was the visible viewmodel and that the indices differed per
+rig. Driving 48 moved **the thumb**:
+
+    45: r_hand_jnt        47: r_handProp_jnt
+    46: r_lowerArmTwist   48: r_thumb1_jnt     <- what 48 actually is
+
+The visible first-person arms are the **101-joint rig with hands at 45 and 72**,
+exactly the indices every prior session used. The 188-joint rig was a different
+character that happened to be converting, and building a theory on it invented a
+rig change that had never happened -- for the *second* time in one session, after
+the racy name dump did the same thing.
+
+**The lesson is about the diagnosis, not the indices.** Once the stale pin was
+found, everything unexplained got attributed to it and then to its successor
+theory. The wearer had said plainly that the indices had never moved; that was
+correct both times it was doubted. A long-standing constant contradicted by a
+fresh measurement means **the measurement is the suspect**.
+
+**R-100 recorded this same behaviour for the weapon lane and it was not
+generalised.** *"Nothing moved, then I re-equip the gloo cannon and now its
+offset up and to the right"* -- 186 applications per 4 s before the re-equip
+versus 511 after. That was written down as a weapon-lane anecdote. It is not: it
+is the character lifetime, and it governs the hand lane identically.
+
+## What to do instead
+
+* **Do not pin across an equip.** Re-acquire the character after any weapon
+  change, or leave the filter off.
+* **Prefer the rig signature to the pointer.** The viewmodel is identifiable by
+  structure -- 188 joints, `r_hand_jnt` at 48 -- and a signature survives what a
+  pointer does not. Selecting by pointer is what needs justifying, not the
+  reverse.
+* **`handMatched=0` with `handSkipped` climbing is a dead pin, not a dead hook.**
+  Those two counters distinguish it immediately and neither was read that way for
+  most of a session.
+
+## A second failure, mine, in the instrument that found this
+
+The joint-name table is a global captured per conversion, and **its character
+pointer is not atomically paired with its name array**. Reading count, then
+names, then attributing them to a character read earlier splices two rigs
+together. It produced a confident report that the hand rig's index 45 was a
+*face* joint, which sent a wearer looking for a rig change that had never
+happened -- *"I do worry when you said all the hand bones had changed index...
+that has never happened in our testing before."* The worry was correct and the
+data was mine, not the game's.
+
+Validating each dump -- re-read the character and count afterwards, discard the
+sample if either moved -- rejected 12 of 400 reads and gave a stable answer
+immediately. **This is the same seqlock lesson `RenderFrameTable` already
+learned** after a publication race spliced 264 of 583 reads. It was fixed there,
+in code, and then re-committed by hand in an ad-hoc probe against a table that
+has the same hazard and no such protection.
