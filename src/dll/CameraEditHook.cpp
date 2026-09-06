@@ -1,4 +1,5 @@
 #include "CameraEditHook.h"
+#include "MinHookInit.h"
 
 #include "InputPost.h"
 
@@ -1286,6 +1287,10 @@ bool EnsureHook()
 
     gTarget = reinterpret_cast<void*>(renderAddress);
     SystemRenderFn original = nullptr;
+    // Shared and idempotent: without it MH_CreateHook returns
+    // MH_ERROR_NOT_INITIALIZED and the feature reports "unavailable" for a
+    // reason unrelated to itself. See MinHookInit.h.
+    EnsureMinHook();
     MH_STATUS status = MH_CreateHook(
         gTarget, reinterpret_cast<void*>(&RenderWithCameraEdit),
         reinterpret_cast<void**>(&original));
@@ -1317,6 +1322,20 @@ bool EnsureHook()
 }
 
 } // namespace
+
+DWORD EnsureRenderHookInstalled()
+{
+    // **Menu input needs this seam without arming a camera edit.** The drain for
+    // queued input runs inside the `CSystem::Render` hook, and that hook was only
+    // ever installed by the stereo and head-tracking paths -- so posting worked,
+    // reported success, queued its events and never delivered one. The live run
+    // showed `queued=4 posted=0 drainThread=0`: the counters found it, the return
+    // codes did not.
+    //
+    // Installing without arming is safe by construction: with nothing armed the
+    // hook forwards to the original after draining.
+    return EnsureHook() ? 0u : 1u;
+}
 
 DWORD SetCameraYawEdit(float degrees)
 {
@@ -1535,6 +1554,10 @@ bool EnsureRenderWorldHook()
 
     gRenderWorldTarget = reinterpret_cast<void*>(address);
     RenderWorldFn original = nullptr;
+    // Shared and idempotent: without it MH_CreateHook returns
+    // MH_ERROR_NOT_INITIALIZED and the feature reports "unavailable" for a
+    // reason unrelated to itself. See MinHookInit.h.
+    EnsureMinHook();
     MH_STATUS status = MH_CreateHook(gRenderWorldTarget,
                                      reinterpret_cast<void*>(&RenderWorldInterpose),
                                      reinterpret_cast<void**>(&original));

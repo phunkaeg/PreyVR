@@ -137,6 +137,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/IkTargetProbe.cpp
         src/dll/InputPathProbe.cpp
         src/dll/InputPost.cpp
+        src/dll/MinHookInit.cpp
         src/dll/CommandChannel.cpp
         src/dll/HandRigTakeover.cpp
         src/dll/NearViewStereo.cpp

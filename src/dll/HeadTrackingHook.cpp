@@ -1,4 +1,5 @@
 #include "HeadTrackingHook.h"
+#include "MinHookInit.h"
 
 #include "Logger.h"
 #include "preyvr/CameraEdit.h"
@@ -181,6 +182,10 @@ bool EnsureHook()
 
     gTarget = reinterpret_cast<void*>(target);
     SetCameraFn original = nullptr;
+    // Shared and idempotent: without it MH_CreateHook returns
+    // MH_ERROR_NOT_INITIALIZED and the feature reports "unavailable" for a
+    // reason unrelated to itself. See MinHookInit.h.
+    EnsureMinHook();
     MH_STATUS status = MH_CreateHook(
         gTarget, reinterpret_cast<void*>(&SetCameraWithHeadTracking),
         reinterpret_cast<void**>(&original));
@@ -433,6 +438,10 @@ bool Install()
     }
     gTarget = reinterpret_cast<void*>(target);
     UpdateViewFn original = nullptr;
+    // Shared and idempotent: without it MH_CreateHook returns
+    // MH_ERROR_NOT_INITIALIZED and the feature reports "unavailable" for a
+    // reason unrelated to itself. See MinHookInit.h.
+    EnsureMinHook();
     if (MH_CreateHook(gTarget, reinterpret_cast<void*>(&UpdateViewObserved),
                       reinterpret_cast<void**>(&original)) != MH_OK) {
         Log("result=failed detail=view_create_hook");

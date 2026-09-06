@@ -166,3 +166,17 @@ itself. **Every one produced a confident, plausible, wrong result.**
 * `frida-agent.dll` crashed the host **three times** in one session with three
   different symptoms. If driving this live at volume, prefer a channel that does
   not need the injector.
+
+
+## Rake #1 is fixed, after biting three times (2026-09-06)
+
+`MH_Initialize` was called only inside the frame observer's enable path, so every
+other hook installer silently depended on the observer having been enabled first.
+When it had not, `MH_CreateHook` returned `MH_ERROR_NOT_INITIALIZED` and the
+feature reported "unavailable" for a reason that had nothing to do with it.
+
+It bit a third time in the first live run of the input lane: `input.post 1`
+returned refused, and the log read
+`preyvr_camera_edit result=failed detail=create_hook minhook=MH_ERROR_NOT_INITIALIZED`.
+Documenting a rake did not stop anyone stepping on it; `EnsureMinHook()` in
+`src/dll/MinHookInit.h` does, and all nine hook installers now call it.

@@ -1,4 +1,5 @@
 #include "PassCameraProbe.h"
+#include "MinHookInit.h"
 
 #include "CameraEditHook.h"
 #include "Logger.h"
@@ -125,6 +126,10 @@ bool EnsureHook()
 
     gTarget = reinterpret_cast<void*>(target);
     CreateGeneralPassFn original = nullptr;
+    // Shared and idempotent: without it MH_CreateHook returns
+    // MH_ERROR_NOT_INITIALIZED and the feature reports "unavailable" for a
+    // reason unrelated to itself. See MinHookInit.h.
+    EnsureMinHook();
     MH_STATUS status = MH_CreateHook(
         gTarget, reinterpret_cast<void*>(&CreateGeneralPassObserved),
         reinterpret_cast<void**>(&original));

@@ -43,6 +43,11 @@ enum class CameraEditStatus : DWORD {
 // Installs the hook if needed and arms a bounded yaw, in degrees. Passing 0
 // disarms without removing the hook. Rejects anything outside the bound in
 // preyvr::cameraedit.
+// Installs the `CSystem::Render` hook without arming any camera edit. Needed by
+// anything that relies on that per-frame seam -- notably the input drain, which
+// otherwise queues events that are never delivered.
+DWORD EnsureRenderHookInstalled();
+
 DWORD SetCameraYawEdit(float degrees);
 
 // Alternating-eye stereo, without any double-render.

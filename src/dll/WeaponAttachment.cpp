@@ -1,4 +1,5 @@
 #include "WeaponAttachment.h"
+#include "MinHookInit.h"
 
 #include "HeadTrackingHook.h"
 #include "Logger.h"
@@ -186,6 +187,10 @@ bool Install()
     }
     gTarget = reinterpret_cast<void*>(target);
     AttachToHandFn original = nullptr;
+    // Shared and idempotent: without it MH_CreateHook returns
+    // MH_ERROR_NOT_INITIALIZED and the feature reports "unavailable" for a
+    // reason unrelated to itself. See MinHookInit.h.
+    EnsureMinHook();
     if (MH_CreateHook(gTarget, reinterpret_cast<void*>(&AttachToHandObserved),
                       reinterpret_cast<void**>(&original)) != MH_OK) {
         Log("result=failed detail=create_hook");

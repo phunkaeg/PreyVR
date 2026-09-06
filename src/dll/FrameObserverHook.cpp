@@ -1,4 +1,5 @@
 #include "FrameObserverHook.h"
+#include "MinHookInit.h"
 
 #include "AimRayProbe.h"
 
@@ -179,12 +180,17 @@ DWORD SetFrameObserverEnabled(bool enabled)
 
     MH_STATUS status = MH_OK;
     if (!gHookCreated) {
-        status = MH_Initialize();
-        if (status != MH_OK) {
-            SetFailed("initialize", status);
+        // Shared, so that a hook installed by any other path does not depend on
+        // this one having been enabled first -- the rake described in MinHookInit.h.
+        if (!EnsureMinHook()) {
+            SetFailed("initialize", MH_ERROR_NOT_INITIALIZED);
             return static_cast<DWORD>(FrameObserverRuntimeStatus::failed);
         }
         EndRendererSceneFn original = nullptr;
+        // Shared and idempotent: without it MH_CreateHook returns
+        // MH_ERROR_NOT_INITIALIZED and the feature reports "unavailable" for a
+        // reason unrelated to itself. See MinHookInit.h.
+        EnsureMinHook();
         status = MH_CreateHook(
             gTarget,
             reinterpret_cast<void*>(&ObserveEndRendererScene),

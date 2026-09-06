@@ -1,5 +1,6 @@
 #include "InputPost.h"
 
+#include "CameraEditHook.h"
 #include "InputPathProbe.h"
 #include "Logger.h"
 
@@ -58,6 +59,13 @@ bool Resolve()
     }
     const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
     if (preyDll == nullptr) {
+        return false;
+    }
+    // **Without the drain seam this would queue for ever.** Arming the post and
+    // leaving delivery to a hook someone else might install is how the first
+    // live run reported `result=0` for a tap that never reached the engine.
+    if (EnsureRenderHookInstalled() != 0) {
+        Log("result=refused detail=render_hook_unavailable");
         return false;
     }
     gInput = reinterpret_cast<void*>(input);
