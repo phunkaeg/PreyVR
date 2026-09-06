@@ -75,6 +75,15 @@ bool RenderMatrixIsNear(unsigned long long character);
 DWORD SetRenderFrameOverrideCharacter(unsigned long long character);
 DWORD SetRenderFrameOffsetMillimetres(int x, int y, int z);
 DWORD SetRenderFrameOverrideEnabled(unsigned int enabled);
+
+// Whether the override also moves this character's attachments (H-018).
+//
+// `ICharacterInstance::Render` draws the character and *then* its attachments,
+// composing each against the parent matrix from the same buffer we edit. Off by
+// default: the edit is undone after the original returns, so the named character
+// moves alone. On, it carries down -- which is how the arms and the weapon in
+// them move together.
+DWORD SetRenderFrameOverridePropagates(unsigned int propagates);
 unsigned long long RenderFrameOverrideAppliedCount();
 unsigned long long RenderFrameOverrideRefusedCount();
 

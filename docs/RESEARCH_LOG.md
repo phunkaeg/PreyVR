@@ -1688,3 +1688,44 @@ saved the database. `tools/re/verify_h013_input_consumer.py` passes 24 static
 byte/vtable/call-target checks against the installed Steam DLL. No live attach,
 launch, injection, input post, runtime source edit or deployment.
 [Full report](RE-H013-INPUT-CONSUMER-2026-09-06.md).
+
+## 2026-09-06 — H-018 five static gaps
+
+Closed the character-binding render question positively: AttachToHand installs a
+child-character binding, attachment-manager render calls its virtual +0x18, and
+the binding renderer `0x334DF0` calls the child's Render virtual +0xC0, reaching
+its own RenderCHR. Render params+0x48 expose the binding pointer; binding+8 is
+the child character. This supplies an ownership predicate for the live owner,
+not an inferred identity for the two previously counted near characters.
+
+Corrected the melee premise: `0x2D609B8` is a PE RUNTIME_FUNCTION record, not a
+vtable slot. The ArkWeaponWrench factory installs shared OnEquip `0x1699800`,
+which calls setup `0x169B450`, then AttachToHand `0x16914F0`. There is no melee
+AttachToHand override to find. The missed live entry remains an equip-state or
+coverage question; the shared equip path contains early returns.
+
+Connected the GLOO pending-projectile callback `0x169F420` and shotgun-family
+StartAttack `0x16AAFF0` to firing query `0x1694890`. It obtains six floats through
+the cached-ray getter at call time. No separate earlier firearm ray cache was
+found on these routes. Projectile impacts and controller-sample freshness remain
+live acceptance checks. The producer still runs from HUD OnPreRender.
+
+Completed the 0x30-byte IKLimb contract using the target loader and solver:
+four chain records (parent/upper/mid/end), tag+8, iterative-only settings+C/+10/+14,
+chain pointer+18, descendants+20, root-to-end pointer+28 with count at data-4.
+The leaf reads limb data and writes both pose arrays. Its near-goal early-out is
+distance from the current end effector, not distance from model origin.
+
+Resolved active-bind enumeration without PAK decryption: constructor-published
+manager pointer RVA `0x248BCE0`, CRC multimap head/count at manager+58/+60,
+node input/action/map pointers+28/+30/+38, exact string fields, and filter-set
+semantics. Added an offline JSON snapshot decoder with duplicate-key, enable,
+filter, malformed-tree and pointer-failure fixtures.
+
+`tools/re/verify_h018_static_gaps.py` passes 50 target byte/call/vtable/PE/CRC checks
+and 10 synthetic snapshot checks against the installed Steam hash. Runtime
+sources and installed game files were not changed; no game launch, injection,
+attachment or event posting. [Full report and memory contracts](RE-H018-STATIC-GAPS-2026-09-06.md).
+Named eleven verified functions and saved Ghidra with the H-018 contracts and
+corrections. Raw decompilation/byte receipts and annotation payloads are retained
+under the gitignored `captures/traces/2026-09-06-h018-*` files.

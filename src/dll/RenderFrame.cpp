@@ -55,6 +55,19 @@ std::atomic<unsigned long long> gOverrideCharacter{0};
 std::atomic<bool> gOverrideEnabled{false};
 std::atomic<int> gOverrideMm[3]{};
 std::atomic<unsigned long long> gOverrideApplied{0}, gOverrideRefused{0};
+// **Whether the edit reaches this character's attachments too.**
+//
+// H-018: `ICharacterInstance::Render` calls RenderCHR and *then* the attachment
+// manager `0x821FD0`, which composes the parent matrix with each attachment's
+// model-relative QuatT. Because our edit is made in the caller's own buffer, an
+// unrestored edit is still there when the attachments are drawn -- so moving a
+// character silently moves everything bound to it.
+//
+// Restoring after the original returns is the default and the safer meaning:
+// RenderCHR has already copied the edited floats into `CRenderObject+0x00` by
+// then, so the named character still moves and its attachments do not. Set this
+// to carry the parent's edit down to the weapon in its hand deliberately.
+std::atomic<bool> gOverridePropagates{false};
 
 void* gTarget = nullptr;
 std::atomic<RenderCharacterFn> gOriginal{nullptr};
@@ -97,6 +110,8 @@ bool NearestFromArguments(const void* params, const void* character)
 void* __fastcall RenderCharacterObserved(void* character, void* params,
                                          float* matrix, void* pass)
 {
+    float savedMatrix[12]{};
+    bool edited = false;
     if (gEnabled.load(std::memory_order_acquire) && character != nullptr && matrix != nullptr) {
         __try {
             const bool nearest = NearestFromArguments(params, character);
@@ -111,6 +126,7 @@ void* __fastcall RenderCharacterObserved(void* character, void* params,
                 // transform rather than an attachment default (H-017).
                 if (gOverrideEnabled.load(std::memory_order_acquire) &&
                     gOverrideCharacter.load(std::memory_order_acquire) == key) {
+                    std::memcpy(savedMatrix, matrix, sizeof(savedMatrix));
                     const float x = static_cast<float>(
                         gOverrideMm[0].load(std::memory_order_relaxed)) / 1000.0f;
                     const float y = static_cast<float>(
@@ -119,6 +135,7 @@ void* __fastcall RenderCharacterObserved(void* character, void* params,
                         gOverrideMm[2].load(std::memory_order_relaxed)) / 1000.0f;
                     if (renderframe::ApplyRenderMatrixOverride(matrix, x, y, z,
                                                                0.0f, 0.0f, 0.0f, 1.0f)) {
+                        edited = true;
                         gOverrideApplied.fetch_add(1, std::memory_order_relaxed);
                     } else {
                         gOverrideRefused.fetch_add(1, std::memory_order_relaxed);
@@ -129,7 +146,17 @@ void* __fastcall RenderCharacterObserved(void* character, void* params,
         }
     }
     const RenderCharacterFn original = gOriginal.load(std::memory_order_acquire);
-    return original != nullptr ? original(character, params, matrix, pass) : nullptr;
+    void* const result = original != nullptr ? original(character, params, matrix, pass) : nullptr;
+    // Restored *after* the original, which has already copied the edited floats
+    // into the render object. The draw keeps the override; the caller's buffer
+    // does not, so the attachment pass that follows sees the untouched matrix.
+    if (edited && !gOverridePropagates.load(std::memory_order_acquire)) {
+        __try {
+            std::memcpy(matrix, savedMatrix, sizeof(savedMatrix));
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+        }
+    }
+    return result;
 }
 
 bool Install()
@@ -215,6 +242,13 @@ DWORD SetRenderFrameOverrideEnabled(unsigned int enabled)
     }
     gOverrideEnabled.store(on, std::memory_order_release);
     Log(std::string("result=0 detail=override_enabled value=") + (on ? "1" : "0"));
+    return 0;
+}
+
+DWORD SetRenderFrameOverridePropagates(unsigned int propagates)
+{
+    gOverridePropagates.store(propagates != 0u, std::memory_order_release);
+    Log(std::string("result=0 detail=override_propagates value=") + (propagates ? "1" : "0"));
     return 0;
 }
 

@@ -2,6 +2,31 @@
 
 Only confirmed or explicitly provisional build-specific locations belong here. Prefer a signature plus validation recipe over an RVA alone.
 
+### H-018 static additions — 2026-09-06
+
+No R-number allocation while the other agent owns live testing. Supported Steam
+hash; `tools/re/verify_h018_static_gaps.py`: 50 exact-byte/call/vtable/PE/CRC checks,
+10 synthetic binding-snapshot checks. [Full contracts and qualifications](RE-H018-STATIC-GAPS-2026-09-06.md).
+
+| RVA / field | Purpose and constraint |
+| --- | --- |
+| `0x821FD0`; `0x822629/0x8229D1` | Attachment-manager render composes attachment model-relative pose, dispatches bound object virtual `+0x18`; separate character binding takes the character Render route. |
+| `0x334DF0`; vtable `0x1CB1328+0x18` | Character-binding renderer: binding `+8` is child character; writes binding pointer to render params `+0x48`; calls character virtual `+0xC0` -> `0x81BCB0` -> RenderCHR. Identifies attachment ownership, not runtime pointer values from two counted draws. |
+| `0x172F5E0`; wrench primary vtable `0x1E92F00` | Registered ArkWeaponWrench factory installs shared OnEquip `0x1699800` at `+8`. No melee AttachToHand override. |
+| `0x1699800 -> 0x169B450 -> 0x16914F0` | Shared equip -> resolve hand attachment -> AttachToHand. Local owner and already-equipped guards can return before attachment setup. |
+| `0x2D609B8` | PE exception record `{0x16914F0,0x16917EB,0x21D42F0}`, **not a vtable reference**. Corrects H-018's inference from R-094. |
+| `0x169F420`; call `0x169F48D` | GLOO OnPreRender (this=weapon+0x190) queries current cached reticle ray during pending projectile construction, then calls projectile spawn `0x1677040` at `0x169F5A2`. |
+| `0x16AAFF0`; call `0x16AB0BE` | Shotgun StartAttack queries ray at shot time and supplies target to point-blank/pellet paths. The pistol/shotgun/toy-gun class registrations share this factory. Static consumer proof; impact/freshness acceptance remains live. |
+| `0x8B44D0`; IKLimb stride `0x30` | Native loader: handle+0, tag+8, iterations+C, threshold+10, step+14, chain pointer+18, descendants+20, root-to-end path+28. |
+| `0x871CB0..0x871CCD`; `0x871EBE..0x871EDF` | Two-bone leaf: relative/absolute pose pointers+10/+18; chain index DWORDs at +0/+10/+20/+30; signed int16 root path, masked count at data-4. Limb data is read-only; pose-array elements are writable. |
+| `0x248BCE0`; constructor store `0x3CDAEE` | Complete CActionMapManager pointer. Validate vtables `0x1CBFC48` and secondary+8 `0x1CBFE08`; constructor-only pointer is not a lifetime guarantee. |
+| manager `+0x58/+0x60`; `0x3CEA70/0x3CE210` | CRC binding multimap head/count, consumer/producer. Node: nil+19, CRC+20, SActionInput*+28, action*+30, map*+38. Duplicate CRCs must be retained. |
+| action `+0x40`; input `+0x18/+0x50/+0x98`; map `+0x58` | Action name pointer; current/default key pointers and CRC; map name pointer. Input activation mask+C4 and modifiers+C8. Native input-event keyName is instead +10. |
+| `0x3CDFE0 -> 0x3C3600`; manager `+0x48/+0x50` | Filter tree. Filter enabled+8, interned-action set head/count+20/+28, type+30, name+38. Type0 blocks absent names; nonzero blocks listed names. Active enumeration must include these filters and manager/map enable gates. |
+
+Binding snapshot decoder: `tools/re/decode_h018_bind_snapshot.py` reads supplied
+memory JSON only. It never attaches, posts an event, or decrypts/modifies a PAK.
+
 ### H-013 static additions — 2026-09-06
 
 No R-number allocation while the other agent owns the live lane. These are
@@ -1560,6 +1585,33 @@ Confirmed in a real save (the user's own loaded game, mod injected into a sessio
 this project did not launch). All three previously untested lanes are now
 exercised.
 
+### CORRECTION 2026-09-06 (H-018): there is no melee override, and the vtable was not a vtable
+
+**The conclusion below is wrong and is kept for the record.** `AttachToHand` is
+**not virtual**. The data reference at `0x2D609B8` that I read as a vtable slot is
+a **PE exception/unwind record** -- three DWORDs
+`{begin=0x16914F0, end=0x16917EB, unwind=0x21D42F0}`, not an eight-byte function
+pointer. `0x16914F0` has exactly one **direct call**, at `0x169B6FB`.
+
+The wrench takes the *same* path as every other weapon:
+
+```
+ArkWeaponWrench primary vtable +8
+  -> CArkWeapon::OnEquip 0x1699800        (shared; base vtable 0x1E6C640 has the same entry)
+     -> hand-attachment setup 0x169B450
+        -> CArkWeapon::AttachToHand 0x16914F0
+```
+
+So "melee is a separate class with its own override" was inferred from a misread
+`.pdata` record plus one live A/B, and there is no sibling to find.
+
+**Why the live hook missed it is still unexplained**, and inventing a second
+address would have hidden that. H-018 offers a concrete static candidate:
+`OnEquip` returns early unless the owner ID is `0x7777` and the equipment query
+`0x1275500(player+0x14B8, itemId)` returns false -- an **already-selected item**
+satisfies that guard. Check the selected object's identity and hook coverage
+before concluding anything about melee.
+
 ### `CArkWeapon::AttachToHand` covers guns, not the wrench
 
 `weapon.observe 1` was armed and the player switched to the **wrench**:
@@ -1645,3 +1697,35 @@ vtable-dispatched. Whether a held weapon reaches it as **its own** character --
 and so can be moved independently of the arms -- is
 [H-018 Gap 1](HANDOVER-H018-STATIC-GAPS.md), unresolved. The live near counts
 (one at an empty spawn, two holding a weapon) are suggestive and not proof.
+
+
+## R-096 -- the render override must be undone, or it moves the attachments too
+
+From H-018 §1, correcting the seam added in R-095.
+
+`ICharacterInstance::Render` `0x81BCB0` calls `RenderCHR` and **then** the
+attachment manager `0x821FD0`, which composes the parent matrix with each
+attachment's model-relative QuatT at `+0x130`. Our override edits the caller's own
+buffer, so an unrestored edit is still present when the attachments are drawn:
+moving a character silently moved everything bound to it.
+
+Fixed by restoring the caller's matrix **after** the original returns. RenderCHR
+has copied the edited floats into `CRenderObject+0x00` by then, so the named
+character still moves and its attachments do not. `frame.propagate 1` opts back
+in, which is how arms and the weapon in them move together deliberately.
+
+### A bound skeletal character does get its own RenderCHR call
+
+So the seam can move a weapon independently. `AttachToHand` allocates a 24-byte
+binding with vtable `0x1CB1328`, stores the character at binding `+8`, and binds
+it at weapon `+0x2B0`. The attachment manager reaches
+`[attachment+0x20]->vtable[+0x18]` = `0x334DF0`, which dispatches
+`[binding+8]->vtable[+0xC0]` -- the character `Render` again, and hence a separate
+`RenderCHR`.
+
+**Identify by ownership, not by the near flag.** At the child draw,
+`SRendParams+0x48` holds the binding pointer (store at `0x334E0B`) and
+`[binding+8]` is the child character; match that against the binding reached from
+the selected weapon's `+0x2B0`. Two near counts do not identify which is which,
+and one branch does not use RenderCHR at all: default-skeleton type `0x55AA55AA`
+goes to `0x81C730` instead.

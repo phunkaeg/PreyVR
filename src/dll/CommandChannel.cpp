@@ -330,6 +330,9 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "frame.apply result=" << SetRenderFrameOverrideEnabled(arg(1, 1))
             << " applied=" << RenderFrameOverrideAppliedCount()
             << " refused=" << RenderFrameOverrideRefusedCount();
+    } else if (verb == "frame.propagate") {
+        out << "frame.propagate result="
+            << SetRenderFrameOverridePropagates(arg(1, 1));
     } else if (verb == "frame.near") {
         // Dumps the capture table with RenderCHR's own near verdict per slot
         // (R-089), so identifying the near character no longer needs an injector

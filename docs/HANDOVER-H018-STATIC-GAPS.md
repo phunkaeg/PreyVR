@@ -1,5 +1,13 @@
 # Handover — five static gaps blocking controller ownership
 
+**Static answers, 2026-09-06:** [H-018 consumer/ownership report](RE-H018-STATIC-GAPS-2026-09-06.md).
+Character bindings render independently; the wrench shares the base OnEquip and
+has no AttachToHand override (the cited data reference is `.pdata`); GLOO and
+shotgun shot construction query the current cached ray; IKLimb and the active-bind
+memory walk are laid out. `tools/re/verify_h018_static_gaps.py` passes 50 target-byte
+checks and 10 synthetic snapshot checks. No live game access. The original brief
+below is retained, including the premises corrected by the report.
+
 **Written 2026-09-06.** Every item here is answerable from the binary. None needs
 a running game, and none should be answered by running one.
 
