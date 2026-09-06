@@ -198,6 +198,9 @@ DWORD PostRawInput(int keyId, unsigned int state, int valueMilli)
     // no real device produces, and the listener walk filters on device.
     fields.device = input::DeviceForKeyId(keyId);
     fields.state = state;
+    // Carried for every state, not only UI: the field costs nothing on the
+    // paths that ignore it, and omitting it is what made the UI path silent.
+    fields.inputChar = input::InputCharForKeyId(keyId);
     fields.keyName = name;
     fields.keyId = keyId;
     fields.value = static_cast<float>(valueMilli) / 1000.0f;

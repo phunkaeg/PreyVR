@@ -66,6 +66,20 @@ std::uint32_t DeviceForKeyId(int keyId)
     return kDeviceGamepad;
 }
 
+std::uint16_t InputCharForKeyId(int keyId)
+{
+    switch (keyId) {
+        case kKeyEnter: return 13;    // CR, what a Return key contributes
+        case kKeySpace: return 32;
+        case kKeyEscape: return 27;
+        case kKeyW: return 'w';
+        case kKeyA: return 'a';
+        case kKeyS: return 's';
+        case kKeyD: return 'd';
+        default: return 0;            // arrows and pad buttons contribute no char
+    }
+}
+
 const char* KeyNameFor(int keyId)
 {
     for (const NamedKey& entry : kNames) {
@@ -101,8 +115,7 @@ bool BuildEvent(const EventFields& fields, std::uint8_t* out, std::size_t capaci
     std::memcpy(out + kOffsetDevice, &fields.device, sizeof(fields.device));
     std::memcpy(out + kOffsetState, &fields.state, sizeof(fields.state));
 
-    const std::uint16_t inputChar = 0;
-    std::memcpy(out + kOffsetInputChar, &inputChar, sizeof(inputChar));
+    std::memcpy(out + kOffsetInputChar, &fields.inputChar, sizeof(fields.inputChar));
 
     const char* name = fields.keyName;
     std::memcpy(out + kOffsetKeyName, &name, sizeof(name));

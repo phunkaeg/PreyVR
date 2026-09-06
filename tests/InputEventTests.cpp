@@ -137,6 +137,40 @@ void TestDeviceFollowsTheKeyIdRange()
     Require(KeyNameFor(kKeyEnter) != nullptr, "enter must have a stable name");
 }
 
+// **The field the Flash UI actually reads.** Its OnInputEventUI dispatches
+// *(uint16*)(event+0x08) to Scaleform and never consults keyId or keyName, so a
+// UI event carrying zero here is a keystroke the menu cannot see. Every event
+// this project sent before 2026-09-07 carried zero.
+void TestInputCharIsWrittenAtOffsetEight()
+{
+    std::uint8_t buffer[kEventSize];
+    std::memset(buffer, 0xCD, sizeof(buffer));
+    EventFields fields;
+    fields.state = kStateUI;
+    fields.keyName = "enter";
+    fields.keyId = kKeyEnter;
+    fields.inputChar = InputCharForKeyId(kKeyEnter);
+    Require(fields.inputChar == 13, "Return contributes a carriage return");
+    Require(BuildEvent(fields, buffer, sizeof(buffer)), "a UI event must build");
+    Require(ReadAt<std::uint16_t>(buffer, 0x08) == 13, "the char lands at 0x08");
+    Require(ReadAt<std::uint32_t>(buffer, 0x04) == kStateUI, "and the state is UI");
+
+    Require(InputCharForKeyId(kKeySpace) == 32, "space contributes a space");
+    Require(InputCharForKeyId(kKeyEscape) == 27, "escape contributes ESC");
+    // Arrows and pad buttons contribute no character; inventing one would be
+    // guessing at a code point the front end never sends.
+    Require(InputCharForKeyId(kKeyUp) == 0, "an arrow key contributes no char");
+    Require(InputCharForKeyId(kButtonA) == 0, "a pad button contributes no char");
+
+    // A default-constructed event still carries zero, so nothing that does not
+    // ask for a char silently acquires one.
+    EventFields plain;
+    plain.keyName = "xi_a";
+    plain.keyId = kButtonA;
+    Require(BuildEvent(plain, buffer, sizeof(buffer)), "a plain event builds");
+    Require(ReadAt<std::uint16_t>(buffer, 0x08) == 0, "and carries no char");
+}
+
 void TestMenuTapIsPressThenRelease()
 {
     std::uint8_t buffer[kEventSize * 2];
@@ -185,6 +219,7 @@ int main()
     TestRefusalsRatherThanQuestionableEvents();
     TestKeyNamesAreStableStorage();
     TestDeviceFollowsTheKeyIdRange();
+    TestInputCharIsWrittenAtOffsetEight();
     TestMenuTapIsPressThenRelease();
     TestEveryMenuActionIsMapped();
     std::cout << "input event tests passed\n";

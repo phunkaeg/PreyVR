@@ -93,9 +93,22 @@ inline constexpr int kKeyDown = 0x66;
 // produces, and `SendEventToListeners` filters on device.
 std::uint32_t DeviceForKeyId(int keyId);
 
+// The character a key contributes to a UI event, or 0 when it contributes none.
+// Only keys the front end plausibly consumes are mapped; an unmapped key gets 0,
+// which is the honest answer rather than an invented code point.
+std::uint16_t InputCharForKeyId(int keyId);
+
 struct EventFields {
     std::uint32_t device = kDeviceGamepad;
     std::uint32_t state = kStatePressed;
+    // **The Flash UI reads this and nothing else.** The menu listener's
+    // `OnInputEventUI` requires `state == kStateUI` and then dispatches
+    // `*(uint16*)(event+0x08)` straight to Scaleform -- it never looks at
+    // `keyId` or `keyName`. Every event this project sent carried zero here,
+    // because R-089 said the *movement* producer does not need the field and
+    // that advice was generalised to every consumer. A menu tap with a zero
+    // char is a keystroke the UI cannot see.
+    std::uint16_t inputChar = 0;
     // **Must have static storage.** The action-refire path keeps a copy of the
     // event including its pointers, so a name on the caller's stack becomes a
     // dangling read at an arbitrary later frame -- the kind of fault that lands

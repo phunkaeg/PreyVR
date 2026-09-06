@@ -1780,3 +1780,59 @@ listeners 1-3 and find which consumes `enter` at the main menu.
 
 **Do not re-test the binding, the activation mask, the modifiers or the filters.**
 All four are measured and all four are satisfied by the event already being sent.
+
+## R-098 -- the menu reads `inputChar`, which every event we sent carried as zero
+
+Static, from decompiling the five normal input listeners enumerated in R-097.
+**This explains every menu-input failure recorded in H-013 and R-091.**
+
+### None of the three listeners ahead of the action map consumes anything
+
+| order | `OnInputEvent` | what it is | consumes? |
+|---|---|---|---|
+| 1 | `0x182D3A0` | last-input-device tracker; records device and index, sets `+0x1C` to 2/3/4/5 | **no** -- return reduces to 0 for any device 0-3 |
+| 2 | `0xDD0460` | gamepad-stick virtual cursor; reads `xi_thumblx` `0x210` and `xi_thumbly` `0x211` | **no** -- every return masks the low byte (`0x200`, `& …ff00`) |
+| 3 | `0xE9D590` | gated on `deviceType == 3`, handles `0x20A`/`0x40E` | **no** -- keyboard events never enter its body, and it masks every return |
+
+So a keyboard event *does* reach `CActionMapManager::OnInputEvent` at position 4.
+The earlier hypothesis that something ate it first is dead.
+
+### `CActionMapManager::OnInputEvent` `0x3D0960` gates
+
+```c
+manager_secondary+0xD4 != 0                                  // enabled; measured 1
+&& (**(code**)(*DAT_18224DA40 + 0x130))() == 0               // a global "not blocked" query
+&& (event->keyName == 0 || *event->keyName != 0)             // non-empty key name
+&& ((event->modifiers & 0x44) == 0 || event->keyId != 0x1B)  // a special case for Enter
+```
+
+### The menu is not on the action-map path at all
+
+Listener 5 (`0x1CA6018`) is the **only** one with a real `OnInputEventUI`,
+`0x2D0320`, rather than the false-returning leaf `0x16D2100`. That function:
+
+```c
+if ((**(code**)(*DAT_18224DA40 + 0xE0))() == 0 && *(int*)(event + 4) == 0x10) {
+    local_res18 = (uint)*(ushort *)(event + 8);          // inputChar at +0x08
+    ...
+    (**(code**)(*plVar5[5] + 0x310))(plVar5[5], &local_res18);   // to Scaleform
+}
+```
+
+It requires **`state == 0x10` (UI)** and then dispatches **`*(uint16*)(event+0x08)`**
+-- the `inputChar` -- to the Flash layer. It never reads `keyId` or `keyName`.
+
+**Every synthesised event this project has sent carried `inputChar = 0`**, because
+R-089 wrote *"the movement producer does not need that field; zero the whole
+event"* and that advice, correct for its own consumer, was generalised to all of
+them. A UI event with a zero char is a keystroke the menu cannot see, which is
+why five deliveries at the title and six at the in-level prompt changed nothing
+while every counter read success.
+
+`EventFields` now carries `inputChar`, `InputCharForKeyId` maps the keys that
+contribute one (Enter 13, Space 32, Escape 27, WASD), and arrows and pad buttons
+return 0 rather than an invented code point.
+
+**Untested live.** The mapping of arrow keys to whatever Scaleform expects is not
+established -- they contribute no character, so menu *navigation* may need a
+different route from menu *confirmation*.
