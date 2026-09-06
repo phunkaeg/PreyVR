@@ -1303,3 +1303,66 @@ handlers are `0x158FD20` and `0x158FD80`, storing to `playerInput+0x5C` and
 **Which bindings are live is not byte-proven** -- the verifier reports
 `active_bindings_verified: false`. Scope any synthesised post to the player: the
 playbook's shot-redirection warning applies to input too.
+
+## R-090 -- the input listener chain, decoded, and what it exonerates
+
+Static, read from the open `PreyDll.dll` in Ghidra (image base `0x180000000`).
+Motivated by a live negative: five synthesised events delivered, none accepted
+(see the H-005C handover's 2026-09-06 section).
+
+### `PostInputEvent` `0x9D6D30`
+
+```c
+if (((force != 0) || (*(char*)(pInput + 0x78) != 0)) &&
+    ((keyId != -1) || (state == 0x10)))
+{
+    SendEventToListeners(pInput, event);      // 0x9D7430, always reached
+    if (returned && *(char*)(pInput + 0x79) == 0 && event->pSymbol != NULL) {
+        // hold-symbol bookkeeping, skipped entirely for a null symbol
+    }
+}
+```
+
+* `pInput+0x78` is the posting-enabled flag; `force` bypasses it.
+* A null `pSymbol` costs only the hold-symbol bookkeeping. It does **not**
+  prevent delivery, confirming R-089's reading.
+* `keyId == -1` is refused unless the state is UI (`0x10`).
+
+### `SendEventToListeners` `0x9D7430`
+
+Four stages, in order. A listener returning non-zero stops the walk.
+
+| stage | member | dispatch |
+|---|---|---|
+| console listeners | `pInput+0x38` (list) | vtable `+0x10` when `state == 0x10`, else `+0x08` |
+| exclusive listener | `pInput+0x48` | same |
+| **blocking query** | virtual `*pInput + 0x188` | `(keyId, deviceType, deviceIndex)` |
+| normal listeners | `pInput+0x28` (list) | same, **only when the query returned 0** |
+
+### The blocking query `0x9D7790` -- exonerated
+
+Not a function in the current database; decoded from bytes:
+
+```
+mov  rcx,[rcx+0xD0]      ; blocked-input list head
+mov  rax,[rcx] / cmp rax,rcx / je -> xor al,al ; ret   ; EMPTY LIST => 0
+cmp  dword [rax+0x14],edx   ; entry keyId vs ours; mismatch -> next node
+cmp  byte  [rax+0x19],0     ; "all devices" flag set -> return 1
+cmp  byte  [rax+0x18],r9b   ; else deviceIndex must match -> return 1
+```
+
+Entry layout: keyId `+0x14`, deviceIndex `+0x18`, all-devices flag `+0x19`.
+It blocks only a key something explicitly registered, and returns 0 on an empty
+list. **So normal listeners are reached**, and this is not what swallowed the
+synthesised events.
+
+### What this settles, and what it leaves
+
+The event ABI, the posting gate, and the delivery path are all confirmed and all
+permissive. Everything up to and including "the normal listener list is walked
+with our event" is proven. The remaining unknown is **the consumer**: which
+listener backs the title screen's `ActiveUserManagerBase SetListening(true)`, and
+what its own handler requires that a synthesised event does not supply.
+
+Do not re-test the device, the posting gate, the UI state or `force` -- all four
+are recorded negatives from the live run.
