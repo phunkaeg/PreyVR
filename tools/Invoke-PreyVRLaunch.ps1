@@ -47,6 +47,11 @@ param(
     [switch]$NoTape,
     [int]$TapeMaxFrames = 20000,
     [int]$ReadyTimeoutSec = 120,
+    # Passed through to the game verbatim. CryEngine treats a `+`-prefixed
+    # argument as a console command executed at startup, so `+map <level>` is
+    # the documented way into a level without touching a menu. Whether Prey
+    # kept that is a question this parameter exists to answer, not an assumption.
+    [string]$ExtraArgs = '',
     [switch]$DryRun
 )
 
@@ -154,6 +159,10 @@ $startInfo.WorkingDirectory = (Resolve-Path -LiteralPath $GameRoot).Path
 # Required for EnvironmentVariables to apply at all; with ShellExecute the child
 # would silently inherit this shell's environment instead.
 $startInfo.UseShellExecute = $false
+if ($ExtraArgs) {
+    $startInfo.Arguments = $ExtraArgs
+    Write-Host "arguments: $ExtraArgs"
+}
 foreach ($key in $childEnv.Keys) { $startInfo.EnvironmentVariables[$key] = $childEnv[$key] }
 
 $process = [System.Diagnostics.Process]::Start($startInfo)
