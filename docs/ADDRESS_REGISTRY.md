@@ -1729,3 +1729,54 @@ it at weapon `+0x2B0`. The attachment manager reaches
 the selected weapon's `+0x2B0`. Two near counts do not identify which is which,
 and one branch does not use RenderCHR at all: default-skeleton type `0x55AA55AA`
 goes to `0x81C730` instead.
+
+## R-097 -- the active binding table, read live and decoded offline
+
+**R-092 is closed: no PAK decryption was needed.** H-018 §5's read-only walk was
+executed against a running game and decoded by
+`tools/re/decode_h018_bind_snapshot.py`, which never opens a process. Raw receipt
+in ignored capture storage; the actionable content is below.
+
+Manager at `PreyDll+0x248BCE0`, both vtables validated before the walk
+(`base+0x1CBFC48`, `manager+8` `base+0x1CBFE08`). **896 bindings, 12 action maps,
+50 filters**, manager enabled. Maps: `debug`, `default`, `etherDuplicate`,
+`examination`, `flycam`, `focusmode`, `hacking`, `menu`, `mimic_grab`, `player`,
+`psi_scanning_fanfare`, `world_ui_examination`.
+
+### The menu binds, which is what the mod needs
+
+All on the `menu` map, `map_enabled` and `enabled_unfiltered` both true:
+
+| action | keys | activation mask |
+|---|---|---|
+| `menu_confirm` | `enter`, `np_enter`, `xi_a`, `pad_cross`, `menu:sc_a` | **1** (press only) |
+| `menu_back` | `backspace`, `mouse4`, `xi_b`, `pad_circle` | 1 |
+| `menu_up` | `up`, `w`, `xi_dpad_up`, `xi_thumbly`, `pad_up` | **5** (press or hold) |
+| `menu_down` | `down`, `s`, `xi_dpad_down`, `xi_thumbly`, `pad_down` | 5 |
+| `menu_left` / `menu_right` | `a`/`d`, `left`/`right`, `xi_dpad_*`, `xi_thumblx` | 5 |
+| `menu_exit` | `escape`, `xi_back`, `pad_select` | 1 |
+
+`menu_confirm` on `enter` has CRC `0xB970C06E`, modifiers `0`, activation mask
+`1`. **That is exactly the event that was posted and ignored** (H-013's live
+section), so the binding was never the problem.
+
+### Which means the failure is a consumer ahead of it, not the bind
+
+The normal listener list at `pInput+0x28` holds **five** listeners, and the action
+map manager is **fourth**:
+
+| order | vtable RVA | `OnInputEvent` | identity |
+|---|---|---|---|
+| 1 | `0x1EAC6E8` | `0x182D3A0` | unidentified |
+| 2 | `0x1D988A8` | `0xDD0460` | unidentified |
+| 3 | `0x1DB79D8` | `0xE9D590` | unidentified |
+| 4 | `0x1CBFE08` | `0x3D0960` | **CActionMapManager** (`manager+8`) |
+| 5 | `0x1CA6018` | `0x2CFDB0` | unidentified; the only one with a real `OnInputEventUI` (`0x2D0320`) rather than the false-return leaf `0x16D2100` |
+
+The list is sorted by descending priority, so **three listeners see a menu event
+before the action map does**, and any returning non-zero ends the walk. That is
+now the specific open question, and it is a named, bounded one: identify
+listeners 1-3 and find which consumes `enter` at the main menu.
+
+**Do not re-test the binding, the activation mask, the modifiers or the filters.**
+All four are measured and all four are satisfied by the event already being sent.
