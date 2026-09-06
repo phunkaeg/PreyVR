@@ -1599,3 +1599,49 @@ Empty lobby spawn: **one** character flagged near. Loaded save holding a weapon:
 exactly the caveat R-089 wrote into its own header, now observed. In both
 sessions the hand rig matched a `near=0` character, so the rig it grabs is not
 the near instance.
+
+
+## R-095 -- `RenderCHR` copies its matrix argument, which is the per-frame seam
+
+Static, from decompiling `CCharInstance_RenderCHR` `0x81D0D0` (named and
+commented in the Ghidra database this session).
+
+```c
+*puVar5 = *param_3;  puVar5[1] = param_3[1];  ...  puVar5[0xb] = param_3[0xb];
+```
+
+`puVar5` is the render object obtained at the top of the function. **The twelve
+floats of the R8 `Matrix34` argument are copied into `CRenderObject+0x00` on
+every draw.** So editing that argument at the function's entry -- where
+`RenderFrame` already holds the pointer -- is a per-frame transform for that
+character.
+
+**This is the seam `SetAttAbsoluteDefault` could never be.** That writes an
+attachment *default* the engine samples at attach time, which is why the weapon
+offset moved once and stopped (R-094) and why a rotation rewritten every frame
+moved nothing at all (H-017). A per-frame matrix edit has no such limit.
+
+Layout is R-088's: row-major 3x4, basis vectors as **columns** -- X at 0,4,8;
+Y at 1,5,9; Z at 2,6,10; translation at 3,7,11.
+
+Implemented as `ApplyRenderMatrixOverride` in `preyvr_core`, unit-tested for the
+translation column, basis-only rotation, orthonormality, and untouched-on-refusal.
+
+### The same listing independently reproduces R-089
+
+```c
+if (((*(uint *)(param_2 + 0x80) >> 0x17 & 1) == 0) && ((*(byte *)(param_1 + 0x159) & 2) == 0))
+```
+
+`param_1` is `longlong*`, so `param_1[0x159]` is byte offset **`0xAC8`**. The
+predicate is exactly `(SRendParams+0x80 & 0x800000) || (character+0xAC8 & 2)`,
+derived here from the function's own code rather than inherited. The false path
+**clears** the flag, so a stale bit on a pooled render object cannot mislead.
+
+### And it names the open question
+
+`RenderCHR` is called only from `ICharacterInstance::Render` `0x81BCB0`, which is
+vtable-dispatched. Whether a held weapon reaches it as **its own** character --
+and so can be moved independently of the arms -- is
+[H-018 Gap 1](HANDOVER-H018-STATIC-GAPS.md), unresolved. The live near counts
+(one at an empty spawn, two holding a weapon) are suggestive and not proof.
