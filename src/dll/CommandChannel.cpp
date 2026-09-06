@@ -120,6 +120,12 @@ void WriteReport(std::ostringstream& out)
         << " handCalibrated=" << HandRigCalibrationDone()
         << " handRightJoint=" << HandRigSelectedRightJoint()
         << " handLeftJoint=" << HandRigSelectedLeftJoint()
+        << " handZeroRightMm=" << HandRigZeroRightMm(0) << "," << HandRigZeroRightMm(1)
+        << "," << HandRigZeroRightMm(2)
+        << " handWorldRightMm=" << HandRigWorldRightMm(0) << "," << HandRigWorldRightMm(1)
+        << "," << HandRigWorldRightMm(2)
+        << " handCalibYawMdeg=" << HandRigCalibrationYawMilli()
+        << " handLastYawMdeg=" << HandRigLastYawMilli()
         << " handLastCharacter=0x" << std::hex << HandRigLastCharacter() << std::dec
         << " weaponAttachment=0x" << std::hex << WeaponAttachmentPointer() << std::dec
         << " weaponMountMm=" << WeaponMountPositionMillimetres(0)

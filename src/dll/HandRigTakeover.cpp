@@ -70,6 +70,10 @@ std::atomic<unsigned long long> gMatched{0}, gSkipped{0};
 std::atomic<int> gRightJoint{-1}, gLeftJoint{-1};
 std::atomic<bool> gControllerDrive{false};
 std::atomic<bool> gCalibrated{false};
+// H-016 diagnostics: the operands behind `handRightMm`.
+std::atomic<int> gLastWorldRight[3]{};
+std::atomic<int> gCalibYawMilli{0};
+std::atomic<int> gLastYawMilli{0};
 std::atomic<float> gScale{1.0f};
 std::atomic<unsigned long long> gNoPose{0};
 std::atomic<int> gLastRightMm{0}, gLastLeftMm{0};
@@ -136,6 +140,13 @@ bool ControllerWorld(Hand hand, Vec3& out)
     // projection builds each eye by translation alone, so both eyes share it.
     reference.worldPosition = Vec3{};
     out = controller::ControllerPoseInWorld(reference, state.gripPose).position;
+    if (hand == Hand::right) {
+        gLastWorldRight[0].store(static_cast<int>(out.x * 1000.0f), std::memory_order_relaxed);
+        gLastWorldRight[1].store(static_cast<int>(out.y * 1000.0f), std::memory_order_relaxed);
+        gLastWorldRight[2].store(static_cast<int>(out.z * 1000.0f), std::memory_order_relaxed);
+        gLastYawMilli.store(static_cast<int>(reference.yawRadians * 57295.78f),
+                            std::memory_order_relaxed);
+    }
     return true;
 }
 
@@ -526,6 +537,20 @@ unsigned int HandRigCalibrationDone()
     return gCalibrated.load(std::memory_order_acquire) ? 1u : 0u;
 }
 
+int HandRigZeroRightMm(unsigned int axis)
+{
+    const float v = axis == 0 ? gZeroRight.x : axis == 1 ? gZeroRight.y : gZeroRight.z;
+    return axis > 2 ? 0 : static_cast<int>(v * 1000.0f);
+}
+
+int HandRigWorldRightMm(unsigned int axis)
+{
+    return axis > 2 ? 0 : gLastWorldRight[axis].load(std::memory_order_relaxed);
+}
+
+int HandRigCalibrationYawMilli() { return gCalibYawMilli.load(std::memory_order_relaxed); }
+int HandRigLastYawMilli() { return gLastYawMilli.load(std::memory_order_relaxed); }
+
 int HandRigSelectedRightJoint() { return gRightJoint.load(std::memory_order_relaxed); }
 int HandRigSelectedLeftJoint() { return gLeftJoint.load(std::memory_order_relaxed); }
 
@@ -552,6 +577,11 @@ DWORD CalibrateHandRig()
     }
     gZeroRight = r;
     gZeroLeft = l;
+    // The yaw the zero was taken at. If this and `handLastYawMilli` differ, the
+    // delta is a difference of two differently-oriented frames and not a pure
+    // controller movement -- which is H-016's leading suspect.
+    gCalibYawMilli.store(gLastYawMilli.load(std::memory_order_relaxed),
+                         std::memory_order_relaxed);
     gCalibrated.store(true, std::memory_order_release);
     Log("result=0 detail=calibrated");
     return 0;

@@ -145,6 +145,17 @@ DWORD HandRigLastSubtreeSize();
 unsigned int HandRigMode();
 unsigned int HandRigControllerDriveArmed();
 unsigned int HandRigCalibrationDone();
+// **The two operands of the subtraction, not just its result.** `handRightMm`
+// alone cannot distinguish a stale calibration zero from a reference frame that
+// moved between calibrating and sampling — H-016 has two live suspects and one
+// number. These expose the calibration zero, the current sampled world position
+// and the yaw each was taken at, in millimetres and millidegrees, so the delta
+// is decomposable rather than merely surprising.
+int HandRigZeroRightMm(unsigned int axis);
+int HandRigWorldRightMm(unsigned int axis);
+int HandRigCalibrationYawMilli();
+int HandRigLastYawMilli();
+
 int HandRigSelectedRightJoint();
 int HandRigSelectedLeftJoint();
 
