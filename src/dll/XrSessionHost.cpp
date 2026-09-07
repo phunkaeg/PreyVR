@@ -62,6 +62,18 @@ struct Host {
     std::vector<ID3D11Texture2D*> images;
 
     ID3D11Device* device = nullptr;   // Prey's, borrowed -- never released here
+    // The resolution chain, measured rather than assumed. The submitted size is
+    // Prey's backbuffer by construction (see CreateSessionAndSwapchain), so the
+    // runtime's own recommendation was never consulted and the gap between them
+    // was never a number. RE-HEADSET-RESOLUTION-2026-09-08 asks for exactly this
+    // before any resolution work: measure the chain first.
+    std::uint32_t recommendedWidth = 0, recommendedHeight = 0;
+    std::uint32_t maxWidth = 0, maxHeight = 0;
+    std::uint32_t recommendedSamples = 0, maxSamples = 0;
+    std::uint32_t viewCount = 0;
+    bool viewsDiffer = false;          // per-eye sizes are allowed to differ
+    std::uint32_t heldWidth = 0, heldHeight = 0, heldFormat = 0;
+    std::uint32_t submittedWidth = 0, submittedHeight = 0;
     std::uint32_t width = 0;
     std::uint32_t height = 0;
     bool sessionBegun = false;
@@ -385,6 +397,47 @@ bool CreateSessionAndSwapchain()
         return false;
     }
 
+    // Measure what the runtime asks for before building at a different size, so
+    // the difference is recorded rather than discovered later in a headset. This
+    // does not change what is submitted; it makes the current policy visible.
+    {
+        std::uint32_t viewCount = 0;
+        const XrViewConfigurationType viewConfig = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+        if (XR_SUCCEEDED(xrEnumerateViewConfigurationViews(
+                gHost.instance, gHost.systemId, viewConfig, 0, &viewCount, nullptr)) &&
+            viewCount > 0) {
+            std::vector<XrViewConfigurationView> views(
+                viewCount, XrViewConfigurationView{XR_TYPE_VIEW_CONFIGURATION_VIEW});
+            if (XR_SUCCEEDED(xrEnumerateViewConfigurationViews(
+                    gHost.instance, gHost.systemId, viewConfig, viewCount, &viewCount,
+                    views.data())) && viewCount > 0) {
+                gHost.viewCount = viewCount;
+                gHost.recommendedWidth = views[0].recommendedImageRectWidth;
+                gHost.recommendedHeight = views[0].recommendedImageRectHeight;
+                gHost.maxWidth = views[0].maxImageRectWidth;
+                gHost.maxHeight = views[0].maxImageRectHeight;
+                gHost.recommendedSamples = views[0].recommendedSwapchainSampleCount;
+                gHost.maxSamples = views[0].maxSwapchainSampleCount;
+                for (std::uint32_t i = 1; i < viewCount; ++i) {
+                    if (views[i].recommendedImageRectWidth != gHost.recommendedWidth ||
+                        views[i].recommendedImageRectHeight != gHost.recommendedHeight) {
+                        gHost.viewsDiffer = true;
+                    }
+                }
+                std::ostringstream line;
+                line << "result=0 detail=view_configuration views=" << viewCount
+                     << " recommended=" << gHost.recommendedWidth << "x" << gHost.recommendedHeight
+                     << " max=" << gHost.maxWidth << "x" << gHost.maxHeight
+                     << " recommendedSamples=" << gHost.recommendedSamples
+                     << " maxSamples=" << gHost.maxSamples
+                     << " viewsDiffer=" << (gHost.viewsDiffer ? 1 : 0)
+                     << " submitting=" << gHost.width << "x" << gHost.height
+                     << " note=submitted_size_is_preys_backbuffer_not_the_recommendation";
+                Log(line.str());
+            }
+        }
+    }
+
     // Built at **Prey's backbuffer size**, not the runtime's recommendation, so
     // the first light can CopyResource straight across with no scaling blit. The
     // runtime scales for display. Matching the recommendation is a later
@@ -582,6 +635,9 @@ bool SubmitStereoPair(
         hold.BindFlags = 0;
         hold.CPUAccessFlags = 0;
         hold.MiscFlags = 0;
+        gHost.heldWidth = hold.Width;
+        gHost.heldHeight = hold.Height;
+        gHost.heldFormat = static_cast<std::uint32_t>(hold.Format);
         if (FAILED(gHost.device->CreateTexture2D(&hold, nullptr, &gHost.eyeImage[eye]))) {
             gHost.eyeImage[eye] = nullptr;
             LogOnce("result=failed step=create_eye_image");
@@ -965,6 +1021,8 @@ void ServiceXrFrame(void* renderer)
                     projViews[eye].subImage.swapchain = gHost.swapchain;
                     projViews[eye].subImage.imageArrayIndex = static_cast<std::uint32_t>(eye);
                     projViews[eye].subImage.imageRect.offset = {0, 0};
+                    gHost.submittedWidth = gHost.width;
+                    gHost.submittedHeight = gHost.height;
                     projViews[eye].subImage.imageRect.extent = {
                         static_cast<std::int32_t>(gHost.width),
                         static_cast<std::int32_t>(gHost.height)};
@@ -1014,6 +1072,27 @@ DWORD SetXrStereoSubmission(unsigned int enabled)
     line << "result=0 detail=stereo_submission enabled=" << (on ? "1" : "0");
     Log(line.str());
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+
+DWORD XrResolutionChain(unsigned int field)
+{
+    switch (field) {
+        case 0: return gHost.recommendedWidth;
+        case 1: return gHost.recommendedHeight;
+        case 2: return gHost.maxWidth;
+        case 3: return gHost.maxHeight;
+        case 4: return gHost.width;             // Prey's backbuffer
+        case 5: return gHost.height;
+        case 6: return gHost.heldWidth;         // held eye texture
+        case 7: return gHost.heldHeight;
+        case 8: return gHost.submittedWidth;    // what the compositor is told
+        case 9: return gHost.submittedHeight;
+        case 10: return gHost.recommendedSamples;
+        case 11: return gHost.viewsDiffer ? 1u : 0u;
+        case 12: return gHost.heldFormat;
+        case 13: return gHost.viewCount;
+        default: return 0;
+    }
 }
 
 unsigned long long DeclaredFovAgreeCount() { return gFovAgree.load(std::memory_order_relaxed); }

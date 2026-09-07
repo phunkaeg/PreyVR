@@ -22,6 +22,35 @@ The standalone `tools/xr_session_probe/main.cpp:225-240` already demonstrates
 querying runtime recommended view dimensions. It is a reusable API example;
 it does not mean the injected host currently follows the recommendation.
 
+## Step 1 is implemented, 2026-09-08 (not yet run)
+
+`xr.resolution` on the command channel reports the chain this document asks for
+before any resolution work:
+
+```
+recommended=WxH  max=WxH  backbuffer=WxH  heldEye=WxH  submitted=WxH
+recommendedSamples=N  viewsDiffer=0|1  heldFormat=N  views=N
+pixelRatioPercent=N  widthRatioPercent=N  heightRatioPercent=N
+```
+
+**The runtime's recommendation was never queried by the injected host.** Only
+the standalone `xr_session_probe` did. `CreateSessionAndSwapchain` now
+enumerates the view configuration and logs the recommendation alongside the size
+it actually builds, so the gap is recorded at session start rather than argued
+from desktop settings later. Nothing about what is submitted changed: the policy
+is still Prey's backbuffer, deliberately, and this makes that policy visible.
+
+`pixelRatioPercent` is the per-eye pixel count the compositor receives against
+the count it asked for. Below 100 means the runtime is upscaling, which is the
+measurement behind "soft"; above 100 means pixels are being discarded.
+
+**What this does NOT measure**, and must not be read as: the scene's own render
+target. Prey may render internally at another size and resolve before the
+backbuffer, and `r_Supersampling` exists in this binary. The ratio bounds what
+the compositor receives, not what was actually drawn -- so a good ratio does not
+prove there is no upstream bottleneck. Section 2's leads remain the route to
+that, and they need the ratio first to know whether they matter.
+
 ## Recommended order
 
 1. **Measure the complete chain.** Log runtime-recommended/max size per eye,

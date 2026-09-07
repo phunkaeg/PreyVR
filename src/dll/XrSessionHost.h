@@ -112,6 +112,25 @@ void ServiceXrFrame(void* renderer);
 // see the FOV the runtime located and the FOV we declared, but never the
 // projection the engine actually rendered with. A non-zero diverge count means
 // the submitted image is a lie about its own geometry.
+// The resolution chain, end to end, so "the image looks soft" becomes numbers.
+//
+// Fields: 0/1 runtime recommended per-eye WxH, 2/3 runtime maximum, 4/5 Prey's
+// backbuffer, 6/7 the held eye texture, 8/9 what is actually submitted, 10 the
+// recommended sample count, 11 whether the two views ask for different sizes,
+// 12 the held texture's DXGI format, 13 the view count.
+//
+// The mod builds its swapchain at Prey's backbuffer size and lets the runtime
+// scale, so 4/5 and 8/9 agree by construction while 0/1 was never consulted.
+// That policy is deliberate and documented; measuring it is the first step
+// RE-HEADSET-RESOLUTION asks for, because a scale factor argued from desktop
+// settings is not a measurement of either end of this chain.
+//
+// **This does not measure the scene's own render target.** Prey may render
+// internally at another size and resolve before the backbuffer, and a
+// supersampling path exists in the binary. A recommendation-to-backbuffer ratio
+// bounds what the compositor receives, not what was actually drawn.
+DWORD XrResolutionChain(unsigned int field);
+
 unsigned long long DeclaredFovAgreeCount();
 unsigned long long DeclaredFovDivergeCount();
 DWORD DeclaredFovWorstMilliTan();

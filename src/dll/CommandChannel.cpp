@@ -437,6 +437,32 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             ++listed;
         }
         out << " listed=" << listed;
+    } else if (verb == "xr.resolution") {
+        // The measured chain: what the runtime asks for, what Prey renders, what
+        // is held, and what is submitted. Ratios are given so "soft" has a
+        // number; the scene's own render target is NOT covered here.
+        const DWORD recW = XrResolutionChain(0), recH = XrResolutionChain(1);
+        const DWORD backW = XrResolutionChain(4), backH = XrResolutionChain(5);
+        out << "xr.resolution result=0"
+            << " recommended=" << recW << "x" << recH
+            << " max=" << XrResolutionChain(2) << "x" << XrResolutionChain(3)
+            << " backbuffer=" << backW << "x" << backH
+            << " heldEye=" << XrResolutionChain(6) << "x" << XrResolutionChain(7)
+            << " submitted=" << XrResolutionChain(8) << "x" << XrResolutionChain(9)
+            << " recommendedSamples=" << XrResolutionChain(10)
+            << " viewsDiffer=" << XrResolutionChain(11)
+            << " heldFormat=" << XrResolutionChain(12)
+            << " views=" << XrResolutionChain(13);
+        if (recW != 0 && recH != 0 && backW != 0 && backH != 0) {
+            // Per-eye pixels the runtime wants against per-eye pixels it gets.
+            const double want = static_cast<double>(recW) * recH;
+            const double got = static_cast<double>(backW) * backH;
+            out << " pixelRatioPercent=" << static_cast<int>(got / want * 100.0 + 0.5)
+                << " widthRatioPercent=" << static_cast<int>(
+                       static_cast<double>(backW) / recW * 100.0 + 0.5)
+                << " heightRatioPercent=" << static_cast<int>(
+                       static_cast<double>(backH) / recH * 100.0 + 0.5);
+        }
     } else if (verb == "move.mode") {
         // 0 off, 1 observe (hook the analog handlers, attribute every call,
         // post nothing), 2 apply. Observe first: it proves the handlers fire
