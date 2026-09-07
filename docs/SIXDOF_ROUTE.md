@@ -35,12 +35,21 @@ some external pitch source is ever wanted.
 currently reads the game camera's yaw so mouse turning still works while building.
 That is scaffolding, and M5 removes it.
 
+## Status, 2026-09-07
+
+M1 and M3 are done and confirmed in a headset. M2 has its direction lane working
+and its origin/barrel lane open. **The hands were not a stage in this list and
+turned out to be the hardest part of it** -- they are done as of R-104: the
+controller drives the wrist through Prey's own animation-driven IK, the engine
+solves the arm, and the weapon follows because the write lands before bone
+attachments sample the pose.
+
 ## Stages
 
 Ordered so each one is testable alone, and so the pieces that *unblock judging the
 others* come first.
 
-### M1 — the view seam. **Built, layout confirmed, not yet applied.**
+### M1 — the view seam. **DONE — head rotation and 6DoF confirmed in a headset.**
 
 `ArkPlayerCamera::UpdateView` (R-009) is the seam, because it is where the game
 computes the camera and therefore upstream of every consumer at once. Three
@@ -54,7 +63,7 @@ confirmed live as R-075.
 
 **Exit:** view and culling both follow the headset.
 
-### M2 — detach aim onto the controller. **Moved earlier, deliberately.**
+### M2 — detach aim onto the controller. **Direction done; origin/barrel alignment open.**
 
 Was going to be late work. It belongs here because until aim is detached, every
 camera change drags the weapon with it -- which corrupts the thing being judged and
@@ -68,7 +77,7 @@ the seam, written after R-011 rebuilds it during `OnPreRender`.
 **Exit:** the weapon points where the controller points, and does not move when
 the head does.
 
-### M3 — positional head tracking
+### M3 — positional head tracking. **DONE — `view.position`, confirmed in a headset.**
 
 The translation half of 6DoF, which M1 deliberately left out.
 
@@ -81,14 +90,14 @@ The translation half of 6DoF, which M1 deliberately left out.
 
 **Exit:** leaning produces correct parallax and degrades gracefully into geometry.
 
-### M4 — locomotion on the stick
+### M4 — locomotion on the stick. **Written and unit-tested; unwired.**
 
 The controller stick drives the capsule. `MotionController.cpp` already exists and
 already takes a `ReferenceFrame`, so this is wiring rather than new design.
 
 **Exit:** the level is traversable without a keyboard.
 
-### M5 — own the turn, and drop the mouse
+### M5 — own the turn, and drop the mouse. **Open.**
 
 Play-space yaw becomes a value this project owns, driven by stick turn, replacing
 the game camera's yaw that M1 borrows. That removes the last mouse dependency and

@@ -904,6 +904,22 @@ controller does *not* align shots with the barrel -- GLOO normalises reticle
 hit minus the native firing origin, so `aim.origin 1` is a controller-point
 diagnostic and per-weapon barrel alignment is a separate runtime gate.
 
-Open until read live: the hand rig's ADIK entries and limb (skeleton `+0x70`,
-`+0x68`), the `+0x610` gate and `ca_useADIKTargets`, and which bone the weapon
-attachment names (`[weapon+0x2B0]+0x15C`).
+**CONFIRMED in a headset, 2026-09-07 (R-104). H-021 is closed.** Every static
+prediction was read live before anything was written: two ADIK entries
+(`r_hand_spine_target` 38 / `r_hand_spine_blend` 4, left 39/5), `2BIK` limbs
+`36/40/41/45` and `35/67/68/72` ending at the hand joints, both gates on, and the
+GLOO cannon on bone 47 with its binding spring off. With a fixed goal and no
+controller in the loop the hand and weapon rose together; with the controller
+driving, the wearer reported *"hand and gun are moving in unity. The arm bends
+correctly."*
+
+So the arm chain is solved by the engine from two joint writes, and H-018 Gap 4's
+`IKLimb` construction is not needed. Two defects the same session exposed are
+fixed and awaiting retest: the hand yawed with the headset (the view camera
+carries head tracking, so a head-relative offset needs the *body* yaw), and the
+hand flickered between goal and animation (other characters' animation jobs won
+the IK state lock about one frame in nine).
+
+What H-021 did **not** establish: barrel alignment. A shot still converges from
+the weapon's authored muzzle helper toward the reticle ray, so per-weapon
+grip-to-barrel rotation is a separate lane with its own runtime gate.

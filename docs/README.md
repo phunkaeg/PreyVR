@@ -2,8 +2,15 @@
 
 The notebook separates evidence from plans so implementation follows demonstrated ownership rather than speculation.
 
-> Resuming work? Read [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) first — current binary identity, lifecycle changes, verified state,
-> traps found the hard way, open threads, and outstanding risks.
+> **Resuming work? Read [`NEXT-SESSION.md`](NEXT-SESSION.md) first** — what is
+> confirmed in a headset, the exact commands to bring a session up, and the one
+> test queued next. Then [`FAILURE_REGISTRY.md`](FAILURE_REGISTRY.md) for the
+> traps that have each cost a session, and
+> [`RE-INVESTIGATION-GUIDE.md`](RE-INVESTIGATION-GUIDE.md) for how a static claim
+> has to be established here.
+>
+> [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) remains
+> the record of binary identity and lifecycle decisions.
 
 ## Start here
 

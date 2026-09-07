@@ -19,15 +19,51 @@ The installed release at `D:\SteamLibrary\steamapps\common\Prey\Binaries\Daniell
 
 ## Current research state
 
-- The game-owned D3D11 device, DXGI swapchain, and paired renderer Begin/EndScene boundary are mapped and exact-signature guarded. Adapter selection is understood: Prey honours `r_overrideDXGIAdapter` as an `EnumAdapters1` index inside the real device-creation path, so OpenXR's adapter-LUID requirement is satisfiable natively without a hook.
-- `ArkPlayerCamera::UpdateView(SViewParams&)` and Prey's native custom-view callback path are mapped and live-validated. The currently preferred per-eye seam is `CRenderView::SetCamera`: it copies the camera **by value** into the render view's own storage, so it cannot contaminate the global view camera the aim ray is rebuilt from, and it derives the render frustum from the camera it is handed — including `CCamera`'s four asymmetry shifts, which map onto OpenXR's `XrFovf` tangents. Prey's asymmetric frustum path is live in the render pipeline, not dead code. Neither seam has been written to.
-- A reversible fixed-camera test moved Prey's independent cached world aim ray. A completed two-swing A0b test moved a native wrench contact `0.1272` world units across the same wall, and a no-button interaction test changed both the selected and usable entity from keypad `0xFDE0` to `0x1117`. Both tests changed only one stack-local query direction while leaving the camera and persistent ray untouched. Firearm consumers use the same ray; the live projectile proof remains.
-- A read-only runtime snapshot runs on load, after the gate and before any hook is armed: it resolves `gEnv`, follows the system,
-  renderer and 3D-engine pointers, checks each object's vtable against the statically resolved RVA, and decodes the global view
-  camera. One supported-host load therefore validates seven registry entries at once. See [`docs/LIVE_CAPTURE_PLAN.md`](docs/LIVE_CAPTURE_PLAN.md).
-- `PreyVR.dll` version `0.3.0-lifecycle-hardening` checks 30 exact in-memory landmarks and packages a default-off `EndRendererScene` observer. The current binary passes the fresh 11-test headless loop and the installed-module gate, but has not yet been loaded into Prey. The earlier 21-landmark `0.2.0` artifact counted 301 live callbacks; that historical run does not prove this rebuilt DLL.
-- The supported-host lifecycle is intentionally process-scoped: after every landmark and preflight check passes, the DLL pins itself until Prey exits. Observer disable restores the target entry bytes but retains the inactive trampoline so an in-flight callback can never return through freed code.
-- The bundle includes OpenXR 1.1.60 at pinned source commit `64f2b37c…` and a read-only runtime/loader preflight. It verifies the runtime-manifest shape and the adjacent x64 DLL/export without loading it. No OpenXR instance, session, swapchain, D3D11 resource, stereo image, or headset output exists yet. This is still an engineering bootstrap—not a playable VR build.
+**Updated 2026-09-07, after a headset session.** This is no longer a bootstrap:
+stereo, head tracking and controller-driven hands all run in a real headset on a
+real level.
+
+**Confirmed in the headset**
+
+- **Stereo submission and head tracking.** Native per-eye projection, synthetic
+  stereo by camera translation, 6DoF head pose. Bring-up is scripted end to end
+  by `tools/Invoke-PreyVRStartup.ps1`, in the one order that works: `xr.srgb`
+  before `xr.start` (gamma is a swapchain format, not a cvar), `view.recenter`
+  before `view.apply`, and `r_DrawNearFoV 88.507`.
+- **The hand and the weapon move together, and the arm bends** (R-104). Writing
+  the controller's wrist into the rig's own animation-driven-IK target with the
+  weight joint at 1, at the entry of `ProcessAnimationDrivenIK`, makes Prey's own
+  two-bone solver solve the arm. Because that runs before bone attachments sample
+  the pose, the weapon follows for free. Wrist rotation, finger travel and elbow
+  bend are all the engine's, not ours.
+- **Weapon transform in world space** (R-100), **wrist rotation** (R-101), and
+  **native input acceptance** (R-091) each confirmed in earlier sessions.
+
+**Open, and specific**
+
+- The hand yawed with the headset. Diagnosed and fixed: the engine's view camera
+  carries head tracking because this mod writes it, so a head-relative offset must
+  be rotated by the *body* yaw, `camera - head`. Built and unit-tested; **awaiting
+  the next headset run.**
+- Aim direction follows the controller, but a shot still converges from the
+  weapon's authored muzzle helper toward the reticle ray. Per-weapon barrel
+  alignment is unproved; `aim.origin` is a diagnostic, not a muzzle mode.
+- Locomotion is written and tested as a pure layer and remains unwired.
+- Menu navigation cannot yet be driven synthetically past the action-map stage.
+
+**Engineering baseline**
+
+`PreyVR.dll` version `0.3.1-static-ik-integration` gates on **34** exact
+in-memory landmarks, pins itself for the process lifetime, and drives everything
+through a file command channel so routine testing needs no debugger. OpenXR
+1.1.60 at pinned commit `64f2b37c`. 27 deterministic tests plus two offline
+target-byte verifiers (24 + 8 checks) run without the game.
+
+**Where to start reading:** [`docs/ADDRESS_REGISTRY.md`](docs/ADDRESS_REGISTRY.md)
+for what is proved and how, [`docs/RE-INVESTIGATION-GUIDE.md`](docs/RE-INVESTIGATION-GUIDE.md)
+for how static claims must be established here, and
+[`docs/FAILURE_REGISTRY.md`](docs/FAILURE_REGISTRY.md) for the traps that have
+each cost a session.
 
 ## Working rules
 

@@ -1791,3 +1791,53 @@ was changed. Refreshed only PreyVR's deterministic code graph, preserving the 11
 semantic source documents; the existing Bootstrap.h parse warning remains.
 No Prey process launch, injection, attachment, XR session or graphics capture.
 Runtime/headset acceptance and per-weapon barrel alignment remain unclaimed.
+
+## 2026-09-07 -- H-021 confirmed in a headset: the engine solves the arm
+
+First run of the animation-driven-IK lane against a real headset and a real
+level. **Every static prediction from H-021 was read live before anything was
+written**, through the file command channel with no debugger attached: two ADIK
+entries (`r_hand_spine_target` 38 / `r_hand_spine_blend` 4; left 39/5), `2BIK`
+limbs `36/40/41/45` and `35/67/68/72` ending at the hand joints, `+0x610` and
+`ca_useADIKTargets` both non-zero, and the GLOO cannon on bone **47**
+(`r_handProp_jnt`, a child of the wrist) with its binding spring **off**.
+
+Fixed goal, no controller: hand and weapon rose together. Controller driving:
+*"hand and gun are moving in unity. The arm bends correctly."* That is H-021
+items 1-3 and H-018 Gap 4 closed at once -- the engine's own two-bone solver
+does the arm from two joint writes, and no `IKLimb` is constructed. Full record
+in R-104.
+
+Two defects surfaced in the same session, both fixed and awaiting retest.
+
+**The hand yawed with the headset.** The frame's yaw was
+`GameCameraYaw() - referenceYaw`, but the view camera *carries head tracking*
+because this mod writes it, so that angle is `body + (head - reference)`;
+rotating an offset already measured from the head by it applies the head twice.
+The correction cancels rather than compensates: `playSpace = camera - head`.
+This is the composition the old hand lane called `BodyYaw()`, whose comment
+quotes the fleet playbook -- *parenting the shoulders to the HMD is the obvious
+implementation and it is wrong* -- and it was not carried into the new lane.
+The unit test now asserts **both** arms, so a simplification back to
+camera-minus-reference fails rather than passes.
+
+**The hand flickered between the goal and the animated pose.** Measured, not
+guessed: `ikBusy` climbed ~89-105/s against ~128 owner matches/s, and over two
+seconds `observerFrames +288` against `ikWrittenR +255`. Every other character's
+animation job took the same IK-state try-lock and won it against the owner about
+one frame in nine. Fixed by sharing the snapshot lock among readers and letting
+a non-owner character bypass the IK lock entirely.
+
+Ownership held through two weapon swaps (`ikEquipGen` 1 -> 3), the first live
+proof that selecting by the owner chain rather than a pointer (F-009) works.
+
+Also fixed: the launcher resolved its default DLL path against the cwd, so
+running it from `tools/` reported "mod DLL not found" with a freshly built DLL
+present; and both protocol scripts now accept `-LogDir`, because a Steam-launched
+Prey puts the channel in `<Documents>\PreyVR` rather than a run directory.
+
+Build `b2d9a2d`, version `0.3.1-static-ik-integration`, 34 landmarks, 27/27
+tests. Documentation brought current: `README.md` (which still described a DLL
+that had never been loaded into Prey), `HYPOTHESES.md` H-021, `SIXDOF_ROUTE.md`
+milestones, and a new [`NEXT-SESSION.md`](NEXT-SESSION.md) carrying the bring-up
+order, the fields to read and the traps.
