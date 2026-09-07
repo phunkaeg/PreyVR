@@ -41,6 +41,9 @@
 [CmdletBinding()]
 param(
     [string]$RunDir = '',
+    # Direct channel directory, for a game not started by the launcher: the DLL
+    # defaults to <Documents>\PreyVR, which has no run directory or 'log' subfolder.
+    [string]$LogDir = '',
     [int]$IpdMillimetres = 64,
     [int]$HalfFovDegrees = 50,
     [switch]$SkipRecenter
@@ -49,13 +52,13 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-if (-not $RunDir) {
+if (-not $RunDir -and -not $LogDir) {
     $latest = Get-ChildItem "$env:LOCALAPPDATA\PreyVR\runs" -Directory -ErrorAction SilentlyContinue |
               Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if (-not $latest) { Write-Error 'no run directory found; launch the game first'; exit 1 }
     $RunDir = $latest.FullName
 }
-$log = Join-Path $RunDir 'log'
+$log = if ($LogDir) { $LogDir } else { Join-Path $RunDir 'log' }
 $cmd = Join-Path $log 'commands.txt'
 $res = Join-Path $log 'results.txt'
 if (-not (Test-Path -LiteralPath $log)) { Write-Error "no channel at $log"; exit 1 }

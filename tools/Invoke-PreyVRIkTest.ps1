@@ -24,19 +24,20 @@
 [CmdletBinding()]
 param(
     [string]$RunDir = '',
+    [string]$LogDir = '',
     [int]$TestMillimetres = 0,
     [switch]$Drive,
     [int]$Joints = 101
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-if (-not $RunDir) {
+if (-not $RunDir -and -not $LogDir) {
     $latest = Get-ChildItem "$env:LOCALAPPDATA\PreyVR\runs" -Directory -ErrorAction SilentlyContinue |
               Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if (-not $latest) { Write-Error 'no run directory; launch first'; exit 1 }
     $RunDir = $latest.FullName
 }
-$log = Join-Path $RunDir 'log'
+$log = if ($LogDir) { $LogDir } else { Join-Path $RunDir 'log' }
 $cmd = Join-Path $log 'commands.txt'
 $res = Join-Path $log 'results.txt'
 
