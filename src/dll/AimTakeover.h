@@ -33,6 +33,12 @@
 namespace preyvr::dll {
 
 DWORD SetAimTakeoverEnabled(unsigned int enabled);
+// Also writes the cached ray ORIGIN (+0x17D4) from the controller, placed
+// relative to the head at the engine's eye point. Without it the ray starts at
+// the eye while the projectile starts at the weapon's muzzle helper, and shots
+// converge on a camera ray instead of leaving along the controller (H-021 s5).
+DWORD SetAimOriginFromHand(unsigned int enabled);
+unsigned long long AimOriginAppliedCount();
 
 // Frames the cached ray was overwritten.
 unsigned long long AimTakeoverAppliedCount();

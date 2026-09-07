@@ -72,6 +72,7 @@ target_include_directories(preyvr_headers INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}
 
 add_library(preyvr_core STATIC
     src/common/AimState.cpp
+    src/common/AnimIk.cpp
     src/common/CameraEdit.cpp
     src/common/ConsolePolicy.cpp
     src/common/DebugRegisters.cpp
@@ -125,6 +126,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
     add_library(preyvr SHARED
         src/dll/AimRayProbe.cpp
         src/dll/AimTakeover.cpp
+        src/dll/AnimIkTakeover.cpp
         src/dll/Bootstrap.cpp
         src/dll/CameraEditHook.cpp
         src/dll/ConsoleBridgeWin32.cpp
@@ -318,6 +320,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_motion_controller_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_motion_controller_tests)
     add_test(NAME motion_controller COMMAND preyvr_motion_controller_tests)
+
+    add_executable(preyvr_anim_ik_tests tests/AnimIkTests.cpp)
+    target_link_libraries(preyvr_anim_ik_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_anim_ik_tests)
+    add_test(NAME anim_ik COMMAND preyvr_anim_ik_tests)
 
     add_executable(preyvr_input_event_tests tests/InputEventTests.cpp)
     target_link_libraries(preyvr_input_event_tests PRIVATE preyvr_core)

@@ -68,6 +68,12 @@ DWORD SetWeaponAttachmentObserving(unsigned int enabled);
 // The captured attachment, or 0. Session-specific: re-equip a weapon to refresh it
 // rather than carrying one between runs.
 unsigned long long WeaponAttachmentPointer();
+// The bone the resolved attachment hangs from (`IAttachment+0x15C`, R-102) and
+// its binding's simulation flags (`+8+0x28` enabled, `+8+0x2B` redirect) -- a
+// spring on the weapon binding lags it behind a fast wrist and, with redirect,
+// writes back into the pose. -1 / 0 when nothing is resolved.
+int WeaponAttachmentJointIndex();
+unsigned int WeaponAttachmentSimulationFlags();
 
 // The attachment's current model-space mount, in millimetres and milli-units, read
 // through `GetAttAbsoluteDefault`. This is the number to look at before writing

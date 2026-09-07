@@ -62,6 +62,14 @@ constexpr std::array<std::uint8_t, 17> kGetArkPlayerInstance = {
     0x10, 0xCD, 0x00, 0x48, 0x8B, 0x01, 0xFF, 0x50,
     0x70,
 };
+// R-102 / H-021. CSkeletonAnim::ProcessAnimationDrivenIK -- the seam that feeds
+// the engine's own arm IK. Bytes read from the static image on 2026-09-07.
+constexpr std::array<std::uint8_t, 32> kProcessAdik = {
+    0x48, 0x89, 0x54, 0x24, 0x10, 0x55, 0x53, 0x41,
+    0x55, 0x48, 0x8D, 0xAC, 0x24, 0xE0, 0xFE, 0xFF,
+    0xFF, 0x48, 0x81, 0xEC, 0x20, 0x02, 0x00, 0x00,
+    0x48, 0x8B, 0x5A, 0x08, 0x4C, 0x8B, 0xE9, 0x48};
+
 constexpr std::array<std::uint8_t, 21> kReticleUpdater = {
     0x40, 0x55, 0x57, 0x48, 0x8D, 0xAC, 0x24, 0x68,
     0xFF, 0xFF, 0xFF, 0x48, 0x81, 0xEC, 0x98, 0x01,
@@ -239,7 +247,7 @@ constexpr std::array<std::uint8_t, 7> kSystemSetViewCamera = {
     0x48, 0x81, 0xC1, 0x88, 0x07, 0x00, 0x00,
 };
 
-const std::array<Landmark, 33> kLandmarks = {{
+const std::array<Landmark, 34> kLandmarks = {{
     {"renderer.begin", "CD3D9Renderer::RT_BeginFrame", 0xF7D710, kBeginRendererScene},
     {"renderer.end", "CD3D9Renderer::RT_EndFrame", 0xF7E210, kEndRendererScene},
     {"renderer.present", "RT_EndFrame Present dispatch", 0xF7E48A, kPresentDispatch},
@@ -254,6 +262,7 @@ const std::array<Landmark, 33> kLandmarks = {{
     {"aim.get_cached_ray", "IArkPlayer::GetReticleViewPositionAndDir", 0x157CBB0, kReticleRayGetter},
     {"aim.weapon_firing_query", "CArkWeapon::GetReticleInfoForFiring", 0x1694890, kWeaponFiringReticle},
     {"aim.weapon_reticle_position", "CArkWeapon::GetReticlePosition", 0x1694A20, kWeaponReticlePosition},
+    {"anim.process_adik", "CSkeletonAnim::ProcessAnimationDrivenIK", 0x877B50, kProcessAdik},
     {"movement.get_state", "ArkPlayerMovementController::GetMovementState", 0x159AF10, kMovementState},
     {"wrench.attack_primary", "ArkWeaponWrench::OnActionAttackPrimary", 0x16B1FD0, kWrenchAttackPrimary},
     {"wrench.weapon_hit", "ArkWeaponWrench::OnHit", 0x16B2BC0, kWrenchWeaponHit},

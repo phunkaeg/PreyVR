@@ -1,6 +1,7 @@
 #include "CommandChannel.h"
 
 #include "AimTakeover.h"
+#include "AnimIkTakeover.h"
 #include "CameraEditHook.h"
 #include "ConsoleBridgeWin32.h"
 #include "FrameObserverHook.h"
@@ -124,6 +125,26 @@ void WriteReport(std::ostringstream& out)
         << " handWristArmed=" << HandRigWristDriveArmed()
         << " handWristApplied=" << HandRigWristAppliedCount()
         << " handTurnYaw=" << HandRigTurnYawDeciDegrees()
+        << " ikMode=" << AnimIkMode()
+        << " ikHooked=" << AnimIkHooked()
+        << " ikCalls=" << AnimIkCalls()
+        << " ikMatched=" << AnimIkMatched()
+        << " ikRig=0x" << std::hex << AnimIkRigSkeleton() << std::dec
+        << " ikJoints=" << AnimIkRigJoints()
+        << " ikGate=" << AnimIkGate()
+        << " ikCvar=" << AnimIkCvar()
+        << " ikTargetR=" << AnimIkTargetJoint(0) << " ikWeightR=" << AnimIkWeightJoint(0)
+        << " ikLimbEndR=" << AnimIkLimbEnd(0) << " ikLimbTagR=0x" << std::hex << AnimIkLimbTag(0) << std::dec
+        << " ikTargetL=" << AnimIkTargetJoint(1) << " ikWeightL=" << AnimIkWeightJoint(1)
+        << " ikLimbEndL=" << AnimIkLimbEnd(1)
+        << " ikWrittenR=" << AnimIkWritten(0) << " ikWrittenL=" << AnimIkWritten(1)
+        << " ikNoPose=" << AnimIkNoPose() << " ikClamped=" << AnimIkClamped()
+        << " ikCalR=" << AnimIkCalibrated(0) << " ikCalL=" << AnimIkCalibrated(1)
+        << " ikLocMm=" << AnimIkLocationMillimetres(0) << "," << AnimIkLocationMillimetres(1)
+        << "," << AnimIkLocationMillimetres(2)
+        << " ikLocYawMdeg=" << AnimIkLocationYawMilliDegrees()
+        << " ikGoalMm=" << AnimIkLastGoalMillimetres(0) << "," << AnimIkLastGoalMillimetres(1)
+        << "," << AnimIkLastGoalMillimetres(2)
         << " handZeroRightMm=" << HandRigZeroRightMm(0) << "," << HandRigZeroRightMm(1)
         << "," << HandRigZeroRightMm(2)
         << " handWorldRightMm=" << HandRigWorldRightMm(0) << "," << HandRigWorldRightMm(1)
@@ -132,6 +153,9 @@ void WriteReport(std::ostringstream& out)
         << " handLastYawMdeg=" << HandRigLastYawMilli()
         << " handLastCharacter=0x" << std::hex << HandRigLastCharacter() << std::dec
         << " weaponAttachment=0x" << std::hex << WeaponAttachmentPointer() << std::dec
+        << " weaponBone=" << WeaponAttachmentJointIndex()
+        << " weaponSim=0x" << std::hex << WeaponAttachmentSimulationFlags() << std::dec
+        << " aimOriginApplied=" << AimOriginAppliedCount()
         << " weaponMountMm=" << WeaponMountPositionMillimetres(0)
         << "," << WeaponMountPositionMillimetres(1)
         << "," << WeaponMountPositionMillimetres(2)
@@ -237,6 +261,24 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "near.halfipd result=" << SetNearViewHalfIpdMillimetres(arg(1, 32));
     } else if (verb == "near.zero") {
         out << "near.zero result=" << SetNearViewZeroDeltaControl(arg(1, 1));
+    } else if (verb == "ik.mode") {
+        // 0 off, 1 observe (identify the rig, read its ADIK table, write
+        // nothing), 2 apply. Mutually exclusive with hand.mode 2.
+        const int requested = arg(1, 0);
+        out << "ik.mode result=" << SetAnimIkMode(requested) << " mode=" << requested
+            << (requested == 0 ? "(off)" : requested == 1 ? "(observe)" : requested == 2 ? "(apply)" : "(unknown)");
+    } else if (verb == "ik.test") {
+        out << "ik.test result=" << SetAnimIkTestOffsetMillimetres(arg(1, 0), arg(2, 0), arg(3, 0));
+    } else if (verb == "ik.drive") {
+        out << "ik.drive result=" << SetAnimIkControllerDrive(arg(1, 1));
+    } else if (verb == "ik.calibrate") {
+        out << "ik.calibrate result=" << CalibrateAnimIk();
+    } else if (verb == "ik.joints") {
+        out << "ik.joints result=" << SetAnimIkJointSignature(arg(1, 101));
+    } else if (verb == "ik.hands") {
+        out << "ik.hands result=" << SetAnimIkHands(arg(1, 1));
+    } else if (verb == "ik.dump") {
+        out << "ik.dump result=" << DumpAnimIk();
     } else if (verb == "hand.mode") {
         const int requested = arg(1, 0);
         const DWORD result = SetHandRigTakeoverMode(requested);
@@ -300,6 +342,11 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         }
         out << "console result=" << result
             << " command=\"" << command << "\"";
+    } else if (verb == "aim.origin") {
+        // Also move the reticle ray's origin to the hand, so the ray and the
+        // projectile (which already starts at the weapon's muzzle helper) share
+        // an origin and the shot leaves along the controller's forward.
+        out << "aim.origin result=" << SetAimOriginFromHand(arg(1, 1));
     } else if (verb == "aim.enable") {
         // The detached-aim lane, reachable from the channel at last. H-004 is
         // reproduced against two native consumers -- the wrench contact moved

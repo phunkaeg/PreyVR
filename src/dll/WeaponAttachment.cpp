@@ -221,6 +221,29 @@ DWORD SetWeaponAttachmentObserving(unsigned int enabled)
     return 0;
 }
 
+int WeaponAttachmentJointIndex()
+{
+    const auto attachment = reinterpret_cast<const std::uint8_t*>(gAttachment.load(std::memory_order_acquire));
+    if (attachment == nullptr) { return -1; }
+    __try {
+        return *reinterpret_cast<const int*>(attachment + 0x15C);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return -1;
+    }
+}
+
+unsigned int WeaponAttachmentSimulationFlags()
+{
+    const auto attachment = reinterpret_cast<const std::uint8_t*>(gAttachment.load(std::memory_order_acquire));
+    if (attachment == nullptr) { return 0; }
+    __try {
+        return static_cast<unsigned int>(attachment[8 + 0x28]) |
+               (static_cast<unsigned int>(attachment[8 + 0x2B]) << 8);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return 0;
+    }
+}
+
 unsigned long long WeaponAttachmentPointer() { return gAttachment.load(std::memory_order_acquire); }
 
 int WeaponMountPositionMillimetres(unsigned int axis)

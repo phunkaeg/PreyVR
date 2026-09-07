@@ -1,4 +1,5 @@
 #include "AimTakeover.h"
+#include "preyvr/AnimIk.h"
 #include "MinHookInit.h"
 
 #include "HeadTrackingHook.h"
@@ -40,6 +41,8 @@ std::atomic<unsigned long long> gRejNoPose{0};
 std::atomic<unsigned long long> gRejNoPlayer{0};
 std::atomic<unsigned long long> gRejCompose{0};
 std::atomic<unsigned int> gNativeMagnitude{0};
+std::atomic<bool> gOriginFromHand{false};
+std::atomic<unsigned long long> gOriginApplied{0};
 
 const engine::Landmark* FindLandmark(std::string_view id)
 {
@@ -167,6 +170,20 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
                 &ray->direction, sizeof(ray->direction));
     gApplied.fetch_add(1, std::memory_order_relaxed);
 
+    if (gOriginFromHand.load(std::memory_order_acquire)) {
+        // Head-relative, at the engine's own eye point: the same composition the
+        // anim-IK lane uses for the wrist, so the ray starts where the hand is.
+        const Pose hand = animik::ControllerWorldFromHead(reference.yawRadians, engineOrigin,
+                                                          headPose, controller.aimPose);
+        if (std::isfinite(hand.position.x) && std::isfinite(hand.position.y) &&
+            std::isfinite(hand.position.z)) {
+            std::memcpy(reinterpret_cast<void*>(
+                            playerAddress + engine::ArkPlayerLayout::cachedReticleOrigin),
+                        &hand.position, sizeof(hand.position));
+            gOriginApplied.fetch_add(1, std::memory_order_relaxed);
+        }
+    }
+
     // Move the crosshair to match. Without this the reticle keeps pointing where
     // the engine aimed while shots follow the hand, so anyone judging aim by the
     // crosshair is being told the wrong thing. Independently gated, so a
@@ -218,6 +235,15 @@ bool Install()
 }
 
 } // namespace
+
+DWORD SetAimOriginFromHand(unsigned int enabled)
+{
+    gOriginFromHand.store(enabled != 0u, std::memory_order_release);
+    Log(std::string("result=0 detail=origin_from_hand value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+
+unsigned long long AimOriginAppliedCount() { return gOriginApplied.load(std::memory_order_relaxed); }
 
 DWORD SetAimTakeoverEnabled(unsigned int enabled)
 {
