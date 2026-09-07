@@ -72,6 +72,10 @@ unsigned long long InputPostCount();
 unsigned long long InputPostRefusedCount();
 unsigned long long InputQueueDroppedCount();
 unsigned long long InputQueueDepthEstimate();
+// True while this thread is inside a PostInputEvent this mod issued, so a
+// consumer hook can tell our synthesised input from the player's real hardware.
+bool InputPostDrivingThisThread();
+
 unsigned long InputDrainThreadId();
 
 } // namespace preyvr::dll

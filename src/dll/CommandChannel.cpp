@@ -11,6 +11,7 @@
 #include "NearViewStereo.h"
 #include "RenderFrame.h"
 #include "InputPost.h"
+#include "MoveLane.h"
 #include "WeaponAttachment.h"
 #include "XrInput.h"
 #include "XrSessionHost.h"
@@ -192,6 +193,14 @@ void WriteReport(std::ostringstream& out)
         << " frameOverrideRefused=" << RenderFrameOverrideRefusedCount()
         << " menuActions=" << MenuNavigationActionCount()
         << " inputPosted=" << InputPostCount()
+        << " moveMode=" << MoveLaneMode()
+        << " moveHooked=" << MoveLaneHooked()
+        << " moveOursX=" << MoveLaneOursX() << " moveOursY=" << MoveLaneOursY()
+        << " moveNative=" << MoveLaneNative()
+        << " movePosted=" << MoveLanePosted() << " moveDropped=" << MoveLaneDropped()
+        << " moveInputObj=0x" << std::hex << MoveLaneInputObject() << std::dec
+        << " moveAxisMilli=" << MoveLaneAxisMilli(0) << "," << MoveLaneAxisMilli(1)
+        << " moveCinematic=" << MoveLaneCinematicGate()
         << " inputDropped=" << InputQueueDroppedCount()
         << " inputDrainThread=" << InputDrainThreadId()
         << " channelProcessed=" << gProcessed.load(std::memory_order_relaxed)
@@ -428,6 +437,15 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             ++listed;
         }
         out << " listed=" << listed;
+    } else if (verb == "move.mode") {
+        // 0 off, 1 observe (hook the analog handlers, attribute every call,
+        // post nothing), 2 apply. Observe first: it proves the handlers fire
+        // and measures the player's own hardware before we add to it.
+        const int requested = arg(1, 0);
+        out << "move.mode result=" << SetMoveLaneMode(requested) << " mode=" << requested
+            << (requested == 0 ? "(off)" : requested == 1 ? "(observe)" : requested == 2 ? "(apply)" : "(unknown)");
+    } else if (verb == "move.deadzone") {
+        out << "move.deadzone result=" << SetMoveLaneDeadzone(arg(1, 15));
     } else if (verb == "input.post") {
         out << "input.post result=" << SetInputPostEnabled(arg(1, 1));
     } else if (verb == "input.force") {

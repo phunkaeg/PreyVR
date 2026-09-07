@@ -86,12 +86,23 @@ bool Resolve()
 //
 // `force` is false. The native producer does not force, and forcing would bypass
 // the engine's own posting-enabled check.
+// True while this thread is inside a PostInputEvent WE issued. The engine's own
+// input walk runs synchronously inside that call, so a player-side handler that
+// fires while this is set was driven by us; one that fires while it is clear was
+// driven by real hardware. That distinction is what makes the double-driving
+// check a number instead of a feeling -- see the fleet playbook's
+// "double-driving trap", whose whole point is `engineLeaked`.
+thread_local bool tPostingOurEvent = false;
+
 bool CallPost(PostInputEventFn function, void* input, const void* event, bool force)
 {
     __try {
+        tPostingOurEvent = true;
         function(input, event, force);
+        tPostingOurEvent = false;
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
+        tPostingOurEvent = false;
         return false;
     }
 }
@@ -216,6 +227,8 @@ unsigned long long InputPostCount() { return gPosted.load(std::memory_order_rela
 unsigned long long InputPostRefusedCount() { return gRefused.load(std::memory_order_relaxed); }
 unsigned long long InputQueueDroppedCount() { return gQueue.Dropped(); }
 unsigned long long InputQueueDepthEstimate() { return gQueue.Pushed() - gQueue.Popped(); }
+bool InputPostDrivingThisThread() { return tPostingOurEvent; }
+
 unsigned long InputDrainThreadId() { return gDrainThread.load(std::memory_order_relaxed); }
 
 } // namespace preyvr::dll

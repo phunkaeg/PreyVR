@@ -1092,3 +1092,65 @@ The weapon is drawn in the near pass with its own half-IPD, separate from the
 world stereo. So a weapon-only stereo fault is consistent with the world being
 correct, and the near pass is the right place to look first -- but the eye tag,
 the obvious suspect there, is already ruled out.
+
+## H-023 -- locomotion through Prey's own analog handlers
+
+**Built 2026-09-08, not yet run.** The last of the three pillars in the stated
+end state -- HMD view, controller aim, stick locomotion -- and the only one that
+had never been wired.
+
+### The schema is the fleet's, not invented here
+
+`docs/03-input-and-locomotion.md` in the VR Modding playbook is explicit, and
+every point below is its rule rather than a local choice:
+
+* **Puppeteer the engine's movement; do not reimplement it.** The engine already
+  knows how to move a player correctly -- collision, gravity, ledges, AI
+  awareness -- and a mod that writes positions fights all of it forever. R-070
+  established Prey kept CryEngine's input layer, so a synthesised analog event
+  reaches the same handlers a real stick does.
+* **Smooth locomotion plus snap turn is what actually shipped.** Of six surveyed
+  mods, none shipped working teleport: two contain zero occurrences of the word,
+  two more have a config entry or action stub with nothing behind it.
+* **Radial deadzone, not per-axis.** Per-axis leaves diagonals live while the
+  cardinals are dead, and makes diagonal movement sqrt(2) times faster --
+  "sprinting only when moving cornerwise". `StickAxis` already did this.
+* **The double-driving trap.** Two paths driving one control never look like two
+  inputs; they look like movement that is mysteriously too fast, jitter, or a
+  deadzone that "doesn't work" -- subjective symptoms that get tuned around
+  instead of diagnosed.
+
+### What was built
+
+The analog handlers `0x158FD20` (X) and `0x158FD80` (Y) are hooked, gated on 23
+exact bytes each. Their prologue was read this session and confirms R-089's
+decode, including something the registry did not record: **RCX is the input
+object**, so the engine hands us the pointer and nothing is inferred about where
+it lives on the player. The axes are at `+0x5C`/`+0x60` and the cinematic gate at
+`+0x94`.
+
+Every handler call is attributed. `InputPost` sets a thread-local flag while
+inside a `PostInputEvent` we issued, so a handler firing with it set was driven
+by us and one firing without it was driven by the player's real hardware.
+**`moveNative` is the playbook's `engineLeaked`**: while this lane is applying,
+it is zero or double-driving is happening.
+
+`moveAxisMilli` reads `+0x5C`/`+0x60` back every call, so a posted value that
+never lands is visible rather than assumed, and `moveCinematic` shows when the
+engine is discarding movement itself -- which distinguishes "our lane failed"
+from "the game is in a cutscene".
+
+### Open before it can be judged
+
+* **Not run at all.** `move.mode 1` observes without posting and should be the
+  first thing tried: it proves the handlers fire and measures the player's own
+  hardware before anything is added.
+* **The drain is one event per frame**, deliberately, so a menu press and its
+  release cannot collapse. Two axes therefore take two frames, about 22 ms at
+  90 Hz. Acceptable for a first wiring; a per-axis latest-wins slot would remove
+  it if the lag is felt.
+* **Turn is not wired.** The playbook's rule is to turn through the engine's own
+  heading channel so mesh, capsule, aim and movement direction cannot disagree.
+  `xi_thumbrx` is `0x216` in the PDB-derived enum, and enum values have carried
+  twice here -- but that is an oracle, not this build. Verify against the
+  XInput symbol registration at `0x9DAA20` before posting it.
