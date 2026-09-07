@@ -941,3 +941,37 @@ immediately. **This is the same seqlock lesson `RenderFrameTable` already
 learned** after a publication race spliced 264 of 583 reads. It was fixed there,
 in code, and then re-committed by hand in an ad-hoc probe against a table that
 has the same hazard and no such protection.
+
+---
+
+# F-010 -- `xr.stereo 0` freezes the headset, and it was the documented experiment
+
+**2026-09-08.** `xr.stereo 0 50` was written into `NEXT-SESSION.md` and the H-019
+notes as the cheap discriminator for a stereo fault: *"if the offset survives a
+zero IPD it is not our camera at all, which eliminates a whole lane."* Run in a
+live headset it **froze the view**, and a wearer reported the freeze before the
+experiment produced any observation.
+
+Zero IPD does not narrow the eyes to one point. `SetSyntheticStereo(0, ...)`
+takes an early branch that **disarms stereo entirely**: it stores `lastEye = -1`
+and clears the frame-capture tag. With no eye being produced the compositor
+receives nothing new and holds the last frame.
+
+**Two mistakes in one line.** The obvious one is the freeze. The subtler one is
+that the test could not have answered the question anyway: `nearDeltaUm` stayed
+at 32000 throughout, because **the near pass that draws the weapon carries its
+own half-IPD**, independent of the world stereo. Disarming world stereo never
+touched the weapon. A discriminator was designed, documented and recommended
+without checking that its lever reached the thing it was meant to discriminate.
+
+`xr.stereo result=1` was also read as a failure at first. It is a **status** --
+the camera-edit state -- and the call had succeeded. That is the fourth time this
+project has read a status enum as an error code, after `xr.start result=1`,
+`observer status=enabled(2)` and `console result=4`.
+
+**Use instead**, both of which keep stereo armed and the compositor fed:
+
+* `near.zero 1` / `near.zero 0` -- zeroes only the near-pass eye delta, which is
+  the weapon's stereo specifically.
+* `near.halfipd 20` vs `45` -- legal range is 20-45 mm; if a fault's magnitude
+  scales with it, the fault is in the near-pass delta.

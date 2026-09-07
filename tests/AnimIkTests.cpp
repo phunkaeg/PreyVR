@@ -187,8 +187,29 @@ void TestCalibrationLifecycle()
     state.Commit(1, AxisAngle({1,0,0}, 0.2f));
     Require(state.pending == 0 && state.calibrated == 3, "both complete individually");
     state.Request(3);
+    // Contract changed 2026-09-08 after a wearer found that a weapon swap left
+    // the hand tracking position with its rotation silently stopped. Both of
+    // the original guarantees are kept -- no stale offset, no stale request --
+    // but a hand that HAD a completed calibration is re-queued for a fresh one
+    // rather than left half-driving.
     Require(state.Bind(2,0,1) && state.calibrated == 0 && state.pending == 0,
-            "re-equip invalidates rotations AND pending requests even when pointers are reused");
+            "re-equip invalidates rotations AND outstanding requests even when pointers are reused");
+    Require(state.Settling(0) && state.Settling(1),
+            "both previously calibrated hands are queued for a re-take");
+    Require(!state.Pending(0), "and must not commit mid equip animation");
+    for (unsigned int i = 0; i < CalibrationState::kSettleFrames; ++i) { state.Tick(); }
+    Require(state.Pending(0) && state.Pending(1), "once settled, the re-take runs");
+
+    // The other half: a request that never completed belongs to the old rig.
+    CalibrationState partial;
+    partial.Bind(1,0,1);
+    partial.Request(3);
+    partial.Commit(0, AxisAngle({0,0,1}, 0.3f));   // only the right hand completed
+    partial.Bind(2,0,1);
+    for (unsigned int i = 0; i < CalibrationState::kSettleFrames; ++i) { partial.Tick(); }
+    Require(partial.Pending(0), "the completed hand is re-taken");
+    Require(!partial.Pending(1) && !partial.Settling(1),
+            "the hand whose request never completed is not carried over");
     state.Request(2); state.Commit(1, {});
     Require(state.pending == 0 && state.calibrated == 2, "left-only request completes");
     state.Commit(99, {});
@@ -374,6 +395,7 @@ void TestPlaySpaceYawFromRealCameraComposition()
         }
     }
 }
+
 
 int main()
 {

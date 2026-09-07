@@ -30,25 +30,67 @@ bool ValidJoint(int index, unsigned int count);
 // Caller serializes this state across commands and animation jobs. A request
 // belongs to each selected hand and is consumed only by that hand's write.
 struct CalibrationState {
-    unsigned int pending = 0;
+    unsigned int pending = 0;        // asked for by ik.calibrate
+    unsigned int autoPending = 0;    // re-queued by a re-bind, after settling
+    unsigned int settleFrames = 0;
     unsigned int calibrated = 0;
     Quaternion offsets[2]{};
     std::uint64_t ownerGeneration = 0, referenceGeneration = 0, trackingEpoch = 0;
+    // Re-binding after a weapon change, a recentre or a focus loss invalidates
+    // the rotation offset -- it maps the controller onto *this* weapon's
+    // authored grip, and the next weapon's grip is different.
+    //
+    // **Re-take it rather than merely dropping it.** Dropping alone leaves the
+    // hand tracking position while its rotation silently stops, which a wearer
+    // reported on 2026-09-08 after swapping weapons: "it seemed to reset the
+    // rotational tracking and it was only tracking positionally". A hand that
+    // half-works reads as a bug, not as a prompt to recalibrate, and asking a
+    // player to recalibrate after every weapon swap is not a shippable answer.
+    //
+    // Two properties are preserved from the original contract:
+    //
+    //  * **No stale offset carries over** -- `calibrated` is still cleared.
+    //  * **No stale *request* carries over** -- an outstanding request that
+    //    never completed belonged to the old rig and is discarded. Only hands
+    //    with a COMPLETED calibration are re-queued.
+    //
+    // And the re-take waits: `kSettleFrames` matched frames must pass first, so
+    // the capture lands on the settled grip rather than midway through the
+    // equip animation, which would bake a transient wrist pose into the offset.
+    // A manual `ik.calibrate` is deliberate and commits on the next frame.
+    static constexpr unsigned int kSettleFrames = 90;
+
     bool Bind(std::uint64_t owner, std::uint64_t reference, std::uint64_t epoch) {
         if (ownerGeneration == owner && referenceGeneration == reference && trackingEpoch == epoch) { return false; }
-        if (ownerGeneration != 0) { pending = 0; }
+        pending = 0;                 // whatever the old rig had outstanding
+        autoPending = (ownerGeneration != 0) ? calibrated : 0u;
+        settleFrames = 0;
         calibrated = 0;
         ownerGeneration = owner; referenceGeneration = reference; trackingEpoch = epoch;
         return true;
     }
+
+    // One matched frame on the owning rig.
+    void Tick() { if (settleFrames < kSettleFrames) { ++settleFrames; } }
+
     void Request(unsigned int hands) { pending |= hands & 3u; }
     void Invalidate() { calibrated = 0; }
-    bool Pending(unsigned int hand) const { return hand < 2 && (pending & (1u << hand)); }
+    bool Pending(unsigned int hand) const {
+        if (hand >= 2) { return false; }
+        if (pending & (1u << hand)) { return true; }   // asked for deliberately
+        return (autoPending & (1u << hand)) && settleFrames >= kSettleFrames;
+    }
+    // Queued by a re-bind but still settling. Reported so a wearer whose
+    // rotation has not resumed yet can see that it is coming, not broken.
+    bool Settling(unsigned int hand) const {
+        return hand < 2 && (autoPending & (1u << hand)) && settleFrames < kSettleFrames;
+    }
     void Commit(unsigned int hand, const Quaternion& offset) {
         if (hand >= 2) { return; }
         offsets[hand] = offset;
         calibrated |= 1u << hand;
         pending &= ~(1u << hand);
+        autoPending &= ~(1u << hand);
     }
 };
 

@@ -923,3 +923,39 @@ the IK state lock about one frame in nine).
 What H-021 did **not** establish: barrel alignment. A shot still converges from
 the weapon's authored muzzle helper toward the reticle ray, so per-weapon
 grip-to-barrel rotation is a separate lane with its own runtime gate.
+
+## H-022 -- the weapon model flickers in stereo, occasionally
+
+**Observed by a wearer, 2026-09-08, after the IK lane was working:** *"There is
+still a minor stereo flicker of the weapon model occasionally - which seems to be
+separate from the screen graphic misalignment (they arent a synchronised
+offset)."*
+
+The wearer's separation of the two is the useful part: this is **not** H-019, the
+GLOO ammo display. Two faults, not one.
+
+### Eliminated, by measurement rather than argument
+
+* **A missed eye tag in the near pass.** Over 4 s of normal play: 77,002 near
+  draws applied, `nearRefused +0`, `nearNoEye +0` -- a 0.000% miss rate. The near
+  pass determines the eye on every draw.
+* **The two eyes getting different wrist poses.** `ikMatched +379` against
+  `observerFrames +379` in the same window: the ADIK pass runs exactly once per
+  rendered frame for the owning rig, so both eyes compose against one pose. A
+  per-eye resample would have shown `ikMatched` running ahead of the frame count.
+
+### Not yet tested
+
+* Whether the fault's magnitude scales with the near-pass half-IPD
+  (`near.halfipd 20` vs `45`). If it does, it is in the near delta despite the
+  eye tag being right; if not, the near delta is not involved at all.
+* Whether `near.zero 1` removes it. **This is the test F-010's freeze prevented**
+  -- the wearer was looking at a held frame at the moment the delta was zero, so
+  that run produced no observation and must be repeated.
+
+### Worth knowing before chasing it
+
+The weapon is drawn in the near pass with its own half-IPD, separate from the
+world stereo. So a weapon-only stereo fault is consistent with the world being
+correct, and the near pass is the right place to look first -- but the eye tag,
+the obvious suspect there, is already ruled out.

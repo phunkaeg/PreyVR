@@ -461,6 +461,7 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
         auto* const ch = static_cast<std::uint8_t*>(character);
         if (IdentifyRig(ch)) {
             gMatched.fetch_add(1, std::memory_order_relaxed);
+            gCalibration.Tick();   // settles an auto re-take past the equip animation
             int gate = 0;
             if (ReadInt(ch + kCharAnimPlaying, &gate)) {
                 gGate.store(static_cast<unsigned int>(gate), std::memory_order_relaxed);

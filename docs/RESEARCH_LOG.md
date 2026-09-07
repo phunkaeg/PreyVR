@@ -1841,3 +1841,21 @@ tests. Documentation brought current: `README.md` (which still described a DLL
 that had never been loaded into Prey), `HYPOTHESES.md` H-021, `SIXDOF_ROUTE.md`
 milestones, and a new [`NEXT-SESSION.md`](NEXT-SESSION.md) carrying the bring-up
 order, the fields to read and the traps.
+
+## 2026-09-08 — Native reticle UI dispatch and VR panel research
+
+- **Static evidence:** Steam string references identify separate `DanielleHUD`
+  and `DanielleMarkers` accessors at RVAs `0x1665780/0x16657A0`. Player reset
+  `0x1583A30` explicitly dispatches `reticleXOffset/YOffset` from whole-player
+  `+0x17EC/+0x17F0`; examination uses `reticlePosition(x,y)`. The two-float
+  dispatch helper `0x11797C0` receives coordinates in XMM2/XMM3, confirmed by
+  instructions. Its concrete UI virtual callee remains to resolve.
+- **Implementation finding:** ReticleFollow writes a direction-derived screen
+  position; it does not prove native visual notification, muzzle/barrel
+  agreement or finite-depth stereo convergence. XrSessionHost submits one
+  world projection layer, so an independent HUD panel first needs transparent
+  UI extraction and removal of duplicate UI from scene eye images.
+- **Route:** Preserve weapon art/state, separate world reticles/markers from
+  status/menu presentation, prove a flat OpenXR HUD layer, then optionally use
+  the cylinder extension. No runtime operations or mod code changes made.
+- **Report and receipts:** [Reticle and VR HUD research](RE-RETICLE-HUD-VR-2026-09-08.md).
