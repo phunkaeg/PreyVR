@@ -62,6 +62,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Default paths are repo-relative, not cwd-relative. This script is run from
+# tools/ as often as from the root, and "mod DLL not found" from tools/ with a
+# freshly built DLL cost a headset session its first ten minutes.
+$repoRoot = Split-Path -Parent $PSScriptRoot
+if (-not [System.IO.Path]::IsPathRooted($Dll)) { $Dll = Join-Path $repoRoot $Dll }
+
 # --- preflight, each check named for the failure it prevents ------------------
 
 foreach ($required in @($GameExe, $GameRoot, $XrSimRuntime)) {
