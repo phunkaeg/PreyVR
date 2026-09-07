@@ -1,5 +1,12 @@
 # Handover -- verify the four things H-021 inferred rather than read
 
+**Answered 2026-09-07:** see [static verification and corrections](RE-H021-STATIC-VERIFICATION-2026-09-07.md).
+All four mandatory questions are resolved statically; optional question 5 describes
+facial post-processing, not an established alternative animation path. The original
+brief below is retained as history: in particular, animation is character +0x140,
+pose is +0x700, and +0x610 is mutable command-derived animation state. The disk-image
+verifier passes 24 checks. No game execution was performed.
+
 **Written 2026-09-07.** Static only; nothing here needs the game. The H-021
 report ([`RE-H021-ABSOLUTE-WRIST-ARM-CHAIN-WEAPON-AIM-2026-09-07.md`](RE-H021-ABSOLUTE-WRIST-ARM-CHAIN-WEAPON-AIM-2026-09-07.md))
 is decompiled fact except where it says INFERENCE. This brief is the INFERENCE

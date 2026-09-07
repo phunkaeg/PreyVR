@@ -1729,3 +1729,28 @@ attachment or event posting. [Full report and memory contracts](RE-H018-STATIC-G
 Named eleven verified functions and saved Ghidra with the H-018 contracts and
 corrections. Raw decompilation/byte receipts and annotation payloads are retained
 under the gitignored `captures/traces/2026-09-06-h018-*` files.
+
+## 2026-09-07 -- H-021 verification and RE investigation guidance
+
+Closed the four mandatory static questions and corrected the optional sync-path
+premise. `sAmmoSpawnPointName` reaches whole-weapon +0x2F0 through the loader's
+secondary this (+8), destination +0x2E8. Ordinary PushPoseModifier at 0x839860
+accepts layers 0..15 and exactly -1; >=16 is rejected. This was already located
+in H-005B. Character +0x140 is CSkeletonAnim, +0x700 CSkeletonPose.
+
+Defined both previously unnamed pose-data leaf functions and read their complete
+instructions: vtable 0x1D27228 +0x10/+0x30 -> 0x87C9D0/0x87C940 set whole relative/
+absolute QuatT. OperatorQueue explicitly sets R8 despite its old decompile
+omitting that argument. Character +0x610 aliases animation +0x4D0: resets and
+command builders write it, and job preparation assigns command-count !=0.
+It does not report the number of ADIK definitions. The 0x8360A0 branch applies
+facial displacement and FK during CSkeletonPose post-processing; corrected its
+Ghidra name and receiver, and removed the inferred no-job-path interpretation.
+
+`tools/re/verify_h021_static.py` passes 24 instruction/vtable checks on the
+supported Steam module. Saved four Ghidra function names and six comments;
+updated R-102 and the original report. Runtime implementation and game untouched.
+[Verification](RE-H021-STATIC-VERIFICATION-2026-09-07.md) includes evidence and
+remaining runtime limits. [RE investigation guidance](RE-INVESTIGATION-GUIDE.md),
+linked from CLAUDE.md, makes prior-evidence retrieval, receiver recovery,
+register checks, and producer/consumer validation a concrete repeatable workflow.

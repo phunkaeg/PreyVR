@@ -9,7 +9,10 @@
 // IK target joint with the weight joint at 1 before the engine solves. The
 // engine then does everything the old lanes did by hand and two things they
 // could not: it solves the arm, and it runs *before* the bone attachments
-// sample the pose, so the weapon follows.
+// sample the pose, so the weapon follows. Weight 1 selects the full goal and
+// rotation blend; it does not lift the native solver's reach, stretch,
+// singularity and angle clamps (H-018), so the goal is clamped to the authored
+// reach here and the wrist is placed within those limits, not exactly.
 //
 // **This lane and `hand.mode 2` are mutually exclusive.** The hand-rig lane
 // composes onto the skinned pose after the fact; running both applies the
@@ -41,7 +44,10 @@ unsigned long long AnimIkCalls();
 unsigned long long AnimIkMatched();
 unsigned long long AnimIkRigSkeleton();
 unsigned int AnimIkRigJoints();
-unsigned int AnimIkGate();          // charInst+0x610 on the matched rig
+// charInst+0x610 on the matched rig: the animation object's nonempty-command
+// predicate (CSkeletonAnim+0x4D0, m_IsAnimPlaying), which the ADIK pass tests.
+// Zero means no animation commands this frame, not "no IK targets".
+unsigned int AnimIkGate();
 int AnimIkCvar();                   // ca_useADIKTargets
 int AnimIkTargetJoint(unsigned int hand);   // 0 right, 1 left; -1 none
 int AnimIkWeightJoint(unsigned int hand);

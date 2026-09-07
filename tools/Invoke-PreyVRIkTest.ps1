@@ -66,9 +66,9 @@ Start-Sleep -Seconds 3
 $r = Send 'report'
 $calls = Field $r 'ikCalls'
 $matched = Field $r 'ikMatched'
-Write-Host "  ikCalls=$calls        (0 => the detour never ran: gate closed or sync-path animation; handover s4/s5)"
+Write-Host "  ikCalls=$calls        (0 => the pass never ran: no animation commands (+0x610 = 0), cvar off, physics state, or hook problem)"
 Write-Host "  ikMatched=$matched    (0 => no rig with $Joints joints carries r_hand_spine_target; try -Joints)"
-Write-Host ('  ikRig=' + (Field $r 'ikRig') + ' ikJoints=' + (Field $r 'ikJoints') + ' ikGate=' + (Field $r 'ikGate') + ' ikCvar=' + (Field $r 'ikCvar'))
+Write-Host ('  ikRig=' + (Field $r 'ikRig') + ' ikJoints=' + (Field $r 'ikJoints') + ' ikGate=' + (Field $r 'ikGate') + ' ikCvar=' + (Field $r 'ikCvar') + '   (gate = m_IsAnimPlaying, not IK presence; the table is the target/weight lines below)')
 Write-Host ('  right: target=' + (Field $r 'ikTargetR') + ' weight=' + (Field $r 'ikWeightR') + ' limbEnd=' + (Field $r 'ikLimbEndR') + ' tag=' + (Field $r 'ikLimbTagR') + '   (expect 38 / 4 / 45 / 0x4b494232 = 2BIK)')
 Write-Host ('  left:  target=' + (Field $r 'ikTargetL') + ' weight=' + (Field $r 'ikWeightL') + ' limbEnd=' + (Field $r 'ikLimbEndL') + '   (expect 39 / 5 / 72)')
 Write-Host ('  ikLocMm=' + (Field $r 'ikLocMm') + ' ikLocYawMdeg=' + (Field $r 'ikLocYawMdeg') + '   (the rig model->world; compare with the player position and facing)')

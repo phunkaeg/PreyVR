@@ -1,0 +1,103 @@
+{
+  "image_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "anchors": {
+    "weapon_secondary_ctor": [
+      23658616,
+      "488d0509c87d004989442408"
+    ],
+    "weapon_spawn_property": [
+      23690966,
+      "488d158b4d7d00ff5038"
+    ],
+    "weapon_spawn_destination": [
+      23691060,
+      "498d8ee8020000"
+    ],
+    "weapon_spawn_assign": [
+      23691097,
+      "488bd3e81fd79ffe"
+    ],
+    "pose_ctor_relative": [
+      8595558,
+      "488d8b60020000e8fe8d0400488d8b90020000e8f28d0400"
+    ],
+    "pose_relative_setter": [
+      8899024,
+      "8bc2486bd01c418b00480351108902418b4004894204418b4008894208418b400c89420cf2410f104010f20f114210418b4018894218c3"
+    ],
+    "pose_absolute_setter": [
+      8898880,
+      "8bc2486bd01c418b00480351188902418b4004894204418b4008894208418b400c89420cf2410f104010f20f114210418b4018894218c3"
+    ],
+    "op_relative_r8": [
+      8246385,
+      "488b1e8bd7ff53488bd7488bce4c8bc0ff5310"
+    ],
+    "op_absolute_r8": [
+      8250041,
+      "488b1eff53288bd7488bce4c8bc0ff5330"
+    ],
+    "push_post_sentinel": [
+      8624463,
+      "83ffff7549"
+    ],
+    "push_post_queue": [
+      8624501,
+      "488d8d40040000"
+    ],
+    "push_reject_16": [
+      8624541,
+      "83ff107336"
+    ],
+    "push_layer_stride": [
+      8624579,
+      "488bc7488d4d6848c1e006488d5424304803c8eba9"
+    ],
+    "gate_command_count": [
+      8619386,
+      "488b4310418bcf388808200000488b43180f95c18988d0040000"
+    ],
+    "gate_reset": [
+      8584136,
+      "33c0c7831006000000000000"
+    ],
+    "gate_initialize": [
+      8621668,
+      "48c781d004000000000000"
+    ],
+    "gate_or": [
+      8658268,
+      "41818fd0040000feff0000"
+    ],
+    "facial_condition": [
+      8610345,
+      "384f387463398fd00400007509f68308030000027452"
+    ]
+  },
+  "vtables": {
+    "character.anim": [
+      30548520,
+      17736960
+    ],
+    "character.pose": [
+      30548536,
+      8577008
+    ],
+    "anim.push_modifier": [
+      30551592,
+      8624224
+    ],
+    "pose.set_relative": [
+      30569016,
+      8899024
+    ],
+    "pose.set_absolute": [
+      30569048,
+      8898880
+    ],
+    "weapon.secondary_load_params": [
+      31902424,
+      23690128
+    ]
+  }
+}

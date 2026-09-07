@@ -2102,6 +2102,13 @@ property and not a bug in this lane.
 
 ## R-102 -- the animation pipeline seams, static (H-021)
 
+**Verified/corrected 2026-09-07:** [H-021 verification](RE-H021-STATIC-VERIFICATION-2026-09-07.md),
+24 disk-image checks. Animation is character +0x140; pose is +0x700. Gate +0x610
+is animation state, not a rig-target count. The alleged sync branch is facial
+post-processing. Pose-data vtable 0x1D27228 slots +0x10/+0x30 are whole-QuatT
+relative/absolute setters at 0x87C9D0/0x87C940. Ordinary PushPoseModifier at
+0x839860 accepts layers 0..15 and sentinel -1; other layers are rejected.
+
 Names below are now in the Ghidra database with plate comments. Evidence is
 decompiled control flow unless marked INFERENCE. Report:
 [`RE-H021-ABSOLUTE-WRIST-ARM-CHAIN-WEAPON-AIM-2026-09-07.md`](RE-H021-ABSOLUTE-WRIST-ARM-CHAIN-WEAPON-AIM-2026-09-07.md).
@@ -2113,7 +2120,7 @@ decompiled control flow unless marked INFERENCE. Report:
 | `0x87B8E0` | `Prey_PoseDataComputeAbsolutePose` | FK pass; contains R-083's `0x87BBA0` |
 | `0x877B50` | `Prey_ProcessAnimationDrivenIK` | ADIK: target abs + weight rel.x per arm -> limb solve -> wrist slerp -> descendants; **the seam** |
 | `0x8B4060` / `0x8B44D0` | `Prey_LoadADIKTargets` / `Prey_LoadIKLimbDefinitions` | CHRPARAMS loaders; ADIK record 0x28 `{handle, targetIdx, targetName, weightIdx, weightName}`; limb handle = first 8 bytes of `Handle` |
-| `0x8360A0` / `0x8366F0` / `0x8387F0` | `Prey_SkeletonAnimFinishAnimationComputations` | main thread after the job; `CSkeletonAnim` at `CCharInstance+0x700`, pose at `+0x960`, callback slot `CSkeletonAnim+0x110` |
+| `0x8360A0` (related `0x8366F0` / `0x8387F0`) | `Prey_SkeletonPoseSkeletonPostProcess` | main thread after the job; `CSkeletonPose` at `CCharInstance+0x700`, pose-data at `+0x960`, callback slot `CSkeletonPose+0x110`; conditional facial displacement/FK, not a proven alternative animation path |
 | `0x8297E0` / `0x829940` | `Prey_AttachmentManagerUpdateLocationsExecute` / `...Fast` | bone attachments sample `GetJointAbsolute(att+0x15C)` here -- the weapon's per-frame update |
 | `0x8299D0` | `Prey_AttachmentManagerUpdateProxiesAndProjections` | proxies + one-shot projection list (`SetAttAbsoluteDefault` sampling, H-017) |
 | `0x7A3390` / `0x7A40E0` / `0x7A37E0` | `Prey_CAttachmentBONEUpdateStatic` / `...UpdateExecute` / `...ProjectAndUpdate` | `m_AttRelativeDefault +0xFC`, `m_AttModelRelative +0x130`, joint `+0x15C`, type byte `+0x30` |
@@ -2124,11 +2131,12 @@ decompiled control flow unless marked INFERENCE. Report:
 | `0x181802630` / `0x181801830` | `Prey_ArkHandIKContextInitialize` / `...Update` | Prey's arm-IK driver: joints by name, layer 6 `"ProceduralWeapon"`, op 1 `(1,0,0)` on blend, op 3 on targets |
 | `0x18039CBE0` / `0x18039CC80` | `Prey_CFirstPersonHandIKContextInitialize` / `...Update` | CryAction's version, layer 15, `Bip01` names |
 | `0x1803A3520` / `0x1803A3600` | `Prey_CProceduralClipPostProcessAdjustOnEnter` / `...Update` | proves `ISkeletonAnim::PushPoseModifier = +0x120`, `ICharacterInstance::GetISkeletonAnim = +0x28` |
-| `0x1694BC0` | `Prey_CArkWeaponGetFiringPosition` | muzzle = helper `this+0x2F0` (`m_ammoSpawnPointName`, INFERENCE) on the weapon entity; camera fallback on block |
+| `0x1694BC0` | `Prey_CArkWeaponGetFiringPosition` | muzzle = helper `this+0x2F0`, confirmed from `sAmmoSpawnPointName` in loader `0x1697B90` (secondary this=weapon+8, destination +0x2E8); camera fallback on block |
 | `0x1811A5CF0` | `Prey_GetEntitySlotHelperWorldTM` | helper/attachment/joint by name on an entity slot, world |
 
 Structures: `CCharInstance` `+0x10` skeleton, `+0x18` attachment manager,
-`+0x580/+0x590` post modifiers, `+0x610` ADIK present, `+0x700` CSkeletonAnim,
+`+0x140` CSkeletonAnim, `+0x580/+0x590` post modifiers,
+`+0x610` animation state (CSkeletonAnim+0x4D0), `+0x700` CSkeletonPose,
 `+0x820` physics, `+0x834` flags, `+0x960` CPoseData, `+0xA90` location QuatTS.
 `CDefaultSkeleton` `+8` joints (0xA8; name ptr `+0`, parent int16 `+0x18`),
 `+0x30` inverse bind pose, `+0x68` IKLimb (0x30), `+0x70` ADIK (0x28), `+0x238`

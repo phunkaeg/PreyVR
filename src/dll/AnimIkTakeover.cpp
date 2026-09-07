@@ -35,7 +35,12 @@ constexpr std::array<std::uint8_t, 32> kProcessAdikPrologue{
 
 // Layout, all from decompiled reads (H-021 report sections 1, 2 and 7).
 constexpr std::size_t kCharSkeleton = 0x10;     // CCharInstance -> CDefaultSkeleton*
-constexpr std::size_t kCharAdikGate = 0x610;    // non-zero when the rig carries ADIK targets
+// CCharInstance+0x610 aliases CSkeletonAnim+0x4D0 (the animation object is at
+// character+0x140). Its writers (RE-H021-STATIC-VERIFICATION) make it a
+// nonempty-command-buffer predicate -- CryEngine's m_IsAnimPlaying -- and the
+// ADIK pass tests it. It says nothing about whether the rig has IK targets;
+// that is the skeleton's table at +0x70, read separately below.
+constexpr std::size_t kCharAnimPlaying = 0x610;
 constexpr std::size_t kSkelJoints = 0x08;       // DynArray<joint>, stride 0xA8, name ptr at +0
 constexpr std::size_t kJointStride = 0xA8;
 constexpr std::size_t kSkelLimbs = 0x68;        // DynArray<IKLimb>, stride 0x30
@@ -430,7 +435,7 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
         if (IdentifyRig(ch)) {
             gMatched.fetch_add(1, std::memory_order_relaxed);
             int gate = 0;
-            if (ReadInt(ch + kCharAdikGate, &gate)) {
+            if (ReadInt(ch + kCharAnimPlaying, &gate)) {
                 gGate.store(static_cast<unsigned int>(gate), std::memory_order_relaxed);
             }
             const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");

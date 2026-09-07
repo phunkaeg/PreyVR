@@ -1,21 +1,32 @@
 # H-021 static report -- absolute wrist, arm chain, weapon-to-wrist, controller aim
 
+**Verification update, 2026-09-07:** [all four static questions are answered](RE-H021-STATIC-VERIFICATION-2026-09-07.md).
+The animation object is character +0x140, the pose object +0x700; character
++0x610 is command-derived animation state, not ADIK presence. The branch formerly
+called a sync alternative is facial post-processing. Ordinary modifier layers
+are 0..15 or exactly -1, with a special identity path before those checks.
+Weight 1 does not remove the native solver's reach/singularity limits. The
+proposed complete hand/weapon behavior remains conditional on runtime evidence.
+
 **Static only, 2026-09-07.** Nothing here ran the game. Every address is
 `PreyDll.dll` (image base `0x180000000`); RVAs are given as `0x...` and the
-Ghidra database now carries the names and plate comments used below. Facts are
-things a decompile shows; **INFERENCE** marks a name or meaning taken from the
+Ghidra database carries names and plate comments; the verification update corrects
+the post-process name. Decompiler types and argument counts require instruction
+checks; **INFERENCE** marks a name or meaning taken from the
 CryEngine 3.8 source or the Chairloader member order rather than from these
 bytes.
 
-**Headline.** All four items reduce to one seam, and it is the engine's own.
-Prey drives its first-person arms with CryEngine's *animation-driven IK*: a
-target joint and a weight joint per arm, solved every frame by
+**Proposed route.** The four items connect through a native animation seam.
+Prey contains first-person arm drivers using CryEngine's *animation-driven IK*: a
+target joint and a weight joint per arm, conditionally solved by
 `ProcessAnimationDrivenIK` (`0x877B50`). Writing the controller's wrist pose into
 that target, with the weight at 1, makes the engine solve the arm, set the wrist
 rotation, re-propagate the fingers, and -- because the weapon is a bone
 attachment updated *after* the animation job -- carry the weapon with it. No
 `IKLimb` is constructed, no pose is fabricated, and the projectile origin
-follows for free because it is a helper on the weapon entity.
+can follow through a helper on the weapon entity, subject to binding and the
+firing function's camera fallback. The static chain does not prove the complete
+route is active for the selected rig in a live frame.
 
 ---
 
@@ -49,14 +60,14 @@ the last one.
    the H-017 `SetAttAbsoluteDefault` mechanism, sampled once). It is **not** the
    weapon's per-frame update.
 
-**Main thread, after the job** -- `Prey_SkeletonAnimFinishAnimationComputations`
+**Main thread, after the job** -- `Prey_SkeletonPoseSkeletonPostProcess`
 `0x8360A0` (and `0x8366F0`), reached from `0x8387F0` which waits on the job.
-`param_1` is the `CSkeletonAnim` embedded at `CCharInstance+0x700`
+`param_1` is the `CSkeletonPose` embedded at `CCharInstance+0x700`
 (`+0x250` = `m_pInstance`); `param_2` is the `CPoseData` at `CCharInstance+0x960`.
-In order: sync FK if no job ran -> physics -> proxies (when `+0x1F0` is set, the
+In order: conditional facial displacement and FK -> physics -> proxies (when `+0x1F0` is set, the
 complement of the job's condition, so proxies run exactly once) ->
 **`Prey_AttachmentManagerUpdateLocationsExecute` `0x8297E0`** -> AABB
-(`0x836780`) -> **the post-process callback at `CSkeletonAnim+0x110`** with data
+(`0x836780`) -> **the post-process callback at `CSkeletonPose+0x110`** with data
 `+0x118` (CryEngine's `SetPostProcessCallback`, INFERENCE on the name).
 
 `0x8297E0` walks the attachment pointer array `attMgr+0x20` by sorted type
@@ -113,9 +124,10 @@ absolute[target].t, w)`; dispatch `2BIK`/`3BIK`/`CCDX` by the tag at `limb+8`
 `absolute[end].q` toward `absolute[target].q` by `w`, derive `relative[end]`;
 re-propagate the limb's descendant list (`limb+0x20`) so the fingers follow.
 
-**With `w = 1` this is an exact wrist placement -- position through the solved
-arm, rotation through the slerp -- with finger animation preserved.** It is the
-whole of items 1 and 2, executed by the engine's own code on its own data.
+**With `w = 1` the native path uses the full target position/rotation blend and
+propagates the fingers.** Exact wrist position is still constrained by the native
+solver's reach, stretch, singularity and angle clamps (H-018); it is not an
+unconditional endpoint guarantee.
 
 The hand rig has exactly the joints this needs (validated dump, 101-joint rig):
 `r_hand_spine_target = 38`, `l_hand_spine_target = 39`, `r_hand_spine_blend = 4`,
@@ -207,13 +219,14 @@ for any model-space conversion on our side.
 
 Costs: the push must happen before the job is kicked for that frame; a push from
 a render-time hook applies next frame (one frame of latency, ~11 ms at 90 Hz);
-and it depends on four vtable offsets rather than one function address. Keep it
-as the fallback if Route A's gate (`+0x610`) is closed for the viewmodel rig.
+and it depends on four vtable offsets rather than one function address. This is
+an alternative target-write route, not a demonstrated bypass of Route A's gate:
+the later ADIK pass still needs its native conditions. See the verification update.
 
 ### What not to do
 
 * Do not write at the skinning hook for anything the weapon must follow.
-* Do not use the post-process callback (`CSkeletonAnim+0x110`): it runs after
+* Do not use the post-process callback (`CSkeletonPose+0x110`): it runs after
   `0x8297E0`.
 * Do not write during FK (`0x87BBA0`, R-083): ADIK, modifiers and the descendant
   re-propagation all run afterwards and overwrite the chain. That is the
@@ -249,8 +262,8 @@ Two things to know:
 
 **Projectile origin already follows the weapon.** `Prey_CArkWeaponGetFiringPosition`
 `0x1694BC0` returns the world position of the helper named by `this+0x2F0`
-(`m_ammoSpawnPointName`, INFERENCE from Chairloader member order anchored on
-`+0x2B0`) on slot 0 of the weapon entity (`this+0x40`), via
+(`m_ammoSpawnPointName`, now confirmed by the `sAmmoSpawnPointName` property
+store with secondary-this adjustment) on slot 0 of the weapon entity (`this+0x40`), via
 `Prey_GetEntitySlotHelperWorldTM` `0x1811A5CF0` (statobj helper, attachment, or
 joint by name, times the entity world TM). It falls back to the camera position
 only when a ray along the *owner's* forward over `this+0x3F0`

@@ -8,6 +8,12 @@
 
 ## Reverse-engineering MCPs
 
+For static investigations, use [the RE investigation procedure](docs/RE-INVESTIGATION-GUIDE.md).
+Before calling a gap unresolved, check prior reports and byte verifiers. Establish
+the receiver's base before naming fields; resolve concrete virtual callees before
+trusting decompiler argument counts; find writers before interpreting a gate.
+H-021's worked examples show each step against this target's actual instructions.
+
 Ghidra, ReGenny, Frida, Cheat Engine, x64dbg/x32dbg and RenderDoc are all available as MCP tools.
 **Load the `re-mcp-toolkit` skill before using any of them** — it carries the preflight calls,
 per-tool caveats, and the pairing workflows (Ghidra static offsets -> ReGenny live layout, etc.).
