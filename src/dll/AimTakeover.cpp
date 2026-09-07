@@ -47,6 +47,8 @@ std::atomic<unsigned long long> gRejNoPlayer{0};
 std::atomic<unsigned long long> gRejCompose{0};
 std::atomic<unsigned int> gNativeMagnitude{0};
 std::atomic<bool> gOriginFromHand{false};
+std::atomic<bool> gBodyYaw{true};
+std::atomic<int> gCamYawMilli{0}, gHeadYawMilli{0}, gPlaySpaceYawMilli{0};
 std::atomic<unsigned long long> gOriginApplied{0};
 
 const engine::Landmark* FindLandmark(std::string_view id)
@@ -126,7 +128,23 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
         IsPoseUsable(frame.tracking.head, frame.tracking.headValidity, 200000000ull);
     frame.referenceGeneration = HeadTrackingReferenceGeneration();
     frame.referenceYaw = HeadTrackingReferenceYaw();
-    frame.yaw = GameCameraYaw() - frame.referenceYaw;
+    frame.cameraYaw = GameCameraYaw();
+    // Camera yaw is body + (head - reference) because this mod writes head
+    // tracking into that camera. Subtracting the head's own yaw leaves the
+    // body, which is what a head-relative offset must be rotated by; using the
+    // camera directly applies the head twice and the hand follows the headset.
+    frame.yaw = frame.cameraYaw - frame.referenceYaw;
+    if (haveTracking && gBodyYaw.load(std::memory_order_acquire)) {
+        const auto headYaw = stereo::RecenterYawFromHeadPose(frame.tracking.head);
+        if (headYaw) {
+            frame.headYaw = *headYaw;
+            frame.headYawUsable = true;
+            frame.yaw = frame.cameraYaw - *headYaw;
+        }
+    }
+    gCamYawMilli.store(static_cast<int>(frame.cameraYaw * 57295.78f), std::memory_order_relaxed);
+    gHeadYawMilli.store(static_cast<int>(frame.headYaw * 57295.78f), std::memory_order_relaxed);
+    gPlaySpaceYawMilli.store(static_cast<int>(frame.yaw * 57295.78f), std::memory_order_relaxed);
     if ((frame.referenceGeneration & 1) ||
         frame.referenceGeneration != HeadTrackingReferenceGeneration() || !std::isfinite(frame.yaw)) { gGameplayFrame.Clear(); return; }
     // IK must never reread the mutable cached origin below.
@@ -253,6 +271,19 @@ bool TryGetGameplayPoseFrame(GameplayPoseFrame& out, bool requireTracking)
     }
     return IsPoseUsable(out.tracking.head, out.tracking.headValidity, 200000000ull);
 }
+
+DWORD SetAimBodyYaw(unsigned int enabled)
+{
+    if (enabled > 1) { return 1; }
+    gBodyYaw.store(enabled != 0u, std::memory_order_release);
+    Log(std::string("result=0 detail=body_yaw value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+
+unsigned int AimBodyYawEnabled() { return gBodyYaw.load(std::memory_order_relaxed) ? 1u : 0u; }
+int AimCameraYawMilliDegrees() { return gCamYawMilli.load(std::memory_order_relaxed); }
+int AimHeadYawMilliDegrees() { return gHeadYawMilli.load(std::memory_order_relaxed); }
+int AimPlaySpaceYawMilliDegrees() { return gPlaySpaceYawMilli.load(std::memory_order_relaxed); }
 
 DWORD SetAimOriginFromHand(unsigned int enabled)
 {

@@ -2166,3 +2166,87 @@ rig through the **live owner chain** (selected item -> weapon -> attachment ->
 manager -> character), not by skeleton signature alone; `aim.origin 1` is a
 controller-point diagnostic, not a muzzle mode; `report` carries
 `muzzle*` separation samples with age and ownership.
+
+## R-104 -- the ADIK seam moves the hand AND the weapon (headset, 2026-09-07)
+
+Build `0.3.1-static-ik-integration` (`edf0953`), Steam-launched Prey with the
+DLL injected by `Module.load`, `ik.mode 2` with a fixed `ik.test 0 0 300`.
+
+### Live reads first -- every static prediction held
+
+`ik.mode 1` on the equipped rig, read through the channel, not a debugger:
+
+```
+adik[0] target=38(r_hand_spine_target) weight=4(r_hand_spine_blend)
+adik[1] target=39(l_hand_spine_target) weight=5(l_hand_spine_blend)
+limb[0] tag=0x4b494232(2BIK) chain=36/40/41/45     limb[1] 35/67/68/72
+ikGate=1 ikCvar=1 weaponBone=47 weaponSim=0x0 ikLoc=(329.61,756.25,480.00)m yaw -32.1deg
+```
+
+Two ADIK entries, exactly the arm pair; the limbs are `2BIK` chains ending at
+the hand joints; the gate (`m_IsAnimPlaying`) and `ca_useADIKTargets` are on;
+the GLOO cannon hangs from **47 (`r_handProp_jnt`)**, a child of the wrist,
+with the binding's spring simulation **off**. H-021's five live checks close.
+
+### The observation
+
+> "yes, gun and right hand are flickering between two different positions,
+> high and normal."
+
+**Both rose together.** That is items 1, 2 and 3 of H-021 in one look: a write
+into `r_hand_spine_target` at the ADIK pass entry is consumed by the engine's
+own solve, and because it lands before `0x8297E0` samples the pose, the bone
+attachment carries the weapon with it. `SetAttAbsoluteDefault` (H-017) and the
+skinning-hook lane (F-009 session) could never do this.
+
+The goal was sane throughout: model-space `(283, -26, 1663)` mm, the animated
+wrist near 1.36 m plus the commanded 0.30 m; `ikClamped` did not climb.
+
+### The flicker, measured and fixed
+
+`ikBusy` climbed at ~89-105/s while the owner matched ~128/s on a ~144 fps
+game; over two seconds, `observerFrames +288` against `ikWrittenR +255`.
+Every other character's animation job took the same IK-state try-lock and won
+it against the owner about one frame in nine, and each lost frame showed the
+animated position -- the "high and normal" alternation the wearer saw.
+
+Fixed in the next build, two ways: `LatestSnapshot` readers take a shared
+lock, so seven jobs reading one snapshot no longer refuse each other; and a
+non-owner character bypasses the IK lock entirely unless the owner is unknown
+or the equip generation has moved. Needs a relaunch: the loaded module is
+pinned.
+
+### Ownership survived two weapon swaps
+
+`ikEquipGen` went 1 -> 3 during the session. Each swap refused writes while the
+attach was in flight, re-bound the new rig, and resumed -- the first live proof
+that selecting by the owner chain rather than a pointer (F-009) holds.
+
+### The one defect: the hand yawed with the headset
+
+> "The only issue is the hand and gun yaw WITH the hmd yaw."
+
+The frame's yaw was `GameCameraYaw() - referenceYaw`. **The engine's view camera
+carries head tracking, because this mod writes it** (`view.apply`), so that yaw
+is `body + (head - reference)`. Rotating an offset that is already measured from
+the head by that angle applies the head twice, and the hand follows the headset
+instead of the body.
+
+The correction cancels rather than compensates:
+
+```
+playSpaceYaw = cameraYaw - headYaw        (= bodyYaw - referenceYaw)
+```
+
+This is the composition the old hand lane called `BodyYaw()`, whose comment
+quotes the fleet playbook -- *parenting the shoulders to the HMD is the obvious
+implementation and it is wrong* -- and it was not carried into the ADIK lane.
+`aim.bodyyaw 0` restores the old behaviour for a live A/B; `report` carries
+`camYawMdeg`, `headYawMdeg` and `playYawMdeg` so the two can be compared rather
+than argued about. The unit test asserts both arms: the body yaw holds the hand
+still across three head yaws, and the camera yaw visibly moves it.
+
+**Still to check when this is retested:** `ikClamped` ran at ~22/s during the
+drive phase, about a fifth of frames, meaning the goal was regularly outside the
+arm's authored reach. Expected at full extension; if it persists with the hand
+near the body, the model-space scale is wrong.

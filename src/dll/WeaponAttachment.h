@@ -64,6 +64,9 @@ using EquippedRig = RigIdentity;
 // Revalidates selected equipment and the attachment -> manager -> character
 // chain on every read. A skeleton asset signature alone is not ownership.
 bool TryGetEquippedRig(std::uintptr_t player, EquippedRig& out);
+// Bumps on every successful local attach; lets callers notice a re-equip
+// without reading the rig.
+std::uint64_t WeaponEquipGeneration();
 
 // Installs the hook on `CArkWeapon::AttachToHand` (R-024) and captures the
 // equipped weapon's `IAttachment*` from `CArkWeapon+0x2B0`.

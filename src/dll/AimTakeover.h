@@ -37,7 +37,13 @@ namespace preyvr::dll {
 struct GameplayPoseFrame {
     TrackingFrame tracking{};
     Vec3 nativeEye{};
+    // The play-space -> engine-world yaw, the one every lane must rotate a
+    // head-relative offset by. See SetAimBodyYaw for why it is not simply
+    // cameraYaw - referenceYaw.
     float yaw = 0.0f;
+    float cameraYaw = 0.0f;
+    float headYaw = 0.0f;
+    bool headYawUsable = false;
     float referenceYaw = 0.0f;
     std::uint64_t referenceGeneration = 0;
     std::uintptr_t player = 0;
@@ -45,6 +51,27 @@ struct GameplayPoseFrame {
 };
 bool EnsureGameplayPoseObservation();
 bool TryGetGameplayPoseFrame(GameplayPoseFrame& out, bool requireTracking = true);
+
+// Which yaw rotates a head-relative controller offset into the world.
+//
+// **1 (default): body yaw.** The engine's view camera CARRIES head tracking --
+// this mod writes it -- so its yaw is `body + (head - reference)`. Rotating an
+// offset that is already measured from the head by that angle applies the head
+// twice, and the hand and weapon swing with the headset. A wearer reported
+// exactly that on 2026-09-07: "the hand and gun yaw WITH the hmd yaw."
+// Subtracting the head's own yaw cancels it: `playSpace = camera - head`.
+// This is the composition the old hand lane called BodyYaw(), quoting the
+// fleet playbook -- parenting the shoulders to the HMD is the obvious
+// implementation and it is wrong.
+//
+// **0: the previous camera-relative yaw**, kept so the two can be compared
+// live rather than argued about. Falls back to 0's behaviour whenever the head
+// yaw is unusable (near-vertical), whose fix is to reject rather than invent.
+DWORD SetAimBodyYaw(unsigned int enabled);
+unsigned int AimBodyYawEnabled();
+int AimCameraYawMilliDegrees();
+int AimHeadYawMilliDegrees();
+int AimPlaySpaceYawMilliDegrees();
 
 DWORD SetAimTakeoverEnabled(unsigned int enabled);
 // 0 preserves native origin; 1 uses the tracked aim point (diagnostic).

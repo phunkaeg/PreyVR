@@ -161,6 +161,10 @@ void WriteReport(std::ostringstream& out)
         << " weaponSim=0x" << std::hex << WeaponAttachmentSimulationFlags() << std::dec
         << WeaponMuzzleAlignmentReport()
         << " aimOriginApplied=" << AimOriginAppliedCount()
+        << " aimBodyYaw=" << AimBodyYawEnabled()
+        << " camYawMdeg=" << AimCameraYawMilliDegrees()
+        << " headYawMdeg=" << AimHeadYawMilliDegrees()
+        << " playYawMdeg=" << AimPlaySpaceYawMilliDegrees()
         << " weaponMountMm=" << WeaponMountPositionMillimetres(0)
         << "," << WeaponMountPositionMillimetres(1)
         << "," << WeaponMountPositionMillimetres(2)
@@ -347,6 +351,11 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         }
         out << "console result=" << result
             << " command=\"" << command << "\"";
+    } else if (verb == "aim.bodyyaw") {
+        // 1 rotates head-relative offsets by the BODY yaw (camera - head), 0 by
+        // the camera yaw. 0 makes the hand and weapon swing with the headset.
+        out << "aim.bodyyaw result=" << SetAimBodyYaw(arg(1, 1))
+            << " value=" << AimBodyYawEnabled();
     } else if (verb == "aim.origin") {
         // Diagnostic controller-aim origin; this does not establish a muzzle
         // transform or remove projectile convergence from the authored helper.

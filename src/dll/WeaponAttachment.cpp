@@ -354,6 +354,8 @@ std::string WeaponMuzzleAlignmentReport()
     return out.str();
 }
 
+std::uint64_t WeaponEquipGeneration() { return gEquipGeneration.load(std::memory_order_acquire); }
+
 bool TryGetEquippedRig(std::uintptr_t player, EquippedRig& out)
 {
     if (!gObserving.load(std::memory_order_acquire) || !gEquippedRig.TryRead(out) ||

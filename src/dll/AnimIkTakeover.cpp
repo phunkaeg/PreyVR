@@ -422,6 +422,22 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
         if (original) { original(character, params); }
         return;
     }
+    // Only the owning character needs the IK state. Every other character's
+    // animation job used to take the same try-lock and win it against the
+    // owner -- measured live 2026-09-07: ikBusy ~105/s while the owner matched
+    // ~93/s on a ~132 fps game, a third of its frames skipped, which a wearer
+    // would see as the hand flickering between goal and animation. Non-owners
+    // pass straight through, except while the owner is unknown or the equipped
+    // weapon has changed since it was bound.
+    {
+        const auto knownOwner = gOwnerCharacter.load(std::memory_order_acquire);
+        if (knownOwner != 0 && reinterpret_cast<std::uintptr_t>(character) != knownOwner &&
+            WeaponEquipGeneration() == gOwnerGeneration.load(std::memory_order_acquire)) {
+            const auto original = gOriginal.load(std::memory_order_acquire);
+            if (original) { original(character, params); }
+            return;
+        }
+    }
     std::unique_lock stateLock(gIkMutex, std::try_to_lock);
     GameplayPoseFrame frame{};
     EquippedRig owner{};

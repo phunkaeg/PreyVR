@@ -287,11 +287,49 @@ void TestSnapshotPublication()
 
 } // namespace
 
+
+// The 2026-09-07 defect, as a property: with the player facing one way, turning
+// only the head must not move the hand.
+//
+// The engine's view camera carries head tracking, so its yaw is
+// `body + (head - reference)`. Rotating a HEAD-RELATIVE offset by that angle
+// applies the head twice and the hand swings with the headset -- what a wearer
+// saw. Subtracting the head's own yaw leaves the body yaw, and the hand holds
+// still. Both arms are asserted so the test documents the defect, not just the
+// fix: a future "simplification" back to camera-minus-reference fails here.
+void TestHandDoesNotSwingWithHeadYaw()
+{
+    const float bodyYaw = 0.4f;        // where the player's body faces
+    const float referenceYaw = 0.15f;  // where the head faced at recenter
+    Pose head;
+    head.position = Vec3{0.3f, 1.6f, -0.2f};
+    Pose controller;
+    controller.position = Vec3{0.3f, 1.2f, -0.7f};
+    const Vec3 eye{10.0f, 20.0f, 1.7f};
+    const float headYaws[3] = {0.0f, 0.6f, -0.9f};
+
+    Vec3 firstCorrect{}, firstNaive{};
+    bool naiveMoved = false;
+    for (int i = 0; i < 3; ++i) {
+        const float cameraYaw = bodyYaw + (headYaws[i] - referenceYaw);
+        const Vec3 correct =
+            ControllerWorldFromHead(cameraYaw - headYaws[i], eye, head, controller).position;
+        const Vec3 naive =
+            ControllerWorldFromHead(cameraYaw - referenceYaw, eye, head, controller).position;
+        if (i == 0) { firstCorrect = correct; firstNaive = naive; continue; }
+        Require(NearVec(correct, firstCorrect, 1e-4f),
+                "body yaw: turning the head must not move the hand");
+        if (!NearVec(naive, firstNaive, 1e-3f)) { naiveMoved = true; }
+    }
+    Require(naiveMoved, "camera yaw must visibly swing the hand, or this test proves nothing");
+}
+
 int main()
 {
     TestLocationRoundTrip();
     TestLocationRotation();
     TestControllerFromHead();
+    TestHandDoesNotSwingWithHeadYaw();
     TestClampToReach();
     TestRotationCalibration();
     TestSharedOriginAndMuzzleSeparation();
