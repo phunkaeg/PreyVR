@@ -1038,6 +1038,33 @@ too: a copied matrix carries the same row and is caught the same way.
 `nearAlreadyOffset` counts it, and **should rise with scene complexity** -- if it
 stays at zero while the flicker persists, this is wrong as well.
 
+### Third refutation, and an assumption I never checked
+
+`nearAlreadyOffset` stayed at **0** across 99,744 near draws while the wearer
+still saw the flicker. So no matrix arrives carrying the row we last wrote: not
+nesting, not a copy, and not a cross-thread race. Three mechanisms proposed,
+three refuted by their own counters.
+
+**The assumption that survived all three unexamined:** that the main model is at
+`1x` and the ghost at `2x`. Every observation fits **main at `0x`, ghost at `1x`**
+just as well -- the weapon drawn twice, once through a path this hook never sees
+and once through it. `near.zero 1` collapsing them is consistent with either
+reading, because it removes the only difference in both.
+
+That reframes the question from *"what applies our delta twice"* to **"which
+weapon draws go through PackViewInfo and which do not"**, and it makes the
+wearer's original instinct -- "some type of post processing effect like AO" --
+the better description: a screen-space pass drawing the weapon with a
+view-projection we never intercept would differ by exactly one delta, steadily,
+and would touch no counter we have.
+
+**Stop guessing; capture a frame.** RenderDoc lists every draw with its constant
+buffers. One capture with the artefact visible answers directly how many times
+the weapon is drawn and which view-projection each draw used. The MCP analyses an
+existing capture but cannot take one, so this needs a capture from the wearer.
+Three counters have now each cost a relaunch; a frame capture costs one keypress
+and settles it.
+
 ### What survived the refutations, and led here
 
 `ghost = main + exactly one delta`, both produced by our own edit, with no

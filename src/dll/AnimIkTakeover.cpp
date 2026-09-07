@@ -78,6 +78,7 @@ std::atomic<std::uint64_t> gOwnerGeneration{0}, gOwnerCharacter{0}, gUsedSequenc
 std::atomic<unsigned long long> gNoOwner{0}, gBusy{0};
 std::atomic<unsigned int> gSignatureJoints{101};
 std::atomic<unsigned int> gHands{1};
+std::atomic<int> gReachPercent{100};
 
 std::atomic<unsigned long long> gCalls{0};
 std::atomic<unsigned long long> gMatched{0};
@@ -386,7 +387,13 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
             const float reach = 0.995f * (std::sqrt(midRel.t[0]*midRel.t[0] + midRel.t[1]*midRel.t[1] + midRel.t[2]*midRel.t[2]) +
                                           std::sqrt(endRel.t[0]*endRel.t[0] + endRel.t[1]*endRel.t[1] + endRel.t[2]*endRel.t[2]));
             if (!std::isfinite(reach) || reach <= 1e-6f) { return; }
-            const Vec3 clamped = animik::ClampToReach(Vec3{upperAbs.t[0], upperAbs.t[1], upperAbs.t[2]}, goal, reach);
+            const Vec3 shoulder{upperAbs.t[0], upperAbs.t[1], upperAbs.t[2]};
+            // Compress the player's reach into the character's BEFORE clamping,
+            // so a longer-armed player keeps continuous motion instead of dead
+            // travel at full extension.
+            goal = animik::ScaleReach(shoulder, goal,
+                                      gReachPercent.load(std::memory_order_relaxed) / 100.0f);
+            const Vec3 clamped = animik::ClampToReach(shoulder, goal, reach);
             if (clamped.x != goal.x || clamped.y != goal.y || clamped.z != goal.z) {
                 gClamped.fetch_add(1, std::memory_order_relaxed);
                 goal = clamped;
@@ -614,6 +621,16 @@ DWORD SetAnimIkJointSignature(unsigned int joints)
     Log("result=0 detail=signature joints=" + std::to_string(joints));
     return 0;
 }
+
+DWORD SetAnimIkReachPercent(int percent)
+{
+    if (percent < 50 || percent > 150) { return 1; }
+    gReachPercent.store(percent, std::memory_order_relaxed);
+    Log("result=0 detail=reach_percent value=" + std::to_string(percent));
+    return 0;
+}
+
+int AnimIkReachPercent() { return gReachPercent.load(std::memory_order_relaxed); }
 
 DWORD SetAnimIkHands(unsigned int mask)
 {

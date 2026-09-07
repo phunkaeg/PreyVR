@@ -35,6 +35,11 @@ DWORD CalibrateAnimIk();
 DWORD SetAnimIkJointSignature(unsigned int joints);
 // 1 right, 2 left, 3 both.
 DWORD SetAnimIkHands(unsigned int mask);
+// Scales the goal's distance from the shoulder, 50..150, default 100. Below 100
+// maps a longer-armed player onto a shorter character arm so the hand keeps
+// moving instead of stopping at the clamp. A preference, not a correctness fix.
+DWORD SetAnimIkReachPercent(int percent);
+int AnimIkReachPercent();
 // Logs the matched rig's ADIK table and limbs.
 DWORD DumpAnimIk();
 

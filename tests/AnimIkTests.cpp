@@ -397,6 +397,29 @@ void TestPlaySpaceYawFromRealCameraComposition()
 }
 
 
+
+// A player whose arms are longer than the character's otherwise spends the last
+// part of every reach clamped: the hand stopped while the controller keeps
+// moving. Scaling maps their span onto the character's instead.
+void TestScaleReach()
+{
+    const Vec3 shoulder{1.0f, 0.0f, 0.0f};
+    const Vec3 goal{1.6f, 0.0f, 0.0f};
+    Require(NearVec(ScaleReach(shoulder, goal, 1.0f), goal),
+            "100 percent must be exactly unchanged");
+    Require(NearVec(ScaleReach(shoulder, goal, 0.5f), Vec3{1.3f, 0.0f, 0.0f}),
+            "half scale halves the distance from the SHOULDER, not from the origin");
+    const Vec3 diagonal{1.3f, 0.4f, -0.2f};
+    const Vec3 scaled = ScaleReach(shoulder, diagonal, 0.5f);
+    const Vec3 a{diagonal.x - shoulder.x, diagonal.y - shoulder.y, diagonal.z - shoulder.z};
+    const Vec3 b{scaled.x - shoulder.x, scaled.y - shoulder.y, scaled.z - shoulder.z};
+    Require(Near(a.x * b.y - a.y * b.x, 0.0f, 1e-6f) &&
+            Near(a.y * b.z - a.z * b.y, 0.0f, 1e-6f),
+            "scaling must not rotate the goal");
+    Require(NearVec(ScaleReach(shoulder, goal, 0.0f), goal),
+            "a nonsense scale changes nothing rather than collapsing the arm");
+}
+
 int main()
 {
     TestLocationRoundTrip();
@@ -405,6 +428,7 @@ int main()
     TestHandDoesNotSwingWithHeadYaw();
     TestPlaySpaceYawFromRealCameraComposition();
     TestClampToReach();
+    TestScaleReach();
     TestRotationCalibration();
     TestSharedOriginAndMuzzleSeparation();
     TestCalibrationLifecycle();

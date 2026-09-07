@@ -132,6 +132,18 @@ Pose ControllerWorldFromHead(float yawRadians, const Vec3& eyeWorld,
 // against its native AimIK.
 Vec3 ClampToReach(const Vec3& upperJoint, const Vec3& goal, float reach);
 
+// Maps a player's arm span onto the character's.
+//
+// A wearer measured about 70% of frames clamping on 2026-09-08: "yes, i am
+// reaching the limit, i guess my arms are a bit longer than the characters".
+// Clamping is the honest fallback but a poor experience -- the hand stops while
+// the controller keeps going, so the last part of every reach is dead travel.
+//
+// Scaling the goal's distance from the shoulder trades exact 1:1 placement for
+// continuous motion across the whole of the player's reach. A preference, not a
+// correctness fix: at 1.0 the behaviour is unchanged.
+Vec3 ScaleReach(const Vec3& upperJoint, const Vec3& goal, float scale);
+
 // Rotation calibration. The controller's grip frame and the hand bone's
 // authored frame differ by a constant; capturing it once, as the rotation that
 // takes the controller's model-space orientation to the animated wrist's at

@@ -145,6 +145,7 @@ void WriteReport(std::ostringstream& out)
         << " ikLimbEndL=" << AnimIkLimbEnd(1)
         << " ikWrittenR=" << AnimIkWritten(0) << " ikWrittenL=" << AnimIkWritten(1)
         << " ikNoPose=" << AnimIkNoPose() << " ikClamped=" << AnimIkClamped()
+        << " ikReach=" << AnimIkReachPercent()
         << " ikCalR=" << AnimIkCalibrated(0) << " ikCalL=" << AnimIkCalibrated(1)
         << " ikLocMm=" << AnimIkLocationMillimetres(0) << "," << AnimIkLocationMillimetres(1)
         << "," << AnimIkLocationMillimetres(2)
@@ -292,6 +293,9 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "ik.calibrate result=" << CalibrateAnimIk();
     } else if (verb == "ik.joints") {
         out << "ik.joints result=" << SetAnimIkJointSignature(arg(1, 101));
+    } else if (verb == "ik.reach") {
+        out << "ik.reach result=" << SetAnimIkReachPercent(arg(1, 100))
+            << " percent=" << AnimIkReachPercent();
     } else if (verb == "ik.hands") {
         out << "ik.hands result=" << SetAnimIkHands(arg(1, 1));
     } else if (verb == "ik.dump") {

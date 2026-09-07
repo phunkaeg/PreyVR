@@ -74,6 +74,15 @@ Vec3 ClampToReach(const Vec3& upperJoint, const Vec3& goal, float reach)
     return Vec3{upperJoint.x + d.x * k, upperJoint.y + d.y * k, upperJoint.z + d.z * k};
 }
 
+Vec3 ScaleReach(const Vec3& upperJoint, const Vec3& goal, float scale)
+{
+    if (!std::isfinite(scale) || scale <= 0.0f || scale == 1.0f) { return goal; }
+    const Vec3 d{goal.x - upperJoint.x, goal.y - upperJoint.y, goal.z - upperJoint.z};
+    return Vec3{upperJoint.x + d.x * scale,
+                upperJoint.y + d.y * scale,
+                upperJoint.z + d.z * scale};
+}
+
 Quaternion CalibrateRotationOffset(const Quaternion& controllerModel,
                                    const Quaternion& wristModel)
 {
