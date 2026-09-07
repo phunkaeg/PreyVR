@@ -1873,3 +1873,22 @@ order, the fields to read and the traps.
   current hardware is RTX 5070 Ti and Quest 3 via Virtual Desktop. Preserve the
   prior headset-tested TAA setting; no speculative graphics settings changes.
 - **Report:** [Independent headset resolution](RE-HEADSET-RESOLUTION-2026-09-08.md).
+
+## 2026-09-08 — H-022 static eye/frame and near-pass audit
+
+- **Source defect:** NearViewStereo selects eye from `LastRenderedEye`, a
+  game-thread global explicitly documented as observation-only. Submission uses
+  a separate completed-frame queue. Valid but stale/newer eye tags bypass every
+  existing missing-eye/nesting/row counter. Global camera basis is sampled
+  independently of the view-info being packed.
+- **Static/analytic evidence:** A wrong-eye sign moves the left image outward
+  left and right image outward right. Zero near delta also collapses a
+  color/depth/effect mismatch. Row matching requires pointer equality and cannot
+  detect a copy at a different address; lineage logs first rows, not every frame.
+- **New native anchor:** `0xF18970` copies renderer zero VP `+0x230` into
+  per-slot parameter cache `+0x8D64 + slot*0x380`. This is an independent matrix
+  route; the ghost's actual shader/pixel consumer is not yet identified.
+- **Validation:** `tools/re/verify_h022_near_contract.py` passes five exact-byte
+  landmarks and analytic counterexamples against the supported Steam hash.
+  No game access or runtime code changes. Claude retains runtime ownership.
+- **Handoff:** [H-022 flicker and ghost audit](RE-H022-WEAPON-FLICKER-AND-GHOST-2026-09-08.md).

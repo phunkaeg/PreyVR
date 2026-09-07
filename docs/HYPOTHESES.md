@@ -926,6 +926,19 @@ grip-to-barrel rotation is a separate lane with its own runtime gate.
 
 ## H-022 -- the weapon model flickers in stereo, occasionally
 
+**Static review correction, 2026-09-08:** Read
+[the H-022 eye/frame and pass audit](RE-H022-WEAPON-FLICKER-AND-GHOST-2026-09-08.md)
+before treating the historical diagnoses below as conclusions. The near hook
+uses `LastRenderedEye()`, which its own header explicitly marks observation-only
+because it is a game-thread value. A valid value can belong to a newer frame;
+`nearNoEye==0` does not exclude that. Wrong-eye sign produces the reported
+outward jump in both eyes in an analytic projection check. Zero near delta also
+collapses color/depth/effect disagreement and does not exclude postprocessing.
+The remembered-row guard requires pointer equality, so its zero count cannot
+exclude copies at other pointers. Static evidence confirms a separate renderer
+zero-VP parameter-cache path at Steam RVA `0xF18970`; attribution to the visible
+ghost remains open. No new runtime test or completed fix is claimed.
+
 **Observed by a wearer, 2026-09-08, after the IK lane was working:** *"There is
 still a minor stereo flicker of the weapon model occasionally - which seems to be
 separate from the screen graphic misalignment (they arent a synchronised
@@ -959,8 +972,14 @@ GLOO ammo display. Two faults, not one.
 > the flicker in the right eye flickers the weapon model FURTHER to the right.
 > Almost like the offset is applying twice occasionally."
 
-That is not a mis-tagged eye -- a wrong tag sends the weapon the *wrong* way. It
-is the right direction at twice the magnitude, which names the mechanism.
+~~That is not a mis-tagged eye -- a wrong tag sends the weapon the *wrong* way.~~
+**FALSE, and it was load-bearing.** Corrected 2026-09-08 by
+[the H-022 static review](RE-H022-WEAPON-FLICKER-AND-GHOST-2026-09-08.md): with
+projection proportional to `(vertexX - e) / depth`, using `+h` where `-h` belongs
+moves a left-eye point **outward** by `2h/depth`, and the right eye mirrors it.
+A wrong eye tag produces an outward jump in *both* eyes, which is precisely the
+reported symptom. This wrong inference was used to dismiss eye mis-tagging in the
+first minutes and shaped every explanation after it.
 
 `PackViewInfo`'s near view-projection is a **shared buffer**. The hook snapshots
 it, offsets it by the eye delta, calls the original and restores. **If the
@@ -1037,6 +1056,44 @@ because the buffer really is offset for this eye. It subsumes the copy theory
 too: a copied matrix carries the same row and is caught the same way.
 `nearAlreadyOffset` counts it, and **should rise with scene complexity** -- if it
 stays at zero while the flicker persists, this is wrong as well.
+
+### The exclusions were over-claimed, and two guards could not see their target
+
+[The H-022 static review](RE-H022-WEAPON-FLICKER-AND-GHOST-2026-09-08.md) shows
+the counters below cannot carry the conclusions drawn from them:
+
+* **`nearAlreadyOffset == 0` does not rule out a copied matrix.** The check
+  requires *pointer equality*, so a copy living at a different pointer cannot
+  match, by construction. It was built to catch copies and was structurally
+  incapable of it.
+* **`nearReentered == 0` rules out only same-pointer, same-thread nesting**, the
+  one condition it tested.
+* **Packer invocations are not draw identities.** 99,744 of them prove volume,
+  not that every weapon draw was covered; there is no shader, buffer, mask or
+  pass attribution behind that number.
+* **`ikMatched` equal to the frame count** counts work frequency. It does not
+  compare the pose samples the two submitted eyes actually used.
+
+Two guards in a row were aimed at a mechanism they could not detect. The
+negatives stand as *observations*; the exclusions built on them do not.
+
+### The defect that survives all of it: eye/frame ownership
+
+`NearViewStereo` chooses its offset from `LastRenderedEye()`, which reads a
+mutable **game-thread** global, while the view-info it is packing can belong to a
+render frame queued earlier -- and `CameraEditHook.h` says in its own words that
+the two threads run about a frame apart. Submission already knows better: it
+identifies the finished image through a queued value, not the latest global.
+
+Every tag along that path is individually valid, which is why `nearNoEye`,
+`nearRefused`, `nearReentered` and `nearAlreadyOffset` can all read zero while
+the wrong eye is used. Scene complexity changes frame overlap and queue depth,
+so the load correlation fits this at least as well as it fitted the race.
+
+`CameraRightAxis()` compounds it by reading CSystem's *global* camera, so even a
+corrected eye bit can be rotated by a newer head orientation than the view-info
+was built with. Eye displacement, orientation, units, frame and view generation
+have to travel as one immutable record.
 
 ### Third refutation, and an assumption I never checked
 
