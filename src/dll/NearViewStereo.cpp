@@ -10,6 +10,7 @@
 
 #include <array>
 #include <atomic>
+#include <mutex>
 #include <cmath>
 #include <cstring>
 #include <span>
@@ -69,6 +70,51 @@ std::atomic<unsigned long long> gReentered{0};
 // Thread-local because re-entrancy is by definition on one stack; separate
 // render jobs carry their own view info and do not share this pointer.
 thread_local void* tEditing = nullptr;
+
+// --- lineage diagnostic (H-022) --------------------------------------------
+//
+// The wearer's zero-delta test proved both the steady ghost and the occasional
+// flicker scale with OUR delta, and `nearReentered` proved the hook never
+// nests. What remains is that the engine copies an already-offset matrix into a
+// second view-info and hands it back to us later in the same frame, so the copy
+// is offset twice. Different pointers, so the re-entrancy guard cannot see it.
+//
+// This records, per frame, the distinct view-info pointers we edit and the
+// translation row we FOUND on each (pre-edit, in micrometres). If a later
+// pointer arrives already carrying a delta, its row will differ from the clean
+// one by exactly the half-IPD, which names the copy without guessing.
+struct LineageSlot {
+    const void* viewInfo;
+    int foundMicro[4];
+    int eye;
+    unsigned int edits;
+};
+constexpr unsigned int kLineageSlots = 12;
+std::array<LineageSlot, kLineageSlots> gLineage{};
+std::atomic<unsigned int> gLineageUsed{0};
+std::atomic<bool> gLineageArmed{false};
+std::mutex gLineageMutex;
+
+void RecordLineage(const void* viewInfo, const float* row, int eye)
+{
+    if (!gLineageArmed.load(std::memory_order_acquire)) { return; }
+    std::lock_guard lock(gLineageMutex);
+    unsigned int used = gLineageUsed.load(std::memory_order_relaxed);
+    for (unsigned int i = 0; i < used; ++i) {
+        if (gLineage[i].viewInfo == viewInfo && gLineage[i].eye == eye) {
+            ++gLineage[i].edits;
+            return;
+        }
+    }
+    if (used >= kLineageSlots) { return; }
+    gLineage[used].viewInfo = viewInfo;
+    gLineage[used].eye = eye;
+    gLineage[used].edits = 1;
+    for (int j = 0; j < 4; ++j) {
+        gLineage[used].foundMicro[j] = static_cast<int>(row[j] * 1.0e6f);
+    }
+    gLineageUsed.store(used + 1, std::memory_order_release);
+}
 
 struct EditClaim {
     void* previous;
@@ -180,6 +226,7 @@ void* __fastcall PackViewInfoWithEyeOffset(void* owner, std::uint8_t* viewInfo,
                          - delta.y * original_[4 + j]
                          - delta.z * original_[8 + j];
     }
+    RecordLineage(static_cast<const void*>(viewInfo), original_ + 12, eye);
     gLastDeltaMicrometres.store(static_cast<int>(signed_ * 1.0e6f), std::memory_order_relaxed);
     gApplied.fetch_add(1, std::memory_order_relaxed);
 
@@ -274,6 +321,36 @@ unsigned long long NearViewAppliedCount() { return gApplied.load(std::memory_ord
 unsigned long long NearViewRefusedCount() { return gRefused.load(std::memory_order_relaxed); }
 unsigned long long NearViewNoEyeCount() { return gNoEye.load(std::memory_order_relaxed); }
 unsigned long long NearViewReenteredCount() { return gReentered.load(std::memory_order_relaxed); }
+
+DWORD ArmNearViewLineage(unsigned int enabled)
+{
+    std::lock_guard lock(gLineageMutex);
+    gLineageUsed.store(0, std::memory_order_release);
+    gLineage = {};
+    gLineageArmed.store(enabled != 0u, std::memory_order_release);
+    Log(std::string("result=0 detail=lineage_armed value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+
+DWORD DumpNearViewLineage()
+{
+    std::lock_guard lock(gLineageMutex);
+    const unsigned int used = gLineageUsed.load(std::memory_order_acquire);
+    if (used == 0) { Log("result=refused detail=no_lineage note=arm_it_first"); return 1; }
+    for (unsigned int i = 0; i < used; ++i) {
+        char line[220];
+        std::snprintf(line, sizeof(line),
+                      "lineage[%u] viewInfo=0x%llx eye=%d edits=%u foundUm=%d,%d,%d,%d",
+                      i, static_cast<unsigned long long>(
+                             reinterpret_cast<std::uintptr_t>(gLineage[i].viewInfo)),
+                      gLineage[i].eye, gLineage[i].edits,
+                      gLineage[i].foundMicro[0], gLineage[i].foundMicro[1],
+                      gLineage[i].foundMicro[2], gLineage[i].foundMicro[3]);
+        Log(line);
+    }
+    Log("result=0 detail=lineage_dumped count=" + std::to_string(used));
+    return 0;
+}
 int NearViewLastDeltaMicrometres() { return gLastDeltaMicrometres.load(std::memory_order_relaxed); }
 
 } // namespace preyvr::dll

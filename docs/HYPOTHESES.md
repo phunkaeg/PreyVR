@@ -997,14 +997,39 @@ It also explains why the ghost is *steady* rather than flickering: whatever draw
 it takes the nested path on every frame, not occasionally. On a wrench as well as
 the GLOO cannon, so it is not weapon-specific.
 
-**Prediction, falsifiable in one run.** After the guard: `nearReentered` climbs,
-**and both the flicker and the mirage are gone**. If `nearReentered` stays at zero
-and either symptom survives, the nesting explanation is wrong and the live
-candidate becomes two independent sources -- an effect pass using the *world*
-view-projection, which already carries the per-eye camera offset, plus our near
-delta on top. `near.zero 1` separates those: it removes only our delta, so a
-ghost that survives it was never ours. That test was set up on 2026-09-08 but the
-wearer quit before reporting, so it is still open.
+### Both explanations REFUTED, 2026-09-08, and the refutations narrow it sharply
+
+**Nesting: dead.** `nearReentered` stayed at **0** across 74,213 near draws with
+the weapon on screen and the flicker occurring. The hook never re-enters, so the
+doubled offset is not one call editing another's buffer. The counter existed to
+make this falsifiable and it did exactly that.
+
+**An external effect: also dead.** With `near.zero 1` -- our delta at zero,
+stereo still armed -- the wearer reported *"both locations have collapsed to the
+same place, so there is no flicker or mirage."* Both artefacts scale with **our**
+delta. Had the ghost come from an effect reprojecting with the world
+view-projection, it would have remained separated when ours went to zero.
+
+### What survives
+
+`ghost = main + exactly one delta`, both produced by our own edit, with no
+nesting. The remaining mechanism is a **copy**: our hook edits a matrix, the
+engine copies that already-offset matrix into a second view-info, and later in
+the same frame the hook is handed the copy and offsets it again. The pointers
+differ, so the re-entrancy guard cannot see it, and whatever renders from the
+copy sits permanently at 2x -- with the main model occasionally routed through
+the same copy, which is the flicker.
+
+**This is a guess until the pointers are read.** `near.lineage 1` then
+`near.dump` records the distinct view-info pointers edited per frame and the
+translation row *found* on each before editing. A second pointer whose found row
+already differs from the first by the half-IPD **is** the copy, named rather than
+inferred. If every found row is clean, the copy theory dies too and the next
+question is what else consumes the near view-projection between our edit and our
+restore.
+
+Scale worth carrying into that read: the hook runs about **190 times per rendered
+frame**.
 
 ### Worth knowing before chasing it
 

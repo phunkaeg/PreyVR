@@ -70,6 +70,13 @@ unsigned long long NearViewNoEyeCount();
 // packer, and each one would have been a doubled weapon offset before the guard.
 unsigned long long NearViewReenteredCount();
 
+// Records the distinct view-info pointers the near hook edits and the
+// translation row it FOUND on each before editing. A second pointer whose found
+// row already differs by the half-IPD is a copy of an edited matrix, which is
+// the remaining explanation for H-022's doubled offset.
+DWORD ArmNearViewLineage(unsigned int enabled);
+DWORD DumpNearViewLineage();
+
 // Last displacement actually applied, in micrometres, signed. This is the number
 // that says the two eyes are getting *opposite* offsets rather than the same one.
 int NearViewLastDeltaMicrometres();

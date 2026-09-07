@@ -271,6 +271,10 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "near.enable result=" << SetNearViewStereo(arg(1, 1));
     } else if (verb == "near.halfipd") {
         out << "near.halfipd result=" << SetNearViewHalfIpdMillimetres(arg(1, 32));
+    } else if (verb == "near.lineage") {
+        out << "near.lineage result=" << ArmNearViewLineage(arg(1, 1));
+    } else if (verb == "near.dump") {
+        out << "near.dump result=" << DumpNearViewLineage();
     } else if (verb == "near.zero") {
         out << "near.zero result=" << SetNearViewZeroDeltaControl(arg(1, 1));
     } else if (verb == "ik.mode") {

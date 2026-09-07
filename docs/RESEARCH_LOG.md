@@ -1859,3 +1859,17 @@ order, the fields to read and the traps.
   status/menu presentation, prove a flat OpenXR HUD layer, then optionally use
   the cylinder extension. No runtime operations or mod code changes made.
 - **Report and receipts:** [Reticle and VR HUD research](RE-RETICLE-HUD-VR-2026-09-08.md).
+
+## 2026-09-08 — Headset resolution is currently tied to the desktop backbuffer
+
+- **Source evidence:** XrSessionHost reads Prey's DXGI dimensions and deliberately
+  allocates XR eye images at that size, rather than the runtime recommendation.
+  Both held-eye capture and submission copy the desktop-sized source.
+- **Route:** Runtime-recommended eye size plus an explicit scale, matching
+  engine color/depth/postprocessing targets, independent small desktop mirror.
+  Investigate the native supersampling resolve as a potential source before
+  desktop downsampling. Its strings/SDK names are leads, not a proved hook.
+- **Scope:** Static research only, for distribution across headsets. User's
+  current hardware is RTX 5070 Ti and Quest 3 via Virtual Desktop. Preserve the
+  prior headset-tested TAA setting; no speculative graphics settings changes.
+- **Report:** [Independent headset resolution](RE-HEADSET-RESOLUTION-2026-09-08.md).
