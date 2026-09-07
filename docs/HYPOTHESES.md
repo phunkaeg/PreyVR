@@ -953,6 +953,33 @@ GLOO ammo display. Two faults, not one.
   -- the wearer was looking at a held frame at the moment the delta was zero, so
   that run produced no observation and must be repeated.
 
+### Diagnosed, 2026-09-08, from the wearer's own description
+
+> "the flicker in the left eye flickers the weapon model FURTHER to the left. and
+> the flicker in the right eye flickers the weapon model FURTHER to the right.
+> Almost like the offset is applying twice occasionally."
+
+That is not a mis-tagged eye -- a wrong tag sends the weapon the *wrong* way. It
+is the right direction at twice the magnitude, which names the mechanism.
+
+`PackViewInfo`'s near view-projection is a **shared buffer**. The hook snapshots
+it, offsets it by the eye delta, calls the original and restores. **If the
+original re-enters the hook with the same buffer**, the inner call snapshots a
+matrix that is already offset and offsets it again: exactly twice the half-IPD,
+in the correct direction for each eye, on whichever frames take the nested path.
+The hook runs about 177 times per frame, so a rare nested path is entirely
+consistent with "occasionally".
+
+Guarded by a thread-local claim: a nested call that finds the buffer already
+offset for this eye forwards it untouched, which is *correct* rather than a
+compromise -- the matrix is already right for that eye. `nearReentered` counts
+them.
+
+**This is falsifiable on the next run.** If `nearReentered` climbs, the mechanism
+is confirmed and the flicker should be gone. If it stays at zero and the flicker
+persists, the diagnosis is wrong and the remaining candidate is the near-pass
+half-IPD path itself (`near.halfipd 20` vs `45`).
+
 ### Worth knowing before chasing it
 
 The weapon is drawn in the near pass with its own half-IPD, separate from the

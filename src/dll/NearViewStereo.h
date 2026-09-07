@@ -65,6 +65,10 @@ unsigned long long NearViewRefusedCount();
 // Non-zero with applied at zero means the camera hook is not publishing an eye,
 // which is a different fault from the hook not running.
 unsigned long long NearViewNoEyeCount();
+// Nested calls that found the view projection already offset for this eye and
+// forwarded it untouched. Non-zero means the engine really does re-enter the
+// packer, and each one would have been a doubled weapon offset before the guard.
+unsigned long long NearViewReenteredCount();
 
 // Last displacement actually applied, in micrometres, signed. This is the number
 // that says the two eyes are getting *opposite* offsets rather than the same one.

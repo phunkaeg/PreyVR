@@ -53,6 +53,28 @@ bool gInstalled = false;
 
 std::atomic<bool> gEnabled{false};
 std::atomic<bool> gZeroDelta{false};
+std::atomic<unsigned long long> gReentered{0};
+
+// **The near view-projection is a shared buffer, so the edit must not nest.**
+// This hook snapshots it, offsets it, calls the original and restores. If the
+// original re-enters this hook with the same buffer, the inner call snapshots a
+// matrix that is ALREADY offset for this eye and offsets it a second time: the
+// weapon lands at twice the half-IPD, in the correct direction for each eye,
+// only on frames that take the nested path. A wearer described precisely that on
+// 2026-09-08 -- "the flicker in the left eye flickers the weapon model FURTHER
+// to the left... almost like the offset is applying twice occasionally."
+//
+// Skipping the inner edit is the correct answer rather than a compromise: the
+// buffer is already offset for this eye, so the nested draw is already right.
+// Thread-local because re-entrancy is by definition on one stack; separate
+// render jobs carry their own view info and do not share this pointer.
+thread_local void* tEditing = nullptr;
+
+struct EditClaim {
+    void* previous;
+    explicit EditClaim(void* viewInfo) : previous(tEditing) { tEditing = viewInfo; }
+    ~EditClaim() { tEditing = previous; }
+};
 std::atomic<float> gHalfIpd{0.032f};
 std::atomic<unsigned long long> gApplied{0};
 std::atomic<unsigned long long> gRefused{0};
@@ -129,6 +151,13 @@ void* __fastcall PackViewInfoWithEyeOffset(void* owner, std::uint8_t* viewInfo,
         return original != nullptr ? original(owner, viewInfo, third, fourth) : nullptr;
     }
 
+    // Already offset for this eye by an enclosing call on this stack: forward it
+    // untouched rather than offsetting the same matrix twice.
+    if (tEditing == static_cast<void*>(viewInfo)) {
+        gReentered.fetch_add(1, std::memory_order_relaxed);
+        return original != nullptr ? original(owner, viewInfo, third, fourth) : nullptr;
+    }
+
     // Eye minus cyclops: half the IPD, left negative and right positive.
     const float half = gZeroDelta.load(std::memory_order_acquire)
                            ? 0.0f
@@ -154,7 +183,11 @@ void* __fastcall PackViewInfoWithEyeOffset(void* owner, std::uint8_t* viewInfo,
     gLastDeltaMicrometres.store(static_cast<int>(signed_ * 1.0e6f), std::memory_order_relaxed);
     gApplied.fetch_add(1, std::memory_order_relaxed);
 
-    void* const result = original != nullptr ? original(owner, viewInfo, third, fourth) : nullptr;
+    void* result = nullptr;
+    {
+        const EditClaim claim(static_cast<void*>(viewInfo));
+        result = original != nullptr ? original(owner, viewInfo, third, fourth) : nullptr;
+    }
 
     std::memcpy(nearVp, original_, sizeof(original_));
     return result;
@@ -240,6 +273,7 @@ DWORD SetNearViewZeroDeltaControl(unsigned int enabled)
 unsigned long long NearViewAppliedCount() { return gApplied.load(std::memory_order_relaxed); }
 unsigned long long NearViewRefusedCount() { return gRefused.load(std::memory_order_relaxed); }
 unsigned long long NearViewNoEyeCount() { return gNoEye.load(std::memory_order_relaxed); }
+unsigned long long NearViewReenteredCount() { return gReentered.load(std::memory_order_relaxed); }
 int NearViewLastDeltaMicrometres() { return gLastDeltaMicrometres.load(std::memory_order_relaxed); }
 
 } // namespace preyvr::dll
