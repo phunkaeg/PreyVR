@@ -975,10 +975,36 @@ offset for this eye forwards it untouched, which is *correct* rather than a
 compromise -- the matrix is already right for that eye. `nearReentered` counts
 them.
 
-**This is falsifiable on the next run.** If `nearReentered` climbs, the mechanism
-is confirmed and the flicker should be gone. If it stays at zero and the flicker
-persists, the diagnosis is wrong and the remaining candidate is the near-pass
-half-IPD path itself (`near.halfipd 20` vs `45`).
+### The permanent ghost is the same fault, and it is the better evidence
+
+A second observation the same session, and it fits without needing a second
+cause:
+
+> "there is a shimmer of another wrench, like a mirage, to the right of the
+> wrench in the right eye, (and conversely to the left of the wrench in the left
+> eye) - this is the exact offset that the visible weapon model flickers to
+> occasionally."
+
+Under the nesting explanation the arithmetic lands exactly. A pass that *always*
+takes the nested path renders at **2x** the half-IPD; the main model normally
+renders at **1x**. Their separation is therefore **one delta** -- and the main
+model, on the frames it takes the nested path too, jumps to 2x, which is the same
+one delta. So a permanent ghost and an occasional jump, both of one delta, are a
+single mechanism seen twice, and the wearer's "this is the exact offset" is the
+measurement that ties them together.
+
+It also explains why the ghost is *steady* rather than flickering: whatever draws
+it takes the nested path on every frame, not occasionally. On a wrench as well as
+the GLOO cannon, so it is not weapon-specific.
+
+**Prediction, falsifiable in one run.** After the guard: `nearReentered` climbs,
+**and both the flicker and the mirage are gone**. If `nearReentered` stays at zero
+and either symptom survives, the nesting explanation is wrong and the live
+candidate becomes two independent sources -- an effect pass using the *world*
+view-projection, which already carries the per-eye camera offset, plus our near
+delta on top. `near.zero 1` separates those: it removes only our delta, so a
+ghost that survives it was never ours. That test was set up on 2026-09-08 but the
+wearer quit before reporting, so it is still open.
 
 ### Worth knowing before chasing it
 
