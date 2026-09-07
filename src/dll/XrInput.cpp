@@ -1,4 +1,5 @@
 #include "XrInput.h"
+#include "preyvr/LatestSnapshot.h"
 
 #include "InputPost.h"
 
@@ -61,25 +62,9 @@ std::atomic<unsigned long long> gSyncs{0};
 std::atomic<unsigned long long> gSyncsNotFocused{0};
 std::array<std::atomic<unsigned long long>, 2> gLocated{};
 
-// Published latest-wins, the same shape as the head pose slot: a seqlock, so the
-// render path never waits on the input thread and an older pose is simply
-// replaced rather than queued.
-struct StateSlot {
-    std::atomic<unsigned long long> sequence{0};
-    ControllerState state{};
-    std::atomic<bool> everPublished{false};
-};
-std::array<StateSlot, 2> gSlots{};
-
-void Publish(Hand hand, const ControllerState& state)
-{
-    StateSlot& slot = gSlots[static_cast<std::size_t>(hand)];
-    const unsigned long long sequence = slot.sequence.load(std::memory_order_relaxed);
-    slot.sequence.store(sequence + 1, std::memory_order_release);
-    slot.state = state;
-    slot.sequence.store(sequence + 2, std::memory_order_release);
-    slot.everPublished.store(true, std::memory_order_release);
-}
+LatestSnapshot<TrackingFrame> gTrackingFrame;
+std::atomic<std::uint64_t> gTrackingSequence{0};
+std::atomic<std::uint64_t> gTrackingEpoch{1};
 
 Pose FromXrPose(const XrPosef& pose)
 {
@@ -237,11 +222,18 @@ bool CreateXrInput(void* instanceHandle, void* sessionHandle)
     return true;
 }
 
-void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDisplayTime)
+void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDisplayTime,
+                   const Pose& headPose, const PoseValidity& headValidity)
 {
+    TrackingFrame frame{};
+    frame.head = headPose;
+    frame.headValidity = headValidity;
+    frame.displayTime = predictedDisplayTime;
     ControllerState rightState{};
     bool leftStart = false;
     if (!gCreated.load(std::memory_order_acquire)) {
+        gTrackingEpoch.fetch_add(1);
+        gTrackingFrame.Clear();
         return;
     }
     const auto session = static_cast<XrSession>(sessionHandle);
@@ -260,11 +252,15 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
     // the call returned, not that it did anything.
     const XrResult syncResult = xrSyncActions(session, &sync);
     if (XR_FAILED(syncResult)) {
+        gTrackingEpoch.fetch_add(1);
+        gTrackingFrame.Clear();
         return;
     }
     if (syncResult == XR_SESSION_NOT_FOCUSED) {
         gSyncsNotFocused.fetch_add(1, std::memory_order_relaxed);
-        return;   // actions are inactive; locating would read stale zeros
+        gTrackingEpoch.fetch_add(1);
+        gTrackingFrame.Clear();
+        return;   // never retain a tracked snapshot after focus loss
     }
     gSyncs.fetch_add(1, std::memory_order_relaxed);
 
@@ -319,13 +315,18 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
         if (state.gripValidity.orientationValid || state.aimValidity.orientationValid) {
             gLocated[hand].fetch_add(1, std::memory_order_relaxed);
         }
-        Publish(static_cast<Hand>(hand), state);
+        frame.hands[hand] = state;
         if (hand == static_cast<int>(Hand::right)) {
             rightState = state;
         } else {
             leftStart = state.menuStart;
         }
     }
+
+    frame.sequence = gTrackingSequence.fetch_add(1, std::memory_order_relaxed) + 1;
+    frame.epoch = gTrackingEpoch.load();
+    frame.publishedNs = MonotonicNanoseconds();
+    gTrackingFrame.Publish(frame);
 
     // --- controller-driven menus ---------------------------------------------
     //
@@ -396,29 +397,31 @@ void DestroyXrInput()
     for (auto& count : gLocated) {
         count.store(0, std::memory_order_relaxed);
     }
-    for (auto& slot : gSlots) {
-        slot.everPublished.store(false, std::memory_order_release);
+    gTrackingEpoch.fetch_add(1);
+    gTrackingFrame.Clear();
+}
+
+bool TryGetTrackingFrame(TrackingFrame& out)
+{
+    if (!gTrackingFrame.TryRead(out)) { return false; }
+    const auto now = MonotonicNanoseconds();
+    if (!FreshSample(now, out.publishedNs)) { return false; }
+    const auto age = now - out.publishedNs;
+    out.headValidity.ageNanoseconds = age;
+    for (auto& state : out.hands) {
+        state.gripValidity.ageNanoseconds = age;
+        state.aimValidity.ageNanoseconds = age;
     }
+    return true;
 }
 
 bool TryGetControllerState(Hand hand, ControllerState& out)
 {
-    StateSlot& slot = gSlots[static_cast<std::size_t>(hand)];
-    if (!slot.everPublished.load(std::memory_order_acquire)) {
-        return false;
-    }
-    for (int attempt = 0; attempt < 8; ++attempt) {
-        const unsigned long long before = slot.sequence.load(std::memory_order_acquire);
-        if ((before & 1ull) != 0ull) {
-            continue;
-        }
-        const ControllerState state = slot.state;
-        if (slot.sequence.load(std::memory_order_acquire) == before) {
-            out = state;
-            return true;
-        }
-    }
-    return false;
+    TrackingFrame frame{};
+    const auto index = static_cast<std::size_t>(hand);
+    if (index >= frame.hands.size() || !TryGetTrackingFrame(frame)) { return false; }
+    out = frame.hands[index];
+    return true;
 }
 
 unsigned long long XrInputSyncCount() { return gSyncs.load(std::memory_order_relaxed); }

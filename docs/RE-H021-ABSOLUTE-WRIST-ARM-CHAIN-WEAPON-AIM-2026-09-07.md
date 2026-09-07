@@ -78,7 +78,7 @@ bone attachment does exactly this:
 
 ```
 abs = pose->vtable+0x48(att+0x15C)                 // GetJointAbsolute(jointId)
-att+0x130 (m_AttModelRelative) = abs * att+0xFC (m_AttRelativeDefault) * att+0x14C
+att+0x130 (m_AttModelRelative) = abs * att+0xF8 (m_AttRelativeDefault; +0xFC was an off-by-4 read) * att+0x14C
 if (att+0x30 type == 4) Prey_CAttachmentBONESimulateEntityBinding 0x7C4C60(att+8, pose, -1, &modelRelative)
 else                    0x7C0F00(...)
 ```
@@ -244,7 +244,7 @@ attachment is a `CAttachmentBONE` on the arms rig, updated in `0x8297E0` from
 weapon's model-relative transform is recomputed from it, its entity/skeleton
 binding is pushed, and its own `RenderCHR` draw composes against the parent
 matrix (H-018 section 1). The authored grip offset (`m_AttRelativeDefault` at
-`att+0xFC`) is kept, so the weapon sits in the hand as the animators placed it.
+`att+0xF8`) is kept, so the weapon sits in the hand as the animators placed it.
 
 Two things to know:
 
@@ -279,19 +279,18 @@ replaces the direction with `AimFromController`; it deliberately keeps the
 engine's origin (the camera). With the muzzle at the hand and the ray from the
 camera, a projectile flies from the hand *toward where a camera ray along the
 controller direction lands* -- a convergence error that grows with the
-hand-to-eye offset. The remaining change is to **also write the origin** into
-`+0x17D4` from the same controller sample (the hand or muzzle position), so the
-ray and the projectile share an origin and the shot leaves the barrel along the
-controller's forward. Known consumers of the origin that will change meaning:
-the firing query's raycast, the interaction selector (H-004 proved it reads the
-cache), and the HUD reticle projection. Point-at rather than look-at is the
-intended VR behaviour for all three.
+hand-to-eye offset. **Integration correction (2026-09-07):** `aim.origin 1` writes the tracked aim
+point, which is distinct from both the wrist/grip and native muzzle helper.
+It does not establish a common projectile/raycast origin or barrel alignment.
+The native cache is also consumed by interaction selection and HUD projection,
+so changing its origin needs acceptance for those consumers separately.
 
-For the direction itself, use the weapon's forward rather than the raw grip:
-`GripTransform.controllerToWeapon` exists for this; a static grip-to-barrel
-rotation per weapon class is the one authored constant this lane still needs,
-and it can be read live as the attachment default (`att+0xFC`) once the weapon
-is on the hand.
+Wrist-preserving calibration and an attachment default are not a proved
+controller-to-barrel transform. The bone attachment relative default starts at
+**+0xF8**, not +0xFC; it additionally participates in bind/current-joint and extra
+rotation composition. The authored muzzle forward axis still needs evidence.
+The [integration audit](RE-H021-INTEGRATION-AUDIT-2026-09-07.md) fixes shared-origin
+feedback and adds passive native firing-origin/aim/grip separation diagnostics.
 
 ## 6. Live reads required before building, each one read
 

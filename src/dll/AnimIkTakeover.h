@@ -30,14 +30,20 @@ DWORD SetAnimIkControllerDrive(unsigned int enabled);
 // Captures, on the next solved frame with a tracked controller, the rotation
 // that maps the controller's model-space orientation to the animated wrist's.
 DWORD CalibrateAnimIk();
-// The rig is selected by signature, never by pointer (F-009): joint count plus
-// the presence of an ADIK target named r_hand_spine_target.
+// Asset signature is checked inside the selected weapon's live owning character.
+// Re-equip after observation is installed; each attach invalidates calibration.
 DWORD SetAnimIkJointSignature(unsigned int joints);
 // 1 right, 2 left, 3 both.
 DWORD SetAnimIkHands(unsigned int mask);
 // Logs the matched rig's ADIK table and limbs.
 DWORD DumpAnimIk();
 
+// Last accepted identity/sample, and failed prerequisite/lock attempts.
+unsigned long long AnimIkOwnerCharacter();
+unsigned long long AnimIkOwnerGeneration();
+unsigned long long AnimIkPoseSequence();
+unsigned long long AnimIkNoOwner();
+unsigned long long AnimIkBusy();
 unsigned int AnimIkMode();
 unsigned int AnimIkHooked();
 unsigned long long AnimIkCalls();

@@ -12,6 +12,20 @@ Quaternion ConjugateOf(const Quaternion& q) { return Quaternion{-q.x, -q.y, -q.z
 
 } // namespace
 
+bool ValidLocation(const Location& location)
+{
+    const auto& q = location.q;
+    const float norm = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w;
+    return std::isfinite(norm) && norm > 0.81f && norm < 1.21f &&
+        std::isfinite(location.t.x) && std::isfinite(location.t.y) &&
+        std::isfinite(location.t.z) && std::isfinite(location.s) && location.s > 1e-6f;
+}
+
+bool ValidJoint(int index, unsigned int count)
+{
+    return index >= 0 && static_cast<unsigned int>(index) < count;
+}
+
 Vec3 WorldToModel(const Location& location, const Vec3& world)
 {
     const Vec3 offset{world.x - location.t.x, world.y - location.t.y, world.z - location.t.z};

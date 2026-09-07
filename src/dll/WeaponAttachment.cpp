@@ -1,5 +1,11 @@
+#include "preyvr/FiringPosition.h"
+#include "AimTakeover.h"
+#include "preyvr/AnimIk.h"
+#include <sstream>
+#include "AnimIkTakeover.h"
 #include "WeaponAttachment.h"
 #include "MinHookInit.h"
+#include "preyvr/LatestSnapshot.h"
 
 #include "HeadTrackingHook.h"
 #include "Logger.h"
@@ -28,7 +34,7 @@ void Log(const std::string& line)
 
 // R-024 CArkWeapon::AttachToHand. The equipped weapon resolves its IAttachment*
 // into CArkWeapon+0x2B0 and installs a binding through attachment vtable +0xD8.
-using AttachToHandFn = void*(__fastcall*)(void*, void*, void*, void*);
+using AttachToHandFn = bool(__fastcall*)(void*);
 
 constexpr std::uintptr_t kAttachToHandRva = 0x16914F0;
 constexpr std::array<std::uint8_t, 28> kAttachToHandPrologue{
@@ -57,6 +63,9 @@ using GetAbsFn = const QuatT*(__fastcall*)(void* attachment);
 void* gTarget = nullptr;
 std::atomic<AttachToHandFn> gOriginal{nullptr};
 bool gInstalled = false;
+LatestSnapshot<EquippedRig> gEquippedRig;
+std::mutex gMountMutex;
+std::atomic<std::uint64_t> gEquipGeneration{0};
 
 std::atomic<bool> gObserving{false};
 std::atomic<bool> gOffsetEnabled{false};
@@ -70,6 +79,71 @@ std::atomic<bool> gRotationDrive{false};
 std::atomic<bool> gRotationCalibrated{false};
 Quaternion gZeroAim{};
 std::atomic<unsigned long long> gRotationApplied{0}, gRotationNoPose{0};
+
+using FiringPositionFn = void*(__fastcall*)(void*, void*, std::uint32_t, void*);
+std::atomic<FiringPositionFn> gFiringPositionOriginal{nullptr};
+std::atomic<bool> gMuzzleInstalled{false};
+struct MuzzleSample {
+    EquippedRig owner{};
+    Vec3 nativeOrigin{}, aimOrigin{}, gripOrigin{};
+    std::uint64_t poseSequence = 0, poseAgeNs = 0, capturedNs = 0;
+    unsigned int cameraFallback = 0;
+};
+LatestSnapshot<MuzzleSample> gMuzzleSample;
+std::atomic<unsigned long long> gMuzzleSamples{0};
+constexpr std::array<std::uint8_t, 26> kFiringPositionPrologue{
+    0x48,0x8B,0xC4,0x48,0x89,0x58,0x10,0x48,0x89,0x70,0x18,0x55,0x57,
+    0x41,0x54,0x41,0x56,0x41,0x57,0x48,0x8D,0xA8,0xE8,0xFE,0xFF,0xFF};
+
+bool CopyFiringPosition(const void* result, std::uint8_t* bytes)
+{
+    if (!result) { return false; }
+    __try { std::memcpy(bytes, result, 16); return true; }
+    __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+
+void* __fastcall FiringPositionObserved(void* weapon, void* output, std::uint32_t flags, void* entity)
+{
+    const auto original = gFiringPositionOriginal.load(std::memory_order_acquire);
+    void* result = original ? original(weapon, output, flags, entity) : nullptr;
+    if (!gObserving.load() || entity != nullptr) { return result; }
+    GameplayPoseFrame frame{};
+    MuzzleSample sample{};
+    if (!TryGetGameplayPoseFrame(frame) || !TryGetEquippedRig(frame.player, sample.owner) ||
+        sample.owner.weapon != reinterpret_cast<std::uintptr_t>(weapon)) { return result; }
+    std::array<std::uint8_t, 16> bytes{};
+    if (!CopyFiringPosition(result, bytes.data())) { return result; }
+    const auto firing = DecodeFiringPosition(bytes);
+    if (!firing) { return result; }
+    sample.nativeOrigin = firing->origin; sample.cameraFallback = firing->cameraFallback;
+    const auto& hand = frame.tracking.hands[static_cast<unsigned int>(Hand::right)];
+    if (!IsPoseUsable(hand.aimPose, hand.aimValidity, 200000000ull) ||
+        !IsPoseUsable(hand.gripPose, hand.gripValidity, 200000000ull)) { return result; }
+    sample.aimOrigin = animik::ControllerWorldFromHead(frame.yaw, frame.nativeEye, frame.tracking.head, hand.aimPose).position;
+    sample.gripOrigin = animik::ControllerWorldFromHead(frame.yaw, frame.nativeEye, frame.tracking.head, hand.gripPose).position;
+    sample.poseSequence = frame.tracking.sequence;
+    sample.capturedNs = MonotonicNanoseconds();
+    sample.poseAgeNs = sample.capturedNs - frame.tracking.publishedNs;
+    gMuzzleSample.Publish(sample);
+    gMuzzleSamples.fetch_add(1);
+    return result; // native helper selection, wall guard and result unchanged
+}
+
+bool InstallMuzzleObserver()
+{
+    if (gMuzzleInstalled.load()) { return true; }
+    const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
+    if (!base) { return false; }
+    auto* target = reinterpret_cast<void*>(base + 0x1694BC0);
+    if (std::memcmp(target, kFiringPositionPrologue.data(), kFiringPositionPrologue.size()) != 0) { return false; }
+    FiringPositionFn original = nullptr;
+    EnsureMinHook();
+    if (MH_CreateHook(target, reinterpret_cast<void*>(&FiringPositionObserved), reinterpret_cast<void**>(&original)) != MH_OK) { return false; }
+    gFiringPositionOriginal.store(original, std::memory_order_release);
+    if (MH_EnableHook(target) != MH_OK) { MH_RemoveHook(target); return false; }
+    gMuzzleInstalled.store(true);
+    return true;
+}
 
 Quaternion Conjugate(const Quaternion& q) { return Quaternion{-q.x, -q.y, -q.z, q.w}; }
 
@@ -145,26 +219,72 @@ bool WriteMount(void* attachment, const QuatT& value)
     }
 }
 
-void* __fastcall AttachToHandObserved(void* weapon, void* a, void* b, void* c)
+// POD-only guarded reads, no guessed virtual calls. R-088 bone vtable and
+// owner chain; item ID is whole-weapon +0x38 (not secondary interface +0x38).
+bool ReadRig(void* weapon, EquippedRig& out)
+{
+    const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
+    if (!base || !weapon) { return false; }
+    __try {
+        out.weapon = reinterpret_cast<std::uintptr_t>(weapon);
+        const auto itemVtable = *reinterpret_cast<std::uintptr_t*>(out.weapon + 8);
+        // Concrete GetOwnerId is mov eax,[rcx+58h]; ret at 0x10DFC10,
+        // with RCX=weapon+8. Read its proven field, never call a guessed slot.
+        if (!itemVtable || *reinterpret_cast<std::uintptr_t*>(itemVtable + 0x1D8) != base + 0x10DFC10 ||
+            *reinterpret_cast<std::uint32_t*>(out.weapon + 0x60) != 0x7777) { return false; }
+        out.itemId = *reinterpret_cast<std::uint32_t*>(out.weapon + 0x38);
+        out.attachment = *reinterpret_cast<std::uintptr_t*>(out.weapon + 0x2B0);
+        if (!out.itemId || !out.attachment ||
+            *reinterpret_cast<std::uintptr_t*>(out.attachment) != base + 0x1D212B8) { return false; }
+        out.binding = *reinterpret_cast<std::uintptr_t*>(out.attachment + 0x20);
+        const auto manager = *reinterpret_cast<std::uintptr_t*>(out.attachment + 0x28);
+        if (!manager || !out.binding) { return false; }
+        out.character = *reinterpret_cast<std::uintptr_t*>(manager + 0x18);
+        return out.character != 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+
+bool SelectedItemMatches(std::uintptr_t player, std::uint32_t item)
+{
+    if (!player || !item) { return false; }
+    __try {
+        // IsEquipped(0x1275500): direct selected ID. Alias/paired items are
+        // deliberately refused until their secondary identity is resolved.
+        return *reinterpret_cast<std::uint32_t*>(player + 0x14B8 + 0x58) == item;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+
+bool __fastcall AttachToHandObserved(void* weapon)
 {
     const AttachToHandFn original = gOriginal.load(std::memory_order_acquire);
-    void* const result = original != nullptr ? original(weapon, a, b, c) : nullptr;
-    // **After the original**, because the attachment is resolved *by* this call --
-    // reading +0x2B0 on entry would capture whatever the previous weapon left.
+    const bool result = original != nullptr && original(weapon);
     if (gObserving.load(std::memory_order_acquire) && weapon != nullptr) {
-        __try {
-            void* const attachment = *reinterpret_cast<void**>(
-                reinterpret_cast<std::uint8_t*>(weapon) + kWeaponAttachmentField);
-            if (attachment != nullptr) {
-                QuatT mount{};
-                if (ReadMount(attachment, mount)) {
-                    gAttachment.store(reinterpret_cast<unsigned long long>(attachment),
-                                      std::memory_order_release);
-                    gBaseline = mount;
-                    gHaveBaseline.store(true, std::memory_order_release);
-                }
+        EquippedRig rig{};
+        if (result && ReadRig(weapon, rig)) {
+            std::lock_guard mountLock(gMountMutex);
+            rig.generation = gEquipGeneration.fetch_add(1) + 1;
+            gEquippedRig.Publish(rig);
+            gHaveBaseline.store(false);
+            gAttachment.store(0);
+            gRotationCalibrated.store(false);
+            gOffsetEnabled.store(false);
+            QuatT mount{};
+            if (ReadMount(reinterpret_cast<void*>(rig.attachment), mount)) {
+                gHaveBaseline.store(false, std::memory_order_release);
+                gAttachment.store(rig.attachment, std::memory_order_release);
+                gBaseline = mount;
+                gRotationCalibrated.store(false, std::memory_order_release);
+                gOffsetEnabled.store(false, std::memory_order_release);
+                gHaveBaseline.store(true, std::memory_order_release);
             }
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
+        } else {
+            EquippedRig previous{};
+            if (gEquippedRig.TryRead(previous) && previous.weapon == reinterpret_cast<std::uintptr_t>(weapon)) {
+                gEquippedRig.Clear();
+                std::lock_guard mountLock(gMountMutex);
+                gHaveBaseline.store(false, std::memory_order_release);
+                gAttachment.store(0, std::memory_order_release);
+            }
         }
     }
     return result;
@@ -209,13 +329,57 @@ bool Install()
 
 } // namespace
 
+std::string WeaponMuzzleAlignmentReport()
+{
+    std::ostringstream out;
+    out << " muzzleHooked=" << (gMuzzleInstalled.load() ? 1 : 0) << " muzzleSamples=" << gMuzzleSamples.load();
+    MuzzleSample sample{};
+    if (!gMuzzleSample.TryRead(sample)) { out << " muzzleSample=unavailable"; return out.str(); }
+    const auto now = MonotonicNanoseconds();
+    const auto gap = [](Vec3 a, Vec3 b) {
+        const float x=a.x-b.x, y=a.y-b.y, z=a.z-b.z;
+        return std::sqrt(x*x+y*y+z*z) * 1000.0f;
+    };
+    GameplayPoseFrame frame{};
+    EquippedRig owner{};
+    const bool current = TryGetGameplayPoseFrame(frame, false) && TryGetEquippedRig(frame.player, owner) &&
+        owner.generation == sample.owner.generation;
+    out << " muzzleSampleOwnerCurrent=" << (current ? 1 : 0)
+        << " muzzleAgeMs=" << (now >= sample.capturedNs ? (now-sample.capturedNs)/1000000 : 0)
+        << " muzzleEquipGen=" << sample.owner.generation << " muzzlePoseSeq=" << sample.poseSequence
+        << " muzzlePoseAgeMs=" << sample.poseAgeNs/1000000 << " muzzleFallback=" << sample.cameraFallback
+        << " muzzleWorld=" << sample.nativeOrigin.x << ',' << sample.nativeOrigin.y << ',' << sample.nativeOrigin.z
+        << " muzzleAimGapMm=" << gap(sample.nativeOrigin,sample.aimOrigin)
+        << " muzzleGripGapMm=" << gap(sample.nativeOrigin,sample.gripOrigin);
+    return out.str();
+}
+
+bool TryGetEquippedRig(std::uintptr_t player, EquippedRig& out)
+{
+    if (!gObserving.load(std::memory_order_acquire) || !gEquippedRig.TryRead(out) ||
+        !SelectedItemMatches(player, out.itemId)) { return false; }
+    EquippedRig current{};
+    return ReadRig(reinterpret_cast<void*>(out.weapon), current) &&
+        SameRigBinding(out, current, out.itemId);
+}
+
 DWORD SetWeaponAttachmentObserving(unsigned int enabled)
 {
     const bool on = enabled != 0u;
-    if (on && !Install()) {
+    if (on && (!EnsureGameplayPoseObservation() || !Install())) {
         return 1;
     }
+    if (on && !InstallMuzzleObserver()) { Log("result=unavailable detail=muzzle_observer"); }
     gObserving.store(on, std::memory_order_release);
+    if (!on) {
+        gEquippedRig.Clear();
+        std::lock_guard mountLock(gMountMutex);
+        gHaveBaseline.store(false);
+        gRotationCalibrated.store(false);
+        gOffsetEnabled.store(false);
+        gRotationDrive.store(false);
+        gAttachment.store(0);
+    }
     Log(std::string("result=0 detail=observing value=") + (on ? "1" : "0") +
         " note=re-equip a weapon to capture");
     return 0;
@@ -248,6 +412,7 @@ unsigned long long WeaponAttachmentPointer() { return gAttachment.load(std::memo
 
 int WeaponMountPositionMillimetres(unsigned int axis)
 {
+    std::lock_guard mountLock(gMountMutex);
     if (!gHaveBaseline.load(std::memory_order_acquire)) {
         return 0;
     }
@@ -257,6 +422,7 @@ int WeaponMountPositionMillimetres(unsigned int axis)
 
 int WeaponMountQuaternionMilli(unsigned int component)
 {
+    std::lock_guard mountLock(gMountMutex);
     if (!gHaveBaseline.load(std::memory_order_acquire)) {
         return 0;
     }
@@ -267,6 +433,7 @@ int WeaponMountQuaternionMilli(unsigned int component)
 
 DWORD SetWeaponOffsetMillimetres(int x, int y, int z)
 {
+    std::lock_guard mountLock(gMountMutex);
     // A weapon does not sit a metre from its own mount.
     const auto tooBig = [](int v) { return v < -1000 || v > 1000; };
     if (tooBig(x) || tooBig(y) || tooBig(z)) {
@@ -282,10 +449,16 @@ DWORD SetWeaponOffsetMillimetres(int x, int y, int z)
 
 DWORD SetWeaponOffsetEnabled(unsigned int enabled)
 {
+    if (enabled && AnimIkMode() == 2u) { return 3; }
+    std::lock_guard mountLock(gMountMutex);
+    GameplayPoseFrame frame{};
+    EquippedRig owner{};
+    if (!TryGetGameplayPoseFrame(frame, false) || !TryGetEquippedRig(frame.player, owner)) { return 2; }
     const bool on = enabled != 0u;
     auto* const attachment =
         reinterpret_cast<void*>(gAttachment.load(std::memory_order_acquire));
-    if (attachment == nullptr || !gHaveBaseline.load(std::memory_order_acquire)) {
+    if (attachment == nullptr || reinterpret_cast<std::uintptr_t>(attachment) != owner.attachment ||
+        !gHaveBaseline.load(std::memory_order_acquire)) {
         Log("result=refused detail=no_attachment note=equip_or_reequip_a_weapon");
         return 2;
     }
@@ -310,7 +483,13 @@ DWORD SetWeaponOffsetEnabled(unsigned int enabled)
 
 DWORD SetWeaponRotationDrive(unsigned int enabled)
 {
-    gRotationDrive.store(enabled != 0u, std::memory_order_release);
+    if (enabled && AnimIkMode() == 2u) { return 3; }
+    const bool wasArmed = gRotationDrive.exchange(enabled != 0u);
+    if (!enabled && wasArmed && gRotationCalibrated.load()) {
+        const DWORD restored = SetWeaponOffsetEnabled(WeaponOffsetArmed());
+        gRotationCalibrated.store(false);
+        if (restored != 0) { Log("result=refused detail=rotation_stopped_restore_unavailable"); return restored; }
+    }
     gRotationNoPose.store(0, std::memory_order_relaxed);
     Log(std::string("result=0 detail=rotation_drive value=") + (enabled ? "1" : "0"));
     return 0;
@@ -318,6 +497,7 @@ DWORD SetWeaponRotationDrive(unsigned int enabled)
 
 DWORD CalibrateWeaponRotation()
 {
+    std::lock_guard mountLock(gMountMutex);
     Quaternion aim{};
     float yaw = 0.0f;
     if (!ControllerAimRotation(aim, yaw)) {
@@ -334,8 +514,16 @@ DWORD CalibrateWeaponRotation()
     return 0;
 }
 
+unsigned int WeaponOffsetArmed() { return gOffsetEnabled.load() ? 1u : 0u; }
+
 void UpdateWeaponMountFromController()
 {
+    if (AnimIkMode() == 2u) { return; }
+    std::unique_lock mountLock(gMountMutex, std::try_to_lock);
+    if (!mountLock.owns_lock()) { return; }
+    GameplayPoseFrame frame{};
+    EquippedRig owner{};
+    if (!TryGetGameplayPoseFrame(frame, false) || !TryGetEquippedRig(frame.player, owner)) { return; }
     if (!gRotationDrive.load(std::memory_order_acquire) ||
         !gRotationCalibrated.load(std::memory_order_acquire) ||
         !gHaveBaseline.load(std::memory_order_acquire)) {
@@ -343,7 +531,7 @@ void UpdateWeaponMountFromController()
     }
     auto* const attachment =
         reinterpret_cast<void*>(gAttachment.load(std::memory_order_acquire));
-    if (attachment == nullptr) {
+    if (attachment == nullptr || reinterpret_cast<std::uintptr_t>(attachment) != owner.attachment) {
         return;
     }
     Quaternion aim{};
@@ -367,9 +555,11 @@ void UpdateWeaponMountFromController()
         return;
     }
     value.x = composed.x; value.y = composed.y; value.z = composed.z; value.w = composed.w;
-    value.px += gOffsetX.load(std::memory_order_relaxed);
-    value.py += gOffsetY.load(std::memory_order_relaxed);
-    value.pz += gOffsetZ.load(std::memory_order_relaxed);
+    if (gOffsetEnabled.load()) {
+        value.px += gOffsetX.load(std::memory_order_relaxed);
+        value.py += gOffsetY.load(std::memory_order_relaxed);
+        value.pz += gOffsetZ.load(std::memory_order_relaxed);
+    }
     if (WriteMount(attachment, value)) {
         gRotationApplied.fetch_add(1, std::memory_order_relaxed);
     } else {

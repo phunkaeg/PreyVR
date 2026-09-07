@@ -24,6 +24,48 @@ struct Location {
     float s = 1.0f;
 };
 
+bool ValidLocation(const Location& location);
+bool ValidJoint(int index, unsigned int count);
+
+// Caller serializes this state across commands and animation jobs. A request
+// belongs to each selected hand and is consumed only by that hand's write.
+struct CalibrationState {
+    unsigned int pending = 0;
+    unsigned int calibrated = 0;
+    Quaternion offsets[2]{};
+    std::uint64_t ownerGeneration = 0, referenceGeneration = 0, trackingEpoch = 0;
+    bool Bind(std::uint64_t owner, std::uint64_t reference, std::uint64_t epoch) {
+        if (ownerGeneration == owner && referenceGeneration == reference && trackingEpoch == epoch) { return false; }
+        if (ownerGeneration != 0) { pending = 0; }
+        calibrated = 0;
+        ownerGeneration = owner; referenceGeneration = reference; trackingEpoch = epoch;
+        return true;
+    }
+    void Request(unsigned int hands) { pending |= hands & 3u; }
+    void Invalidate() { calibrated = 0; }
+    bool Pending(unsigned int hand) const { return hand < 2 && (pending & (1u << hand)); }
+    void Commit(unsigned int hand, const Quaternion& offset) {
+        if (hand >= 2) { return; }
+        offsets[hand] = offset;
+        calibrated |= 1u << hand;
+        pending &= ~(1u << hand);
+    }
+};
+
+// Restore only our still-present output before a producer that can retain its
+// previous value on failure. Another writer's replacement must be preserved.
+struct RayOriginEdit {
+    std::uintptr_t owner = 0;
+    Vec3 native{};
+    Vec3 written{};
+    bool Restore(std::uintptr_t currentOwner, Vec3& current) const {
+        if (!owner || owner != currentOwner || current.x != written.x ||
+            current.y != written.y || current.z != written.z) { return false; }
+        current = native;
+        return true;
+    }
+};
+
 // World -> model, exactly what `COperatorQueue::Execute` does for
 // `eOp_OverrideWorld`, plus the scale the engine's own path ignores.
 Vec3 WorldToModel(const Location& location, const Vec3& world);

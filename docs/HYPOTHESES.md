@@ -898,9 +898,11 @@ converts from world for us) -- is items 1 and 2 together, with no `IKLimb`
 fabricated. The weapon follows because it is a `CAttachmentBONE` on the arms rig
 sampled on the main thread in `0x8297E0`, after the job; the current skinning
 hook is after that, which is why the hand moved and the weapon did not.
-Projectile origin follows the weapon (`0x1694BC0` reads the ammo spawn helper);
-the aim takeover still has to move the reticle ray origin at `+0x17D4` to remove
-parallax.
+Projectile origin follows the weapon (`0x1694BC0` reads the ammo spawn helper).
+**Corrected by the integration audit:** moving the reticle ray origin to the
+controller does *not* align shots with the barrel -- GLOO normalises reticle
+hit minus the native firing origin, so `aim.origin 1` is a controller-point
+diagnostic and per-weapon barrel alignment is a separate runtime gate.
 
 Open until read live: the hand rig's ADIK entries and limb (skeleton `+0x70`,
 `+0x68`), the `+0x610` gate and `ca_useADIKTargets`, and which bone the weapon

@@ -1,3 +1,4 @@
+#include "preyvr/LatestSnapshot.h"
 #include "HeadTrackingHook.h"
 #include "MinHookInit.h"
 
@@ -58,24 +59,13 @@ std::atomic<unsigned long long> gRefused{0};
 std::atomic<unsigned long long> gLastPoseAgeMicroseconds{0};
 std::atomic<unsigned long long> gMaxPoseAgeMicroseconds{0};
 
-// The published head pose.
-//
-// **A seqlock rather than a queue.** The eye handoff needed a queue because eye
-// identity had to be exact and ordered. A pose is the opposite: an older one is
-// simply a worse answer to the same question, so the newest is always the right
-// one and a backlog would be pure latency. A writer bumps an odd sequence, writes,
-// bumps it even; a reader retries while the sequence is odd or changed. No lock,
-// and the render path never waits on the publisher.
-struct PoseSlot {
-    std::atomic<unsigned long long> sequence{0};
-    Pose pose{};
-    std::int64_t publishedQpc = 0;
-    std::atomic<bool> everPublished{false};
-};
-PoseSlot gPoseSlot;
+// Atomic publication of the complete payload; render readers never wait.
+struct PoseSlot { Pose pose{}; std::int64_t publishedQpc = 0; };
+LatestSnapshot<PoseSlot> gPoseSlot;
 
 std::atomic<bool> gHaveReference{false};
 std::atomic<float> gReferenceYaw{0.0f};
+std::atomic<unsigned long long> gReferenceGeneration{0};
 
 std::int64_t QpcNow()
 {
@@ -96,24 +86,11 @@ std::int64_t QpcFrequency()
 
 bool ReadPose(Pose& out, std::int64_t& publishedQpc)
 {
-    if (!gPoseSlot.everPublished.load(std::memory_order_acquire)) {
-        return false;
-    }
-    for (int attempt = 0; attempt < 8; ++attempt) {
-        const unsigned long long before = gPoseSlot.sequence.load(std::memory_order_acquire);
-        if ((before & 1ull) != 0ull) {
-            continue;   // a write is in flight
-        }
-        const Pose pose = gPoseSlot.pose;
-        const std::int64_t stamp = gPoseSlot.publishedQpc;
-        const unsigned long long after = gPoseSlot.sequence.load(std::memory_order_acquire);
-        if (before == after) {
-            out = pose;
-            publishedQpc = stamp;
-            return true;
-        }
-    }
-    return false;
+    PoseSlot value{};
+    if (!gPoseSlot.TryRead(value)) { return false; }
+    out = value.pose;
+    publishedQpc = value.publishedQpc;
+    return true;
 }
 
 bool PrologueMatches(std::uintptr_t address)
@@ -212,12 +189,36 @@ bool EnsureHook()
 
 } // namespace
 
+// A refused read is contention with the publisher (LatestSnapshot's try-lock),
+// not a missing pose. Skipping the edit for that frame snaps the camera to the
+// untracked view for one frame -- rare, and violent when it happens. The last
+// pose this thread read is the better answer while it is recent. Thread-local,
+// so no reader shares it and nothing can tear.
+struct HeadLastGood { Pose pose{}; std::int64_t publishedQpc = 0; bool valid = false; };
+thread_local HeadLastGood tHeadLastGood;
+std::atomic<unsigned long long> gHeadPoseReadFallbacks{0};
+constexpr unsigned long long kHeadFallbackMaxMicroseconds = 100000ull;
+
 bool TryReadHeadPose(Pose& out, unsigned long long& ageMicroseconds)
 {
     Pose pose{};
     std::int64_t publishedQpc = 0;
     if (!ReadPose(pose, publishedQpc)) {
-        return false;
+        if (!tHeadLastGood.valid) {
+            return false;
+        }
+        const auto staleMicroseconds = static_cast<unsigned long long>(
+            ((QpcNow() - tHeadLastGood.publishedQpc) * 1000000ll) / QpcFrequency());
+        if (staleMicroseconds > kHeadFallbackMaxMicroseconds) {
+            return false;
+        }
+        gHeadPoseReadFallbacks.fetch_add(1, std::memory_order_relaxed);
+        pose = tHeadLastGood.pose;
+        publishedQpc = tHeadLastGood.publishedQpc;
+    } else {
+        tHeadLastGood.pose = pose;
+        tHeadLastGood.publishedQpc = publishedQpc;
+        tHeadLastGood.valid = true;
     }
     const auto age = static_cast<unsigned long long>(
         ((QpcNow() - publishedQpc) * 1000000ll) / QpcFrequency());
@@ -550,12 +551,7 @@ DWORD SetViewHookApplying(unsigned int enabled)
 
 void PublishHeadPose(const Pose& openXrHeadPose)
 {
-    const unsigned long long sequence = gPoseSlot.sequence.load(std::memory_order_relaxed);
-    gPoseSlot.sequence.store(sequence + 1, std::memory_order_release);   // odd: writing
-    gPoseSlot.pose = openXrHeadPose;
-    gPoseSlot.publishedQpc = QpcNow();
-    gPoseSlot.sequence.store(sequence + 2, std::memory_order_release);   // even: readable
-    gPoseSlot.everPublished.store(true, std::memory_order_release);
+    gPoseSlot.Publish(PoseSlot{openXrHeadPose, QpcNow()});
 }
 
 DWORD RecenterHeadTracking()
@@ -574,8 +570,10 @@ DWORD RecenterHeadTracking()
         Log("result=refused detail=near_vertical_no_usable_yaw");
         return 2;
     }
+    gReferenceGeneration.fetch_add(1); // odd while recenter is being published
     gReferenceYaw.store(*yaw, std::memory_order_release);
     gHaveReference.store(true, std::memory_order_release);
+    gReferenceGeneration.fetch_add(1);
     std::ostringstream line;
     line << "result=0 detail=recentered yawRadians=" << *yaw;
     Log(line.str());
@@ -623,6 +621,9 @@ unsigned long long HeadTrackingMaxPoseAgeMicroseconds()
 {
     return gMaxPoseAgeMicroseconds.load(std::memory_order_relaxed);
 }
+
+unsigned long long HeadTrackingReferenceGeneration() { return gReferenceGeneration.load(); }
+unsigned long long HeadTrackingPoseReadFallbacks() { return gHeadPoseReadFallbacks.load(std::memory_order_relaxed); }
 
 float HeadTrackingReferenceYaw()
 {

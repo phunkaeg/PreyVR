@@ -101,6 +101,7 @@ void WriteReport(std::ostringstream& out)
         << " lastEye=" << LastRenderedEye()
         << " viewObserved=" << ViewHookObservedCount()
         << " viewApplied=" << ViewHookAppliedCount()
+        << " viewPoseFallback=" << HeadTrackingPoseReadFallbacks()
         << " posApplied=" << ViewPositionAppliedCount()
         << " posRefused=" << ViewPositionRefusedCount()
         << " posOffsetMm=" << ViewPositionOffsetMillimetres()
@@ -127,6 +128,9 @@ void WriteReport(std::ostringstream& out)
         << " handTurnYaw=" << HandRigTurnYawDeciDegrees()
         << " ikMode=" << AnimIkMode()
         << " ikHooked=" << AnimIkHooked()
+        << " ikOwner=0x" << std::hex << AnimIkOwnerCharacter() << std::dec
+        << " ikEquipGen=" << AnimIkOwnerGeneration() << " ikPoseSeq=" << AnimIkPoseSequence()
+        << " ikNoOwner=" << AnimIkNoOwner() << " ikBusy=" << AnimIkBusy()
         << " ikCalls=" << AnimIkCalls()
         << " ikMatched=" << AnimIkMatched()
         << " ikRig=0x" << std::hex << AnimIkRigSkeleton() << std::dec
@@ -155,6 +159,7 @@ void WriteReport(std::ostringstream& out)
         << " weaponAttachment=0x" << std::hex << WeaponAttachmentPointer() << std::dec
         << " weaponBone=" << WeaponAttachmentJointIndex()
         << " weaponSim=0x" << std::hex << WeaponAttachmentSimulationFlags() << std::dec
+        << WeaponMuzzleAlignmentReport()
         << " aimOriginApplied=" << AimOriginAppliedCount()
         << " weaponMountMm=" << WeaponMountPositionMillimetres(0)
         << "," << WeaponMountPositionMillimetres(1)
@@ -343,9 +348,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "console result=" << result
             << " command=\"" << command << "\"";
     } else if (verb == "aim.origin") {
-        // Also move the reticle ray's origin to the hand, so the ray and the
-        // projectile (which already starts at the weapon's muzzle helper) share
-        // an origin and the shot leaves along the controller's forward.
+        // Diagnostic controller-aim origin; this does not establish a muzzle
+        // transform or remove projectile convergence from the authored helper.
         out << "aim.origin result=" << SetAimOriginFromHand(arg(1, 1));
     } else if (verb == "aim.enable") {
         // The detached-aim lane, reachable from the channel at last. H-004 is

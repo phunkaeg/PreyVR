@@ -2143,3 +2143,26 @@ Structures: `CCharInstance` `+0x10` skeleton, `+0x18` attachment manager,
 type tag. `SAnimationPoseModifierParams` `+0` char, `+8` pose, `+0x10` dt,
 `+0x14` loc.q, `+0x24` loc.t, `+0x30` loc.s. Hand rig joints: target 38/39,
 blend 4/5, hand 45/72.
+
+## R-103 -- equipped-rig ownership and the passive firing-origin observer (Codex, static)
+
+From the [H-021 integration audit](RE-H021-INTEGRATION-AUDIT-2026-09-07.md),
+2026-09-07; receipts in `tools/re/verify_h021_integration.py` (8 disk-image
+checks). Static; no game execution.
+
+| what | where | evidence |
+|---|---|---|
+| `CArkWeapon::AttachToHand` `0x16914F0` | takes whole-weapon `this`, returns bool in AL | audit; the hook now captures only a successful attach |
+| owner-id getter | secondary vtable `0x1E6C888 + 0x1D8` -> `0x10DFC10` = `mov eax,[rcx+58h]; ret`, called with RCX = weapon+8 | so the owner id is whole-weapon **`+0x60`**; local player is `0x7777` |
+| item id | whole-weapon `+0x38` | `OnEquip` `0x1699816` |
+| selected item | player `+0x14B8` (equipment) `+0x58` = player `+0x1510` | `IsEquipped` `0x1275500`, compare at `0x1275543` |
+| bone attachment | vtable **`0x1D212B8`**; binding `+0x20`, manager `+0x28`, manager's character `+0x18`, joint `+0x15C` | `ProjectAttachment` `0x7A2560` reads the same chain |
+| attachment defaults | relative **`+0xF8`** (not `+0xFC`), absolute `+0x114`, current model pose `+0x130`, extra quaternion `+0x14C` | 0x1C stride agrees |
+| `GetFiringPosition` `0x1694BC0` | RCX weapon, RDX caller-owned result, R8D flags, R9 optional override entity; RAX returns the result; byte `+0` fallback, XYZ at `+4/+8/+C` (stores at `0x1694FE6`) | passive observer copies the 16 bytes after the original returns |
+| reticle producer `0x1585320` | writes the origin only after a successful unprojection; a failed divide retains the old value | why an origin edit must be restored before the producer runs |
+
+Consequences built into `0.3.1-static-ik-integration`: the IK lane selects the
+rig through the **live owner chain** (selected item -> weapon -> attachment ->
+manager -> character), not by skeleton signature alone; `aim.origin 1` is a
+controller-point diagnostic, not a muzzle mode; `report` carries
+`muzzle*` separation samples with age and ownership.

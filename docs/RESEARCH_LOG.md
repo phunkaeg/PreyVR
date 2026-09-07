@@ -1754,3 +1754,40 @@ updated R-102 and the original report. Runtime implementation and game untouched
 remaining runtime limits. [RE investigation guidance](RE-INVESTIGATION-GUIDE.md),
 linked from CLAUDE.md, makes prior-evidence retrieval, receiver recovery,
 register checks, and producer/consumer validation a concrete repeatable workflow.
+
+## 2026-09-07 -- H-021 bounded static integration audit and fix
+
+Starting at 1605539, fixed clean-origin feedback (including the native producer's
+failed-unprojection retention branch), coherent head/two-hand XR publication,
+per-hand calibration and owner/recenter/focus invalidation, equipped-weapon rig
+ownership, competing write lanes, index/location validation and partial-write
+accounting. Replaced non-atomic-payload seqlocks with synchronized snapshots and
+try-lock readers. Added a passive native firing-position observer; it reports
+muzzle/aim/grip separation, fallback and sample age without modifying native fire.
+Controller aim origin and wrist calibration are explicitly not barrel calibration.
+
+New ownership reads: secondary weapon+8 GetOwnerId slot+1D8 -> 0x10DFC10 reads
+secondary+58 (whole+60); direct equipment selection is player+14B8+58. Bone
+attachment manager/character chain is checked, plus current item and binding.
+Re-equip creates a generation even when pointers are reused. Alias equipment
+remains deliberately refused. Corrected relative attachment default +F8 versus
+old +FC wording. Full contracts, limitations and the bounded runtime protocol:
+[H-021 integration audit](RE-H021-INTEGRATION-AUDIT-2026-09-07.md).
+
+Validation: isolated MSVC Release build `build/h021-integration-audit`, **27/27
+CTest tests passed**, including expanded calibration/ownership/pose-contention,
+feedback and native firing-result fixtures. New offline verifier passes **8**
+byte/vtable checks; existing H-021 verifier passes **24**, both on supported full
+DLL SHA-256. PowerShell protocol parses; git diff whitespace check passes.
+Artifact version `0.3.1-static-ik-integration`, PreyVR.dll SHA-256:
+`D5C9AD7D4673AA89FD3183538AD625547AF997D425C7874CDDC884AEDFBCE2A7`.
+Receipts: `build/h021-integration-audit/ctest-results.xml`, `static-verification.json`,
+`build.log`; raw Ghidra assembly in ignored
+`captures/traces/2026-09-07-h021-integration-static.json`.
+
+MSBuild initially rejected duplicate PATH/Path inherited by this desktop shell;
+build subprocesses used case-normalized environment keys. No machine environment
+was changed. Refreshed only PreyVR's deterministic code graph, preserving the 11
+semantic source documents; the existing Bootstrap.h parse warning remains.
+No Prey process launch, injection, attachment, XR session or graphics capture.
+Runtime/headset acceptance and per-weapon barrel alignment remain unclaimed.

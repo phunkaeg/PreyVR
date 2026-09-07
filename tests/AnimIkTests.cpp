@@ -1,5 +1,13 @@
+#include "preyvr/FiringPosition.h"
+#include <array>
 #include "preyvr/AnimIk.h"
 #include "preyvr/StereoCamera.h"
+#include "preyvr/LatestSnapshot.h"
+#include "preyvr/RigOwnership.h"
+#include <atomic>
+#include <future>
+#include <limits>
+#include <thread>
 
 #include <cmath>
 #include <cstdlib>
@@ -127,6 +135,156 @@ void TestRotationCalibration()
             "a controller delta on the left turns the wrist by the same delta");
 }
 
+void TestSharedOriginAndMuzzleSeparation()
+{
+    const Vec3 native{10, 20, 1.7f};
+    Pose head{{}, {0, 1.6f, 0}};
+    Pose grip{{}, {0.2f, 1.2f, -0.5f}};
+    Pose aim = grip;
+    aim.position.z -= 0.1f; // XR aim and grip are different spaces.
+    const auto wrist = ControllerWorldFromHead(0, native, head, grip);
+    const auto aimWorld = ControllerWorldFromHead(0, native, head, aim);
+    Vec3 cache = aimWorld.position;
+    RayOriginEdit edit{123, native, cache};
+    Require(edit.Restore(123, cache) && NearVec(cache, native),
+            "our ray origin is restored even if native unprojection later fails");
+    const auto cleanWrist = ControllerWorldFromHead(0, cache, head, grip);
+    Require(NearVec(cleanWrist.position, wrist.position), "aim origin does not feed back into wrist");
+    const auto brokenWrist = ControllerWorldFromHead(0, aimWorld.position, head, grip);
+    Require(!NearVec(brokenWrist.position, wrist.position), "positive control detects doubled hand offset");
+    cache = {99, 88, 77};
+    Require(!edit.Restore(123, cache) && NearVec(cache, {99, 88, 77}), "preserve another origin writer");
+    cache = edit.written;
+    Require(!edit.Restore(456, cache), "never restore an old player's origin into a new player");
+    // A fixture-authored muzzle is 20 cm forward of the grip, not the aim point.
+    const Pose muzzle = Compose(wrist, Pose{{}, {0, 0.2f, 0}});
+    Require(!NearVec(muzzle.position, aimWorld.position), "controller origin cannot be labelled muzzle");
+    const auto turnWrist = ControllerWorldFromHead(1.57079632679f, native, head, grip);
+    const Pose turnedMuzzle = Compose(turnWrist, Pose{{}, {0, 0.2f, 0}});
+    Require(NearVec({turnedMuzzle.position.x-turnWrist.position.x,
+                     turnedMuzzle.position.y-turnWrist.position.y,
+                     turnedMuzzle.position.z-turnWrist.position.z}, {-0.2f, 0, 0}),
+            "authored muzzle offset rotates with the wrist basis");
+    // Fixed physical controller stays fixed ONLY when native world anchor also
+    // accounts for the head translation. Orientation-only view is a separate gate.
+    head.position.x += 0.1f;
+    Vec3 movedEye = native; movedEye.x += 0.1f;
+    Require(NearVec(ControllerWorldFromHead(0, movedEye, head, grip).position, wrist.position),
+            "matched native/XR head translation cancels with stationary controller");
+}
+
+void TestCalibrationLifecycle()
+{
+    CalibrationState state;
+    state.Bind(1,0,1);
+    state.Request(3);
+    Require(state.Pending(0) && state.Pending(1), "both hands requested");
+    state.Commit(0, AxisAngle({0,0,1}, 0.4f));
+    Require(!state.Pending(0) && state.Pending(1) && state.calibrated == 1,
+            "right hand must not consume left calibration");
+    // A missing pose or failed native write makes no Commit call.
+    Require(state.Pending(1), "failed hand leaves its request pending");
+    state.Commit(1, AxisAngle({1,0,0}, 0.2f));
+    Require(state.pending == 0 && state.calibrated == 3, "both complete individually");
+    state.Request(3);
+    Require(state.Bind(2,0,1) && state.calibrated == 0 && state.pending == 0,
+            "re-equip invalidates rotations AND pending requests even when pointers are reused");
+    state.Request(2); state.Commit(1, {});
+    Require(state.pending == 0 && state.calibrated == 2, "left-only request completes");
+    state.Commit(99, {});
+    Require(state.calibrated == 2, "invalid hand cannot shift outside mask");
+    Require(!state.Bind(2,0,1) && state.calibrated == 2, "same owner retains calibration");
+    Require(state.Bind(2,2,1) && state.calibrated == 0, "recenter invalidates calibration");
+    state.Request(1); state.Commit(0, {});
+    Require(state.Bind(2,2,2) && state.calibrated == 0, "XR focus/session epoch invalidates calibration");
+}
+
+void TestNativeFiringPositionLayout()
+{
+    // Little-endian native result, poison padding: x=1, y=-2, z=0.5.
+    std::array<std::uint8_t,16> bytes{0,0xCD,0xCD,0xCD, 0,0,0x80,0x3F,
+                                    0,0,0,0xC0, 0,0,0,0x3F};
+    auto value = DecodeFiringPosition(bytes);
+    Require(value && value->cameraFallback == 0 && NearVec(value->origin,{1,-2,0.5f}),
+            "firing position uses +4 and ignores three padding bytes");
+    bytes[0] = 1; value = DecodeFiringPosition(bytes);
+    Require(value && value->cameraFallback == 1, "native wall guard flag remains visible");
+    Require(!DecodeFiringPosition(std::span(bytes).first(15)), "truncated native result refused");
+    bytes[0] = 2; Require(!DecodeFiringPosition(bytes), "unknown fallback encoding refused");
+    bytes[0] = 0; bytes[6] = 0xC0; bytes[7] = 0x7F;
+    Require(!DecodeFiringPosition(bytes), "nonfinite native position refused");
+}
+
+void TestOwnerAndBounds()
+{
+    RigIdentity captured{11,22,33,44,5,66};
+    auto current = captured;
+    Require(SameRigBinding(captured, current, 66), "positive control current equipped rig");
+    current.character = 45;
+    Require(!SameRigBinding(captured, current, 66), "shared skeleton with different character is refused");
+    current = captured; current.binding = 34;
+    Require(!SameRigBinding(captured, current, 66), "rebound attachment is refused");
+    Require(!SameRigBinding(captured, captured, 67), "weapon switch invalidates even with same skeleton");
+    Require(!SameRigBinding(captured, captured, 0), "holster invalidates writes");
+    Require(ValidJoint(100,101) && !ValidJoint(-1,101) && !ValidJoint(101,101), "joint bounds include upper bound");
+    Location loc{};
+    Require(ValidLocation(loc), "identity location is valid when actually read");
+    loc.s = 0; Require(!ValidLocation(loc), "zero scale refused");
+    loc.s = -1; Require(!ValidLocation(loc), "negative scale refused");
+    loc.s = std::numeric_limits<float>::infinity(); Require(!ValidLocation(loc), "infinite scale refused");
+    loc = {}; loc.q = {0,0,0,0}; Require(!ValidLocation(loc), "zero quaternion refused before normalize");
+    loc = {}; loc.t.x = std::numeric_limits<float>::quiet_NaN(); Require(!ValidLocation(loc), "NaN location refused");
+}
+
+struct FrameFixture {
+    std::uint64_t sequence = 0, head = 0, left = 0, right = 0;
+};
+struct BlockingCopy {
+    std::promise<void>* entered = nullptr;
+    std::shared_future<void> release{};
+    bool block = false;
+    BlockingCopy& operator=(const BlockingCopy& source) {
+        if (source.block) { source.entered->set_value(); source.release.wait(); }
+        return *this;
+    }
+};
+
+void TestSnapshotPublication()
+{
+    LatestSnapshot<FrameFixture> slot;
+    FrameFixture sample{};
+    Require(!slot.TryRead(sample), "unpublished state refused");
+    slot.Publish({1,1,1,1});
+    Require(slot.TryRead(sample) && sample.head == 1, "initial snapshot positive control");
+    std::atomic<bool> done{false};
+    std::thread writer([&] {
+        for (std::uint64_t i=2; i<=10000; ++i) { slot.Publish({i,i,i,i}); }
+        done.store(true);
+    });
+    do {
+        if (slot.TryRead(sample)) {
+            Require(sample.sequence == sample.head && sample.head == sample.left && sample.left == sample.right,
+                    "head and hands must come from the same publication under contention");
+        }
+    } while (!done.load());
+    writer.join();
+    Require(slot.TryRead(sample) && sample.sequence == 10000, "latest complete frame survives");
+    slot.Clear();
+    Require(!slot.TryRead(sample), "focus/session clear cannot replay a stale pose");
+    LatestSnapshot<BlockingCopy> contended;
+    std::promise<void> entered, release;
+    auto began = entered.get_future();
+    BlockingCopy blocked{&entered, release.get_future().share(), true};
+    std::thread publisher([&] { contended.Publish(blocked); });
+    Require(began.wait_for(std::chrono::seconds(2)) == std::future_status::ready, "publisher reached controlled contention");
+    BlockingCopy output;
+    const bool readWhileLocked = contended.TryRead(output);
+    release.set_value(); publisher.join();
+    Require(!readWhileLocked, "engine reader refuses contention without waiting");
+    Require(FreshSample(201,1,200) && !FreshSample(202,1,200), "freshness boundary");
+    Require(!FreshSample(1,2) && !FreshSample(1,0), "future and absent timestamps refused");
+}
+
 } // namespace
 
 int main()
@@ -136,6 +294,11 @@ int main()
     TestControllerFromHead();
     TestClampToReach();
     TestRotationCalibration();
+    TestSharedOriginAndMuzzleSeparation();
+    TestCalibrationLifecycle();
+    TestOwnerAndBounds();
+    TestNativeFiringPositionLayout();
+    TestSnapshotPublication();
     std::cout << "PreyVR anim-ik tests passed\n";
     return 0;
 }

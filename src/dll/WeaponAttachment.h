@@ -1,6 +1,8 @@
 #pragma once
 
 #include <windows.h>
+#include <string>
+#include "preyvr/RigOwnership.h"
 
 // Moves the weapon model itself, independently of the hands.
 //
@@ -58,11 +60,20 @@
 // independent point of agreement is what makes index 9 usable rather than a guess.
 namespace preyvr::dll {
 
+using EquippedRig = RigIdentity;
+// Revalidates selected equipment and the attachment -> manager -> character
+// chain on every read. A skeleton asset signature alone is not ownership.
+bool TryGetEquippedRig(std::uintptr_t player, EquippedRig& out);
+
 // Installs the hook on `CArkWeapon::AttachToHand` (R-024) and captures the
 // equipped weapon's `IAttachment*` from `CArkWeapon+0x2B0`.
 //
 // **Capture is passive.** Nothing is written until an offset is armed, so this can
 // run while only observing -- which is how every lane that worked today started.
+// Passive firing-position observer. Reports a matched sample's actual native
+// origin, fallback flag and separation from aim/grip; never replaces firing.
+std::string WeaponMuzzleAlignmentReport();
+
 DWORD SetWeaponAttachmentObserving(unsigned int enabled);
 
 // The captured attachment, or 0. Session-specific: re-equip a weapon to refresh it
@@ -86,6 +97,7 @@ int WeaponMountQuaternionMilli(unsigned int component);  // 0 x, 1 y, 2 z, 3 w
 // top of the mount captured at arm time, so disarming restores exactly.
 DWORD SetWeaponOffsetMillimetres(int x, int y, int z);
 DWORD SetWeaponOffsetEnabled(unsigned int enabled);
+unsigned int WeaponOffsetArmed();
 
 // --- Controller-driven rotation -------------------------------------------
 //

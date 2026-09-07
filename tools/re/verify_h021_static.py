@@ -13,8 +13,8 @@ sys.dont_write_bytecode = True
 from verify_h005_skinning import DEFAULT_MODULE
 
 
-def verify(path):
-    spec = json.loads(Path(__file__).with_name("h021_static_landmarks.json").read_text())
+def verify(path, spec_name="h021_static_landmarks.json"):
+    spec = json.loads(Path(__file__).with_name(spec_name).read_text())
     data = path.read_bytes()
     digest = hashlib.sha256(data).hexdigest()
     if digest != spec["image_sha256"]:

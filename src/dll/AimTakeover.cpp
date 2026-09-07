@@ -1,6 +1,7 @@
 #include "AimTakeover.h"
 #include "preyvr/AnimIk.h"
 #include "MinHookInit.h"
+#include "preyvr/LatestSnapshot.h"
 
 #include "HeadTrackingHook.h"
 #include "Logger.h"
@@ -34,6 +35,10 @@ using GetArkPlayerInstanceFn = void*(__fastcall*)();
 void* gTarget = nullptr;
 std::atomic<UpdateCachedRayFn> gOriginal{nullptr};
 bool gInstalled = false;
+LatestSnapshot<GameplayPoseFrame> gGameplayFrame;
+// The native producer and this edit run on the gameplay thread. A TLS record
+// prevents a failed native unprojection from recycling our hand origin.
+thread_local animik::RayOriginEdit gLastOriginEdit;
 
 std::atomic<bool> gEnabled{false};
 std::atomic<unsigned long long> gApplied{0};
@@ -83,67 +88,57 @@ float GameCameraYaw()
 void __fastcall UpdateCachedRayWithTakeover(void* player)
 {
     const UpdateCachedRayFn original = gOriginal.load(std::memory_order_acquire);
+    if (player && gLastOriginEdit.owner == reinterpret_cast<std::uintptr_t>(player)) {
+        auto* originAt = static_cast<std::uint8_t*>(player) + engine::ArkPlayerLayout::cachedReticleOrigin;
+        Vec3 current{};
+        std::memcpy(&current, originAt, sizeof(current));
+        if (gLastOriginEdit.Restore(reinterpret_cast<std::uintptr_t>(player), current)) {
+            std::memcpy(originAt, &current, sizeof(current));
+        }
+        gLastOriginEdit = {};
+    }
     if (original != nullptr) {
         original(player);   // let the engine build its own ray first
     }
-    if (!gEnabled.load(std::memory_order_acquire) || player == nullptr) {
+    if (player == nullptr || original == nullptr) {
+        gGameplayFrame.Clear();
+        gRejNoPlayer.fetch_add(1, std::memory_order_relaxed);
         return;
     }
     const auto playerAddress = reinterpret_cast<std::uintptr_t>(player);
-
-    // Read the engine's own direction back before touching anything. It is
-    // documented as a unit vector, so a magnitude near 1 confirms both the offset
-    // and the convention -- the data naming itself rather than us trusting a
-    // field name. A reading far from 1 means the layout is wrong, and writing
-    // into it would be writing somewhere unknown.
+    GameplayPoseFrame frame{};
+    frame.player = playerAddress;
+    std::memcpy(&frame.nativeEye, reinterpret_cast<const void*>(
+        playerAddress + engine::ArkPlayerLayout::cachedReticleOrigin), sizeof(Vec3));
     Vec3 nativeDirection{};
-    std::memcpy(&nativeDirection,
-                reinterpret_cast<const void*>(
-                    playerAddress + engine::ArkPlayerLayout::cachedReticleDirection),
-                sizeof(nativeDirection));
+    std::memcpy(&nativeDirection, reinterpret_cast<const void*>(
+        playerAddress + engine::ArkPlayerLayout::cachedReticleDirection), sizeof(Vec3));
     const float nativeLength = Length(nativeDirection);
-    gNativeMagnitude.store(static_cast<unsigned int>(nativeLength * 1000.0f + 0.5f),
-                           std::memory_order_relaxed);
-    if (!std::isfinite(nativeLength) || nativeLength < 0.9f || nativeLength > 1.1f) {
+    if (!std::isfinite(nativeLength) || nativeLength < 0.9f || nativeLength > 1.1f ||
+        !std::isfinite(frame.nativeEye.x) || !std::isfinite(frame.nativeEye.y) ||
+        !std::isfinite(frame.nativeEye.z)) {
+        gGameplayFrame.Clear();
         gRejCompose.fetch_add(1, std::memory_order_relaxed);
         return;
     }
-
-    ControllerState controller{};
-    if (!TryGetControllerState(Hand::right, controller)) {
-        gRejNoPose.fetch_add(1, std::memory_order_relaxed);
-        return;
-    }
-
-    // The same reference frame the view uses, so hand and eye cannot drift apart.
-    // One recenter event feeds every lane -- CAM-003.
-    Pose headPose{};
-    unsigned long long age = 0;
-    if (!TryReadHeadPose(headPose, age)) {
-        gRejNoPose.fetch_add(1, std::memory_order_relaxed);
-        return;
-    }
-    // **The play space faces where the *game* faces, not where the head was at
-    // recenter.** Parking the reference at the raw recenter yaw is the same bug
-    // the view seam had: it never follows the player's actual facing, so turning
-    // with the mouse leaves the aim ray on a fixed bearing and it swings off
-    // screen. Measured live 2026-09-04 -- the controller drove the ray, and the
-    // ray pointed somewhere unrelated to the player.
-    //
-    // The engine's current yaw minus the recenter yaw is the same composition the
-    // view uses, which is what CAM-003 means by one recenter for all lanes: not
-    // just one recenter *event*, but one *resolution* of it.
+    gNativeMagnitude.store(static_cast<unsigned int>(nativeLength * 1000.0f + 0.5f));
+    const bool haveTracking = TryGetTrackingFrame(frame.tracking) &&
+        IsPoseUsable(frame.tracking.head, frame.tracking.headValidity, 200000000ull);
+    frame.referenceGeneration = HeadTrackingReferenceGeneration();
+    frame.referenceYaw = HeadTrackingReferenceYaw();
+    frame.yaw = GameCameraYaw() - frame.referenceYaw;
+    if ((frame.referenceGeneration & 1) ||
+        frame.referenceGeneration != HeadTrackingReferenceGeneration() || !std::isfinite(frame.yaw)) { gGameplayFrame.Clear(); return; }
+    // IK must never reread the mutable cached origin below.
+    frame.publishedNs = MonotonicNanoseconds();
+    gGameplayFrame.Publish(frame);
+    if (!haveTracking) { gRejNoPose.fetch_add(1); return; }
+    if (!gEnabled.load(std::memory_order_acquire)) { return; }
+    const auto& controller = frame.tracking.hands[static_cast<unsigned int>(Hand::right)];
+    const auto& headPose = frame.tracking.head;
+    const Vec3 engineOrigin = frame.nativeEye;
     stereo::ReferenceFrame reference{};
-    reference.yawRadians = GameCameraYaw() - HeadTrackingReferenceYaw();
-    // The ray's own origin is the engine's, so the hand's position is expressed
-    // about the same point the engine is already firing from. Position tracking
-    // is M3's business; this lane only replaces the direction and keeps the
-    // engine's origin.
-    Vec3 engineOrigin{};
-    std::memcpy(&engineOrigin,
-                reinterpret_cast<const void*>(
-                    playerAddress + engine::ArkPlayerLayout::cachedReticleOrigin),
-                sizeof(engineOrigin));
+    reference.yawRadians = frame.yaw;
     reference.worldPosition = engineOrigin;
 
     const auto ray = controller::AimFromController(
@@ -162,9 +157,8 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
         return;
     }
 
-    // Direction only. The engine's origin is left in place, so a shot still
-    // starts where the engine expects and only its heading changes -- the
-    // smallest edit that detaches aim.
+    // This selects a pointing direction. Native firing may converge from its
+    // authored muzzle toward this ray; a controller point is not that muzzle.
     std::memcpy(reinterpret_cast<void*>(
                     playerAddress + engine::ArkPlayerLayout::cachedReticleDirection),
                 &ray->direction, sizeof(ray->direction));
@@ -180,6 +174,7 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
             std::memcpy(reinterpret_cast<void*>(
                             playerAddress + engine::ArkPlayerLayout::cachedReticleOrigin),
                         &hand.position, sizeof(hand.position));
+            gLastOriginEdit = {playerAddress, engineOrigin, hand.position};
             gOriginApplied.fetch_add(1, std::memory_order_relaxed);
         }
     }
@@ -236,8 +231,32 @@ bool Install()
 
 } // namespace
 
+bool EnsureGameplayPoseObservation() { return Install(); }
+
+bool TryGetGameplayPoseFrame(GameplayPoseFrame& out, bool requireTracking)
+{
+    if (!gGameplayFrame.TryRead(out)) { return false; }
+    if (!FreshSample(MonotonicNanoseconds(), out.publishedNs)) { return false; }
+    if (!requireTracking) { return true; }
+    TrackingFrame current{};
+    // Also require a currently focused publication. A cleared XR slot must
+    // invalidate an otherwise young cached gameplay frame immediately.
+    if (!TryGetTrackingFrame(current) || out.tracking.epoch != current.epoch ||
+        out.referenceGeneration != HeadTrackingReferenceGeneration()) { return false; }
+    const auto now = MonotonicNanoseconds();
+    if (!FreshSample(now, out.tracking.publishedNs)) { return false; }
+    const auto age = now - out.tracking.publishedNs;
+    out.tracking.headValidity.ageNanoseconds = age;
+    for (auto& hand : out.tracking.hands) {
+        hand.gripValidity.ageNanoseconds = age;
+        hand.aimValidity.ageNanoseconds = age;
+    }
+    return IsPoseUsable(out.tracking.head, out.tracking.headValidity, 200000000ull);
+}
+
 DWORD SetAimOriginFromHand(unsigned int enabled)
 {
+    if (enabled > 1) { return 1; }
     gOriginFromHand.store(enabled != 0u, std::memory_order_release);
     Log(std::string("result=0 detail=origin_from_hand value=") + (enabled ? "1" : "0"));
     return 0;

@@ -1,6 +1,9 @@
 #include "AnimIkTakeover.h"
 
 #include "HandRigTakeover.h"
+#include "AimTakeover.h"
+#include "WeaponAttachment.h"
+#include <mutex>
 #include "HeadTrackingHook.h"
 #include "Logger.h"
 #include "MinHookInit.h"
@@ -60,8 +63,6 @@ constexpr std::size_t kPoseRelative = 0x10;
 constexpr std::size_t kPoseAbsolute = 0x18;
 constexpr std::size_t kQuatTStride = 0x1C;
 constexpr std::uintptr_t kUseAdikCvarRva = 0x225780C;   // DAT_18225780c, tested != 0 by the pass
-constexpr std::uintptr_t kPlayerEyeOrigin = 0x17D4;     // ArkPlayer cached reticle origin (R-012)
-constexpr std::uintptr_t kGetPlayerRva = 0x157C990;     // landmark player.get_instance
 constexpr unsigned int kMaxJoints = 768;
 
 std::atomic<bool> gInstalled{false};
@@ -71,7 +72,10 @@ void* gTarget = nullptr;
 std::atomic<unsigned int> gMode{0};
 std::atomic<int> gTestMm[3]{0, 0, 0};
 std::atomic<bool> gDrive{false};
-std::atomic<bool> gCalibrateRequest{false};
+std::mutex gIkMutex;
+animik::CalibrationState gCalibration;
+std::atomic<std::uint64_t> gOwnerGeneration{0}, gOwnerCharacter{0}, gUsedSequence{0};
+std::atomic<unsigned long long> gNoOwner{0}, gBusy{0};
 std::atomic<unsigned int> gSignatureJoints{101};
 std::atomic<unsigned int> gHands{1};
 
@@ -95,10 +99,6 @@ std::atomic<bool> gCalibrated[2]{false, false};
 std::atomic<int> gLocMm[3]{0, 0, 0};
 std::atomic<int> gLocYawMilli{0};
 std::atomic<int> gLastGoalMm[3]{0, 0, 0};
-
-// Written from the job thread, read from it too; the calibration request is the
-// only cross-thread flag and it is a plain atomic.
-Quaternion gOffset[2]{};
 
 // --- raw reads, SEH-guarded, POD only --------------------------------------
 
@@ -137,16 +137,6 @@ bool ReadFloats(const void* at, float* out, unsigned int count)
 {
     __try {
         std::memcpy(out, at, count * sizeof(float));
-        return true;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
-    }
-}
-
-bool WriteFloats(void* at, const float* in, unsigned int count)
-{
-    __try {
-        std::memcpy(at, in, count * sizeof(float));
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
@@ -205,9 +195,9 @@ int JointIndexByName(const std::uint8_t* skeleton, unsigned int count, const cha
 
 // --- rig identification -----------------------------------------------------
 //
-// Keyed on the CDefaultSkeleton, which is the model asset shared by every
-// instance of the rig. F-009: instances are recreated on every weapon change,
-// so an instance pointer is exactly the wrong key.
+// The signature identifies an asset, not a live owner. The caller first checks
+// the current selected weapon's attachment-manager owner; validate indices anew
+// on each matching callback, even when a skeleton pointer is reused.
 
 bool IdentifyRig(std::uint8_t* character)
 {
@@ -216,9 +206,6 @@ bool IdentifyRig(std::uint8_t* character)
         return false;
     }
     auto* const skeleton = static_cast<std::uint8_t*>(skeletonPtr);
-    if (reinterpret_cast<std::uintptr_t>(skeleton) == gRigSkeleton.load(std::memory_order_acquire)) {
-        return true;
-    }
     void* joints = nullptr;
     if (!ReadPointer(skeleton + kSkelJoints, &joints)) { return false; }
     const unsigned int jointCount = DynArrayCount(joints);
@@ -256,7 +243,7 @@ bool IdentifyRig(std::uint8_t* character)
         for (unsigned int i = 0; i < limbCount && i < 32; ++i) {
             auto* const limb = static_cast<std::uint8_t*>(limbs) + i * kLimbStride;
             void* chain = nullptr;
-            if (!ReadPointer(limb + kLimbChain, &chain) || chain == nullptr) { continue; }
+            if (!ReadPointer(limb + kLimbChain, &chain) || chain == nullptr || DynArrayCount(chain) < 4 || DynArrayCount(chain) > kMaxJoints) { continue; }
             int c1 = -1, c2 = -1, c3 = -1, t = 0;
             if (!ReadInt(static_cast<std::uint8_t*>(chain) + 0x10, &c1) ||
                 !ReadInt(static_cast<std::uint8_t*>(chain) + 0x20, &c2) ||
@@ -265,7 +252,8 @@ bool IdentifyRig(std::uint8_t* character)
                 continue;
             }
             for (unsigned int h = 0; h < 2; ++h) {
-                if (hand[h] >= 0 && c3 == hand[h]) {
+                if (hand[h] >= 0 && c3 == hand[h] && animik::ValidJoint(c1, jointCount) &&
+                    animik::ValidJoint(c2, jointCount) && animik::ValidJoint(c3, jointCount)) {
                     upper[h] = c1; mid[h] = c2; end[h] = c3; tag[h] = static_cast<unsigned int>(t);
                 }
             }
@@ -280,9 +268,10 @@ bool IdentifyRig(std::uint8_t* character)
         gLimbEnd[h].store(end[h], std::memory_order_relaxed);
         gLimbTagValue[h].store(tag[h], std::memory_order_relaxed);
     }
+    const bool changed = gRigSkeleton.load() != reinterpret_cast<std::uintptr_t>(skeleton);
     gRigJoints.store(jointCount, std::memory_order_relaxed);
     gRigSkeleton.store(reinterpret_cast<std::uintptr_t>(skeleton), std::memory_order_release);
-    Log("result=0 detail=rig_identified skeleton=0x" +
+    if (changed) Log("result=0 detail=rig_identified skeleton=0x" +
         [&] { char b[32]; std::snprintf(b, sizeof(b), "%llx", static_cast<unsigned long long>(reinterpret_cast<std::uintptr_t>(skeleton))); return std::string(b); }() +
         " joints=" + std::to_string(jointCount) + " adik=" + std::to_string(adikCount) +
         " rTarget=" + std::to_string(target[0]) + " rWeight=" + std::to_string(weight[0]) +
@@ -294,44 +283,6 @@ bool IdentifyRig(std::uint8_t* character)
     return true;
 }
 
-// --- the engine's eye point ---------------------------------------------------
-//
-// FAIL-HAND-037: never the view camera, which alternates by half an IPD per eye.
-// The player's cached reticle origin is the single eye point gameplay uses.
-
-bool ReadEyeOrigin(Vec3& out)
-{
-    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
-    if (preyDll == nullptr) { return false; }
-    const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
-    using GetPlayerFn = void*(*)();
-    void* player = nullptr;
-    __try {
-        player = reinterpret_cast<GetPlayerFn>(base + kGetPlayerRva)();
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
-    }
-    if (player == nullptr) { return false; }
-    float v[3] = {0.0f, 0.0f, 0.0f};
-    if (!ReadFloats(static_cast<std::uint8_t*>(player) + kPlayerEyeOrigin, v, 3)) { return false; }
-    out = Vec3{v[0], v[1], v[2]};
-    return std::isfinite(v[0]) && std::isfinite(v[1]) && std::isfinite(v[2]);
-}
-
-float GameCameraYaw()
-{
-    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
-    if (preyDll == nullptr) { return 0.0f; }
-    const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
-    auto* const systemPtr = *reinterpret_cast<std::uint8_t**>(base + engine::SystemLayout::pointerRva);
-    if (systemPtr == nullptr) { return 0.0f; }
-    const auto* const camera = reinterpret_cast<const std::uint8_t*>(
-        reinterpret_cast<std::uintptr_t>(systemPtr) + engine::SystemLayout::viewCamera);
-    const stereo::Matrix34 matrix =
-        stereo::ReadMatrix(std::span<const std::uint8_t>(camera, engine::CameraLayout::size));
-    return stereo::CameraYawOf(matrix);
-}
-
 // --- the write ------------------------------------------------------------------
 
 struct QuatT {
@@ -341,17 +292,46 @@ struct QuatT {
 
 bool ReadQuatT(std::uint8_t* array, int index, QuatT& out)
 {
-    return ReadFloats(array + static_cast<std::size_t>(index) * kQuatTStride, &out.q[0], 7);
+    if (!animik::ValidJoint(index, DynArrayCount(array)) ||
+        !ReadFloats(array + static_cast<std::size_t>(index) * kQuatTStride, &out.q[0], 7)) { return false; }
+    return animik::ValidLocation({{out.q[0], out.q[1], out.q[2], out.q[3]},
+                                 {out.t[0], out.t[1], out.t[2]}, 1.0f});
+}
+
+// The animation job owns these arrays. Restore a partially attempted edit on
+// an access fault, then disarm; do not report a partial target as a solved hand.
+bool WriteGoal(std::uint8_t* target, float* weight, const Vec3& position,
+               const Quaternion& rotation, bool writeRotation)
+{
+    QuatT backup{};
+    float oldWeight = 0;
+    bool haveBackup = false;
+    __try {
+        std::memcpy(&backup, target, sizeof(backup));
+        oldWeight = *weight;
+        haveBackup = true;
+        std::memcpy(target + 0x10, &position, sizeof(position));
+        if (writeRotation) { std::memcpy(target, &rotation, sizeof(rotation)); }
+        *weight = 1.0f;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        if (haveBackup) {
+            __try { std::memcpy(target, &backup, sizeof(backup)); *weight = oldWeight; }
+            __except (EXCEPTION_EXECUTE_HANDLER) { /* destroyed storage: cannot restore */ }
+        }
+        return false;
+    }
 }
 
 void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute,
-               const animik::Location& location, bool haveEye, const Vec3& eye,
-               float yaw, bool haveHead, const Pose& head)
+               const animik::Location& location, const GameplayPoseFrame& frame)
 {
     const int target = gTargetJoint[hand].load(std::memory_order_relaxed);
     const int weight = gWeightJoint[hand].load(std::memory_order_relaxed);
     const int handJoint = gHandJoint[hand].load(std::memory_order_relaxed);
-    if (target < 0 || weight < 0 || handJoint < 0) { return; }
+    if (!animik::ValidJoint(target, DynArrayCount(absolute)) ||
+        !animik::ValidJoint(weight, DynArrayCount(relative)) ||
+        !animik::ValidJoint(handJoint, DynArrayCount(absolute))) { return; }
 
     QuatT wrist{};
     if (!ReadQuatT(absolute, handJoint, wrist)) { return; }
@@ -359,25 +339,24 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
     Vec3 goal{wrist.t[0], wrist.t[1], wrist.t[2]};
     Quaternion rotation{wrist.q[0], wrist.q[1], wrist.q[2], wrist.q[3]};
     bool writeRotation = false;
+    bool calibrating = false;
+    Quaternion candidateOffset{};
 
     if (gDrive.load(std::memory_order_acquire)) {
-        ControllerState state{};
-        if (!haveEye || !haveHead || !TryGetControllerState(hand == 0 ? Hand::right : Hand::left, state) ||
-            !state.gripValidity.positionTracked || !state.gripValidity.orientationTracked) {
+        const auto& state = frame.tracking.hands[static_cast<unsigned int>(hand == 0 ? Hand::right : Hand::left)];
+        if (!IsPoseUsable(state.gripPose, state.gripValidity, 200000000ull)) {
             gNoPose.fetch_add(1, std::memory_order_relaxed);
-            return;   // keep the animation rather than guess
+            return;
         }
-        const Pose world = animik::ControllerWorldFromHead(yaw, eye, head, state.gripPose);
+        const Pose world = animik::ControllerWorldFromHead(frame.yaw, frame.nativeEye,
+                                                          frame.tracking.head, state.gripPose);
         goal = animik::WorldToModel(location, world.position);
         const Quaternion controllerModel = animik::WorldToModel(location, world.orientation);
-        if (gCalibrateRequest.load(std::memory_order_acquire)) {
-            gOffset[hand] = animik::CalibrateRotationOffset(controllerModel, rotation);
-            gCalibrated[hand].store(true, std::memory_order_release);
-            if (hand == 0) { gCalibrateRequest.store(false, std::memory_order_release); }
-            Log("result=0 detail=calibrated hand=" + std::to_string(hand));
-        }
-        if (gCalibrated[hand].load(std::memory_order_acquire)) {
-            rotation = animik::ApplyRotationOffset(controllerModel, gOffset[hand]);
+        calibrating = gCalibration.Pending(hand);
+        candidateOffset = calibrating ? animik::CalibrateRotationOffset(controllerModel, rotation)
+                                      : gCalibration.offsets[hand];
+        if (calibrating || (gCalibration.calibrated & (1u << hand))) {
+            rotation = animik::ApplyRotationOffset(controllerModel, candidateOffset);
             writeRotation = true;
         }
     } else {
@@ -393,31 +372,39 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
     const int upper = gLimbUpper[hand].load(std::memory_order_relaxed);
     const int mid = gLimbMid[hand].load(std::memory_order_relaxed);
     const int end = gLimbEnd[hand].load(std::memory_order_relaxed);
-    if (upper >= 0 && mid >= 0 && end >= 0) {
+    if (upper < 0 || mid < 0 || end < 0) { return; }
+    {
         QuatT upperAbs{}, midRel{}, endRel{};
         if (ReadQuatT(absolute, upper, upperAbs) && ReadQuatT(relative, mid, midRel) &&
             ReadQuatT(relative, end, endRel)) {
             const float reach = 0.995f * (std::sqrt(midRel.t[0]*midRel.t[0] + midRel.t[1]*midRel.t[1] + midRel.t[2]*midRel.t[2]) +
                                           std::sqrt(endRel.t[0]*endRel.t[0] + endRel.t[1]*endRel.t[1] + endRel.t[2]*endRel.t[2]));
+            if (!std::isfinite(reach) || reach <= 1e-6f) { return; }
             const Vec3 clamped = animik::ClampToReach(Vec3{upperAbs.t[0], upperAbs.t[1], upperAbs.t[2]}, goal, reach);
             if (clamped.x != goal.x || clamped.y != goal.y || clamped.z != goal.z) {
                 gClamped.fetch_add(1, std::memory_order_relaxed);
                 goal = clamped;
             }
-        }
+        } else { return; }
     }
     if (!std::isfinite(goal.x) || !std::isfinite(goal.y) || !std::isfinite(goal.z)) { return; }
 
     // Target: absolute position (and rotation once calibrated); weight: relative X = 1.
-    float t[3] = {goal.x, goal.y, goal.z};
     auto* const targetAt = absolute + static_cast<std::size_t>(target) * kQuatTStride;
-    if (!WriteFloats(targetAt + 0x10, t, 3)) { return; }
-    if (writeRotation) {
-        float q[4] = {rotation.x, rotation.y, rotation.z, rotation.w};
-        WriteFloats(targetAt, q, 4);
+    auto* const weightAt = reinterpret_cast<float*>(relative + static_cast<std::size_t>(weight) * kQuatTStride + 0x10);
+    if (!WriteGoal(targetAt, weightAt, goal, rotation, writeRotation)) {
+        gMode.store(0);
+        gCalibration = {};
+        for (auto& flag : gCalibrated) { flag.store(false); }
+        Log("result=fault detail=target_write_disarmed");
+        return;
     }
-    float one = 1.0f;
-    WriteFloats(relative + static_cast<std::size_t>(weight) * kQuatTStride + 0x10, &one, 1);
+    if (calibrating) {
+        gCalibration.Commit(hand, candidateOffset);
+        gCalibrated[hand].store(true);
+        Log("result=0 detail=calibrated hand=" + std::to_string(hand));
+    }
+    gUsedSequence.store(frame.tracking.sequence);
     gWritten[hand].fetch_add(1, std::memory_order_relaxed);
     if (hand == 0) {
         gLastGoalMm[0].store(static_cast<int>(goal.x * 1000.0f), std::memory_order_relaxed);
@@ -430,7 +417,25 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
 {
     gCalls.fetch_add(1, std::memory_order_relaxed);
     const unsigned int mode = gMode.load(std::memory_order_acquire);
-    if (mode != 0 && character != nullptr && params != nullptr) {
+    if (mode == 0) {
+        const auto original = gOriginal.load(std::memory_order_acquire);
+        if (original) { original(character, params); }
+        return;
+    }
+    std::unique_lock stateLock(gIkMutex, std::try_to_lock);
+    GameplayPoseFrame frame{};
+    EquippedRig owner{};
+    const bool haveOwner = stateLock.owns_lock() && TryGetGameplayPoseFrame(frame, gDrive.load()) &&
+        TryGetEquippedRig(frame.player, owner);
+    if (mode != 0 && !stateLock.owns_lock()) { gBusy.fetch_add(1); }
+    if (mode != 0 && stateLock.owns_lock() && !haveOwner) { gNoOwner.fetch_add(1); }
+    if (haveOwner && gCalibration.Bind(owner.generation, frame.referenceGeneration, frame.tracking.epoch)) {
+        for (auto& flag : gCalibrated) { flag.store(false); }
+        gRigSkeleton.store(0);
+        gOwnerGeneration.store(owner.generation);
+        gOwnerCharacter.store(owner.character);
+    }
+    if (mode != 0 && haveOwner && owner.character == reinterpret_cast<std::uintptr_t>(character) && params != nullptr) {
         auto* const ch = static_cast<std::uint8_t*>(character);
         if (IdentifyRig(ch)) {
             gMatched.fetch_add(1, std::memory_order_relaxed);
@@ -447,18 +452,23 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
             auto* const p = static_cast<std::uint8_t*>(params);
             float loc[8] = {0};
             animik::Location location{};
+            bool validLocation = false;
             if (ReadFloats(p + kParamsLocQ, &loc[0], 4) && ReadFloats(p + kParamsLocT, &loc[4], 3) &&
                 ReadFloats(p + kParamsLocS, &loc[7], 1)) {
                 location.q = Quaternion{loc[0], loc[1], loc[2], loc[3]};
                 location.t = Vec3{loc[4], loc[5], loc[6]};
-                location.s = loc[7] > 0.0f ? loc[7] : 1.0f;
+                location.s = loc[7];
+                validLocation = animik::ValidLocation(location);
+            }
+            if (validLocation) {
                 gLocMm[0].store(static_cast<int>(loc[4] * 1000.0f), std::memory_order_relaxed);
                 gLocMm[1].store(static_cast<int>(loc[5] * 1000.0f), std::memory_order_relaxed);
                 gLocMm[2].store(static_cast<int>(loc[6] * 1000.0f), std::memory_order_relaxed);
                 gLocYawMilli.store(static_cast<int>(animik::YawOf(location.q) * 57295.78f),
                                    std::memory_order_relaxed);
             }
-            if (mode == 2) {
+            if (mode == 2 && validLocation && gate != 0 && cvar != 0 && cvar != -1 &&
+                HandRigMode() != 2 && !WeaponRotationDriveArmed() && !WeaponOffsetArmed()) {
                 void* pose = nullptr;
                 void* relative = nullptr;
                 void* absolute = nullptr;
@@ -466,25 +476,20 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
                     ReadPointer(static_cast<std::uint8_t*>(pose) + kPoseRelative, &relative) &&
                     ReadPointer(static_cast<std::uint8_t*>(pose) + kPoseAbsolute, &absolute) &&
                     relative != nullptr && absolute != nullptr) {
-                    Vec3 eye{};
-                    const bool haveEye = ReadEyeOrigin(eye);
-                    Pose head{};
-                    unsigned long long age = 0;
-                    const bool haveHead = TryReadHeadPose(head, age);
-                    const float yaw = GameCameraYaw() - HeadTrackingReferenceYaw();
                     const unsigned int hands = gHands.load(std::memory_order_relaxed);
                     if (hands & 1u) {
                         DriveHand(0, static_cast<std::uint8_t*>(relative), static_cast<std::uint8_t*>(absolute),
-                                  location, haveEye, eye, yaw, haveHead, head);
+                                  location, frame);
                     }
-                    if (hands & 2u) {
+                    if ((hands & 2u) && gMode.load() == 2) {
                         DriveHand(1, static_cast<std::uint8_t*>(relative), static_cast<std::uint8_t*>(absolute),
-                                  location, haveEye, eye, yaw, haveHead, head);
+                                  location, frame);
                     }
                 }
             }
         }
     }
+    if (stateLock.owns_lock()) { stateLock.unlock(); }
     const ProcessAdikFn original = gOriginal.load(std::memory_order_acquire);
     if (original != nullptr) {
         original(character, params);
@@ -529,10 +534,15 @@ bool Install()
 DWORD SetAnimIkMode(unsigned int mode)
 {
     if (mode > 2u) { return 1; }
-    if (mode != 0u && !Install()) { return 2; }
+    if (mode != 0u && (!EnsureGameplayPoseObservation() ||
+        SetWeaponAttachmentObserving(1) != 0 || !Install())) { return 2; }
     if (mode == 2u && HandRigMode() == 2u) {
-        Log("warn=hand_rig_mode_2_also_active detail=controller_applied_twice");
+        Log("result=refused detail=hand_rig_mode_2_active");
+        return 3;
     }
+    if (mode == 2u && (WeaponRotationDriveArmed() || WeaponOffsetArmed())) { return 3; }
+    std::lock_guard stateLock(gIkMutex);
+    if (mode == 0) { gCalibration = {}; for (auto& flag : gCalibrated) { flag.store(false); } }
     gMode.store(mode, std::memory_order_release);
     Log("result=0 detail=mode value=" + std::to_string(mode));
     return 0;
@@ -541,6 +551,7 @@ DWORD SetAnimIkMode(unsigned int mode)
 DWORD SetAnimIkTestOffsetMillimetres(int x, int y, int z)
 {
     if (x < -2000 || x > 2000 || y < -2000 || y > 2000 || z < -2000 || z > 2000) { return 1; }
+    std::lock_guard stateLock(gIkMutex);
     gTestMm[0].store(x, std::memory_order_relaxed);
     gTestMm[1].store(y, std::memory_order_relaxed);
     gTestMm[2].store(z, std::memory_order_relaxed);
@@ -550,6 +561,8 @@ DWORD SetAnimIkTestOffsetMillimetres(int x, int y, int z)
 
 DWORD SetAnimIkControllerDrive(unsigned int enabled)
 {
+    std::lock_guard stateLock(gIkMutex);
+    if (!enabled) { gCalibration = {}; for (auto& flag : gCalibrated) { flag.store(false); } }
     gDrive.store(enabled != 0u, std::memory_order_release);
     Log(std::string("result=0 detail=controller_drive value=") + (enabled ? "1" : "0"));
     return 0;
@@ -561,7 +574,8 @@ DWORD CalibrateAnimIk()
         Log("result=refused detail=drive_off");
         return 1;
     }
-    gCalibrateRequest.store(true, std::memory_order_release);
+    std::lock_guard stateLock(gIkMutex);
+    gCalibration.Request(gHands.load());
     Log("result=0 detail=calibration_requested");
     return 0;
 }
@@ -569,6 +583,9 @@ DWORD CalibrateAnimIk()
 DWORD SetAnimIkJointSignature(unsigned int joints)
 {
     if (joints == 0 || joints > kMaxJoints) { return 1; }
+    std::lock_guard stateLock(gIkMutex);
+    gCalibration.Invalidate();
+    for (auto& flag : gCalibrated) { flag.store(false); }
     gSignatureJoints.store(joints, std::memory_order_relaxed);
     gRigSkeleton.store(0, std::memory_order_release);   // re-identify
     Log("result=0 detail=signature joints=" + std::to_string(joints));
@@ -578,6 +595,7 @@ DWORD SetAnimIkJointSignature(unsigned int joints)
 DWORD SetAnimIkHands(unsigned int mask)
 {
     if (mask == 0 || mask > 3) { return 1; }
+    std::lock_guard stateLock(gIkMutex);
     gHands.store(mask, std::memory_order_relaxed);
     Log("result=0 detail=hands mask=" + std::to_string(mask));
     return 0;
@@ -632,6 +650,11 @@ DWORD DumpAnimIk()
     return 0;
 }
 
+unsigned long long AnimIkOwnerCharacter() { return gOwnerCharacter.load(); }
+unsigned long long AnimIkOwnerGeneration() { return gOwnerGeneration.load(); }
+unsigned long long AnimIkPoseSequence() { return gUsedSequence.load(); }
+unsigned long long AnimIkNoOwner() { return gNoOwner.load(); }
+unsigned long long AnimIkBusy() { return gBusy.load(); }
 unsigned int AnimIkMode() { return gMode.load(std::memory_order_relaxed); }
 unsigned int AnimIkHooked() { return gInstalled.load(std::memory_order_relaxed) ? 1u : 0u; }
 unsigned long long AnimIkCalls() { return gCalls.load(std::memory_order_relaxed); }

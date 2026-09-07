@@ -1,0 +1,39 @@
+{
+  "image_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "anchors": {
+    "owner_id_accessor": [
+      17693712,
+      "8b4158c3"
+    ],
+    "equip_secondary_owner_call": [
+      23697430,
+      "488b4608488d4e08ff90d8010000"
+    ],
+    "equipment_base": [
+      23697513,
+      "488d88b8140000"
+    ],
+    "equipment_selected_id": [
+      19354947,
+      "3b7758"
+    ],
+    "attachment_manager_owner": [
+      8004973,
+      "488b4128488bd9c7815c010000ffffffff488b5018"
+    ],
+    "firing_position_observer_entry": [
+      23677888,
+      "488bc448895810488970185557415441564157488da8e8feffff"
+    ],
+    "firing_position_output_layout": [
+      23678950,
+      "45883ef3450f114e04450f284bc0f3450f115608450f2853b0f3450f115e0c"
+    ]
+  },
+  "vtables": {
+    "weapon.secondary_get_owner": [
+      31902304,
+      17693712
+    ]
+  }
+}

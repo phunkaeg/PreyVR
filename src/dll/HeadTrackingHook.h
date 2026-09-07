@@ -140,6 +140,11 @@ DWORD ViewPositionOffsetMillimetres();
 // CAM-003, "one recenter event, all lanes": the view and the aim must resolve the
 // same reference, or the hand and the eye drift apart and a recenter fixes only
 // one of them.
+// Frames a reader reused its own last pose because the publisher held the
+// snapshot lock. Non-zero is fine; climbing quickly means the publisher and a
+// reader are on different threads and contending every frame.
+unsigned long long HeadTrackingPoseReadFallbacks();
+unsigned long long HeadTrackingReferenceGeneration();
 float HeadTrackingReferenceYaw();
 
 // Arms the camera edit. Off by default.

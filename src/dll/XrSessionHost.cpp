@@ -833,6 +833,7 @@ void ServiceXrFrame(void* renderer)
     XrView views[2] = {{XR_TYPE_VIEW}, {XR_TYPE_VIEW}};
     const bool haveViews =
         XR_SUCCEEDED(xrLocateViews(gHost.session, &locate, &viewState, 2, &located, views)) &&
+        located == 2 &&
         (viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) != 0 &&
         (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT) != 0;
     gHost.contract.OnViewsLocated(frameState.predictedDisplayTime, haveViews, haveViews);
@@ -848,8 +849,8 @@ void ServiceXrFrame(void* renderer)
     // that costs before deciding whether to move it.
     // Located against the same predicted display time as the views, so the hands
     // and the eyes describe the same instant.
-    UpdateXrInput(gHost.session, gHost.space,
-                  static_cast<long long>(frameState.predictedDisplayTime));
+    Pose inputHead{};
+    PoseValidity inputHeadValidity{};
 
     if (haveViews) {
         const Pose left{
@@ -860,8 +861,15 @@ void ServiceXrFrame(void* renderer)
             Quaternion{views[1].pose.orientation.x, views[1].pose.orientation.y,
                        views[1].pose.orientation.z, views[1].pose.orientation.w},
             Vec3{views[1].pose.position.x, views[1].pose.position.y, views[1].pose.position.z}};
-        dll::PublishHeadPose(stereo::CyclopsPose(left, right));
+        inputHead = stereo::CyclopsPose(left, right);
+        inputHeadValidity.positionValid = inputHeadValidity.orientationValid = true;
+        inputHeadValidity.positionTracked = (viewState.viewStateFlags & XR_VIEW_STATE_POSITION_TRACKED_BIT) != 0;
+        inputHeadValidity.orientationTracked = (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_TRACKED_BIT) != 0;
+        dll::PublishHeadPose(inputHead);
     }
+
+    UpdateXrInput(gHost.session, gHost.space,
+                  static_cast<long long>(frameState.predictedDisplayTime), inputHead, inputHeadValidity);
 
     XrFrameBeginInfo beginInfo{XR_TYPE_FRAME_BEGIN_INFO};
     if (XR_FAILED(xrBeginFrame(gHost.session, &beginInfo))) {

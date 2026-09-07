@@ -7,6 +7,11 @@ brief below is retained as history: in particular, animation is character +0x140
 pose is +0x700, and +0x610 is mutable command-derived animation state. The disk-image
 verifier passes 24 checks. No game execution was performed.
 
+**Integration follow-up:** the [bounded integration audit and runtime protocol](RE-H021-INTEGRATION-AUDIT-2026-09-07.md)
+covers coherent pose publication, clean-origin preservation, live equipped-rig
+ownership, calibration lifecycle and passive muzzle separation evidence. Source
+fixes and deterministic tests are complete; runtime/headset acceptance is separate.
+
 **Written 2026-09-07.** Static only; nothing here needs the game. The H-021
 report ([`RE-H021-ABSOLUTE-WRIST-ARM-CHAIN-WEAPON-AIM-2026-09-07.md`](RE-H021-ABSOLUTE-WRIST-ARM-CHAIN-WEAPON-AIM-2026-09-07.md))
 is decompiled fact except where it says INFERENCE. This brief is the INFERENCE

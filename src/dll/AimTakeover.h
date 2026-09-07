@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windows.h>
+#include "XrInput.h"
 
 // M2: the weapon points where the controller points, not where the head looks.
 //
@@ -32,11 +33,23 @@
 // it is togglable live rather than fixed at startup.
 namespace preyvr::dll {
 
+// Clean producer output plus one XR publication, captured before aim writes.
+struct GameplayPoseFrame {
+    TrackingFrame tracking{};
+    Vec3 nativeEye{};
+    float yaw = 0.0f;
+    float referenceYaw = 0.0f;
+    std::uint64_t referenceGeneration = 0;
+    std::uintptr_t player = 0;
+    std::uint64_t publishedNs = 0;
+};
+bool EnsureGameplayPoseObservation();
+bool TryGetGameplayPoseFrame(GameplayPoseFrame& out, bool requireTracking = true);
+
 DWORD SetAimTakeoverEnabled(unsigned int enabled);
-// Also writes the cached ray ORIGIN (+0x17D4) from the controller, placed
-// relative to the head at the engine's eye point. Without it the ray starts at
-// the eye while the projectile starts at the weapon's muzzle helper, and shots
-// converge on a camera ray instead of leaving along the controller (H-021 s5).
+// 0 preserves native origin; 1 uses the tracked aim point (diagnostic).
+// The controller point is NOT the authored muzzle; per-weapon barrel alignment
+// and native wall-clip fallback require independent validation.
 DWORD SetAimOriginFromHand(unsigned int enabled);
 unsigned long long AimOriginAppliedCount();
 

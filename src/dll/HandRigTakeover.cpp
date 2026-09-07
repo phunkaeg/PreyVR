@@ -1,3 +1,4 @@
+#include "AnimIkTakeover.h"
 #include "HandRigTakeover.h"
 #include "MinHookInit.h"
 
@@ -607,6 +608,7 @@ struct NameRequest {
 
 DWORD SetHandRigTakeoverMode(unsigned int mode)
 {
+    if (mode == 2u && AnimIkMode() == 2u) { return 3; }
     if (mode > 2u) {
         return 1;
     }

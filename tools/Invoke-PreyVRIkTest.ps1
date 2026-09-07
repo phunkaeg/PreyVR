@@ -6,7 +6,8 @@
 .DESCRIPTION
     Run AFTER Invoke-PreyVRStartup.ps1, in game, with a weapon equipped.
 
-    Phase observe (default): identifies the hand rig by signature, reads its
+    Phase observe (default): captures the selected weapon owner (re-equip after
+    first arming observation), then identifies its hand rig by signature and reads its
     ADIK table, limbs, the +0x610 gate and ca_useADIKTargets. This is the five
     live reads the static report asked for, and it writes nothing.
 
@@ -15,7 +16,7 @@
     WEAPON rise together. That single observation is items 1, 2 and 3 of H-021.
 
     Phase drive (-Drive): controller ownership of the wrist through the engine's
-    own arm IK, then calibration. Requires both controllers tracked.
+    own arm IK, then calibration. Requires head and selected controller tracked.
 
     hand.mode must be 0 for phases test and drive: the two lanes are mutually
     exclusive, and the script refuses rather than apply the controller twice.
@@ -67,16 +68,17 @@ $r = Send 'report'
 $calls = Field $r 'ikCalls'
 $matched = Field $r 'ikMatched'
 Write-Host "  ikCalls=$calls        (0 => the pass never ran: no animation commands (+0x610 = 0), cvar off, physics state, or hook problem)"
-Write-Host "  ikMatched=$matched    (0 => no rig with $Joints joints carries r_hand_spine_target; try -Joints)"
+Write-Host "  ikMatched=$matched    (0 => first verify re-equip capture, selected item, owning character, then the $Joints-joint signature)"
+Write-Host ('  ikOwner=' + (Field $r 'ikOwner') + ' ikEquipGen=' + (Field $r 'ikEquipGen') + ' ikNoOwner=' + (Field $r 'ikNoOwner') + ' ikPoseSeq=' + (Field $r 'ikPoseSeq'))
 Write-Host ('  ikRig=' + (Field $r 'ikRig') + ' ikJoints=' + (Field $r 'ikJoints') + ' ikGate=' + (Field $r 'ikGate') + ' ikCvar=' + (Field $r 'ikCvar') + '   (gate = m_IsAnimPlaying, not IK presence; the table is the target/weight lines below)')
 Write-Host ('  right: target=' + (Field $r 'ikTargetR') + ' weight=' + (Field $r 'ikWeightR') + ' limbEnd=' + (Field $r 'ikLimbEndR') + ' tag=' + (Field $r 'ikLimbTagR') + '   (expect 38 / 4 / 45 / 0x4b494232 = 2BIK)')
 Write-Host ('  left:  target=' + (Field $r 'ikTargetL') + ' weight=' + (Field $r 'ikWeightL') + ' limbEnd=' + (Field $r 'ikLimbEndL') + '   (expect 39 / 5 / 72)')
 Write-Host ('  ikLocMm=' + (Field $r 'ikLocMm') + ' ikLocYawMdeg=' + (Field $r 'ikLocYawMdeg') + '   (the rig model->world; compare with the player position and facing)')
 Write-Host ('  weaponBone=' + (Field $r 'weaponBone') + ' weaponSim=' + (Field $r 'weaponSim') + '   (bone the weapon hangs from, expect 45 or 47; sim bits: low byte spring on, high byte redirect)')
 Write-Host ('  ' + (Send 'ik.dump') + '  -- full ADIK table and limbs are in PreyVR.log')
-if ($matched -eq '0' -or $calls -eq '0') {
+if ($matched -eq '0' -or $calls -eq '0' -or (Field $r 'ikOwner') -eq '0x0') {
     Write-Host ''
-    Write-Host 'stop here: nothing to test until the rig is matched and the pass runs for it.'
+    Write-Host 'stop here: re-equip after ik.mode 1, then rerun; verify ownership and native gates before changing the signature.'
     exit 1
 }
 
@@ -116,6 +118,8 @@ if ($Drive) {
     $r = Send 'report'
     Write-Host ('  ikWrittenR=' + (Field $r 'ikWrittenR') + ' ikNoPose=' + (Field $r 'ikNoPose') + ' ikClamped=' + (Field $r 'ikClamped') + ' ikCalR=' + (Field $r 'ikCalR') + ' ikGoalMm=' + (Field $r 'ikGoalMm'))
     Write-Host '  ASK THE WEARER: is the hand where the controller is, does the weapon come with it, does the elbow bend?'
-    Write-Host '  then: aim.enable 1 ; aim.origin 1  -- shots leave the barrel along the controller'
+    Write-Host '  aim.origin 1 is a controller-point diagnostic, not a muzzle/barrel calibration.'
+    Write-Host '  fire a stationary test shot, then report: check muzzleSamples, muzzleFallback, muzzleAimGapMm and muzzleGripGapMm.'
+    Write-Host '  re-equip/recenter/focus reset invalidates wrist calibration: issue ik.calibrate again.'
     Write-Host '  revert with: ik.mode 0'
 }
