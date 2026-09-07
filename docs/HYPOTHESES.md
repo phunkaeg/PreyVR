@@ -878,3 +878,30 @@ seam applies. The next step is a wearer naming the specific motions that fight
 the controller, not a general suppression switch -- "some of the native
 animations" is not yet a target, and building a blanket freeze risks killing
 motion that should stay, such as the weapon's own firing action.
+
+## H-021 -- absolute wrist, arm chain, weapon and aim share one native seam
+
+**Static, 2026-09-07:** [full report](RE-H021-ABSOLUTE-WRIST-ARM-CHAIN-WEAPON-AIM-2026-09-07.md).
+
+Prey drives its first-person arms with CryEngine's animation-driven IK:
+`Prey_ProcessAnimationDrivenIK` `0x877B50` reads a target joint's absolute pose
+and a weight joint's relative X per arm, solves the limb with the native 2BIK
+leaf, slerps the wrist to the target rotation and re-propagates the fingers.
+The hand rig carries the joints (`r_hand_spine_target` 38, `r_hand_spine_blend`
+4, left 39/5), and Prey's own `Prey_ArkHandIKContextUpdate` `0x181801830` feeds
+them every frame through an `AnimationPoseModifier_OperatorQueue` on layer 6.
+
+Writing the controller's wrist into that target with weight 1 -- either at the
+dispatcher's entry (Route A, one detour, exact model transform in its params) or
+through the same OperatorQueue on layer 15 (Route B, engine API, `eOp 2`
+converts from world for us) -- is items 1 and 2 together, with no `IKLimb`
+fabricated. The weapon follows because it is a `CAttachmentBONE` on the arms rig
+sampled on the main thread in `0x8297E0`, after the job; the current skinning
+hook is after that, which is why the hand moved and the weapon did not.
+Projectile origin follows the weapon (`0x1694BC0` reads the ammo spawn helper);
+the aim takeover still has to move the reticle ray origin at `+0x17D4` to remove
+parallax.
+
+Open until read live: the hand rig's ADIK entries and limb (skeleton `+0x70`,
+`+0x68`), the `+0x610` gate and `ca_useADIKTargets`, and which bone the weapon
+attachment names (`[weapon+0x2B0]+0x15C`).
