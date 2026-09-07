@@ -71,6 +71,76 @@ std::atomic<unsigned long long> gReentered{0};
 // render jobs carry their own view info and do not share this pointer.
 thread_local void* tEditing = nullptr;
 
+// --- the cross-thread double-offset (H-022) ---------------------------------
+//
+// The thread-local guard above catches re-entrancy on one stack and measured
+// **zero** hits, while the artefact continued. A wearer then supplied the
+// decisive observation: the flicker appears "when facing the more complex areas
+// of the level... when facing empty space its not flickering". Load-dependent
+// means concurrency, not nesting.
+//
+// The near view-projection is a shared buffer and this hook runs ~190 times per
+// frame across the engine's render jobs. Two threads on the same buffer race:
+// A snapshots it clean and offsets it; B snapshots **A's already-offset value**
+// and offsets it again, landing at twice the half-IPD in the correct direction.
+// A busier scene runs more jobs in parallel, so collisions rise with complexity
+// exactly as reported. The steady mirage is a pass that always runs alongside
+// the main draw and therefore collides every frame.
+//
+// **Idempotence rather than locking.** Serialising would mean holding a lock
+// across the original call -- across real engine rendering -- which trades a
+// cosmetic artefact for a frame-rate one. Instead, remember the exact
+// translation row we last wrote for each buffer and eye; if an incoming matrix
+// already carries it, the offset is in place and this call must forward it
+// untouched. That is correct for the racing thread (the buffer it renders from
+// really is offset for this eye) and it also catches a copied matrix, which was
+// the other surviving candidate.
+//
+// Exact float comparison is deliberate: these are the bits we wrote, reaching
+// us by memcpy. A false positive needs the engine to independently produce a
+// four-float row identical to our last written one.
+struct WrittenRow {
+    const void* viewInfo;
+    int eye;
+    float row[4];
+};
+constexpr unsigned int kWrittenSlots = 16;
+std::array<WrittenRow, kWrittenSlots> gWritten{};
+unsigned int gWrittenNext = 0;
+std::mutex gWrittenMutex;
+std::atomic<unsigned long long> gAlreadyOffset{0};
+
+// Held only around the table, never across the original call.
+bool RowAlreadyWritten(const void* viewInfo, int eye, const float* row)
+{
+    std::lock_guard lock(gWrittenMutex);
+    for (const auto& slot : gWritten) {
+        if (slot.viewInfo == viewInfo && slot.eye == eye &&
+            slot.row[0] == row[0] && slot.row[1] == row[1] &&
+            slot.row[2] == row[2] && slot.row[3] == row[3]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void RememberWrittenRow(const void* viewInfo, int eye, const float* row)
+{
+    std::lock_guard lock(gWrittenMutex);
+    for (auto& slot : gWritten) {
+        if (slot.viewInfo == viewInfo && slot.eye == eye) {
+            slot.row[0] = row[0]; slot.row[1] = row[1];
+            slot.row[2] = row[2]; slot.row[3] = row[3];
+            return;
+        }
+    }
+    auto& slot = gWritten[gWrittenNext % kWrittenSlots];
+    ++gWrittenNext;
+    slot.viewInfo = viewInfo; slot.eye = eye;
+    slot.row[0] = row[0]; slot.row[1] = row[1];
+    slot.row[2] = row[2]; slot.row[3] = row[3];
+}
+
 // --- lineage diagnostic (H-022) --------------------------------------------
 //
 // The wearer's zero-delta test proved both the steady ghost and the occasional
@@ -204,6 +274,14 @@ void* __fastcall PackViewInfoWithEyeOffset(void* owner, std::uint8_t* viewInfo,
         return original != nullptr ? original(owner, viewInfo, third, fourth) : nullptr;
     }
 
+    // Already offset for this eye -- by an enclosing call on this stack, or by
+    // another render-job thread racing us on the same shared buffer. Forward it
+    // untouched: the matrix it will render from is already correct.
+    if (RowAlreadyWritten(static_cast<const void*>(viewInfo), eye, nearVp + 12)) {
+        gAlreadyOffset.fetch_add(1, std::memory_order_relaxed);
+        return original != nullptr ? original(owner, viewInfo, third, fourth) : nullptr;
+    }
+
     // Eye minus cyclops: half the IPD, left negative and right positive.
     const float half = gZeroDelta.load(std::memory_order_acquire)
                            ? 0.0f
@@ -226,6 +304,7 @@ void* __fastcall PackViewInfoWithEyeOffset(void* owner, std::uint8_t* viewInfo,
                          - delta.y * original_[4 + j]
                          - delta.z * original_[8 + j];
     }
+    RememberWrittenRow(static_cast<const void*>(viewInfo), eye, nearVp + 12);
     RecordLineage(static_cast<const void*>(viewInfo), original_ + 12, eye);
     gLastDeltaMicrometres.store(static_cast<int>(signed_ * 1.0e6f), std::memory_order_relaxed);
     gApplied.fetch_add(1, std::memory_order_relaxed);
@@ -321,6 +400,7 @@ unsigned long long NearViewAppliedCount() { return gApplied.load(std::memory_ord
 unsigned long long NearViewRefusedCount() { return gRefused.load(std::memory_order_relaxed); }
 unsigned long long NearViewNoEyeCount() { return gNoEye.load(std::memory_order_relaxed); }
 unsigned long long NearViewReenteredCount() { return gReentered.load(std::memory_order_relaxed); }
+unsigned long long NearViewAlreadyOffsetCount() { return gAlreadyOffset.load(std::memory_order_relaxed); }
 
 DWORD ArmNearViewLineage(unsigned int enabled)
 {

@@ -1010,7 +1010,35 @@ same place, so there is no flicker or mirage."* Both artefacts scale with **our*
 delta. Had the ghost come from an effect reprojecting with the world
 view-projection, it would have remained separated when ours went to zero.
 
-### What survives
+### The observation that named the mechanism
+
+> "the flicker does appear to happen when facing the more complex areas of the
+> level. When facing empty space its not flickering, though the offset mirage
+> still occurs."
+
+**Load-dependent means concurrency.** A busier scene runs more render jobs in
+parallel; the hook runs about 190 times per rendered frame across them. Two
+threads on the same shared view-projection race: A snapshots it clean and offsets
+it, B snapshots **A's already-offset value** and offsets it again -- twice the
+half-IPD, correct direction, frequency rising with scene complexity exactly as
+described. The steady mirage is a pass that always runs alongside the main draw,
+so it collides every frame regardless of scene.
+
+This also explains the zero reading that refuted the first fix: the guard was
+`thread_local`, and a cross-thread collision is structurally invisible to it. The
+guard was not merely wrong about the cause -- it could not have detected this one.
+
+**Fixed by idempotence, not by locking.** Serialising would mean holding a lock
+across the original call, across real engine rendering, trading a cosmetic
+artefact for a frame-rate one. Instead the hook remembers the exact translation
+row it last wrote for each buffer and eye; a matrix arriving with that row
+already in place is forwarded untouched, which is correct for the racing thread
+because the buffer really is offset for this eye. It subsumes the copy theory
+too: a copied matrix carries the same row and is caught the same way.
+`nearAlreadyOffset` counts it, and **should rise with scene complexity** -- if it
+stays at zero while the flicker persists, this is wrong as well.
+
+### What survived the refutations, and led here
 
 `ghost = main + exactly one delta`, both produced by our own edit, with no
 nesting. The remaining mechanism is a **copy**: our hook edits a matrix, the

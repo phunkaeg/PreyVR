@@ -69,6 +69,11 @@ unsigned long long NearViewNoEyeCount();
 // forwarded it untouched. Non-zero means the engine really does re-enter the
 // packer, and each one would have been a doubled weapon offset before the guard.
 unsigned long long NearViewReenteredCount();
+// Calls that found the buffer already carrying the exact row we last wrote for
+// this eye -- a racing render-job thread, or a copy of an edited matrix -- and
+// forwarded it rather than offsetting it a second time. Each one would have been
+// a doubled weapon offset. Expect this to rise with scene complexity.
+unsigned long long NearViewAlreadyOffsetCount();
 
 // Records the distinct view-info pointers the near hook edits and the
 // translation row it FOUND on each before editing. A second pointer whose found
