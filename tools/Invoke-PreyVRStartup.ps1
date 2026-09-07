@@ -140,6 +140,13 @@ if ($failures -gt 0) {
     Write-Host ("startup completed with {0} failed step(s) -- read the FAIL lines above" -f $failures)
     exit 1
 }
-Write-Host 'startup complete. Motion controllers: hold both where the headset can see'
-Write-Host 'them, then run hand.calibrate -- it refuses unless BOTH are tracked, on'
-Write-Host 'purpose, so one sleeping controller blocks the whole hand lane.'
+Write-Host 'startup complete.'
+Write-Host ''
+Write-Host 'Next: load a save and EQUIP A WEAPON, then run Invoke-PreyVRIkTest.ps1.'
+Write-Host '  - hand.calibrate belongs to the OLD hand lane. For the IK lane use'
+Write-Host '    ik.calibrate, and leave hand.mode at 0 -- the two lanes refuse each'
+Write-Host '    other because running both applies the controller twice.'
+Write-Host '  - Re-equip the weapon AFTER ik.mode 1 arms: ownership is captured on'
+Write-Host '    the attach call, so the first observe run reports ikOwner=0x0.'
+Write-Host '  - The IK script drives the right hand by default; pass -Hands 3 for'
+Write-Host '    both, then calibrate once with both controllers tracked.'

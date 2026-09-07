@@ -344,6 +344,12 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
 
     if (gDrive.load(std::memory_order_acquire)) {
         const auto& state = frame.tracking.hands[static_cast<unsigned int>(hand == 0 ? Hand::right : Hand::left)];
+        // Without a play-space yaw the world placement is unknown, and the
+        // camera-relative fallback is the defect body yaw exists to remove.
+        if (AimBodyYawEnabled() && !frame.headYawUsable) {
+            gNoPose.fetch_add(1, std::memory_order_relaxed);
+            return;
+        }
         if (!IsPoseUsable(state.gripPose, state.gripValidity, 200000000ull)) {
             gNoPose.fetch_add(1, std::memory_order_relaxed);
             return;

@@ -27,6 +27,9 @@ param(
     [string]$LogDir = '',
     [int]$TestMillimetres = 0,
     [switch]$Drive,
+    # 1 right, 2 left, 3 both. Calibration is per hand and each selected hand
+    # must complete once; an untracked hand simply stays pending.
+    [int]$Hands = 1,
     [int]$Joints = 101
 )
 Set-StrictMode -Version Latest
@@ -109,16 +112,20 @@ if ($Drive) {
     Write-Host ''
     Write-Host 'phase drive -- the controller owns the wrist through the engine IK'
     Write-Host ('  ' + (Send 'ik.test 0 0 0'))
-    Write-Host ('  ' + (Send 'ik.hands 1'))
+    Write-Host ('  ' + (Send "ik.hands $Hands"))
     Write-Host ('  ' + (Send 'ik.drive 1'))
     Write-Host ('  ' + (Send 'ik.mode 2'))
-    Write-Host '  -- hold the right controller where the headset can see it --'
+    $which = switch ($Hands) { 1 {'the right controller'} 2 {'the left controller'} 3 {'BOTH controllers'} default {'the selected controller'} }
+    Write-Host "  -- hold $which where the headset can see it --"
     Start-Sleep -Seconds 2
     Write-Host ('  ' + (Send 'ik.calibrate'))
     Start-Sleep -Seconds 3
     $r = Send 'report'
-    Write-Host ('  ikWrittenR=' + (Field $r 'ikWrittenR') + ' ikNoPose=' + (Field $r 'ikNoPose') + ' ikClamped=' + (Field $r 'ikClamped') + ' ikCalR=' + (Field $r 'ikCalR') + ' ikGoalMm=' + (Field $r 'ikGoalMm'))
+    Write-Host ('  ikWrittenR=' + (Field $r 'ikWrittenR') + ' ikWrittenL=' + (Field $r 'ikWrittenL') + ' ikNoPose=' + (Field $r 'ikNoPose') + ' ikClamped=' + (Field $r 'ikClamped') + ' ikCalR=' + (Field $r 'ikCalR') + ' ikCalL=' + (Field $r 'ikCalL') + ' ikGoalMm=' + (Field $r 'ikGoalMm'))
+    Write-Host ('  yaw: cam=' + (Field $r 'camYawMdeg') + ' head=' + (Field $r 'headYawMdeg') + ' play=' + (Field $r 'playYawMdeg') + ' held=' + (Field $r 'yawHeld') + ' unavailable=' + (Field $r 'yawUnavailable') + '   (play must equal cam-head, and hold still when only the head turns)')
     Write-Host '  ASK THE WEARER: is the hand where the controller is, does the weapon come with it, does the elbow bend?'
+    Write-Host '  THEN: turn your head with the controller held still -- the hand must not swing.'
+    Write-Host '        look straight up and repeat: yawHeld climbs and the hand still must not swing.'
     Write-Host '  aim.origin 1 is a controller-point diagnostic, not a muzzle/barrel calibration.'
     Write-Host '  fire a stationary test shot, then report: check muzzleSamples, muzzleFallback, muzzleAimGapMm and muzzleGripGapMm.'
     Write-Host '  re-equip/recenter/focus reset invalidates wrist calibration: issue ik.calibrate again.'

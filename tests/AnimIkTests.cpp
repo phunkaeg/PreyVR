@@ -324,12 +324,64 @@ void TestHandDoesNotSwingWithHeadYaw()
     Require(naiveMoved, "camera yaw must visibly swing the hand, or this test proves nothing");
 }
 
+
+// The same property, but driven through the ENGINE-FACING code rather than an
+// assumed camera model.
+//
+// The previous test built `cameraYaw = body + (head - reference)` by hand, which
+// is only my description of what the camera edit does. This one calls the real
+// composition -- ComposeHeadOntoGameRotation, the function the camera seam
+// applies -- turns the result into a matrix and reads it with CameraYawOf, which
+// is literally what GameCameraYaw() does live. So if the camera seam's
+// composition ever changes, this fails instead of quietly agreeing with a stale
+// assumption.
+//
+// Head PITCH is included because that is the case that matters: a wearer looking
+// up is exactly when the near-vertical path engages. The relationship survives
+// it exactly, because both CameraYawOf and RecenterYawFromHeadPose project onto
+// the same horizontal plane.
+void TestPlaySpaceYawFromRealCameraComposition()
+{
+    const float bodyYaw = 0.4f;
+    const float referenceYaw = 0.15f;
+    const float headYaws[4] = {0.0f, 0.7f, -1.1f, 2.4f};
+    const float headPitches[4] = {0.0f, 0.35f, -0.5f, 0.2f};
+
+    for (int i = 0; i < 4; ++i) {
+        Pose head;
+        // OpenXR is Y-up: yaw about +Y, pitch about +X.
+        head.orientation = Multiply(AxisAngle(Vec3{0.0f, 1.0f, 0.0f}, headYaws[i]),
+                                    AxisAngle(Vec3{1.0f, 0.0f, 0.0f}, headPitches[i]));
+
+        // What the camera seam actually writes, and what GameCameraYaw() reads.
+        const Quaternion gameRotation = stereo::YawQuaternion(bodyYaw);
+        const Quaternion composed =
+            stereo::ComposeHeadOntoGameRotation(gameRotation, head, referenceYaw);
+        const float cameraYaw = stereo::CameraYawOf(stereo::MatrixFromPose(Pose{composed, Vec3{}}));
+
+        const auto measuredHeadYaw = stereo::RecenterYawFromHeadPose(head);
+        Require(measuredHeadYaw.has_value(), "these head poses are not near-vertical");
+
+        // The play-space yaw every lane must use, recovered from live readings.
+        const float playSpaceYaw = cameraYaw - *measuredHeadYaw;
+        Require(Near(playSpaceYaw, bodyYaw - referenceYaw, 1e-4f),
+                "camera yaw minus head yaw must recover the play-space yaw");
+
+        // And the naive value moves, which is the defect.
+        if (i > 0) {
+            Require(!Near(cameraYaw - referenceYaw, bodyYaw - referenceYaw, 1e-3f),
+                    "camera minus reference must drift as the head turns");
+        }
+    }
+}
+
 int main()
 {
     TestLocationRoundTrip();
     TestLocationRotation();
     TestControllerFromHead();
     TestHandDoesNotSwingWithHeadYaw();
+    TestPlaySpaceYawFromRealCameraComposition();
     TestClampToReach();
     TestRotationCalibration();
     TestSharedOriginAndMuzzleSeparation();

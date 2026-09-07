@@ -69,6 +69,11 @@ bool TryGetGameplayPoseFrame(GameplayPoseFrame& out, bool requireTracking = true
 // yaw is unusable (near-vertical), whose fix is to reject rather than invent.
 DWORD SetAimBodyYaw(unsigned int enabled);
 unsigned int AimBodyYawEnabled();
+// Frames that held the last defined head yaw because the wearer was looking
+// near-vertical, and frames refused because no head yaw has ever been defined.
+// Held frames are correct, not degraded: the body has not turned.
+unsigned long long AimHeadYawHeldCount();
+unsigned long long AimHeadYawUnavailableCount();
 int AimCameraYawMilliDegrees();
 int AimHeadYawMilliDegrees();
 int AimPlaySpaceYawMilliDegrees();
