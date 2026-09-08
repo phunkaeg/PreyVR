@@ -2318,3 +2318,32 @@ yaw was only sampled inside the body-yaw path. The instrument was structurally
 unable to measure the mode it existed to be compared against. Now sampled
 unconditionally. That is the fourth counter in this project to be unable to see
 the thing it was built for.
+
+
+## R-107 -- the antialiasing mode table, and which modes this mod can use
+
+Read from `PreyDll.dll` at file offset `0x1DBA400`, a contiguous table of mode
+names indexed by `r_AntialiasingMode`:
+
+| value | name | temporal | usable while eyes alternate |
+|---|---|---|---|
+| 0 | `NO AA` | no | yes |
+| **1** | **`SMAA 1X`** | **no** | **yes -- chosen by a wearer 2026-09-08** |
+| 2 | `SMAA 1TX` | yes | no |
+| 3 | `SMAA 2TX` | yes | no -- the previous default |
+| 4 | `TSAA` | yes | no |
+| 5 | `FXAA 1X` | no | yes |
+
+**Any mode with `T` in its name blends the previous frame, which under this
+mod's alternating-eye rendering is the other eye** (H-022b). Only 0, 1 and 5 are
+safe today, and SMAA 1X is the best of them. A wearer compared 1 against 2
+directly and chose 1.
+
+The cvar's own help string does not list the modes -- it reads only "Enables
+post process based anti-aliasing modes" -- which is why this table had to come
+from the data rather than the help.
+
+**Six modes, not four.** `STEREO_ROUTE.md` records a wearer cycling "all four
+modes" and choosing 3. There are six, so that comparison never saw `TSAA` or
+`FXAA 1X`, and it selected the most strongly temporal option available to it.
+Baked into `Invoke-PreyVRStartup.ps1` so the choice is not rediscovered.

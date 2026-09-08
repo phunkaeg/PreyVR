@@ -114,6 +114,16 @@ Write-Host ''
 Write-Host 'renderer settings (console queue holds one command, so these are spaced):'
 Step 'motion blur off' 'console r_MotionBlur 0'
 Start-Sleep -Milliseconds 800
+# SMAA 1X. **Any temporal mode ghosts**, because this mod renders one eye per
+# frame into a single backbuffer, so the history buffer always holds the OTHER
+# eye and blends it in -- seen as a steady second weapon at the other eye's
+# position (H-022b, confirmed live 2026-09-08). Read from the binary:
+#   0 NO AA | 1 SMAA 1X | 2 SMAA 1TX | 3 SMAA 2TX | 4 TSAA | 5 FXAA 1X
+# The T modes are temporal. Only 0, 1 and 5 are safe while eyes alternate, and
+# a wearer picked 1 over 2 directly. 3 was the previous default and is the worst
+# offender. Revisit this only when the eye history stops mixing.
+Step 'antialiasing SMAA 1X' 'console r_AntialiasingMode 1'
+Start-Sleep -Milliseconds 800
 # 88.507 -- see the header. Not 104.254.
 Step 'weapon FoV 88.507' 'console r_DrawNearFoV 88.507'
 Start-Sleep -Milliseconds 800
