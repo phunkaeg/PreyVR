@@ -1934,6 +1934,54 @@ run inside an ArkPlayer update.
 **Not verified:** that the crosshair visibly moves. That needs the headset, and
 F-011 is precisely why the returned zero will not be treated as the answer.
 
+
+## 2026-09-08 — R-110: the resolution deficit is fixable, and the route is measured
+
+The 48% pixel deficit had levers built and no evidence they worked. Measured now,
+against a live game, with no headset required.
+
+**Launching with `+r_Width 2688 +r_Height 2880` produces a backbuffer of exactly
+that size.** Three independent readings agree:
+
+| reading | value |
+|---|---|
+| engine view camera, at snapshot | `res=2688x2880 ratio=0.933333` |
+| `xr.resolution` | `backbuffer=2688x2880 sizeMismatch=0` |
+| capture file, on disk | 30,965,808 bytes = 2688 x 2880 x 4 + 48, to the byte |
+
+The XR swapchain was created at 2688x2880, and the game presented normally --
+339 frames observed, window responding. The pixel ratio against the runtime's
+request moves from a **48% deficit to 170%** under the simulator, whose request
+is smaller than the real headset's.
+
+**The whole backbuffer is one eye.** Prey renders one eye per frame, so the
+backbuffer and the runtime's per-eye recommendation compare directly, which is
+why 2688x2880 is the number to set for a headset asking 2688x2880 per eye.
+
+**Startup arguments, not mid-session cvars.** This measured the launch-argument
+route. Setting the same cvars mid-session is a different thing and was **not**
+measured; a resize after the swapchain is latched is exactly the hazard the
+submit-time size guard exists for. `Invoke-PreyVRLaunch.ps1` now takes
+`-RenderWidth` / `-RenderHeight` and emits them as startup commands, refusing one
+without the other because a half-set pair silently changes the aspect ratio the
+projection is built from. The argument line is assembled **above** the dry-run
+exit, so `-DryRun` checks the command line a real run would use.
+
+**The aspect ratio does not narrow the headset FOV.** 2688x2880 is 0.933:1, and
+Prey would ordinarily derive its horizontal field from that. It does not matter
+here: the camera edit hook overwrites `fov` and `projectionRatio` from the XR
+runtime's own tangents, so the stereo projection comes from the headset rather
+than from the backbuffer shape.
+
+**What the extra height does not buy: the menu.** A capture at 2688x2880 shows
+the main menu **letterboxed into a 16:9 band**, black above and below. Prey's 2D
+UI keeps a fixed aspect and does not fill a taller frame. The 3D view does -- the
+engine's own camera reports `ratio=0.933333`, which it would not if the scene
+were letterboxed to 16:9.
+
+**Not measured:** the frame-rate cost. 2688x2880 is 7.74 Mpixels against
+3.69 Mpixels at 2560x1440, so 2.1x the pixels, and alternating-eye stereo already
+doubles the frames. Whether that holds framerate is a headset question.
 ## 2026-09-08 — The main menu renders into the submitted image (verified)
 
 The open item from [the VR scheme](RE-VR-SCHEME-2026-09-08.md) — *"whether the

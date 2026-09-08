@@ -52,6 +52,21 @@ param(
     # the documented way into a level without touching a menu. Whether Prey
     # kept that is a question this parameter exists to answer, not an assumption.
     [string]$ExtraArgs = '',
+    # Render resolution, applied as STARTUP console commands rather than as
+    # mid-session cvars. This is the route that was measured: launching with
+    # `+r_Width 2688 +r_Height 2880` produced a backbuffer of exactly that size
+    # (capture header, and the file is w*h*4+48 bytes to the byte), the game
+    # presented normally, and the XR swapchain matched with sizeMismatch=0.
+    #
+    # Setting the same cvars mid-session is a DIFFERENT thing and was not
+    # measured; a resize after the swapchain is latched is the hazard the
+    # submit-time size guard exists for. Prefer these.
+    #
+    # 2688x2880 is what this Quest 3 over Virtual Desktop asks for per eye.
+    # Prey renders one eye per frame into the whole backbuffer, so the whole
+    # backbuffer IS one eye and the sizes compare directly.
+    [int]$RenderWidth = 0,
+    [int]$RenderHeight = 0,
     # Leave the machine's own OpenXR runtime alone, for a real headset session.
     # Without this the launcher pins XR_RUNTIME_JSON to xr-sim, which is right
     # for unattended capture and wrong when someone is wearing a Quest.
@@ -153,6 +168,26 @@ Write-Host 'child environment:'
 foreach ($key in $childEnv.Keys) { Write-Host ("  {0} = {1}" -f $key, $childEnv[$key]) }
 Write-Host ''
 
+# Resolution first, then anything the caller passed, so an explicit -ExtraArgs
+# r_Width wins by being later on the line rather than silently fighting.
+# Built HERE, above the dry-run exit, so -DryRun validates the command line a
+# real run would use. A preflight that skips the argument it is meant to check
+# is a preflight that has never checked it.
+$argParts = @()
+if ($RenderWidth -gt 0 -and $RenderHeight -gt 0) {
+    $argParts += "+r_Width $RenderWidth"
+    $argParts += "+r_Height $RenderHeight"
+} elseif ($RenderWidth -gt 0 -or $RenderHeight -gt 0) {
+    # One without the other sets a resolution nobody chose: the missing
+    # dimension keeps whatever the game had, and the aspect ratio is what the
+    # projection is built from.
+    Write-Error 'set both -RenderWidth and -RenderHeight, or neither'
+    exit 1
+}
+if ($ExtraArgs) { $argParts += $ExtraArgs }
+$gameArguments = ($argParts -join ' ')
+if ($gameArguments) { Write-Host "arguments: $gameArguments" ; Write-Host '' }
+
 if ($DryRun) {
     Write-Host 'DRY RUN - nothing launched. Preflight passed.'
     exit 0
@@ -175,10 +210,7 @@ $startInfo.WorkingDirectory = (Resolve-Path -LiteralPath $GameRoot).Path
 # Required for EnvironmentVariables to apply at all; with ShellExecute the child
 # would silently inherit this shell's environment instead.
 $startInfo.UseShellExecute = $false
-if ($ExtraArgs) {
-    $startInfo.Arguments = $ExtraArgs
-    Write-Host "arguments: $ExtraArgs"
-}
+if ($gameArguments) { $startInfo.Arguments = $gameArguments }
 foreach ($key in $childEnv.Keys) { $startInfo.EnvironmentVariables[$key] = $childEnv[$key] }
 
 $process = [System.Diagnostics.Process]::Start($startInfo)
