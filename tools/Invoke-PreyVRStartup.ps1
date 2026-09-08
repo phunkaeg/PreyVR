@@ -22,10 +22,23 @@
       "known-good" config from a settings table and missed this because it was
       named only in a section heading, and the run was lost to it.
 
-    **`r_DrawNearFoV` is 88.507, not 104.254.** The FOV buffer reads
+    **`r_DrawNearFoV` is VERTICAL, and it moves with the render aspect.** It is
+    not a constant, and treating it as one is how it drifted: 88.507 is the
+    vertical half of a `120 x 88.507` frustum measured at **16:9**. Rendering at
+    2688x2880 makes the aspect 0.933, where that same number yields roughly 84
+    degrees horizontal instead of 120, and a wearer sees an over-magnified
+    weapon. Confirmed in a headset 2026-09-08: 123.35 looked correct at 0.933.
+
+    So it is derived here from the actual aspect, holding the horizontal field at
+    the 120 degrees that was accepted in a headset:
+
+        tan(V/2) = tan(60 deg) / (width / height)
+
+    The buffer trap is separate and still live. The FOV export reads
     `[0, tanLeft, tanRight, tanUp]`; taking indices 2 and 3 as the vertical pair
     mixes a horizontal tangent with a vertical one and yields 104.254, which was
-    set live twice before a wearer said the weapon looked wrong.
+    set live twice before a wearer said the weapon looked wrong. **104.254 is
+    always wrong; 88.507 is right only at 16:9.**
 
     The console queue holds exactly one command, so console sends are spaced.
 
@@ -161,8 +174,27 @@ Start-Sleep -Milliseconds 800
 # offender. Revisit this only when the eye history stops mixing.
 Step 'antialiasing SMAA 1X' 'console r_AntialiasingMode 1'
 Start-Sleep -Milliseconds 800
-# 88.507 -- see the header. Not 104.254.
-Step 'weapon FoV 88.507' 'console r_DrawNearFoV 88.507'
+# Derived from the aspect, not hardcoded -- see the header. The horizontal field
+# is held at the 120 degrees a wearer accepted; the vertical follows from that.
+# A render aspect is needed, so this falls back to the value that is correct at
+# 16:9 rather than inventing one when the size is unknown.
+# Asked for HERE rather than reusing the report printed further down: this needs
+# the size before the value is sent, and reading a variable that is assigned
+# later would silently take the 16:9 fallback every run.
+$nearAspect = 0.0
+$backbuffer = Send-Cmd 'xr.resolution'
+if ($backbuffer -match 'backbuffer=(\d+)x(\d+)' -and [int]$Matches[2] -gt 0) {
+    $nearAspect = [double]$Matches[1] / [double]$Matches[2]
+}
+if ($nearAspect -gt 0) {
+    $nearFov = [Math]::Round(
+        2.0 * [Math]::Atan([Math]::Tan(60.0 * [Math]::PI / 180.0) / $nearAspect) * 180.0 / [Math]::PI, 3)
+    Write-Host ("  (near FoV derived: aspect {0:N4} -> {1} deg vertical, 120 deg horizontal)" -f $nearAspect, $nearFov)
+} else {
+    $nearFov = 88.507
+    Write-Host '  (near FoV: no backbuffer size read, using the 16:9 value 88.507)'
+}
+Step "weapon FoV $nearFov" "console r_DrawNearFoV $nearFov"
 Start-Sleep -Milliseconds 800
 
 Write-Host ''
