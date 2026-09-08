@@ -1941,6 +1941,66 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+
+## 2026-09-08 — R-117: the aim lane exonerated, in xr-sim, with the controller actually pinned
+
+The wearer asked whether the simulator could load into the game and drive the
+controller so the reticle could be measured rather than described. It can, and
+doing so **cleared the aim lane and moved the fault downstream**.
+
+### The loop works end to end
+
+Menu taps navigated the title screen and loaded a save into the Talos I lobby,
+confirmed by a frame capture showing the level. From there the head and
+controller are scriptable and every frame is readable. No headset involved.
+
+Two setup faults were hit and are worth recording:
+
+- `menu 4` refused until the render hook existed. `cameraEdit=0` means
+  `DrainQueuedInput` never runs, so events queue and never post. Running the full
+  startup sequence fixes it; `input.post 1` alone does not.
+- **`hand r point` RE-ENABLES follow-head.** xr-sim documents it as "aim relative
+  to where the head is looking", and it sets `handFollowsHead[h] = true`. Sending
+  `hand r follow off` and then `hand r point 0 0` in one batch silently undid the
+  pin. `hand r aim pose` is the one that pins, because it clears the flag.
+
+**The first sweep was invalid because of that**, and it looked like a serious
+find: `rpDir` swinging with the head while play yaw stayed constant. Codex's
+discriminator caught it -- `rpRawQ` was exactly equal to `rpHeadQ` at every step,
+so the controller had moved and the direction was right to follow. A confounded
+test that produces a dramatic result is worse than no test.
+
+### With the controller genuinely pinned
+
+`rawQy = 0.0000` at every step while `headQy` swept +/-0.1736:
+
+| head yaw | rpDir | retX measured | retX predicted |
+|---|---|---|---|
+| -20 | -0.93, -0.37, 0.00 | 0.39 | 0.3949 |
+| -10 | -0.93, -0.37, 0.00 | 0.45 | 0.4491 |
+| 0 | -0.93, -0.37, 0.00 | 0.50 | 0.5000 |
+| +10 | -0.93, -0.37, 0.00 | 0.55 | 0.5509 |
+| +20 | -0.93, -0.37, 0.00 | 0.61 | 0.6051 |
+
+**`rpDir` is constant to five decimals across a 40-degree head sweep.** The world
+aim direction is head-independent, as every code reading said. And the predicted
+column is `(tan(theta) + 1.73205) / 3.4641` -- the plain pinhole mapping through
+the recorded frustum -- which the measurement matches at every angle.
+
+**So the aim composition and the projection arithmetic are both correct.** The
+head-coupling hypothesis is dead, including my own two attempts at it.
+
+### Where that leaves the wearer's observation
+
+The reticle demonstrably slides in the headset, and the fraction we compute is
+right. The fault must therefore be **downstream of `rpXY`, in how the movie maps
+that fraction to pixels** -- which is exactly the evidence Codex asked for.
+
+**Not obtained:** the sprite's actual pixel position. The loaded save is the
+opening lobby where the player is unarmed, `weaponAttachment=0x0`, and Prey draws
+no crosshair. `hud_reticleSetting 2` -- documented as "just shows a simple dot" --
+did not produce a visible one in that state either. The measurement needs a save
+with a weapon equipped.
 ## 2026-09-08 — R-116: the menu navigator confirmed as a second right-stick producer, in xr-sim
 
 The audit proved in source that `MenuNavigator` is fed whenever `gMenuNavigation`
