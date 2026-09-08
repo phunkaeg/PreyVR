@@ -70,6 +70,20 @@ inline constexpr int kButtonX = 0x20C;
 inline constexpr int kButtonY = 0x20D;
 inline constexpr int kThumbLX = 0x210;
 inline constexpr int kThumbLY = 0x211;
+// Right stick and triggers. **From the PDB-derived enum, not read from this
+// build**, unlike the left stick which R-089 confirmed live. The enum block is
+// corroborated at three points that ARE confirmed here -- 0x20A (xi_a, posted
+// successfully), 0x210 and 0x211 -- and these sit in the same contiguous run,
+// whose symbol names all exist in the binary at the expected adjacency
+// (xi_triggerl/r at 0x1D5C458/468, xi_thumbrx/ry at 0x1D5C4D8/4E8).
+//
+// It remains an inference, and it fails closed: PostInputEvent rejects an
+// unknown key id outside a UI event, so a wrong value is refused rather than
+// silently doing nothing, and the refusal shows in the counters.
+inline constexpr int kTriggerL = 0x20E;
+inline constexpr int kTriggerR = 0x20F;
+inline constexpr int kThumbRX = 0x216;
+inline constexpr int kThumbRY = 0x217;
 
 // Keyboard, same enum. `eKI_W = 0x10` is corroborated independently by the
 // disassembly (R-089 reads `moveforward` bound to w / 0x10), which is a second

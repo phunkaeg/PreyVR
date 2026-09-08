@@ -42,7 +42,7 @@ namespace {
 // intermediate builds to look broken before they look right: hands with no IK may
 // fall to a bind pose or leave the weapon entirely, which is correct-but-ugly
 // rather than wrong.
-constexpr std::array<std::string_view, 22> kAllowlist{
+constexpr std::array<std::string_view, 29> kAllowlist{
     "SetWeaponCameraOffsetX",
     "SetWeaponCameraOffsetY",
     "SetWeaponCameraOffsetZ",
@@ -59,6 +59,24 @@ constexpr std::array<std::string_view, 22> kAllowlist{
     "i_offset_right",
     "i_offset_up",
     "r_AntialiasingMode",
+    // --- resolution -------------------------------------------------------
+    //
+    // Added 2026-09-08, deliberately and not for convenience. The allowlist is
+    // fail-closed by design and widening it needs a reason; this is one. The
+    // headset receives 48% of the pixels its runtime asks for, with the deficit
+    // almost entirely vertical (2560x1440 supplied against 2688x2880 wanted),
+    // and these are the native levers the resolution investigation identified.
+    // Without them the measurement cannot be acted on at all.
+    //
+    // Each is a renderer quality/size control. None reaches gameplay, saves, or
+    // anything the mod's landmark gate protects.
+    "r_CustomResHeight",
+    "r_CustomResMaxSize",
+    "r_CustomResWidth",
+    "r_Height",
+    "r_Supersampling",
+    "r_SupersamplingFilter",
+    "r_Width",
     "r_DrawNearFoV",
     "r_MotionBlur",
     "r_NoDrawNear",

@@ -4,6 +4,7 @@
 #include "Logger.h"
 #include "MinHookInit.h"
 #include "XrInput.h"
+#include "preyvr/InputEvent.h"
 #include "preyvr/Locomotion.h"
 
 #include <MinHook.h>
@@ -62,6 +63,18 @@ std::atomic<int> gCinematic{0};
 // would keep walking after letting go.
 locomotion::StickAxis gStick;
 unsigned int gStickPolicyHundredths = 15;
+
+// --- turn and fire, same thread and frame as the move lane ------------------
+std::atomic<bool> gTurnEnabled{false};
+std::atomic<unsigned int> gTurnDeadzoneHundredths{15};
+std::atomic<unsigned int> gTurnScalePercent{100};
+std::atomic<unsigned long long> gTurnPosted{0}, gTurnRefused{0};
+float gLastTurnSent = 0.0f;
+bool gTurnPrimed = false;
+
+std::atomic<bool> gFireEnabled{false};
+std::atomic<unsigned long long> gFirePressed{0}, gFireReleased{0}, gFireRefused{0};
+bool gFireHeld = false;
 
 bool ReadFloat(const void* at, float* out)
 {
@@ -235,6 +248,103 @@ void UpdateMoveLane()
         }
     }
 }
+
+void UpdateTurnAndFireLanes()
+{
+    ControllerState right{};
+    if (!TryGetControllerState(Hand::right, right)) { return; }
+
+    if (gTurnEnabled.load(std::memory_order_acquire)) {
+        const float dead = gTurnDeadzoneHundredths.load(std::memory_order_relaxed) / 100.0f;
+        const float scale = gTurnScalePercent.load(std::memory_order_relaxed) / 100.0f;
+        float value = right.thumbstickX;
+        if (!std::isfinite(value)) { value = 0.0f; }
+        // Rescaled past the deadzone rather than clipped, so leaving the dead
+        // area is gentle instead of a step to full rate.
+        const float magnitude = std::fabs(value);
+        value = (magnitude <= dead || dead >= 1.0f)
+                    ? 0.0f
+                    : ((value > 0.0f) ? 1.0f : -1.0f) * ((magnitude - dead) / (1.0f - dead));
+        value *= scale;
+        // Emit only on change, and ALWAYS emit the return to zero: the engine
+        // keeps turning on the last value it was told until contradicted, which
+        // is the same failure the movement lane's release case exists to avoid.
+        if (!gTurnPrimed || std::fabs(value - gLastTurnSent) > 0.002f) {
+            const int milli = static_cast<int>(value * 1000.0f);
+            if (PostRawInputImmediate(locomotion::kKeyThumbRX,
+                                      locomotion::kStateChanged, milli) == 0) {
+                gLastTurnSent = value;
+                gTurnPrimed = true;
+                gTurnPosted.fetch_add(1, std::memory_order_relaxed);
+            } else {
+                gTurnRefused.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+    }
+
+    if (gFireEnabled.load(std::memory_order_acquire)) {
+        const bool pressed = right.triggerPressed;
+        if (pressed != gFireHeld) {
+            // The analog axis the pad itself produces, so whatever Prey binds to
+            // the right trigger fires, rather than guessing an action name.
+            const int milli = pressed ? 1000 : 0;
+            if (PostRawInputImmediate(input::kTriggerR,
+                                      locomotion::kStateChanged, milli) == 0) {
+                gFireHeld = pressed;
+                (pressed ? gFirePressed : gFireReleased).fetch_add(1, std::memory_order_relaxed);
+            } else {
+                gFireRefused.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+    }
+}
+
+DWORD SetTurnLaneEnabled(unsigned int enabled)
+{
+    if (enabled > 1) { return 1; }
+    if (enabled && SetInputPostEnabled(1) != 0) { return 2; }
+    gTurnEnabled.store(enabled != 0u, std::memory_order_release);
+    if (!enabled) { gTurnPrimed = false; }
+    Log(std::string("result=0 detail=turn value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+
+DWORD SetTurnLaneDeadzone(unsigned int hundredths)
+{
+    if (hundredths > 60u) { return 1; }
+    gTurnDeadzoneHundredths.store(hundredths, std::memory_order_relaxed);
+    return 0;
+}
+
+DWORD SetTurnLaneScale(unsigned int percent)
+{
+    if (percent < 10u || percent > 200u) { return 1; }
+    gTurnScalePercent.store(percent, std::memory_order_relaxed);
+    return 0;
+}
+
+DWORD SetFireLaneEnabled(unsigned int enabled)
+{
+    if (enabled > 1) { return 1; }
+    if (enabled && SetInputPostEnabled(1) != 0) { return 2; }
+    gFireEnabled.store(enabled != 0u, std::memory_order_release);
+    Log(std::string("result=0 detail=fire value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+
+DWORD SetFireLaneThreshold(unsigned int hundredths)
+{
+    if (hundredths < 5u || hundredths > 95u) { return 1; }
+    return 0;   // XrInput already thresholds the trigger; kept for the contract
+}
+
+unsigned int TurnLaneEnabled() { return gTurnEnabled.load(std::memory_order_relaxed) ? 1u : 0u; }
+unsigned long long TurnLanePosted() { return gTurnPosted.load(std::memory_order_relaxed); }
+unsigned long long TurnLaneRefused() { return gTurnRefused.load(std::memory_order_relaxed); }
+unsigned int FireLaneEnabled() { return gFireEnabled.load(std::memory_order_relaxed) ? 1u : 0u; }
+unsigned long long FireLanePressed() { return gFirePressed.load(std::memory_order_relaxed); }
+unsigned long long FireLaneReleased() { return gFireReleased.load(std::memory_order_relaxed); }
+unsigned long long FireLaneRefused() { return gFireRefused.load(std::memory_order_relaxed); }
 
 unsigned int MoveLaneMode() { return gMode.load(std::memory_order_relaxed); }
 unsigned int MoveLaneHooked() { return gInstalled.load(std::memory_order_relaxed) ? 1u : 0u; }

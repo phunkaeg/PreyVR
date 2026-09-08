@@ -40,6 +40,17 @@
 #>
 [CmdletBinding()]
 param(
+    # Render height for the headset. The runtime asks for 2688x2880 per eye and
+    # Prey supplies a 16:9 desktop frame, so the compositor upscales 2x
+    # vertically -- 48% of the pixels it wanted. Set BEFORE xr.start, because
+    # the XR swapchain is sized once from the backbuffer and a later resize is
+    # refused rather than copied (it would need a rescaling blit D3D11 does not
+    # do). 0 leaves the game's own resolution alone.
+    [int]$RenderWidth = 0,
+    [int]$RenderHeight = 0,
+    # 1 = off, 2 = 2x2 SSAA, 3 = 3x3. Genuine extra detail resolved down, unlike
+    # upscaling. 2 is four times the scene pixels: check the frame time.
+    [int]$Supersampling = 0,
     [string]$RunDir = '',
     # Direct channel directory, for a game not started by the launcher: the DLL
     # defaults to <Documents>\PreyVR, which has no run directory or 'log' subfolder.
@@ -97,6 +108,19 @@ function Step($label, $line, [switch]$AllowNonZero) {
 
 Write-Host ''
 Write-Host 'before the session exists -- these cannot be changed afterwards:'
+# Resolution first of all: the swapchain is built from whatever the backbuffer
+# is when xr.start runs, so this has to land before it or it does nothing this
+# session and is refused for the next frames.
+if ($RenderWidth -gt 0 -and $RenderHeight -gt 0) {
+    Step 'render width'  ("console r_Width {0}" -f $RenderWidth)
+    Start-Sleep -Milliseconds 800
+    Step 'render height' ("console r_Height {0}" -f $RenderHeight)
+    Start-Sleep -Milliseconds 800
+}
+if ($Supersampling -gt 0) {
+    Step 'supersampling' ("console r_Supersampling {0}" -f $Supersampling)
+    Start-Sleep -Milliseconds 800
+}
 # Gamma. Must be before xr.start: the swapchain format is chosen at creation.
 Step 'gamma (sRGB)'      'xr.srgb 1'
 # Native per-eye projection. Defaults off; FAIL-STR-048.
@@ -140,6 +164,10 @@ Step 'head 6DoF'     'view.position 1'
 
 Write-Host ''
 Start-Sleep -Seconds 3
+$resolution = Send-Cmd 'xr.resolution'
+Write-Host 'resolution chain:'
+Write-Host ("  " + $resolution)
+Write-Host ''
 $report = Send-Cmd 'report'
 $want = 'xrSession|xrFrames|viewApplied|posApplied|nearApplied|cameraEdit|lastEye'
 Write-Host 'state:'

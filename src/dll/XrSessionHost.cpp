@@ -74,6 +74,10 @@ struct Host {
     bool viewsDiffer = false;          // per-eye sizes are allowed to differ
     std::uint32_t heldWidth = 0, heldHeight = 0, heldFormat = 0;
     std::uint32_t submittedWidth = 0, submittedHeight = 0;
+    // Set when Prey's backbuffer no longer matches the size this session was
+    // built at, which makes every copy invalid until a restart.
+    bool sizeMismatch = false;
+    bool loggedSizeMismatch = false;
     std::uint32_t width = 0;
     std::uint32_t height = 0;
     bool sessionBegun = false;
@@ -953,6 +957,34 @@ void ServiceXrFrame(void* renderer)
             if (XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.swapchain, &acquire, &imageIndex)) &&
                 XR_SUCCEEDED(xrWaitSwapchainImage(gHost.swapchain, &waitImage)) &&
                 imageIndex < gHost.images.size()) {
+                // **Refuse a resized backbuffer rather than copying it.**
+                // The XR swapchain and the held eye textures are sized once, at
+                // session start. D3D11 CopyResource requires matching
+                // dimensions and does not rescale, so a backbuffer that changed
+                // size underneath us -- which is exactly what setting r_Height
+                // or r_Supersampling can do -- would produce a failed or
+                // corrupt copy with no error a player could see.
+                //
+                // Submitting nothing is honest and diagnosable; a plausible
+                // wrong image is neither. The fix for a wanted resize is a
+                // controlled restart, which is what the resolution
+                // investigation recommends for initial tests.
+                D3D11_TEXTURE2D_DESC backDesc{};
+                backBuffer->GetDesc(&backDesc);
+                if (backDesc.Width != gHost.width || backDesc.Height != gHost.height) {
+                    gHost.sizeMismatch = true;
+                    if (!gHost.loggedSizeMismatch) {
+                        gHost.loggedSizeMismatch = true;
+                        std::ostringstream line;
+                        line << "result=refused detail=backbuffer_resized"
+                             << " sessionSize=" << gHost.width << "x" << gHost.height
+                             << " nowSize=" << backDesc.Width << "x" << backDesc.Height
+                             << " note=restart_to_adopt_the_new_size";
+                        Log(line.str());
+                    }
+                    backBuffer->Release();
+                    return;
+                }
                 ID3D11DeviceContext* context = nullptr;
                 gHost.device->GetImmediateContext(&context);
                 if (context != nullptr) {
@@ -1091,6 +1123,7 @@ DWORD XrResolutionChain(unsigned int field)
         case 11: return gHost.viewsDiffer ? 1u : 0u;
         case 12: return gHost.heldFormat;
         case 13: return gHost.viewCount;
+        case 14: return gHost.sizeMismatch ? 1u : 0u;
         default: return 0;
     }
 }

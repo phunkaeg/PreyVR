@@ -115,7 +115,28 @@ void TestAllowlistContents()
     Require(IsAllowlistedCvar("r_NoDrawNear"), "the viewmodel pass toggle is allowlisted");
     Require(IsAllowlistedCvar("e_CameraFreeze"), "the engine camera override is allowlisted");
     Require(IsAllowlistedCvar("g_detachCamera"), "the detached camera cvar is allowlisted");
-    Require(!IsAllowlistedCvar("r_Width"), "resolution is not allowlisted");
+    // **Contract changed 2026-09-08, deliberately.** Resolution was excluded
+    // because changing it mid-session invalidates the XR swapchain and held eye
+    // textures, which are sized once at session start: D3D11 CopyResource needs
+    // matching dimensions and does not rescale, so a resize produced a failed or
+    // corrupt copy with nothing a player could see.
+    //
+    // The measurement that forced the change: the headset receives 48% of the
+    // pixels its runtime asks for, the deficit almost entirely vertical, and
+    // these cvars are the only native levers for it. An exclusion that makes a
+    // measured defect unfixable is not a safety property.
+    //
+    // The hazard is now handled where it actually lives, in the submission
+    // path: a backbuffer whose size no longer matches the session refuses to
+    // submit and says so, rather than copying mismatched resources. Set these
+    // BEFORE xr.start, the same ordering rule gamma follows.
+    Require(IsAllowlistedCvar("r_Width"), "render width is allowlisted for the resolution lane");
+    Require(IsAllowlistedCvar("r_Height"), "render height is allowlisted");
+    Require(IsAllowlistedCvar("r_Supersampling"), "supersampling is allowlisted");
+    // Still excluded, and these are the reason the list is fail-closed at all.
+    Require(!IsAllowlistedCvar("map"), "level loading is not allowlisted");
+    Require(!IsAllowlistedCvar("i_giveitem"), "item spawning is not allowlisted");
+    Require(!IsAllowlistedCvar("quit"), "quit is not allowlisted");
     Require(!IsAllowlistedCvar(""), "an empty name is not allowlisted");
 }
 

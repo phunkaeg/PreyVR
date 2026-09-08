@@ -20,6 +20,10 @@ namespace preyvr::locomotion {
 // is the analog "changed" state the stick handlers respond to.
 inline constexpr int kKeyThumbLX = 0x210;
 inline constexpr int kKeyThumbLY = 0x211;
+// Right stick X: the axis Prey already turns the character with, so posting it
+// moves mesh, capsule, aim origin and movement direction together. Inferred
+// from the PDB enum block whose neighbours are confirmed live; see InputEvent.h.
+inline constexpr int kKeyThumbRX = 0x216;
 inline constexpr int kDeviceGamepad = 3;
 inline constexpr int kStateChanged = 8;
 

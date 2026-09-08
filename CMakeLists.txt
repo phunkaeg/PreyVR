@@ -91,6 +91,7 @@ add_library(preyvr_core STATIC
     src/common/StereoCamera.cpp
     src/common/StereoFrame.cpp
     src/common/VrMath.cpp
+    src/common/WeaponAim.cpp
     src/common/WrenchQuery.cpp
     src/common/XrFrameContract.cpp
     src/common/XrSwapchainFormat.cpp
@@ -326,6 +327,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_anim_ik_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_anim_ik_tests)
     add_test(NAME anim_ik COMMAND preyvr_anim_ik_tests)
+
+    add_executable(preyvr_weapon_aim_tests tests/WeaponAimTests.cpp)
+    target_link_libraries(preyvr_weapon_aim_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_weapon_aim_tests)
+    add_test(NAME weapon_aim COMMAND preyvr_weapon_aim_tests)
 
     add_executable(preyvr_input_event_tests tests/InputEventTests.cpp)
     target_link_libraries(preyvr_input_event_tests PRIVATE preyvr_core)

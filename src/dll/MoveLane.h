@@ -35,12 +35,49 @@ unsigned int MoveLaneMode();
 
 // Called once per rendered frame, beside the input drain.
 void UpdateMoveLane();
+// Turn and fire, driven from the right controller. Same thread and frame.
+void UpdateTurnAndFireLanes();
 
 // Radial deadzone in hundredths (default 15). The playbook's reason for radial
 // rather than per-axis: a per-axis deadzone leaves diagonals live while the
 // cardinals are dead, and a per-axis clamp makes diagonal movement sqrt(2)
 // times faster, which reads as sprinting only when moving cornerwise.
 DWORD SetMoveLaneDeadzone(unsigned int hundredths);
+
+// --- turn -------------------------------------------------------------------
+//
+// Smooth turn on the right stick, posted as `xi_thumbrx` so **the engine's own
+// heading channel** does the turning. The fleet playbook is explicit about why
+// that matters: a character's facing is consumed by the visible mesh, the
+// collision capsule, the aim origin and the movement direction, and writing any
+// one of them alone silently desynchronises the other three. Posting the axis
+// the game already turns with keeps all four in agreement for free.
+//
+// Smooth rather than snap, because the goal asks for smooth. Snap is what most
+// shipped mods default to for comfort, and it can be layered on later as a
+// consumer of the same axis.
+DWORD SetTurnLaneEnabled(unsigned int enabled);
+DWORD SetTurnLaneDeadzone(unsigned int hundredths);
+// Scales the stick before posting, in percent. The engine applies its own turn
+// speed on top, so this trims rather than defines the rate.
+DWORD SetTurnLaneScale(unsigned int percent);
+unsigned int TurnLaneEnabled();
+unsigned long long TurnLanePosted();
+unsigned long long TurnLaneRefused();
+
+// --- fire -------------------------------------------------------------------
+//
+// The right trigger, posted as the analog `xi_triggerr` the pad produces, so
+// whatever Prey binds to that axis fires. Edge-detected against a threshold so
+// a held trigger does not re-post every frame, and a release always sends zero
+// -- the same rule the stick lane follows, and for the same reason: the last
+// thing the engine was told persists until contradicted.
+DWORD SetFireLaneEnabled(unsigned int enabled);
+DWORD SetFireLaneThreshold(unsigned int hundredths);
+unsigned int FireLaneEnabled();
+unsigned long long FireLanePressed();
+unsigned long long FireLaneReleased();
+unsigned long long FireLaneRefused();
 
 unsigned int MoveLaneHooked();
 // Analog handler calls, split by who caused them. `native` counting up while

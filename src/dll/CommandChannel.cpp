@@ -207,6 +207,11 @@ void WriteReport(std::ostringstream& out)
         << " moveInputObj=0x" << std::hex << MoveLaneInputObject() << std::dec
         << " moveAxisMilli=" << MoveLaneAxisMilli(0) << "," << MoveLaneAxisMilli(1)
         << " moveCinematic=" << MoveLaneCinematicGate()
+        << " turnEnabled=" << TurnLaneEnabled()
+        << " turnPosted=" << TurnLanePosted() << " turnRefused=" << TurnLaneRefused()
+        << " fireEnabled=" << FireLaneEnabled()
+        << " firePressed=" << FireLanePressed() << " fireReleased=" << FireLaneReleased()
+        << " fireRefused=" << FireLaneRefused()
         << " inputDropped=" << InputQueueDroppedCount()
         << " inputDrainThread=" << InputDrainThreadId()
         << " channelProcessed=" << gProcessed.load(std::memory_order_relaxed)
@@ -458,7 +463,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << " recommendedSamples=" << XrResolutionChain(10)
             << " viewsDiffer=" << XrResolutionChain(11)
             << " heldFormat=" << XrResolutionChain(12)
-            << " views=" << XrResolutionChain(13);
+            << " views=" << XrResolutionChain(13)
+            << " sizeMismatch=" << XrResolutionChain(14);
         if (recW != 0 && recH != 0 && backW != 0 && backH != 0) {
             // Per-eye pixels the runtime wants against per-eye pixels it gets.
             const double want = static_cast<double>(recW) * recH;
@@ -476,6 +482,25 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         const int requested = arg(1, 0);
         out << "move.mode result=" << SetMoveLaneMode(requested) << " mode=" << requested
             << (requested == 0 ? "(off)" : requested == 1 ? "(observe)" : requested == 2 ? "(apply)" : "(unknown)");
+    } else if (verb == "move.turn") {
+        out << "move.turn result=" << SetTurnLaneEnabled(arg(1, 1))
+            << " enabled=" << TurnLaneEnabled();
+    } else if (verb == "move.turndeadzone") {
+        out << "move.turndeadzone result=" << SetTurnLaneDeadzone(arg(1, 15));
+    } else if (verb == "move.turnscale") {
+        out << "move.turnscale result=" << SetTurnLaneScale(arg(1, 100));
+    } else if (verb == "move.fire") {
+        out << "move.fire result=" << SetFireLaneEnabled(arg(1, 1))
+            << " enabled=" << FireLaneEnabled();
+    } else if (verb == "move.all") {
+        // The whole control scheme in one command: left stick moves, right stick
+        // turns, right trigger fires.
+        const unsigned int on = static_cast<unsigned int>(arg(1, 1)) != 0u ? 1u : 0u;
+        const DWORD m = SetMoveLaneMode(on ? 2u : 0u);
+        const DWORD t = SetTurnLaneEnabled(on);
+        const DWORD f = SetFireLaneEnabled(on);
+        out << "move.all result=" << (m | t | f)
+            << " move=" << m << " turn=" << t << " fire=" << f;
     } else if (verb == "move.deadzone") {
         out << "move.deadzone result=" << SetMoveLaneDeadzone(arg(1, 15));
     } else if (verb == "input.post") {

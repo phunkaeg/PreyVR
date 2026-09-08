@@ -979,6 +979,7 @@ void __fastcall RenderWithCameraEdit(void* system)
     // axis events per frame and the drain consumes one, so producing anywhere
     // else would race the queue it feeds.
     UpdateMoveLane();
+    UpdateTurnAndFireLanes();
 
     if ((!gArmed.load(std::memory_order_acquire) && !stereoArmed &&
          !gHeadRotationArmed.load(std::memory_order_acquire)) || system == nullptr) {

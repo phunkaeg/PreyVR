@@ -39,6 +39,10 @@ constexpr NamedKey kNames[] = {
     {kButtonY, "xi_y"},
     {kThumbLX, "xi_thumblx"},
     {kThumbLY, "xi_thumbly"},
+    {kTriggerL, "xi_triggerl"},
+    {kTriggerR, "xi_triggerr"},
+    {kThumbRX, "xi_thumbrx"},
+    {kThumbRY, "xi_thumbry"},
     // Keyboard names as CryEngine's keyboard device registers them.
     {kKeyEscape, "escape"},
     {kKeyW, "w"},
