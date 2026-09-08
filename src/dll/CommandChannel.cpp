@@ -11,6 +11,8 @@
 #include "NearViewStereo.h"
 #include "RenderFrame.h"
 #include "ReticleFollow.h"
+#include "HudBridge.h"
+#include "FrameCaptureWin32.h"
 #include "InputPost.h"
 #include "MoveLane.h"
 #include "WeaponAttachment.h"
@@ -178,6 +180,11 @@ void WriteReport(std::ostringstream& out)
         << " reticleApplied=" << ReticleFollowAppliedCount()
         << " reticleOffScreen=" << ReticleFollowOffScreenCount()
         << " reticleXY=" << ReticleFollowLastX() << "," << ReticleFollowLastY()
+        << " reticleDispatched=" << ReticleDispatchedCount()
+        << " reticleDispatchFailed=" << ReticleDispatchFailedCount()
+        << " hudElement=0x" << std::hex << HudElementPointer() << std::dec
+        << " hudCalls=" << HudCallCount() << " hudRefused=" << HudRefusedCount()
+        << " captures=" << CompletedFrameCaptureCount()
         << " aimBodyYaw=" << AimBodyYawEnabled()
         << " camYawMdeg=" << AimCameraYawMilliDegrees()
         << " headYawMdeg=" << AimHeadYawMilliDegrees()
@@ -401,6 +408,12 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         // current view rather than per eye; that is a real limitation, not an
         // oversight, and a genuinely stereo reticle needs a mod-drawn one.
         out << "aim.reticle result=" << SetReticleFollowEnabled(arg(1, 1));
+    } else if (verb == "aim.reticledispatch") {
+        // Separates the two halves of the reticle write. Off writes only the
+        // cached field; on also dispatches the movie call the engine's own reset
+        // makes. If the crosshair does not move, this says which half to blame.
+        out << "aim.reticledispatch result=" << SetReticleDispatchEnabled(arg(1, 1))
+            << " value=" << arg(1, 1);
     } else if (verb == "menu.nav") {
         SetMenuNavigation(arg(1, 1));
         out << "menu.nav result=0 value=" << arg(1, 1);
@@ -439,6 +452,24 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "weapon.rotate result=" << SetWeaponRotationDrive(arg(1, 1));
     } else if (verb == "weapon.calibrate") {
         out << "weapon.calibrate result=" << CalibrateWeaponRotation();
+    } else if (verb == "capture") {
+        // A one-shot readback of the backbuffer -- which is exactly the image
+        // submitted to the headset -- so "is X visible in the HMD" becomes a
+        // file to look at rather than something a wearer has to be asked.
+        out << "capture result=" << RequestFrameCapture(static_cast<std::uint32_t>(arg(1, 1)))
+            << " completed=" << CompletedFrameCaptureCount();
+    } else if (verb == "hud.call") {
+        // hud.call <function> <x> [y] -- dispatches a native UI function on
+        // DanielleHUD through the engine's own two-float helper.
+        if (args.size() < 3) {
+            out << "hud.call result=rejected detail=need_function_and_value";
+        } else {
+            const float x = static_cast<float>(std::atof(args[2].c_str()));
+            const float y = args.size() >= 4 ? static_cast<float>(std::atof(args[3].c_str())) : 0.0f;
+            out << "hud.call result=" << CallHudFunction(args[1].c_str(), x, y,
+                                                        args.size() >= 4)
+                << " fn=" << args[1];
+        }
     } else if (verb == "frame.capture") {
         out << "frame.capture result=" << SetRenderFrameCapture(arg(1, 1));
     } else if (verb == "frame.character" && args.size() >= 2) {

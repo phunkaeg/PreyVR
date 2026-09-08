@@ -31,16 +31,32 @@ namespace preyvr::dll {
 
 DWORD SetReticleFollowEnabled(unsigned int enabled);
 
+// **The field write alone is not enough, and this is the correction that makes
+// the lane real.** The engine's own reticle reset writes the two cached fields
+// and then dispatches `reticleXOffset` / `reticleYOffset` on the HUD element,
+// in one function (R-109). The field holds the value; the dispatch is what the
+// movie reads. On by default, because a write without a dispatch is the defect
+// the reticle report named. Switchable so the two halves can be attributed
+// separately when the crosshair does not move.
+DWORD SetReticleDispatchEnabled(unsigned int enabled);
+
 // Called from the aim takeover with the ray it just wrote, so the crosshair and
 // the shot cannot disagree about direction.
 bool WriteReticleScreenPosition(void* player, const Vec3& worldDirection);
 
 unsigned long long ReticleFollowAppliedCount();
 
+// Frames where both dispatches returned zero, and frames where either did not.
+// A zero return is not visual acceptance -- it says the ABI and the element were
+// right (F-011) -- but a non-zero says plainly that the call did not happen.
+unsigned long long ReticleDispatchedCount();
+unsigned long long ReticleDispatchFailedCount();
+
 // Frames where the ray pointed behind the camera, or outside the view, so no
-// honest screen position exists. The crosshair is left where the engine put it
-// rather than clamped to an edge, because a crosshair pinned to the screen border
-// claims the target is there when it is not.
+// honest screen position exists. A ray behind the camera returns without
+// writing; a ray merely outside the frustum is CLAMPED to the edge it left by,
+// so the symbol reads as "off that way" rather than staying parked over whatever
+// it happened to be over. Both are counted here.
 unsigned long long ReticleFollowOffScreenCount();
 
 // The last screen position written, in thousandths of a viewport fraction --

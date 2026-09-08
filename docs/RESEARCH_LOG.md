@@ -1892,3 +1892,64 @@ order, the fields to read and the traps.
   landmarks and analytic counterexamples against the supported Steam hash.
   No game access or runtime code changes. Claude retains runtime ownership.
 - **Handoff:** [H-022 flicker and ghost audit](RE-H022-WEAPON-FLICKER-AND-GHOST-2026-09-08.md).
+
+## 2026-09-08 — R-109: the reticle dispatch, confirmed against the target and wired in
+
+Codex's earlier entry today named `0x1583A30` as dispatching `reticleXOffset` /
+`reticleYOffset` from `+0x17EC/+0x17F0`. This is the independent confirmation of
+that call site, the ABI proof it needed, and the implementation.
+
+**Read from this build.** `FUN_181583A30(ArkPlayer*)` is five lines: it writes
+`+0x17F0` from the `g_reticleYPercentage` CVar, writes `+0x17EC` the immediate
+`0x3F000000`, fetches the HUD element, and dispatches both names on it.
+
+| what the read settles | how |
+|---|---|
+| the field units | the stored literal is `0x3F000000` = **0.5f**, so `+0x17EC` is a **normalised screen fraction** with 0.5 centred, not pixels |
+| the consumer | the same function that writes the field dispatches the movie call, in that order — the field holds the value, the dispatch is what the movie reads |
+| the one-float ABI | `0x118C970` saves **XMM2 and not XMM3**, so exactly one float; the two-float entry saves both |
+| both tails | each ends `CALL qword ptr [RAX+0x210]`, the `CallFunction` slot |
+| no per-frame rival | `reticlePosition` has exactly **two** producers, both examine-mode transitions, so a takeover is not fought each frame |
+
+**Ghidra renders some call sites of the one-float entry as two-argument**, having
+failed to recover the XMM parameter. The prologue is the authority, not the
+decompiler's arity — the same trap the two-float `undefined4` parameters set.
+
+**F-011, and it is the reason none of the above may be skipped.** A live
+`hud.call SetCrosshairPosition 0.5 0.5` returned `result=0` with
+`hudCalls=1 hudRefused=0`. **`SetCrosshairPosition` does not exist anywhere in
+the binary.** Scaleform resolves the name inside the movie and silently does
+nothing when it is absent, so the dispatcher reports success for a name that
+cannot work. A zero return proves the ABI and the element, never the name. Only
+names read from a native call site are known to exist, which is why the two
+wired here were taken from `0x1583A30` rather than invented.
+
+**Wired.** `ReticleFollow` now writes the field **and** dispatches both names,
+copying the engine's own order. It is separately switchable (`aim.reticledispatch`)
+so a crosshair that does not move can be attributed to the write or the dispatch
+rather than guessed at, and `reticleDispatched` / `reticleDispatchFailed` report
+it. Dispatching from there is thread-consistent with the native producer: both
+run inside an ArkPlayer update.
+
+**Not verified:** that the crosshair visibly moves. That needs the headset, and
+F-011 is precisely why the returned zero will not be treated as the answer.
+
+## 2026-09-08 — The main menu renders into the submitted image (verified)
+
+The open item from [the VR scheme](RE-VR-SCHEME-2026-09-08.md) — *"whether the
+menu is visible in the headset was not verified and must not be assumed"* — is
+now settled for the backbuffer, by looking rather than by reasoning.
+
+A one-shot `capture` readback of frame 1635 decodes as a clean `PVRFRAME` header
+(version 1, 2560x1440, format 28, row pitch 10240) and **shows Prey's main menu**:
+the title, the "Press Any Key" prompt and the station artwork, 43.6% of sampled
+pixels non-black. The backbuffer is what gets submitted, so the menu is in the
+submitted image.
+
+**The headset was not connected for this run.** `xr.start` returned
+`status=unavailable(3)` and `xr.resolution` read all zeros, so this verifies the
+**content of the submitted image only** — not the end-to-end compositor path, and
+not that a wearer can read it at that scale. Those still need the headset. The
+near-pass counters agreeing (`nearNoProvenance=19691` equal to `eyeLookupMiss`)
+is the H-022 fix failing closed correctly with no XR session, which is the
+expected behaviour rather than a fault.

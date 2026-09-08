@@ -181,6 +181,10 @@ if ($Controls -or $Reticle) {
     if ($Reticle) {
         Step 'aim takeover'  'aim.enable 1'
         Step 'reticle follow' 'aim.reticle 1'
+        # On by default in the DLL; set explicitly so the transcript records
+        # which half was armed. The write alone moves nothing -- the engine's
+        # own reset writes the field AND dispatches, and so must this (R-109).
+        Step 'reticle dispatch' 'aim.reticledispatch 1'
     }
 }
 
@@ -205,6 +209,9 @@ Write-Host ''
 Write-Host 'Next: load a save and EQUIP A WEAPON, then run Invoke-PreyVRIkTest.ps1.'
 Write-Host '  - -Controls arms the motion scheme (left stick move, right stick turn,'
 Write-Host '    right trigger fire, controller menus). -Reticle moves the crosshair.'
+Write-Host '  - Judge the reticle by reticleDispatched climbing with'
+Write-Host '    reticleDispatchFailed at zero, THEN by eye. A dispatch returning 0'
+Write-Host '    proves the ABI, not that the movie has that function (F-011).'
 Write-Host '  - -RenderHeight 2880 -RenderWidth 2688 matches the runtime request;'
 Write-Host '    it must be set before xr.start, which is why it is a parameter here.'
 Write-Host '  - hand.calibrate belongs to the OLD hand lane. For the IK lane use'

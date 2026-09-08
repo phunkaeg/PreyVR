@@ -1,5 +1,6 @@
 #include "ReticleFollow.h"
 
+#include "HudBridge.h"
 #include "Logger.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/StereoCamera.h"
@@ -14,10 +15,21 @@ namespace preyvr::dll {
 namespace {
 
 std::atomic<bool> gEnabled{false};
+std::atomic<bool> gDispatch{true};
 std::atomic<unsigned long long> gApplied{0};
 std::atomic<unsigned long long> gOffScreen{0};
+std::atomic<unsigned long long> gDispatched{0};
+std::atomic<unsigned long long> gDispatchFailed{0};
 std::atomic<unsigned int> gLastX{500};
 std::atomic<unsigned int> gLastY{500};
+
+// The two names the engine's own reticle reset dispatches, read from that call
+// site rather than guessed (R-109). Names not read from a native call site are
+// not known to exist: Scaleform silently ignores an absent function and the
+// dispatcher still returns success, so an invented name looks like it worked
+// (F-011).
+constexpr const char* kReticleXOffset = "reticleXOffset";
+constexpr const char* kReticleYOffset = "reticleYOffset";
 
 } // namespace
 
@@ -127,9 +139,50 @@ bool WriteReticleScreenPosition(void* player, const Vec3& worldDirection)
     gLastY.store(static_cast<unsigned int>(fractionY * 1000.0f + 0.5f),
                  std::memory_order_relaxed);
     gApplied.fetch_add(1, std::memory_order_relaxed);
+
+    // **The write alone does not move the crosshair.** The engine's own reticle
+    // reset is one short function that writes these two fields and then
+    // dispatches both names on the HUD element, in that order (R-109) -- the
+    // field is where the value is kept, the dispatch is what the movie reads.
+    // Writing one without the other is the defect the reticle report named:
+    // proof of a memory write, and no visual movement.
+    //
+    // The units come from that same function: it stores 0x3F000000 -- 0.5f --
+    // for centred X, so these are normalised screen fractions, which is exactly
+    // what this lane already computes.
+    //
+    // Dispatching from here is thread-consistent with the native producer: both
+    // run inside an ArkPlayer update on the main game thread. It is separately
+    // switchable so that a crosshair which does not move can be attributed --
+    // dispatch off isolates the write, dispatch on adds the movie call.
+    if (gDispatch.load(std::memory_order_acquire)) {
+        const DWORD x = CallHudOneFloat(kReticleXOffset, fractionX);
+        const DWORD y = CallHudOneFloat(kReticleYOffset, fractionY);
+        if (x == 0 && y == 0) {
+            gDispatched.fetch_add(1, std::memory_order_relaxed);
+        } else {
+            gDispatchFailed.fetch_add(1, std::memory_order_relaxed);
+        }
+    }
     return true;
 }
 
+DWORD SetReticleDispatchEnabled(unsigned int enabled)
+{
+    const bool on = enabled != 0u;
+    gDispatched.store(0, std::memory_order_relaxed);
+    gDispatchFailed.store(0, std::memory_order_relaxed);
+    gDispatch.store(on, std::memory_order_release);
+    lifecycle::Log(std::string("preyvr_reticle result=0 detail=dispatch value=") +
+                   (on ? "1" : "0"));
+    return 0;
+}
+
+unsigned long long ReticleDispatchedCount() { return gDispatched.load(std::memory_order_relaxed); }
+unsigned long long ReticleDispatchFailedCount()
+{
+    return gDispatchFailed.load(std::memory_order_relaxed);
+}
 unsigned long long ReticleFollowAppliedCount() { return gApplied.load(std::memory_order_relaxed); }
 unsigned long long ReticleFollowOffScreenCount() { return gOffScreen.load(std::memory_order_relaxed); }
 DWORD ReticleFollowLastX() { return gLastX.load(std::memory_order_relaxed); }
