@@ -204,6 +204,11 @@ void WriteReport(std::ostringstream& out)
         << " reticleXY=" << ReticleFollowLastX() << "," << ReticleFollowLastY()
         << " reticleDispatched=" << ReticleDispatchedCount()
         << " reticleDispatchFailed=" << ReticleDispatchFailedCount()
+        << " aimDirMilli=" << AimDirectionMilli(0) << "," << AimDirectionMilli(1) << ","
+        << AimDirectionMilli(2)
+        << " aimRawQMilli=" << AimRawOrientationMilli(0) << "," << AimRawOrientationMilli(1)
+        << "," << AimRawOrientationMilli(2)
+        << " recenters=" << MoveLaneRecenterCount()
         << " reticleOriginMm=" << ReticleOriginOffsetMillimetres()
         << " reticleConvergeMm=" << ReticleConvergenceMillimetres()
         << " hudElement=0x" << std::hex << HudElementPointer() << std::dec

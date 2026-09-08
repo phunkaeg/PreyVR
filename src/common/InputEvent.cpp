@@ -43,6 +43,15 @@ constexpr NamedKey kNames[] = {
     {kTriggerR, "xi_triggerr"},
     {kThumbRX, "xi_thumbrx"},
     {kThumbRY, "xi_thumbry"},
+    // **The trigger BUTTONS, which are separate keys from the analog axes.**
+    // Firing is bound to the button, not the axis, and 0x21D was refused 299
+    // times in a headset purely because this table did not name it -- the id was
+    // correct and read from the target, the mod's own guard rejected it.
+    // Names read from the registration at `FUN_1809D9EF0` (R-115).
+    {kTriggerLButton, "xi_triggerl_btn"},
+    {kTriggerRButton, "xi_triggerr_btn"},
+    {kThumbRLeft, "xi_thumbr_left"},
+    {kThumbRRight, "xi_thumbr_right"},
     // Keyboard names as CryEngine's keyboard device registers them.
     {kKeyEscape, "escape"},
     {kKeyW, "w"},

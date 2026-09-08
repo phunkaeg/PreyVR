@@ -98,6 +98,13 @@ bool TryGetAimSample(preyvr::aim::Sample& out);
 void UpdateAimReticleForRender();
 unsigned long long AimSamplePublishedCount();
 
+// The published world aim direction, and the raw controller orientation behind
+// it, in thousandths. Under a pure head rotation both must hold still: the
+// controller pose is located in LOCAL space and the reference yaw is the body
+// yaw. A headset measurement says otherwise, so these exist to name which.
+int AimDirectionMilli(unsigned int axis);
+int AimRawOrientationMilli(unsigned int axis);
+
 DWORD SetAimTakeoverEnabled(unsigned int enabled);
 // 0 preserves native origin; 1 uses the tracked aim point (diagnostic).
 // The controller point is NOT the authored muzzle; per-weapon barrel alignment

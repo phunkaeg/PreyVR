@@ -1,6 +1,7 @@
 #include "MoveLane.h"
 
 #include "InputPost.h"
+#include "HeadTrackingHook.h"
 #include "Logger.h"
 #include "MinHookInit.h"
 #include "XrInput.h"
@@ -84,6 +85,10 @@ bool gFireHeld = false;
 float gLastFireSent = 0.0f;
 bool gFirePrimed = false;
 std::atomic<bool> gFireNeutralize{false};
+
+// Recentre-on-both-grips, edge triggered so a held pair fires once.
+bool gRecenterHeld = false;
+std::atomic<unsigned long long> gRecenters{0};
 
 bool ReadFloat(const void* at, float* out)
 {
@@ -295,6 +300,32 @@ void UpdateTurnAndFireLanes()
     const bool haveInput = TryGetControllerState(Hand::right, right);
     if (!haveInput) { right = {}; }
 
+    // **Recentre, on both grips at once.** A wearer whose view has drifted
+    // behind the character's head cannot reach a console, and asking someone in
+    // a headset to alt-tab is not a recentre button. Both grips because no
+    // single control is free -- menu buttons drive menus, sticks move and turn,
+    // triggers fire -- and because squeezing both at once is not something a
+    // hand does by accident while playing.
+    //
+    // Edge-triggered: held grips must recentre ONCE, not every frame, or the
+    // reference would be rebuilt continuously and the view would never settle.
+    {
+        ControllerState leftGrip{};
+        const bool haveLeft = TryGetControllerState(Hand::left, leftGrip);
+        const bool both = haveInput && haveLeft && leftGrip.gripPressed && right.gripPressed;
+        if (both && !gRecenterHeld) {
+            // This bumps the head-tracking reference generation, which
+            // deliberately invalidates the IK calibration -- the hands were
+            // calibrated against the old reference and would be wrong against
+            // the new one. Recalibrating after a recentre is expected rather
+            // than a fault, and saying so here saves rediscovering it while
+            // wearing a headset.
+            RecenterHeadTracking();
+            gRecenters.fetch_add(1, std::memory_order_relaxed);
+        }
+        gRecenterHeld = both;
+    }
+
     const bool turnOn = gTurnEnabled.load(std::memory_order_acquire);
     const bool releaseTurn = gTurnNeutralize.exchange(false, std::memory_order_acq_rel);
     if (turnOn || (gTurnPrimed && gLastTurnSent != 0)) {
@@ -339,20 +370,40 @@ void UpdateTurnAndFireLanes()
         const bool pressed = fireOn && !releaseFire && right.triggerPressed;
         // Emit on a meaningful change OR on a press-state crossing, so the
         // counters still name a discrete pull while the value stays continuous.
-        if (!gFirePrimed || pressed != gFireHeld ||
+        if (!gFirePrimed ||
             (value == 0 && gLastFireSent != 0) || std::fabs(value - gLastFireSent) > 0.02f) {
             const int milli = static_cast<int>(value * 1000.0f);
             if (PostRawInputImmediate(input::kTriggerR,
                                       locomotion::kStateChanged, milli) == 0) {
-                if (pressed != gFireHeld) {
-                    (pressed ? gFirePressed : gFireReleased)
-                        .fetch_add(1, std::memory_order_relaxed);
-                }
-                gFireHeld = pressed;
                 gLastFireSent = value;
                 gFirePrimed = true;
             } else {
                 if (releaseFire) { gFireNeutralize.store(true, std::memory_order_release); }
+                gFireRefused.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+
+        // **The axis alone fires nothing, and that cost a headset session.**
+        // The trigger is TWO keys: 0x20F is the analog axis and 0x21D is the
+        // digital button, and firing is bound to the button (R-115). Posting
+        // only the axis was accepted -- 36 presses, zero refusals -- and did
+        // nothing at all. A valid key that nothing is bound to is
+        // indistinguishable in the counters from one that works, which is
+        // exactly what the fail-closed refusal cannot catch.
+        //
+        // Sent as a press/release EDGE rather than a changed value, because a
+        // button posted as "changed" is not a press and the action map wants
+        // the transition.
+        if (pressed != gFireHeld) {
+            const unsigned int state = pressed ? static_cast<unsigned int>(input::kStatePressed)
+                                               : static_cast<unsigned int>(input::kStateReleased);
+            if (PostRawInputImmediate(input::kTriggerRButton, state, pressed ? 1000 : 0) == 0) {
+                gFireHeld = pressed;
+                (pressed ? gFirePressed : gFireReleased)
+                    .fetch_add(1, std::memory_order_relaxed);
+            } else {
+                // A refused RELEASE must be retried, or the weapon keeps firing.
+                if (!pressed) { gFireNeutralize.store(true, std::memory_order_release); }
                 gFireRefused.fetch_add(1, std::memory_order_relaxed);
             }
         }
@@ -417,5 +468,6 @@ unsigned long long MoveLaneDropped() { return gDropped.load(std::memory_order_re
 unsigned long long MoveLaneInputObject() { return gInputObject.load(std::memory_order_relaxed); }
 int MoveLaneAxisMilli(unsigned int axis) { return axis < 2 ? gAxisMilli[axis].load(std::memory_order_relaxed) : 0; }
 int MoveLaneCinematicGate() { return gCinematic.load(std::memory_order_relaxed); }
+unsigned long long MoveLaneRecenterCount() { return gRecenters.load(std::memory_order_relaxed); }
 
 } // namespace preyvr::dll

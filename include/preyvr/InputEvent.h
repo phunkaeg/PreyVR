@@ -70,20 +70,39 @@ inline constexpr int kButtonX = 0x20C;
 inline constexpr int kButtonY = 0x20D;
 inline constexpr int kThumbLX = 0x210;
 inline constexpr int kThumbLY = 0x211;
-// Right stick and triggers. **From the PDB-derived enum, not read from this
-// build**, unlike the left stick which R-089 confirmed live. The enum block is
-// corroborated at three points that ARE confirmed here -- 0x20A (xi_a, posted
-// successfully), 0x210 and 0x211 -- and these sit in the same contiguous run,
-// whose symbol names all exist in the binary at the expected adjacency
-// (xi_triggerl/r at 0x1D5C458/468, xi_thumbrx/ry at 0x1D5C4D8/4E8).
+// Right stick and triggers. **No longer inferred: read from this build**
+// (R-115). `FUN_1809D9EF0` registers every device key as a name/id pair, and the
+// ids below are the `MOV R8D, <id>` that follows each `LEA RAX, [<name>]`:
 //
-// It remains an inference, and it fails closed: PostInputEvent rejects an
-// unknown key id outside a UI event, so a wrong value is refused rather than
-// silently doing nothing, and the refusal shows in the counters.
+//   xi_triggerr      0x20F      xi_thumbr_up     0x218
+//   xi_thumblx       0x210      xi_thumbr_down   0x219
+//   xi_thumbly       0x211      xi_thumbr_left   0x21A
+//   xi_thumbl_up     0x212      xi_thumbr_right  0x21B
+//   xi_thumbl_down   0x213      xi_triggerl_btn  0x21C
+//   xi_thumbl_left   0x214      xi_triggerr_btn  0x21D
+//   xi_thumbl_right  0x215
+//   xi_thumbrx       0x216
+//   xi_thumbry       0x217
+//
+// The reading validates itself: xi_thumblx and xi_thumbly come out as 0x210 and
+// 0x211, which R-089 had already confirmed live. Every previously inferred value
+// was correct.
+//
+// **The trigger has TWO keys, and that is what cost a headset session.** 0x20F
+// is the analog axis; 0x21D is the digital button, and firing is bound to the
+// button. Posting only the axis was accepted by PostInputEvent -- 36 presses,
+// zero refusals -- and did nothing at all, because a valid key that nothing is
+// bound to is indistinguishable from a working one in the counters. The
+// fail-closed refusal cannot catch this: the key is real, it is just not the
+// one that fires.
 inline constexpr int kTriggerL = 0x20E;
 inline constexpr int kTriggerR = 0x20F;
 inline constexpr int kThumbRX = 0x216;
 inline constexpr int kThumbRY = 0x217;
+inline constexpr int kThumbRLeft = 0x21A;
+inline constexpr int kThumbRRight = 0x21B;
+inline constexpr int kTriggerLButton = 0x21C;
+inline constexpr int kTriggerRButton = 0x21D;
 
 // Keyboard, same enum. `eKI_W = 0x10` is corroborated independently by the
 // disassembly (R-089 reads `moveforward` bound to w / 0x10), which is a second

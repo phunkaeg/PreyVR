@@ -41,6 +41,10 @@ bool gInstalled = false;
 LatestSnapshot<GameplayPoseFrame> gGameplayFrame;
 LatestSnapshot<preyvr::aim::Sample> gAimSample;
 std::atomic<unsigned long long> gAimSamplePublished{0};
+// The world direction actually published, and the raw controller orientation it
+// came from. Reported so a head sweep says which one moves.
+std::atomic<int> gAimDirMilli[3]{0, 0, 0};
+std::atomic<int> gAimRawDirMilli[3]{0, 0, 0};
 // The native producer and this edit run on the gameplay thread. A TLS record
 // prevents a failed native unprojection from recycling our hand origin.
 thread_local animik::RayOriginEdit gLastOriginEdit;
@@ -302,6 +306,18 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
         }
     }
 
+    // **Instrumented because two code readings disagreed with a wearer.** LOCAL
+    // reference space and a constant play yaw both say this direction cannot
+    // move when only the head rotates, yet a headset measurement put roughly
+    // 70% of head yaw into the reticle. One of those is wrong, and a reported
+    // vector settles it without another round of reading.
+    for (unsigned int i = 0; i < 3; ++i) {
+        gAimDirMilli[i].store(static_cast<int>((&sample.direction.x)[i] * 1000.0f),
+                              std::memory_order_relaxed);
+        gAimRawDirMilli[i].store(
+            static_cast<int>((&controller.aimPose.orientation.x)[i] * 1000.0f),
+            std::memory_order_relaxed);
+    }
     sample.publishedNs = MonotonicNanoseconds();
     gAimSample.Publish(sample);
     gAimSamplePublished.fetch_add(1, std::memory_order_relaxed);
@@ -370,6 +386,14 @@ void UpdateAimReticleForRender()
     }
     WriteReticleScreenPosition(reinterpret_cast<void*>(frame.player),
                                sample.origin, sample.direction);
+}
+int AimDirectionMilli(unsigned int axis)
+{
+    return axis < 3 ? gAimDirMilli[axis].load(std::memory_order_relaxed) : 0;
+}
+int AimRawOrientationMilli(unsigned int axis)
+{
+    return axis < 3 ? gAimRawDirMilli[axis].load(std::memory_order_relaxed) : 0;
 }
 unsigned long long AimSamplePublishedCount()
 {

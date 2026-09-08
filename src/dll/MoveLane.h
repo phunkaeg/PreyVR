@@ -98,4 +98,9 @@ int MoveLaneAxisMilli(unsigned int axis);   // 0 x, 1 y
 // not this lane failing.
 int MoveLaneCinematicGate();
 
+// Times both grips were squeezed together to recentre the view. A wearer whose
+// view has drifted behind the character's head has no other way to fix it from
+// inside a headset. Each recentre invalidates the IK calibration by design.
+unsigned long long MoveLaneRecenterCount();
+
 } // namespace preyvr::dll
