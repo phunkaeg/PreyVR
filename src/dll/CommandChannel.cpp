@@ -254,6 +254,7 @@ void WriteReport(std::ostringstream& out)
         << " fireEnabled=" << FireLaneEnabled()
         << " firePressed=" << FireLanePressed() << " fireReleased=" << FireLaneReleased()
         << " fireRefused=" << FireLaneRefused()
+        << " mirrorFovPct=" << MirrorFovPercent()
         << " xrSyncs=" << XrInputSyncCount()
         << " xrNotFocused=" << XrInputNotFocusedCount()
         << " xrLocatedL=" << XrInputLocatedCount(Hand::left)
@@ -325,6 +326,13 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         const float ipd = static_cast<float>(arg(1, 64)) / 1000.0f;
         const float halfFov = static_cast<float>(arg(2, 50));
         out << "xr.stereo result=" << SetSyntheticStereo(ipd, halfFov);
+    } else if (verb == "xr.mirrorfov") {
+        // How much of the headset's view the flat mirror's image spans, as a
+        // percentage of Prey's own declared field. 100 is the honest projection.
+        // Only affects frames with no held eye pair -- the menu, and anything
+        // else not rendered as alternating eyes.
+        out << "xr.mirrorfov result=" << SetMirrorFovPercent(static_cast<unsigned int>(arg(1, 100)))
+            << " percent=" << MirrorFovPercent();
     } else if (verb == "xr.submit") {
         const DWORD status = SetXrStereoSubmission(arg(1, 1));
         out << "xr.submit status=" << XrStatusName(status) << "(" << status << ")";

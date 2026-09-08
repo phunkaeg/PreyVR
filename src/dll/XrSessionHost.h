@@ -84,6 +84,19 @@ unsigned long long XrSubmittedFrameCount();
 // Off by default. Clear it and the path reverts to the flat mirror that proved
 // the plumbing -- mono, and declaring the runtime's FOV -- which stays reachable
 // so a regression can be bisected against a known state.
+// Scales the field the FLAT MIRROR declares for Prey's own pixels, as a
+// percentage of what Prey declares. 100 is the honest projection and the
+// default; higher makes the image span more of the headset's view.
+//
+// It exists because the main menu measures at 51.8 degrees against a 98 degree
+// runtime view, so it lands in the central 41% and reads as a small window. For
+// flat 2D content there is no depth to distort and only text to read; for 3D
+// content this is a real distortion. Which is why it is off by default and a
+// headset decides. No effect once a held eye pair exists -- the stereo path uses
+// the runtime's own per-eye field.
+DWORD SetMirrorFovPercent(unsigned int percent);
+DWORD MirrorFovPercent();
+
 DWORD SetXrStereoSubmission(unsigned int enabled);
 
 // Sends each eye's image to the other eye's socket. Safe to toggle live.

@@ -64,7 +64,13 @@ param(
     # every write in this project is opt-in.
     [switch]$Controls,
     # Moves Prey's own crosshair to where the controller points.
-    [switch]$Reticle
+    [switch]$Reticle,
+    # How much of the headset's view the flat mirror spans, as a percentage of
+    # Prey's own declared field. The MENU measures at 41% of the view at 100 and
+    # 83% at 200 (R-113), so this is the knob that makes menus readable. It only
+    # affects frames with no held eye pair; the stereo path uses the runtime's
+    # own per-eye field and ignores it.
+    [int]$MirrorFov = 0
 )
 
 Set-StrictMode -Version Latest
@@ -168,6 +174,12 @@ if (-not $SkipRecenter) {
 }
 Step 'head rotation' 'view.apply 1'
 Step 'head 6DoF'     'view.position 1'
+
+if ($MirrorFov -gt 0) {
+    Write-Host ''
+    Write-Host 'flat mirror field:'
+    Step 'mirror fov' "xr.mirrorfov $MirrorFov"
+}
 
 if ($Controls -or $Reticle) {
     Write-Host ''

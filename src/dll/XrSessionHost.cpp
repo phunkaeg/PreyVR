@@ -580,6 +580,43 @@ void AssertDeclaredMatchesRendered(const XrFovf& declared)
     }
 }
 
+// **Why the flat mirror looks small, and the one knob for it.**
+//
+// Without a held eye pair -- at the main menu, or any time Prey is not rendering
+// alternating eyes -- the mirror submits Prey's OWN declared frustum, because
+// that is the frustum the pixels came from. Declaring the runtime's field over a
+// narrower render would claim an angular size the image does not have.
+//
+// Measured on this build at the main menu: Prey declares 51.8 degrees horizontal
+// and symmetric, while the runtime's view is 98 degrees and asymmetric, so the
+// compositor lays the image into the central 41% and the menu reads as a small
+// window rather than a screen. That is the honest projection working, not a bug.
+//
+// For a flat 2D menu, though, geometric honesty buys nothing: there is no depth
+// to get wrong, only text to read. Scaling the declared field makes the image
+// span more of the view. It is DEFAULT OFF at 100, because it is a visual
+// trade-off that only a headset can settle, and for 3D content it is a genuine
+// distortion rather than a preference.
+std::atomic<unsigned int> gMirrorFovPercent{100};
+
+XrFovf ScaleDeclaredFov(const XrFovf& fov)
+{
+    const unsigned int percent = gMirrorFovPercent.load(std::memory_order_acquire);
+    if (percent == 100u) { return fov; }
+    // Scaling the TANGENT, not the angle: the projection is linear in tangent
+    // space, so doubling the angle would not double the apparent size.
+    const float scale = static_cast<float>(percent) * 0.01f;
+    const auto grow = [scale](float angle) {
+        return std::atan(std::tan(angle) * scale);
+    };
+    XrFovf out{};
+    out.angleLeft = grow(fov.angleLeft);
+    out.angleRight = grow(fov.angleRight);
+    out.angleUp = grow(fov.angleUp);
+    out.angleDown = grow(fov.angleDown);
+    return out;
+}
+
 std::optional<XrFovf> DeclaredFovFromLiveCamera()
 {
     const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
@@ -1040,7 +1077,7 @@ void ServiceXrFrame(void* renderer)
                 if (!stereoPair) {
                     const auto preyFov = DeclaredFovFromLiveCamera();
                     if (preyFov) {
-                        liveDeclared = *preyFov;
+                        liveDeclared = ScaleDeclaredFov(*preyFov);
                         haveDeclared = true;
                     }
                 }
@@ -1087,6 +1124,19 @@ void ServiceXrFrame(void* renderer)
         }
     }
 }
+
+DWORD SetMirrorFovPercent(unsigned int percent)
+{
+    // Clamped, not rejected. Below 100 shrinks the image further, which nobody
+    // wants but is harmless; far above it declares a field wider than the
+    // headset has and the compositor simply crops.
+    const unsigned int clamped = percent < 50u ? 50u : (percent > 400u ? 400u : percent);
+    gMirrorFovPercent.store(clamped, std::memory_order_release);
+    Log("mirror_fov percent=" + std::to_string(clamped));
+    return 0;
+}
+
+DWORD MirrorFovPercent() { return gMirrorFovPercent.load(std::memory_order_relaxed); }
 
 DWORD SetXrStereoSubmission(unsigned int enabled)
 {

@@ -165,10 +165,23 @@ the main menu: title, "Press Any Key", station artwork, 43.6% of sampled pixels
 non-black in a clean 2560x1440 frame. The backbuffer is what gets submitted, so
 the menu is in the submitted image.
 
-**What this does not cover.** The headset was not connected for that run
-(`xr.start status=unavailable(3)`), so it settles the image content and not the
-end-to-end compositor path, and not whether the text is legible at headset
-scale. Both still need the headset.
+**And confirmed in both eyes.** A later capture taken from xr-sim's compositor --
+what it was handed as a projection layer, per eye -- shows the menu in each eye.
+That is one real step past the backbuffer.
+
+**It lands in the central 41% of the view.** The mod declares Prey's own 51.8
+degree symmetric field against the runtime's 98 degree asymmetric one, because
+with no held eye pair the pixels genuinely came from Prey's frustum and claiming
+otherwise would misstate their angular size. So the menu reads as a small window
+rather than a screen. That is the honest projection working, not a defect.
+
+For a flat menu, though, there is no depth to distort and only text to read.
+`xr.mirrorfov 200` takes it to 83% of the view and 19% of the eye image, and the
+prompt becomes plainly readable. Default is 100, because for 3D content the same
+scaling is a genuine distortion and only a headset settles the trade-off.
+
+**Still not covered:** whether a real compositor and real optics read the same
+way, and the framerate. Both need the headset.
 
 At 2688x2880 the menu **letterboxes** into a 16:9 band with black above and
 below, because Prey's 2D UI keeps a fixed aspect. The 3D view does fill the

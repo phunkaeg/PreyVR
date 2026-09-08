@@ -1937,6 +1937,46 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+
+## 2026-09-08 — R-113: the menu IS in both eyes, and it is small
+
+Captured from xr-sim's compositor -- what it was actually handed as a projection
+layer, per eye, not a backbuffer readback. **The main menu is present in both
+eyes.** That closes the question the backbuffer capture could only half answer.
+
+**It occupies the central 41% of the horizontal view.** The numbers, from the
+capture's own sidecar:
+
+| | value |
+|---|---|
+| runtime's view, per eye | `l=-54 r=44 u=55 d=-55`, asymmetric |
+| what the mod declares | `l=-25.913 r=25.913 u=27.5 d=-27.5`, symmetric |
+| claimed tangent vs the eye's | 0.486 against 1.171, ratio **0.41** |
+| eye image with content | **4.7%** |
+
+**This is the honest projection working, not a defect.** With no held eye pair --
+the main menu, or anything Prey does not render as alternating eyes -- the mirror
+submits Prey's OWN declared frustum, because that is the frustum the pixels came
+from. Declaring the runtime's 98 degrees over a 51.8 degree render would claim an
+angular size the image does not have. `xr.submit 1` does not change it: the
+stereo branch needs a held pair, and at a menu there is none.
+
+**But for a flat 2D menu, geometric honesty buys nothing.** There is no depth to
+get wrong, only text to read. `xr.mirrorfov <percent>` scales the declared field,
+default 100, and it is measured:
+
+| percent | declared horizontal | claimed tangent | share of view | content |
+|---|---|---|---|---|
+| 100 | ±25.9° | 0.49 | 41% | 4.6% |
+| 200 | ±44.2° | 0.97 | 83% | 19.0% |
+
+The tangent doubles exactly, because the scaling is applied in tangent space --
+doubling the angle would not double the apparent size. At 200 the menu fills most
+of the view and "Press Any Key" is plainly readable.
+
+**Default 100, deliberately.** For 3D content this is a real distortion rather
+than a preference, and only a headset can judge the trade-off. The lever exists
+so that judgement can be made in one session instead of guessed at.
 ## 2026-09-08 — R-112: the reticle was the third origin, and now is not
 
 The reconciliation was described as complete and was not. `WeaponAim` publishes
