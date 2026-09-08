@@ -86,6 +86,11 @@ std::atomic<bool> gMuzzleInstalled{false};
 struct MuzzleSample {
     EquippedRig owner{};
     Vec3 nativeOrigin{}, aimOrigin{}, gripOrigin{};
+    // The grip's ORIENTATION at the same instant, which is what makes the
+    // muzzle offset expressible in the grip's own frame and therefore reusable
+    // as the weapon moves. Without it the pair of positions is only valid for
+    // the one pose it was captured in.
+    Quaternion gripOrientation{};
     std::uint64_t poseSequence = 0, poseAgeNs = 0, capturedNs = 0;
     unsigned int cameraFallback = 0;
 };
@@ -120,7 +125,10 @@ void* __fastcall FiringPositionObserved(void* weapon, void* output, std::uint32_
     if (!IsPoseUsable(hand.aimPose, hand.aimValidity, 200000000ull) ||
         !IsPoseUsable(hand.gripPose, hand.gripValidity, 200000000ull)) { return result; }
     sample.aimOrigin = animik::ControllerWorldFromHead(frame.yaw, frame.nativeEye, frame.tracking.head, hand.aimPose).position;
-    sample.gripOrigin = animik::ControllerWorldFromHead(frame.yaw, frame.nativeEye, frame.tracking.head, hand.gripPose).position;
+    const Pose gripWorld = animik::ControllerWorldFromHead(
+        frame.yaw, frame.nativeEye, frame.tracking.head, hand.gripPose);
+    sample.gripOrigin = gripWorld.position;
+    sample.gripOrientation = gripWorld.orientation;
     sample.poseSequence = frame.tracking.sequence;
     sample.capturedNs = MonotonicNanoseconds();
     sample.poseAgeNs = sample.capturedNs - frame.tracking.publishedNs;
@@ -352,6 +360,90 @@ std::string WeaponMuzzleAlignmentReport()
         << " muzzleAimGapMm=" << gap(sample.nativeOrigin,sample.aimOrigin)
         << " muzzleGripGapMm=" << gap(sample.nativeOrigin,sample.gripOrigin);
     return out.str();
+}
+
+// The muzzle expressed in the GRIP's frame, so it follows the weapon.
+struct BarrelOffset {
+    Vec3 local{};
+    std::uint64_t equipGeneration = 0;
+    bool valid = false;
+};
+LatestSnapshot<BarrelOffset> gBarrelOffset;
+std::atomic<unsigned long long> gBarrelCalibrations{0};
+
+DWORD CalibrateWeaponBarrel()
+{
+    MuzzleSample sample{};
+    if (!gMuzzleSample.TryRead(sample)) {
+        Log("result=refused detail=no_muzzle_sample note=fire_once_first");
+        return 1;
+    }
+    if (sample.cameraFallback != 0) {
+        // The native query fell back to the camera because its safety ray was
+        // blocked, so this position is not the muzzle at all. Calibrating from
+        // it would bake a wall into the weapon.
+        Log("result=refused detail=sample_used_camera_fallback");
+        return 2;
+    }
+    GameplayPoseFrame frame{};
+    EquippedRig owner{};
+    if (!TryGetGameplayPoseFrame(frame, false) || !TryGetEquippedRig(frame.player, owner) ||
+        owner.generation != sample.owner.generation) {
+        Log("result=refused detail=sample_belongs_to_another_weapon");
+        return 3;
+    }
+    const Quaternion grip = Normalize(sample.gripOrientation);
+    const Vec3 delta{sample.nativeOrigin.x - sample.gripOrigin.x,
+                     sample.nativeOrigin.y - sample.gripOrigin.y,
+                     sample.nativeOrigin.z - sample.gripOrigin.z};
+    BarrelOffset offset{};
+    offset.local = Rotate(Conjugate(grip), delta);
+    offset.equipGeneration = owner.generation;
+    offset.valid = std::isfinite(offset.local.x) && std::isfinite(offset.local.y) &&
+                   std::isfinite(offset.local.z);
+    // A muzzle a metre from the hand is a bad sample, not a long weapon.
+    const float reach = std::sqrt(offset.local.x * offset.local.x +
+                                  offset.local.y * offset.local.y +
+                                  offset.local.z * offset.local.z);
+    if (!offset.valid || reach > 1.0f) {
+        Log("result=refused detail=implausible_offset mm=" +
+            std::to_string(static_cast<int>(reach * 1000.0f)));
+        return 4;
+    }
+    gBarrelOffset.Publish(offset);
+    gBarrelCalibrations.fetch_add(1, std::memory_order_relaxed);
+    Log("result=0 detail=barrel_calibrated mm=" +
+        std::to_string(static_cast<int>(offset.local.x * 1000.0f)) + "," +
+        std::to_string(static_cast<int>(offset.local.y * 1000.0f)) + "," +
+        std::to_string(static_cast<int>(offset.local.z * 1000.0f)));
+    return 0;
+}
+
+bool TryGetMuzzleFromGrip(const Pose& gripWorld, std::uint64_t currentEquipGeneration, Vec3& out)
+{
+    BarrelOffset offset{};
+    if (!gBarrelOffset.TryRead(offset) || !offset.valid) { return false; }
+    // The offset belongs to the weapon it was measured on. F-009 again: a
+    // different weapon has a different muzzle, and reusing one is a confident
+    // wrong answer rather than a missing one.
+    if (offset.equipGeneration != currentEquipGeneration) { return false; }
+    const Vec3 turned = Rotate(Normalize(gripWorld.orientation), offset.local);
+    out = Vec3{gripWorld.position.x + turned.x,
+               gripWorld.position.y + turned.y,
+               gripWorld.position.z + turned.z};
+    return true;
+}
+
+unsigned long long WeaponBarrelCalibrations()
+{
+    return gBarrelCalibrations.load(std::memory_order_relaxed);
+}
+
+int WeaponBarrelOffsetMillimetres(unsigned int axis)
+{
+    BarrelOffset offset{};
+    if (!gBarrelOffset.TryRead(offset) || !offset.valid || axis >= 3) { return 0; }
+    return static_cast<int>((&offset.local.x)[axis] * 1000.0f);
 }
 
 std::uint64_t WeaponEquipGeneration() { return gEquipGeneration.load(std::memory_order_acquire); }

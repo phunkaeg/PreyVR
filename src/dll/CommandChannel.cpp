@@ -169,6 +169,12 @@ void WriteReport(std::ostringstream& out)
         << WeaponMuzzleAlignmentReport()
         << " aimOriginApplied=" << AimOriginAppliedCount()
         << " aimSamples=" << AimSamplePublishedCount()
+        << " aimOriginMode=" << AimOriginMode()
+        << " aimMuzzleApplied=" << AimMuzzleOriginAppliedCount()
+        << " aimMuzzleUnavailable=" << AimMuzzleUnavailableCount()
+        << " barrelCalibrations=" << WeaponBarrelCalibrations()
+        << " barrelOffsetMm=" << WeaponBarrelOffsetMillimetres(0) << ","
+        << WeaponBarrelOffsetMillimetres(1) << "," << WeaponBarrelOffsetMillimetres(2)
         << " reticleApplied=" << ReticleFollowAppliedCount()
         << " reticleOffScreen=" << ReticleFollowOffScreenCount()
         << " reticleXY=" << ReticleFollowLastX() << "," << ReticleFollowLastY()
@@ -406,7 +412,13 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     } else if (verb == "aim.origin") {
         // Diagnostic controller-aim origin; this does not establish a muzzle
         // transform or remove projectile convergence from the authored helper.
-        out << "aim.origin result=" << SetAimOriginFromHand(arg(1, 1));
+        out << "aim.origin result=" << SetAimOriginFromHand(arg(1, 1))
+            << " mode=" << AimOriginMode()
+            << (AimOriginMode() == 2 ? "(muzzle)" : AimOriginMode() == 1 ? "(hand)" : "(native)");
+    } else if (verb == "aim.calibratebarrel") {
+        out << "aim.calibratebarrel result=" << CalibrateWeaponBarrel()
+            << " offsetMm=" << WeaponBarrelOffsetMillimetres(0) << ","
+            << WeaponBarrelOffsetMillimetres(1) << "," << WeaponBarrelOffsetMillimetres(2);
     } else if (verb == "aim.enable") {
         // The detached-aim lane, reachable from the channel at last. H-004 is
         // reproduced against two native consumers -- the wrench contact moved

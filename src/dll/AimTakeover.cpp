@@ -51,7 +51,9 @@ std::atomic<unsigned long long> gRejNoPose{0};
 std::atomic<unsigned long long> gRejNoPlayer{0};
 std::atomic<unsigned long long> gRejCompose{0};
 std::atomic<unsigned int> gNativeMagnitude{0};
-std::atomic<bool> gOriginFromHand{false};
+// 0 native eye, 1 the tracked hand, 2 the calibrated muzzle.
+std::atomic<unsigned int> gOriginMode{0};
+std::atomic<unsigned long long> gMuzzleOriginApplied{0}, gMuzzleUnavailable{0};
 std::atomic<bool> gBodyYaw{true};
 std::atomic<int> gCamYawMilli{0}, gHeadYawMilli{0}, gPlaySpaceYawMilli{0};
 std::atomic<int> gNativeEyeMilli[3]{0,0,0};
@@ -244,10 +246,22 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     // honest pointing axis, explicitly not a barrel.
     {
         preyvr::aim::Sample sample;
+        // The sample carries the best origin available, and says which it is.
         sample.origin = engineOrigin;
+        {
+            const Pose grip = animik::ControllerWorldFromHead(
+                reference.yawRadians, engineOrigin, headPose, controller.gripPose);
+            Vec3 muzzle{};
+            if (TryGetMuzzleFromGrip(grip, WeaponEquipGeneration(), muzzle)) {
+                sample.origin = muzzle;
+                sample.confidence = preyvr::aim::Confidence::barrel;
+            }
+        }
         sample.direction = ray->direction;
         sample.orientation = controller.aimPose.orientation;
-        sample.confidence = preyvr::aim::Confidence::origin;
+        if (sample.confidence == preyvr::aim::Confidence::none) {
+            sample.confidence = preyvr::aim::Confidence::origin;
+        }
         sample.equipGeneration = WeaponEquipGeneration();
         sample.referenceGeneration = frame.referenceGeneration;
         sample.trackingSequence = frame.tracking.sequence;
@@ -263,18 +277,42 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
                 &ray->direction, sizeof(ray->direction));
     gApplied.fetch_add(1, std::memory_order_relaxed);
 
-    if (gOriginFromHand.load(std::memory_order_acquire)) {
-        // Head-relative, at the engine's own eye point: the same composition the
-        // anim-IK lane uses for the wrist, so the ray starts where the hand is.
+    const unsigned int originMode = gOriginMode.load(std::memory_order_acquire);
+    if (originMode != 0) {
         const Pose hand = animik::ControllerWorldFromHead(reference.yawRadians, engineOrigin,
                                                           headPose, controller.aimPose);
-        if (std::isfinite(hand.position.x) && std::isfinite(hand.position.y) &&
-            std::isfinite(hand.position.z)) {
+        Vec3 chosen = hand.position;
+        bool haveMuzzle = false;
+        if (originMode == 2) {
+            // **The reconciliation.** Prey's projectile already leaves the
+            // weapon's authored muzzle helper while the reticle ray starts at
+            // the eye, so a shot flies from the muzzle toward wherever an eye
+            // ray landed and the two agree at exactly one distance. Starting the
+            // ray at that same muzzle removes the convergence entirely.
+            //
+            // The GRIP pose is used, not the aim pose, because the calibration
+            // was measured against the grip: an offset is only meaningful in
+            // the frame it was captured in.
+            const Pose grip = animik::ControllerWorldFromHead(
+                reference.yawRadians, engineOrigin, headPose, controller.gripPose);
+            Vec3 muzzle{};
+            if (TryGetMuzzleFromGrip(grip, WeaponEquipGeneration(), muzzle)) {
+                chosen = muzzle;
+                haveMuzzle = true;
+            } else {
+                // Uncalibrated, or a different weapon since. Fall back to the
+                // hand and COUNT it: silently reverting to a less accurate
+                // origin is how a lane looks fine and aims wrong.
+                gMuzzleUnavailable.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+        if (std::isfinite(chosen.x) && std::isfinite(chosen.y) && std::isfinite(chosen.z)) {
             std::memcpy(reinterpret_cast<void*>(
                             playerAddress + engine::ArkPlayerLayout::cachedReticleOrigin),
-                        &hand.position, sizeof(hand.position));
-            gLastOriginEdit = {playerAddress, engineOrigin, hand.position};
+                        &chosen, sizeof(chosen));
+            gLastOriginEdit = {playerAddress, engineOrigin, chosen};
             gOriginApplied.fetch_add(1, std::memory_order_relaxed);
+            if (haveMuzzle) { gMuzzleOriginApplied.fetch_add(1, std::memory_order_relaxed); }
         }
     }
 
@@ -376,12 +414,22 @@ int AimPlaySpaceYawMilliDegrees() { return gPlaySpaceYawMilli.load(std::memory_o
 int AimNativeEyeMillimetres(unsigned int axis) { return axis < 3 ? gNativeEyeMilli[axis].load(std::memory_order_relaxed) : 0; }
 int AimTrackedHeadMillimetres(unsigned int axis) { return axis < 3 ? gTrackedHeadMilli[axis].load(std::memory_order_relaxed) : 0; }
 
-DWORD SetAimOriginFromHand(unsigned int enabled)
+DWORD SetAimOriginFromHand(unsigned int mode)
 {
-    if (enabled > 1) { return 1; }
-    gOriginFromHand.store(enabled != 0u, std::memory_order_release);
-    Log(std::string("result=0 detail=origin_from_hand value=") + (enabled ? "1" : "0"));
+    if (mode > 2u) { return 1; }
+    gOriginMode.store(mode, std::memory_order_release);
+    Log("result=0 detail=origin_mode value=" + std::to_string(mode));
     return 0;
+}
+
+unsigned int AimOriginMode() { return gOriginMode.load(std::memory_order_relaxed); }
+unsigned long long AimMuzzleOriginAppliedCount()
+{
+    return gMuzzleOriginApplied.load(std::memory_order_relaxed);
+}
+unsigned long long AimMuzzleUnavailableCount()
+{
+    return gMuzzleUnavailable.load(std::memory_order_relaxed);
 }
 
 unsigned long long AimOriginAppliedCount() { return gOriginApplied.load(std::memory_order_relaxed); }

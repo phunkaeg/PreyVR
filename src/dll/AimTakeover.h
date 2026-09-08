@@ -100,7 +100,19 @@ DWORD SetAimTakeoverEnabled(unsigned int enabled);
 // 0 preserves native origin; 1 uses the tracked aim point (diagnostic).
 // The controller point is NOT the authored muzzle; per-weapon barrel alignment
 // and native wall-clip fallback require independent validation.
-DWORD SetAimOriginFromHand(unsigned int enabled);
+// 0 keeps Prey's native eye origin, 1 uses the tracked hand, 2 uses the
+// CALIBRATED MUZZLE and falls back to the hand when none is available.
+//
+// Mode 2 is the reconciliation: Prey's projectile already leaves the weapon's
+// authored muzzle helper while the reticle ray starts at the eye, so the two
+// agree at exactly one distance. Sharing an origin removes that.
+DWORD SetAimOriginFromHand(unsigned int mode);
+unsigned int AimOriginMode();
+unsigned long long AimMuzzleOriginAppliedCount();
+// Frames that asked for the muzzle and did not get one -- uncalibrated, or a
+// weapon change since. Counted, because falling back silently to a less
+// accurate origin is how a lane looks fine and aims wrong.
+unsigned long long AimMuzzleUnavailableCount();
 unsigned long long AimOriginAppliedCount();
 
 // Frames the cached ray was overwritten.

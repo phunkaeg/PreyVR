@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <string>
 #include "preyvr/RigOwnership.h"
+#include "preyvr/VrMath.h"
 
 // Moves the weapon model itself, independently of the hands.
 //
@@ -67,6 +68,24 @@ bool TryGetEquippedRig(std::uintptr_t player, EquippedRig& out);
 // Bumps on every successful local attach; lets callers notice a re-equip
 // without reading the rig.
 std::uint64_t WeaponEquipGeneration();
+
+// --- barrel calibration -----------------------------------------------------
+//
+// Derives where the weapon's muzzle sits relative to the tracked grip, from a
+// real firing-position sample the passive observer already captures. That pair
+// -- the engine's own muzzle and our grip, at one instant -- is the only
+// evidence available for the offset, and it beats any authored guess: an
+// attachment default is not a barrel axis and neither is the model's +Y.
+//
+// Fire once with the weapon steady, then calibrate. Refuses a sample that used
+// the native camera fallback (a blocked safety ray, so not the muzzle at all),
+// one belonging to a different weapon, or an implausible reach.
+DWORD CalibrateWeaponBarrel();
+// The calibrated muzzle for the current grip. False when uncalibrated, or when
+// the weapon has changed since -- a different weapon has a different muzzle.
+bool TryGetMuzzleFromGrip(const Pose& gripWorld, std::uint64_t currentEquipGeneration, Vec3& out);
+unsigned long long WeaponBarrelCalibrations();
+int WeaponBarrelOffsetMillimetres(unsigned int axis);
 
 // Installs the hook on `CArkWeapon::AttachToHand` (R-024) and captures the
 // equipped weapon's `IAttachment*` from `CArkWeapon+0x2B0`.
