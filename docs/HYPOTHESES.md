@@ -924,7 +924,56 @@ What H-021 did **not** establish: barrel alignment. A shot still converges from
 the weapon's authored muzzle helper toward the reticle ray, so per-weapon
 grip-to-barrel rotation is a separate lane with its own runtime gate.
 
-## H-022 -- the weapon model flickers in stereo, occasionally
+## H-022b -- the steady mirage: a pass that never receives the near modification
+
+**Raised by the wearer, 2026-09-08, after the eye-ownership fix removed the
+flicker but left the ghost:** *"one pass always uses the modified near matrix
+while another uses an unmodified matrix. That mismatch could leave the mirage
+even after the eye-timing fix."*
+
+**The direction test, which none of my earlier explanations survived.** Our edit
+subtracts the eye displacement from the near matrix's translation row, which
+moves the camera to the eye and therefore shifts a near object *toward the nose*
+in each image -- that shift is what gives the weapon its near depth. So:
+
+| pass | offset | where it appears |
+|---|---|---|
+| modified (correct) | one delta | inward, toward the nose |
+| **unmodified** | none | **outward: right in the right eye, left in the left** |
+
+Outward in each eye is exactly what was reported. The main model is the
+*modified* one and the mirage is a pass that was **never modified at all** --
+not, as previously assumed, an extra copy carrying the offset twice. Every "2x"
+explanation predicted the correct magnitude and the wrong direction, and the
+direction was never checked against them.
+
+It also explains the remaining evidence without strain: the ghost is steady
+because that pass misses the modification on every frame, and `near.zero 1`
+collapses the pair because zeroing the delta removes the only difference between
+a modified and an unmodified matrix.
+
+**There is already static evidence for such a path.** The H-022 review found the
+renderer's own zero view-projection built at `0xF42C00` from `renderer+0x230`,
+and `0xF18970` copying `renderer+0x230..+0x26C` into a per-slot parameter cache
+at `renderer + slot*0x380 + 0x8D64`. Our hook edits the view-info's near VP at
+`+0xA0` and nothing else, so any consumer reading that cached renderer matrix
+gets no eye delta -- which is this hypothesis, with a named candidate.
+
+**Do not simply patch `renderer+0x230`.** The review is explicit that it serves
+broader camera-relative rendering; offsetting it globally would move far more
+than the weapon.
+
+### The test that settles it
+
+Whether the mirage sits at the **mono** position is now a specific, checkable
+claim rather than a description. `near.halfipd 20` versus `45` changes the
+delta: under this hypothesis the main model moves and **the mirage does not**,
+because the mirage has no delta to scale. If both move together, the mirage
+carries a delta after all and this is wrong.
+
+That is one live command each way, it keeps stereo armed, and unlike the three
+counters before it, it tests the mechanism rather than the absence of a
+mechanism the instrument could not detect.
 
 **Static review correction, 2026-09-08:** Read
 [the H-022 eye/frame and pass audit](RE-H022-WEAPON-FLICKER-AND-GHOST-2026-09-08.md)
