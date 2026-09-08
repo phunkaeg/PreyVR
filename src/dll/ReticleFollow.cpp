@@ -1,9 +1,11 @@
 #include "ReticleFollow.h"
 
 #include "HudBridge.h"
+#include "XrSessionHost.h"
 #include "CameraEditHook.h"
 #include "Logger.h"
 #include "preyvr/EngineMap.h"
+#include "preyvr/WeaponAim.h"
 #include "preyvr/StereoCamera.h"
 #include "preyvr/StereoFrame.h"
 #include "preyvr/LatestSnapshot.h"
@@ -28,6 +30,9 @@ std::atomic<unsigned long long> gDispatchFailed{0};
 std::atomic<unsigned int> gLastX{500};
 std::atomic<unsigned int> gLastY{500};
 std::atomic<unsigned long long> gOriginOffset{0};
+// The canvas fraction actually dispatched, reported beside the viewport fraction
+// it came from so the correction is checkable rather than assumed.
+std::atomic<unsigned int> gCanvasX{500}, gCanvasY{500};
 
 struct ProjectionRecord {
     ReticleAimContext context{};
@@ -260,8 +265,29 @@ bool WriteReticleForCamera(void* player, const Vec3& rayOrigin,
     // dispatch off isolates the write, dispatch on adds the movie call.
     if (gDispatch.load(std::memory_order_acquire)) {
         record.dispatch = true;
-        const DWORD x = CallHudOneFloat(kReticleXOffset, fractionX);
-        const DWORD y = CallHudOneFloat(kReticleYOffset, fractionY);
+        // **The movie wants a CANVAS fraction, not a viewport one.** Prey's HUD
+        // draws into a 16:9 canvas scaled to COVER the frame, so at any other
+        // aspect the canvas overflows in one axis and only its middle is
+        // visible. A viewport fraction therefore places the symbol correctly at
+        // the centre and increasingly wrongly toward the edges -- measured in
+        // game at 2688x2880 as up to 271 px of error, against zero at 16:9
+        // (R-118). That is the reported slide, and it is why every reading of
+        // the aim maths was right and the wearer was still correct.
+        //
+        // The frame size comes from the resolution chain rather than the camera,
+        // because the camera carries a frustum and this needs pixels. A zero
+        // there makes the conversion the identity, which is the previous
+        // behaviour rather than a wrong correction.
+        const float frameWidth = static_cast<float>(XrResolutionChain(4));
+        const float frameHeight = static_cast<float>(XrResolutionChain(5));
+        const auto canvas = preyvr::aim::ViewportToHudCanvas(fractionX, fractionY,
+                                                            frameWidth, frameHeight);
+        gCanvasX.store(static_cast<unsigned int>(canvas.x * 1000.0f + 0.5f),
+                       std::memory_order_relaxed);
+        gCanvasY.store(static_cast<unsigned int>(canvas.y * 1000.0f + 0.5f),
+                       std::memory_order_relaxed);
+        const DWORD x = CallHudOneFloat(kReticleXOffset, canvas.x);
+        const DWORD y = CallHudOneFloat(kReticleYOffset, canvas.y);
         record.dispatchX = x;
         record.dispatchY = y;
         if (x == 0 && y == 0) {
@@ -332,6 +358,8 @@ DWORD SetReticleDispatchEnabled(unsigned int enabled)
     return 0;
 }
 
+DWORD ReticleCanvasX() { return gCanvasX.load(std::memory_order_relaxed); }
+DWORD ReticleCanvasY() { return gCanvasY.load(std::memory_order_relaxed); }
 unsigned long long ReticleOriginOffsetMillimetres()
 {
     return gOriginOffset.load(std::memory_order_relaxed);

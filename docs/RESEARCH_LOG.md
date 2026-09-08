@@ -1943,6 +1943,67 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+
+## 2026-09-08 — R-118: the reticle slide is a HUD canvas mismatch, measured in pixels
+
+**Found, and it is not the aim.** Prey's HUD draws into a 16:9 canvas scaled to
+**cover** the frame and centred. At any aspect but 16:9 the canvas overflows in
+one axis and only its middle is visible, so a viewport fraction handed to the
+movie lands correctly at the centre and increasingly wrongly toward the edges.
+
+Measured in the wearer's own save, GLOO gun equipped, controller pinned in the
+simulator and the head stepped to known angles. The sprite's pixel centre was
+read off captured frames:
+
+| head | `rpX` | naive `f x 2688` | cover-canvas `f x 5120 - 1216` | measured |
+|---|---|---|---|---|
+| -20 | 0.39486 | 1061 | **806** | ~800 |
+| 0 | 0.50090 | 1346 | **1349** | ~1340 |
+| +20 | 0.60514 | 1627 | **1882** | ~1898 |
+
+The model holds within ~16 px; the naive mapping is out by up to **271 px**. A
+line through the three points implies a canvas 5222 px wide against the 5120 that
+`height * 16/9` predicts, and a centre within 5 px of the frame's.
+
+**The control that makes it conclusive:** the same three angles were measured at
+**2560x1440** first, and there the naive prediction was exact -- 1009/1282/1551
+against ~1018/~1290/~1550. At 16:9 the canvas and the frame coincide, so there is
+no error. That is why this never appeared on a monitor, and why it took the
+wearer's headset aspect to expose it.
+
+This matches the report exactly: right on an object looked at straight, sliding
+off as it moves to the periphery. It also explains why `aim.bodyyaw 0` read as
+"fully head-locked" -- that changed the fraction, and the canvas error scales
+with distance from centre.
+
+**Everything upstream was already proved correct** (R-117): the world aim
+direction is constant across a 40-degree head sweep with the controller pinned,
+and the viewport fraction matches the pinhole prediction at every angle. So each
+code reading that said "this cannot be head coupling" was right, and the wearer
+was right too. The fault was downstream of both.
+
+**Fixed** by `preyvr::aim::ViewportToHudCanvas`, which converts the viewport
+fraction into the canvas fraction before the write and the dispatch. It is the
+identity at 16:9, corrects only the overflowing axis, holds the centre fixed at
+every aspect, and passes a bad frame size straight through rather than inventing
+a correction from nonsense. `reticleCanvasXY` reports what was dispatched beside
+the viewport fraction it came from.
+
+Four tests, pinned to the measured pixels rather than to the derivation: the
+model reproduces where the sprite actually was, the correction sends it where it
+was meant to go, the identity holds at 16:9, the correction moves to Y on a wide
+frame, and the centre never moves at any aspect -- which is precisely why a
+centre-only check could never have caught this.
+
+**Not yet confirmed by eye in a headset.** The arithmetic and the pixels agree;
+a wearer has not seen the corrected reticle. Also unmeasured: the Y axis
+off-centre, since every sample sat at `rpY = 0.5`, where both models agree.
+
+**A caveat about R-114.** That entry measured the MENU letterboxing at this
+aspect, which is the opposite fit to what the HUD does here. Not a contradiction
+-- Scaleform elements carry their own scale mode -- but R-114's canvas reasoning
+must not be transferred to the HUD, and the R-114 wording should be read as
+about the menu only.
 ## 2026-09-08 — F-016: loading a save from the menu stalls under headless xr-sim
 
 Attempting to reach a save with a weapon equipped, so the reticle sprite's actual

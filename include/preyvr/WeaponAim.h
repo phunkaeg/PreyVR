@@ -96,4 +96,38 @@ ScreenPoint ProjectToScreen(const Vec3& worldPoint,
                             float tanLeft, float tanRight,
                             float tanUp, float tanDown);
 
+// **A viewport fraction is not what the HUD movie wants.** Prey's HUD draws into
+// a 16:9 canvas scaled to COVER the frame and centred, so at any aspect other
+// than 16:9 the canvas is larger than the frame in one axis and only its middle
+// is visible. Handing the movie a plain viewport fraction therefore places the
+// reticle correctly at the centre and increasingly wrongly toward the edges.
+//
+// Measured in-game at 2688x2880 (R-118), reticle sprite centre in frame pixels:
+//
+//   viewport 0.39486 -> wanted 1061, the movie drew it at ~800
+//   viewport 0.50090 -> wanted 1346, drawn ~1340   (centre agrees, as it must)
+//   viewport 0.60514 -> wanted 1627, drawn ~1898
+//
+// A line through those points gives a canvas 5222 px wide against the 5120 that
+// `height * 16/9` predicts, and an implied centre within 5 px of the frame's.
+// At 2560x1440 the same three angles landed on the naive prediction exactly,
+// because there the canvas and the frame coincide.
+//
+// **Cover, not contain.** R-114 measured the MENU letterboxing at this aspect,
+// which is the opposite fit. That is not a contradiction: Scaleform elements
+// carry their own scale mode, and the menu and the HUD need not share one. The
+// HUD's behaviour is what these numbers describe, and only the HUD's.
+struct CanvasPoint {
+    float x = 0.0f;
+    float y = 0.0f;
+};
+
+// Converts a viewport fraction into the fraction the HUD movie should be given
+// so the symbol lands at the intended viewport position. Reduces to the identity
+// at 16:9, and refuses nothing -- a degenerate frame size returns the input
+// unchanged, because writing a corrected value from a bad size would be worse
+// than writing the uncorrected one.
+CanvasPoint ViewportToHudCanvas(float viewportX, float viewportY,
+                                float frameWidth, float frameHeight);
+
 } // namespace preyvr::aim

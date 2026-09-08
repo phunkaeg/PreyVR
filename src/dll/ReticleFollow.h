@@ -99,6 +99,12 @@ unsigned long long ReticleFollowOffScreenCount();
 // The last screen position written, in thousandths of a viewport fraction --
 // 500,500 is dead centre. Reading ~500,500 with the controller pointed straight
 // ahead confirms the projection before anything is judged by eye.
+// The viewport fraction the projection produced, and the HUD-canvas fraction
+// actually dispatched after correcting for Prey's cover-fitted 16:9 canvas.
+// They are equal at 16:9 and diverge with the aspect; seeing both side by side
+// is what makes the correction checkable rather than assumed.
+DWORD ReticleCanvasX();
+DWORD ReticleCanvasY();
 DWORD ReticleFollowLastX();
 DWORD ReticleFollowLastY();
 
