@@ -924,7 +924,61 @@ What H-021 did **not** establish: barrel alignment. A shot still converges from
 the weapon's authored muzzle helper toward the reticle ray, so per-weapon
 grip-to-barrel rotation is a separate lane with its own runtime gate.
 
-## H-022b -- the steady mirage: a pass that never receives the near modification
+## H-022b -- SOLVED: the mirage is temporal AA blending the other eye
+
+**Confirmed in a headset, 2026-09-08, by a live control:** `r_AntialiasingMode 0`
+and the wearer reported *"mirage is gone"*. Restoring a temporal mode brings it
+back.
+
+### The observation that identified it
+
+The half-IPD sweep was inconclusive -- changing the delta altered the weapon's
+apparent depth and size as well as the mirage, so the gap could not be judged.
+The wearer then supplied something far sharper:
+
+> "if i line the weapon mesh edge up to a distant object with my right eye, then
+> switch eyes to my left eye, the mirage appears to occupy the exact same
+> location as the right eye."
+
+The mirage sits **exactly where the weapon sits in the other eye**. Not an
+unmodified pass, and not a doubled offset: it is that eye's image, present in
+this eye.
+
+### The mechanism, and why it is architectural
+
+This mod renders **one eye per frame, alternating**, into a single backbuffer.
+So the temporal history buffer *always* holds the other eye's image, and TAA
+composites it into every frame. Steady, at exactly the other eye's position,
+scaling with the eye delta, and completely untouched by the eye-ownership fix --
+every property that was observed.
+
+**The consequence is larger than this artefact: alternating-eye rendering is
+incompatible with any effect that accumulates across frames.** Motion blur was
+already known to be (it is disabled as a requirement, not a preference). TAA is
+the same class. So is anything else history-based -- temporal upscaling,
+temporal shadows, screen-space reflections with history.
+
+So "disable TAA" is the *diagnosis*, not the fix. The fix is to stop the history
+buffer from mixing eyes: separate history per eye, a history reset on eye
+switch, or rendering both eyes within one frame.
+
+### This retracts a retraction, and the reason matters
+
+`STEREO_ROUTE.md` flagged TAA on precisely this reasoning -- "an effect that
+accumulates across frames which are now different eyes" -- and then **withdrew
+the warning**, concluding *"motion blur was the whole problem"* after a wearer
+cycled all four modes and chose mode 3.
+
+The original reasoning was correct. The retraction rested on a test that could
+not have found this: that same document records the settings were judged "with
+the image locked to Prey's own camera", before the weapon was controller-driven
+and before there was a near-field object to ghost against. A wearer choosing
+mode 3 while looking around a room is not evidence about a weapon held at arm's
+length.
+
+**A correct prediction should not be withdrawn because one test did not
+reproduce it** -- only because a test that *could* have reproduced it did not.
+That distinction was the whole error.
 
 **Raised by the wearer, 2026-09-08, after the eye-ownership fix removed the
 flicker but left the ghost:** *"one pass always uses the modified near matrix

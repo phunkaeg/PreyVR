@@ -319,6 +319,15 @@ failures **0**, 69 hotkey presses all seen.
 
 ### Two corrections to things this document previously implied
 
+> **RETRACTED 2026-09-08.** Temporal AA is *not* fine, and the original warning
+> in this document was right. `r_AntialiasingMode 0` removes the steady weapon
+> ghost a wearer had been seeing; a temporal mode restores it. The mirage sits
+> exactly where the weapon sits in the other eye, because we render one eye per
+> frame and TAA's history buffer therefore always holds the other one. The
+> retraction below rested on a comparison made "with the image locked to Prey's
+> own camera", before the weapon was controller-driven, so it had no near-field
+> object to ghost against. See H-022b.
+
 **Temporal AA is fine.** It was flagged as the same class of hazard as motion blur
 -- an effect that accumulates across frames which are now different eyes -- and
 warned about on that reasoning. A wearer cycled all four modes and chose mode 3.
