@@ -123,6 +123,7 @@ void WriteReport(std::ostringstream& out)
         << " xrFrames=" << XrSubmittedFrameCount()
         << " fovAgreed=" << DeclaredFovAgreeCount()
         << " fovDiverged=" << DeclaredFovDivergeCount()
+        << " projectionPolicy=" << (NativeProjectionEnabled() ? "prey_native" : "synthetic")
         << " cameraEdit=" << CameraEditStatusValue()
         << " lastEye=" << LastRenderedEye()
         << " viewObserved=" << ViewHookObservedCount()
@@ -649,6 +650,10 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << " actions=" << MenuNavigationActionCount();
     } else if (verb == "report") {
         WriteReport(out);
+        // results.txt is replaced by the next command. Preserve each requested
+        // snapshot so a headset sweep survives beyond its final sample. This
+        // runs on the command thread, not on every render frame.
+        lifecycle::Log("preyvr_report " + out.str());
     } else {
         // Reported, not ignored. A typo that silently does nothing is
         // indistinguishable from a mechanism that does not work.

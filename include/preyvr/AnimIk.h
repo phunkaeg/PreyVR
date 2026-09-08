@@ -63,7 +63,11 @@ struct CalibrationState {
     bool Bind(std::uint64_t owner, std::uint64_t reference, std::uint64_t epoch) {
         if (ownerGeneration == owner && referenceGeneration == reference && trackingEpoch == epoch) { return false; }
         pending = 0;                 // whatever the old rig had outstanding
-        autoPending = (ownerGeneration != 0) ? calibrated : 0u;
+        // A second rebind may arrive before the first automatic retake. In
+        // that interval calibrated is zero, but autoPending still records a
+        // hand which completed calibration before the transition. Preserve
+        // that recovery intent across churn; never carry its old offset as valid.
+        autoPending = (ownerGeneration != 0) ? (calibrated | autoPending) : 0u;
         settleFrames = 0;
         calibrated = 0;
         ownerGeneration = owner; referenceGeneration = reference; trackingEpoch = epoch;
@@ -74,7 +78,8 @@ struct CalibrationState {
     void Tick() { if (settleFrames < kSettleFrames) { ++settleFrames; } }
 
     void Request(unsigned int hands) { pending |= hands & 3u; }
-    void Invalidate() { calibrated = 0; }
+    // Explicit rig-signature reset is different from Bind's automatic recovery.
+    void Invalidate() { pending = autoPending = settleFrames = calibrated = 0; }
     bool Pending(unsigned int hand) const {
         if (hand >= 2) { return false; }
         if (pending & (1u << hand)) { return true; }   // asked for deliberately

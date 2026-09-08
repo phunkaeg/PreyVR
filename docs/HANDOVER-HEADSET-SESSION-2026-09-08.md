@@ -1,5 +1,11 @@
 # Headset session 2026-09-08 — findings, observations, and what is still open
 
+**Static follow-up:** [review and calibration fix](RE-HEADSET-SESSION-AUDIT-2026-09-08.md).
+The symmetric projection is expected under the logged `xr.native 1` policy.
+Peripheral shrinkage alone does not identify a HUD surface. An always-active
+menu navigator is an additional right-stick input producer, and a reproduced
+IK recovery bug is fixed in the isolated audit build. The reticle slide remains open.
+
 Build `2767000d7fd3e5ed` (identical in `configure`, `verify`, `headless` and the
 audit tree). Everything below is from a live headset run on a Quest 3 through
 VirtualDesktopXR at 2688x2880 per eye, `pixelRatioPercent=100`, `sizeMismatch=0`.
@@ -24,6 +30,15 @@ and, later, the one that matters most:
 > screen, almost as if it were wrapping a cylinder"
 
 ### Why the shrinkage is the important clue
+
+**Correction:** the explanation below is a hypothesis, not a deduction from the
+observation. A constant-pixel sprite in a rectilinear projection can shrink in
+*angular* size toward the headset periphery without any additional 3D HUD plane.
+For small sprites at horizontal bearing theta, relative angular width is
+`cos(theta)^2` and height is `cos(theta)`. A frontoparallel plane at fixed camera
+depth retains constant projected pixel scale. Measure pixels and angular size
+separately; centre agreement plus peripheral drift also does not uniquely prove
+a plane mismatch. See the follow-up for the derivation and corrected discriminator.
 
 A 2D sprite at a screen position does not change size. Something that shrinks
 toward the edges is being drawn on a **flat plane in 3D, viewed through a wide
@@ -86,6 +101,14 @@ all four at zero. A Quest 3 frustum through VirtualDesktopXR is asymmetric, and
 `CameraEditHook` explicitly writes per-eye asymmetry.
 
 Two candidates, not yet separated:
+
+**Now separated by code and the saved log:** startup sends `xr.native 1`, logged
+at `04:40:08.422Z`, before `stereo_armed` at `04:40:09.849Z` in run
+`run-20260908-143942`. `BuildSyntheticEye` returns after eye translation when
+that flag is set, preserving Prey's projection. The half-FOV argument is then
+inactive. The symmetric tangents are therefore expected, not evidence that the
+reticle ran before the edit. Also, symmetric tangents alone do not prove that
+each of the four asymmetry fields is individually zero.
 
 - **The reticle reads a camera that has not had the per-eye edit applied.** It
   reads `systemPtr + SystemLayout::viewCamera`; if the edit targets a different
@@ -215,6 +238,12 @@ be reapplied after loading. Confirmed live: reapplying in-level fixed it.
 
 ### The calibration invalidation chain, which is worth knowing
 
+**Correction:** this build already queues automatic calibration after 90 matched
+owner callbacks for previously calibrated hands. Re-equipping alone therefore
+does not explain a permanent loss. The follow-up reproduced a second rebind
+during that wait erasing the recovery request; that bug is now fixed. Generation
+counts successful attach observations, not necessarily distinct weapon switches.
+
 `ikEquipGen` went **5 to 29** in minutes. Calibration binds to the equip
 generation, so **every weapon switch throws it away**, and hand rotation dies
 with it — rotation is only written once calibrated. The wearer's report that
@@ -225,6 +254,14 @@ And the equip generation was churning because of item 5.
 ---
 
 ## 5. The right stick turns and also switches weapons
+
+**Additional producer found:** `XrInput::UpdateXrInput` sends the same right
+stick to `MenuNavigator` whenever `menu.nav 1` is set. It emits D-pad left/right
+(`0x202`/`0x203`) independently of `move.turn`, with no menu-state gate.
+Consequently, the proposed `move.turn 0` test below cannot exonerate the mod.
+For the runtime owner, isolate the menu producer with `menu.nav 0` while keeping
+turning on, let queued taps drain, and compare. Restore `menu.nav 1` for menus.
+This finds a real routing fault but does not yet prove the native weapon binding.
 
 Unresolved. We post only `xi_thumbrx` (`0x216`, confirmed correct). Candidates:
 

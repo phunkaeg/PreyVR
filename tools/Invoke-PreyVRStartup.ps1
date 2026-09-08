@@ -149,7 +149,9 @@ if ($Supersampling -gt 0) {
 }
 # Gamma. Must be before xr.start: the swapchain format is chosen at creation.
 Step 'gamma (sRGB)'      'xr.srgb 1'
-# Native per-eye projection. Defaults off; FAIL-STR-048.
+# Preserve PREY's projection; this does not select the runtime's eye FOVs.
+# xr.stereo adds eye translation and its half-FOV argument is ignored in this mode.
+# Defaults off in the DLL; FAIL-STR-048.
 Step 'native projection' 'xr.native 1'
 Step 'frame observer'    'observer 1' -AllowNonZero
 

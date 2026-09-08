@@ -1483,7 +1483,9 @@ DWORD SetSyntheticStereo(float ipdMetres, float halfFovDegrees)
 
     std::ostringstream line;
     line << "preyvr_camera_edit result=0 detail=stereo_armed ipd=" << ipdMetres
-         << " halfFovDegrees=" << halfFovDegrees;
+         << " halfFovDegrees=" << halfFovDegrees
+         << " projectionPolicy=" << (gNativeProjection.load(std::memory_order_acquire)
+                                         ? "prey_native" : "synthetic");
     lifecycle::Log(line.str());
     return static_cast<DWORD>(CameraEditStatus::armed);
 }
@@ -2025,6 +2027,11 @@ DWORD SetNativeProjection(unsigned int enabled)
          << (on ? "1" : "0");
     lifecycle::Log(line.str());
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+
+unsigned int NativeProjectionEnabled()
+{
+    return gNativeProjection.load(std::memory_order_acquire) ? 1u : 0u;
 }
 
 int LastRenderedEye()

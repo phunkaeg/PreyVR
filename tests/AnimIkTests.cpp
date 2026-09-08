@@ -210,6 +210,29 @@ void TestCalibrationLifecycle()
     Require(partial.Pending(0), "the completed hand is re-taken");
     Require(!partial.Pending(1) && !partial.Settling(1),
             "the hand whose request never completed is not carried over");
+
+    // A second equip/reference change during settling must not erase the
+    // recovery intent inherited from a completed calibration. Keep the intent,
+    // never the old offset or a manual request which has not completed.
+    CalibrationState churn;
+    churn.Bind(1, 1, 1);
+    churn.Request(3);
+    churn.Commit(0, AxisAngle({0,0,1}, 0.3f));
+    churn.Bind(2, 1, 1);
+    for (unsigned int i = 0; i < 20; ++i) { churn.Tick(); }
+    Require(churn.Bind(3, 1, 1) && churn.calibrated == 0 && churn.pending == 0,
+            "rapid re-equip still discards old offsets and manual requests");
+    Require(churn.Settling(0) && !churn.Settling(1),
+            "second re-equip retains recovery only for previously calibrated hand");
+    for (unsigned int i = 1; i < CalibrationState::kSettleFrames; ++i) { churn.Tick(); }
+    Require(!churn.Pending(0), "settling restarts at the most recent rebind");
+    churn.Tick();
+    Require(churn.Pending(0), "rotation recovery survives equip churn");
+    churn.Bind(3, 2, 2);
+    Require(churn.Settling(0), "reference/epoch change also preserves recovery intent");
+    churn.Invalidate();
+    Require(!churn.Settling(0) && !churn.Pending(0),
+            "explicit rig-signature invalidation cancels automatic recovery");
     state.Request(2); state.Commit(1, {});
     Require(state.pending == 0 && state.calibrated == 2, "left-only request completes");
     state.Commit(99, {});

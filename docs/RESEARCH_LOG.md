@@ -2260,3 +2260,22 @@ the previous call. It reads after the original now.
 
 The ordinary build trees have since been rebuilt at 767488 bytes and re-tested
 here: 28/28 standard, 3/3 replays, 6/6 native landmarks.
+
+
+## 2026-09-08 — headset handover audit: projection policy, menu double input, IK recovery
+
+Reviewed b8ded45 and the saved 143942 run without launching or touching Prey.
+The log and BuildSyntheticEye branch establish that xr.native 1 preserved Prey's
+symmetric FOV; it was not taking the synthetic half-FOV despite the arm message.
+Peripheral angular shrinkage does not identify a separate HUD plane. The one
+retained coherent live reticle record passes composition and projection checks;
+it cannot establish sweep behavior. Reports now persist in PreyVR.log and name
+the projection policy.
+
+Found an independent right-stick producer: menu.nav 1 sends D-pad taps during
+gameplay, so move.turn 0 cannot exonerate the mod. Native weapon binding and a
+proper modal routing predicate remain unproved. Reproduced and fixed repeated
+IK rebinds erasing an automatic calibration recovery request. No stale offset
+is reused; the settling interval restarts on the newest binding. 28/28 standard
+tests and 4/4 integration replays pass. Full findings, remaining gaps and the
+isolated DLL hash are in RE-HEADSET-SESSION-AUDIT-2026-09-08.md.

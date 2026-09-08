@@ -219,6 +219,7 @@ unsigned long long UpstreamHeadRotationRefused();
 // Off by default, so every measurement taken before this existed still means what
 // it meant when it was taken.
 DWORD SetNativeProjection(unsigned int enabled);
+unsigned int NativeProjectionEnabled();
 
 // Which eye the most recent render used, or -1.
 //

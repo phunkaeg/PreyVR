@@ -1,0 +1,223 @@
+{
+  "saved_report_analysis": {
+    "records": 1,
+    "skipped_unavailable_stale_or_no_context": 0,
+    "malformed_records": [],
+    "scope": "Numerical dispatch inputs only; no movie-pixel or headset acceptance.",
+    "groups": [
+      {
+        "tracking_epoch": "3",
+        "reference_generation": "2",
+        "records": 1,
+        "max_head_rotation_from_first_deg": 1.7075472925031877e-06,
+        "max_controller_rotation_from_first_deg": 2.4148365394514667e-06,
+        "max_world_direction_from_first_deg": 0.0,
+        "max_projection_residual_milli": 2.7944913827404605e-05,
+        "max_clamp_residual_milli": 0.0,
+        "max_composition_residual_degrees": 4.597711793052988e-06,
+        "max_basis_orthonormal_error": 9.58321830779596e-08,
+        "clamped_records": 0,
+        "dispatch_disabled_records": 0,
+        "nonzero_dispatch_results": 0
+      }
+    ]
+  },
+  "run_id": "run-20260908-143942",
+  "source_base": "b8ded45",
+  "tape_record_counts": {
+    "header": 1,
+    "instance": 1,
+    "runtime": 1,
+    "session": 1,
+    "space": 1,
+    "viewconfig": 1,
+    "swapchain": 1,
+    "sessionstate": 5,
+    "beginsession": 1,
+    "wait": 12381,
+    "views": 12380,
+    "begin": 12380,
+    "end": 12380
+  },
+  "tape_malformed_records": [
+    {
+      "line": 49535,
+      "error": "Expecting ',' delimiter: line 1 column 266 (char 265)"
+    }
+  ],
+  "flat_sprite_geometry": [
+    {
+      "bearing_degrees": 0,
+      "relative_angular_width": 1.0,
+      "relative_angular_height": 1.0
+    },
+    {
+      "bearing_degrees": 30,
+      "relative_angular_width": 0.7500000000000001,
+      "relative_angular_height": 0.8660254037844387
+    },
+    {
+      "bearing_degrees": 45,
+      "relative_angular_width": 0.5000000000000001,
+      "relative_angular_height": 0.7071067811865476
+    },
+    {
+      "bearing_degrees": 60,
+      "relative_angular_width": 0.2500000000000001,
+      "relative_angular_height": 0.5000000000000001
+    }
+  ],
+  "sample_report_sha256": "f0f6dddfbed6c419ecd9cde93dd9ccb9b607ce51d041e226912152c419374c5e",
+  "last_tape_views": {
+    "r": "views",
+    "seq": 12380,
+    "displayTime": 617100396930648,
+    "viewConfig": 2,
+    "space": 2692868156448,
+    "stateFlags": 15,
+    "views": [
+      {
+        "pose": {
+          "p": [
+            -0.00719974935,
+            0.0389632955,
+            -0.015241934
+          ],
+          "o": [
+            -0.199786037,
+            0.144363627,
+            -0.0416766256,
+            -0.968249857
+          ]
+        },
+        "fov": {
+          "l": -0.942477763,
+          "r": 0.69813168,
+          "u": 0.767944872,
+          "d": -0.959931076
+        }
+      },
+      {
+        "pose": {
+          "p": [
+            0.0550274588,
+            0.0404637083,
+            0.0040622633
+          ],
+          "o": [
+            -0.199786037,
+            0.144363627,
+            -0.0416766256,
+            -0.968249857
+          ]
+        },
+        "fov": {
+          "l": -0.69813168,
+          "r": 0.942477763,
+          "u": 0.767944872,
+          "d": -0.959931076
+        }
+      }
+    ],
+    "qpc": 6171003638219
+  },
+  "last_tape_end": {
+    "r": "end",
+    "seq": 12380,
+    "displayTime": 617100396930648,
+    "blendMode": 1,
+    "layerCount": 1,
+    "layers": [
+      {
+        "type": "projection",
+        "flags": 0,
+        "space": 2692868156448,
+        "views": [
+          {
+            "pose": {
+              "p": [
+                -0.00719974935,
+                0.0389632955,
+                -0.015241934
+              ],
+              "o": [
+                -0.199786037,
+                0.144363627,
+                -0.0416766256,
+                -0.968249857
+              ]
+            },
+            "fov": {
+              "l": -1.04719758,
+              "r": 1.04719758,
+              "u": 1.07654595,
+              "d": -1.07654595
+            },
+            "sub": {
+              "swapchain": 2693402414432,
+              "arrayIndex": 0,
+              "rect": [
+                0,
+                0,
+                2688,
+                2880
+              ]
+            }
+          },
+          {
+            "pose": {
+              "p": [
+                0.0549516901,
+                0.0404564068,
+                0.00410204567
+              ],
+              "o": [
+                -0.199707344,
+                0.144439638,
+                -0.0416968875,
+                -0.968253911
+              ]
+            },
+            "fov": {
+              "l": -1.04719758,
+              "r": 1.04719758,
+              "u": 1.07654595,
+              "d": -1.07654595
+            },
+            "sub": {
+              "swapchain": 2693402414432,
+              "arrayIndex": 1,
+              "rect": [
+                0,
+                0,
+                2688,
+                2880
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "qpc": 6171003638586,
+    "result": 0
+  },
+  "fixed_dll": {
+    "path": "build\\h021-integration-audit\\Release\\PreyVR.dll",
+    "bytes": 775168,
+    "sha256": "0d934d8ed6141f42ef1259e406bf4e93223cce106b42be93de64f6315d1644fb"
+  },
+  "calibration_regression": {
+    "before": "FAIL: second re-equip retains recovery only for previously calibrated hand",
+    "fix": "Keep calibrated | autoPending across Bind; explicit Invalidate clears requests and recovery."
+  },
+  "projection_policy_receipt": {
+    "native_enabled_log_utc": "2026-09-08T04:40:08.422Z",
+    "stereo_armed_log_utc": "2026-09-08T04:40:09.849Z",
+    "meaning": "xr.native 1 preserves Prey projection; halfFovDegrees is inactive."
+  },
+  "validation": {
+    "standard_ctest": "28/28 passed",
+    "integration_replays": "4/4 passed",
+    "live_actions": "none"
+  }
+}
