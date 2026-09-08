@@ -42,7 +42,32 @@ namespace {
 // intermediate builds to look broken before they look right: hands with no IK may
 // fall to a bind pose or leave the weapon entirely, which is correct-but-ugly
 // rather than wrong.
-constexpr std::array<std::string_view, 29> kAllowlist{
+// **The HUD controls, added 2026-09-08.** A third widening, and the narrowest:
+// five cvars that change only what the interface draws and where.
+//
+// The reason they are needed is that the HUD lane cannot be tuned without them.
+// Prey's 2D layer renders into a centred 16:9 box fitted inside the frame --
+// measured, not assumed: at 3840x1440 the content occupies 60% of the width and
+// all of the height, at 2688x2880 it occupies 52% of the height, and 52.5% is
+// exactly what a 16:9 box inside that frame gives. So the render aspect places
+// the HUD, and these adjust it from there.
+//
+// `hud_bobHud` is the one that matters most for comfort: a HUD that bobs with
+// the walk cycle is attached to the head in VR, and head-locked motion the neck
+// did not command is the standard cause of sickness. `hud_hide` and
+// `hud_reticleSetting` exist for the case where the mod draws its own symbol and
+// the native one must go, which the reticle report named. `g_reticleYPercentage`
+// is where the engine's own reset reads the reticle's Y from (R-109).
+//
+// None reaches outside the game, all are reversible by setting them back, and
+// unlike the resolution entries none of them touches the swapchain, so there is
+// no latched-size hazard to guard.
+constexpr std::array<std::string_view, 34> kAllowlist{
+    "g_reticleYPercentage",
+    "hud_bobHud",
+    "hud_canvas_width_adjustment",
+    "hud_hide",
+    "hud_reticleSetting",
     "SetWeaponCameraOffsetX",
     "SetWeaponCameraOffsetY",
     "SetWeaponCameraOffsetZ",

@@ -189,7 +189,34 @@ frame.
 
 ## What is not in the build
 
-### HUD extraction — static only
+### HUD placement — built; extraction into its own layer still not
+
+**In a headset the HUD's problem is placement, not extraction.** It draws at the
+frame edges, and in a wide field of view the frame edges are the far periphery
+where nothing is readable. That is fixable without a second render pass.
+
+**Prey's 2D layer renders into a centred 16:9 box fitted inside the frame.** The
+engine's own `hud_canvas_width_adjustment` help says the HUD clamps itself to
+16:9, and it is measured here rather than trusted:
+
+| render | content columns | content rows | shape |
+|---|---|---|---|
+| 3840x1440 | 60% of width | 100% of height | pillarboxed |
+| 2688x2880 | 82% of width | **52%** of height | letterboxed |
+
+A 16:9 box inside 2688x2880 is 1512 tall, which is 52.5%. The measurement lands
+on it.
+
+So **the render aspect places the HUD**, both ways: taller pulls it inward
+vertically, wider pulls it inward horizontally. The 2688x2880 this headset asks
+for already confines the HUD to the middle half of the vertical field, which is a
+safe zone obtained for free from a setting made for resolution.
+
+Five HUD cvars are allowlisted so a headset session can adjust from there.
+`-NoHudBob` is the comfort one: a HUD that bobs with the walk cycle is head-locked
+motion the neck did not command, which is the standard cause of sickness.
+
+### HUD extraction into its own layer — still not built
 
 The anchors the reticle report asked for are resolved:
 

@@ -1938,6 +1938,50 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+
+## 2026-09-08 — R-114: the HUD lane, and the lever that places it
+
+The HUD item was being read as "extract the interface into its own transparent
+OpenXR layer", which is a large piece of work with two recorded failures behind
+it (F-014, F-015). That is not the only way to make a HUD work in VR, and it is
+not the first thing to try. **In a headset the HUD's problem is placement**: it
+draws at the frame edges, and in a wide field of view the frame edges are the
+extreme periphery, where nothing is readable.
+
+**Prey's 2D layer renders into a centred 16:9 box fitted inside the frame.** The
+engine says so itself, in `hud_canvas_width_adjustment`'s help text -- *"before
+this multiplier is applied, the HUD clamps itself to a 16:9 res"* -- and it is
+measured on this build rather than taken on trust:
+
+| render | content columns | content rows | shape |
+|---|---|---|---|
+| 3840x1440 (2.67:1) | 60% of width | 100% of height | **pillarboxed** |
+| 2688x2880 (0.93:1) | 82% of width | **52%** of height | **letterboxed** |
+
+A 16:9 box inside a 2688x2880 frame is 1512 tall, which is **52.5%**. The
+measurement lands on it.
+
+**So the render aspect places the HUD, and it works both ways.** A taller render
+pulls the interface inward vertically; a wider one pulls it inward horizontally.
+The 2688x2880 that this headset asks for already confines the HUD to the middle
+half of the vertical field, which is close to where a VR interface wants to be.
+That is a HUD safe zone obtained for free from a setting already being made for
+resolution.
+
+**Five cvars added to the allowlist**, the third widening and the narrowest:
+`hud_bobHud`, `hud_hide`, `hud_canvas_width_adjustment`, `hud_reticleSetting`,
+`g_reticleYPercentage`. They change only what the interface draws and where, none
+reaches outside the game, and unlike the resolution entries none touches the
+swapchain, so there is no latched-size hazard to guard.
+
+`hud_bobHud` is the one that matters most, and `-NoHudBob` sets it at launch. A
+HUD that bobs with the walk cycle is attached to the head in VR, and head-locked
+motion the neck did not command is the standard cause of sickness. On a monitor
+it is a flourish; in a headset it is a fault.
+
+**What is still not built:** the HUD as its own composition layer, at its own
+depth, independent of the scene. That remains the better end state and it remains
+unattempted, for the reasons F-014 and F-015 record.
 ## 2026-09-08 — R-113: the menu IS in both eyes, and it is small
 
 Captured from xr-sim's compositor -- what it was actually handed as a projection

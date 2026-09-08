@@ -67,6 +67,18 @@ param(
     # backbuffer IS one eye and the sizes compare directly.
     [int]$RenderWidth = 0,
     [int]$RenderHeight = 0,
+    # **The HUD's placement is the render aspect**, so this belongs next to the
+    # resolution rather than in a settings menu. Prey's 2D layer draws into a
+    # centred 16:9 box fitted inside the frame -- measured on this build: at
+    # 3840x1440 the content spans 60% of the width and all the height, at
+    # 2688x2880 it spans 52% of the height, and a 16:9 box inside that frame is
+    # 52.5%. So a taller render pulls the HUD in vertically and a wider one pulls
+    # it in horizontally.
+    #
+    # -NoHudBob switches off the HUD's walk-cycle bob. In VR the HUD is attached
+    # to the head, and head-locked motion the neck did not command is the
+    # standard cause of sickness, so this is a comfort setting rather than taste.
+    [switch]$NoHudBob,
     # Leave the machine's own OpenXR runtime alone, for a real headset session.
     # Without this the launcher pins XR_RUNTIME_JSON to xr-sim, which is right
     # for unattended capture and wrong when someone is wearing a Quest.
@@ -184,6 +196,7 @@ if ($RenderWidth -gt 0 -and $RenderHeight -gt 0) {
     Write-Error 'set both -RenderWidth and -RenderHeight, or neither'
     exit 1
 }
+if ($NoHudBob) { $argParts += '+hud_bobHud 0' }
 if ($ExtraArgs) { $argParts += $ExtraArgs }
 $gameArguments = ($argParts -join ' ')
 if ($gameArguments) { Write-Host "arguments: $gameArguments" ; Write-Host '' }
