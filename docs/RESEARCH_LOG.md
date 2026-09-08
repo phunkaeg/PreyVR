@@ -1942,6 +1942,41 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+
+## 2026-09-08 — F-016: loading a save from the menu stalls under headless xr-sim
+
+Attempting to reach a save with a weapon equipped, so the reticle sprite's actual
+pixels could be measured against `rpXY`.
+
+**The navigation worked completely.** Menu taps plus frame captures drove the
+whole flow with sight rather than guesswork: title screen, main menu, one down to
+LOAD GAME, the save list, save 8 selected, and the confirmation dialog accepted.
+The save list read cleanly at full resolution -- six saves, five in Talos I Lobby
+around two hours in, one in Neuromod Division.
+
+**Then the load stalls.** `Game.log` reaches the level's own content -- FXLibs for
+gloogun, pistol, shotgun, wrench, then the lobby's room-volume data and
+`[ActiveUserManagerBase] SetListening(true)` -- and **stops growing entirely**.
+Measured: **0 bytes in 60 seconds**, after more than two minutes on the loading
+screen. The renderer keeps running throughout (`xrFrames` climbing past 27000,
+`viewObserved` climbing), so the process is alive; the level simply never comes
+up. `hudElement` stays `0x0` and `eyeMm` stays `0,0,0`.
+
+An earlier run in this same session **did** reach the lobby from CONTINUE, so
+loading is not categorically broken headless. What differs is the LOAD GAME route
+and its confirmation dialog.
+
+**Candidates, none tested:** the load may want the game window focused, since the
+process is driven headlessly and some CryEngine load steps pump the message loop;
+or the confirm dialog may need an input the synthetic menu path does not satisfy,
+leaving the load half-started; or the two-hour save is simply far slower than the
+early one that worked.
+
+**Consequence:** the reticle pixel measurement is still not obtained. It needs
+either this stall resolved, or a headset session where a wearer loads the save
+and the sweep runs against a live game. Everything else in the loop -- pinning
+the controller, sweeping the head, capturing frames, reading `rpXY` -- is proven
+to work (R-117).
 ## 2026-09-08 — R-117: the aim lane exonerated, in xr-sim, with the controller actually pinned
 
 The wearer asked whether the simulator could load into the game and drive the
