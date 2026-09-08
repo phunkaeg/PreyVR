@@ -504,15 +504,14 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "capture result=" << RequestFrameCapture(static_cast<std::uint32_t>(arg(1, 1)))
             << " completed=" << CompletedFrameCaptureCount();
     } else if (verb == "hud.call") {
-        // hud.call <function> <x> [y] -- dispatches a native UI function on
-        // DanielleHUD through the engine's own two-float helper.
+        // hud.call <function> <x> [y] -- queue a main-thread HUD dispatch.
         if (args.size() < 3) {
             out << "hud.call result=rejected detail=need_function_and_value";
         } else {
             const float x = static_cast<float>(std::atof(args[2].c_str()));
             const float y = args.size() >= 4 ? static_cast<float>(std::atof(args[3].c_str())) : 0.0f;
-            out << "hud.call result=" << CallHudFunction(args[1].c_str(), x, y,
-                                                        args.size() >= 4)
+            const DWORD result = CallHudFunction(args[1].c_str(), x, y, args.size() >= 4);
+            out << "hud.call result=" << result << " queued=" << (result == 0 ? 1 : 0)
                 << " fn=" << args[1];
         }
     } else if (verb == "frame.capture") {

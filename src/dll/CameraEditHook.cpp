@@ -2,6 +2,8 @@
 #include "MinHookInit.h"
 
 #include "InputPost.h"
+#include "HudBridge.h"
+#include "AimTakeover.h"
 #include "MoveLane.h"
 
 #include "HeadTrackingHook.h"
@@ -975,6 +977,7 @@ void __fastcall RenderWithCameraEdit(void* system)
     // driving a menu must not require stereo or head tracking to be enabled
     // first, and the early return would otherwise skip it.
     DrainQueuedInput();
+    DrainQueuedHudCalls();
     // Same thread and same frame as the drain: the lane produces at most two
     // axis events per frame and the drain consumes one, so producing anywhere
     // else would race the queue it feeds.
@@ -984,6 +987,7 @@ void __fastcall RenderWithCameraEdit(void* system)
     if ((!gArmed.load(std::memory_order_acquire) && !stereoArmed &&
          !gHeadRotationArmed.load(std::memory_order_acquire)) || system == nullptr) {
         if (original != nullptr) {
+            UpdateAimReticleForRender();
             original(system);
         }
         return;
@@ -1048,6 +1052,7 @@ void __fastcall RenderWithCameraEdit(void* system)
             gLastEye.store(eye, std::memory_order_release);
             SetFrameCaptureTagOverride(eye);
             if (original != nullptr) {
+                UpdateAimReticleForRender();
                 original(system);
             }
         }
@@ -1177,6 +1182,8 @@ void __fastcall RenderWithCameraEdit(void* system)
     }
 
     std::memcpy(camera, edited.data(), cameraedit::kCameraSize);
+
+    UpdateAimReticleForRender();
 
     // Publish the forward axis we just wrote, so the pass-camera probe can ask
     // whether the camera the engine culls with is this one.

@@ -10,9 +10,8 @@
 // needs `IRenderAuxGeom`, whose vtable slot is not known here, and hunting it is a
 // separate task. Prey already draws a reticle from a screen position it caches at
 // `ArkPlayer+0x17EC` (R-012), computed by the same function whose ray output the
-// aim takeover overwrites. Writing that position in step with the ray makes the
-// existing crosshair the indicator -- no renderer hook, no new draw call, and it
-// is exactly the surface the player already reads.
+// aim takeover overwrites. The render seam projects the published ray after
+// installing the actual eye camera, then updates the existing native crosshair.
 //
 // **It also closes a real inconsistency rather than only adding a visual.** The
 // takeover currently rewrites the ray and leaves the screen position where the
@@ -20,9 +19,8 @@
 // where the hand points. Anyone judging aim by the crosshair is being told the
 // wrong thing. This makes the two agree.
 //
-// Projected with the live camera's own fov and projection ratio, so the mapping
-// matches whatever the player has their FOV slider set to rather than assuming
-// the 120 degrees measured on one machine.
+// Projected with the camera for this eye render, including stereo asymmetry.
+// Native HUD canvas mapping and visual convergence still need live validation.
 //
 // Off by default and independent of the takeover, so the two can be A/B'd apart:
 // a crosshair that follows while shots do not, or the reverse, says immediately

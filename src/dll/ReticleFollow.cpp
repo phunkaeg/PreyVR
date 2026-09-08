@@ -1,6 +1,7 @@
 #include "ReticleFollow.h"
 
 #include "HudBridge.h"
+#include "CameraEditHook.h"
 #include "Logger.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/StereoCamera.h"
@@ -47,6 +48,7 @@ DWORD SetReticleFollowEnabled(unsigned int enabled)
 {
     const bool on = enabled != 0u;
     if (on) {
+        if (EnsureRenderHookInstalled() != 0) { return 1; }
         gApplied.store(0, std::memory_order_relaxed);
         gOffScreen.store(0, std::memory_order_relaxed);
     }
@@ -207,8 +209,8 @@ bool WriteReticleScreenPosition(void* player, const Vec3& rayOrigin, const Vec3&
     // for centred X, so these are normalised screen fractions, which is exactly
     // what this lane already computes.
     //
-    // Dispatching from here is thread-consistent with the native producer: both
-    // run inside an ArkPlayer update on the main game thread. It is separately
+    // Dispatch runs on the main game thread, after the render seam installs
+    // this eye's camera. It is separately
     // switchable so that a crosshair which does not move can be attributed --
     // dispatch off isolates the write, dispatch on adds the movie call.
     if (gDispatch.load(std::memory_order_acquire)) {

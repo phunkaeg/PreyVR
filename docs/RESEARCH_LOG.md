@@ -2169,3 +2169,21 @@ not that a wearer can read it at that scale. Those still need the headset. The
 near-pass counters agreeing (`nearNoProvenance=19691` equal to `eyeLookupMiss`)
 is the H-022 fix failing closed correctly with no XR session, which is the
 expected behaviour rather than a fault.
+
+## 2026-09-08 — VR scheme pre-run audit and fixes (f03d378)
+
+See `RE-VR-SCHEME-AUDIT-2026-09-08.md`. Static native and compiled-object evidence
+proved the two-argument movement wrapper aliased the handler's writable fifth
+argument with saved RDI. Fixed to the five-argument boolean ABI; telemetry now
+reads after the original. Production-code replays reproduced missing input
+neutralization. Fixed focus/disable/epsilon releases and partial-post retries.
+Also fixed the OpenXR resize early-return leak, queued diagnostic HUD dispatch
+onto the game thread, reconciled the reticle with the selected firing origin in
+all six mode/calibration cases, and moved screen projection to the actual eye
+render seam. Position calibration no longer claims calibrated barrel rotation.
+
+Full isolated Release build and 28/28 standard tests passed; three integration
+replays and six native landmarks passed. No Prey launch/injection/attach or live
+commands. Rebuilt DLL and exact hash are in the audit handoff; ordinary build
+folders remain older. HUD extraction, movie canvas mapping, hit-depth convergence
+and true barrel orientation remain separately unproven or unbuilt.

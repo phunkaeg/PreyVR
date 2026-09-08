@@ -105,6 +105,8 @@ float GameCameraYaw()
 
 void __fastcall UpdateCachedRayWithTakeover(void* player)
 {
+    // Every refusal below invalidates the previous publication immediately.
+    gAimSample.Clear();
     const UpdateCachedRayFn original = gOriginal.load(std::memory_order_acquire);
     if (player && gLastOriginEdit.owner == reinterpret_cast<std::uintptr_t>(player)) {
         auto* originAt = static_cast<std::uint8_t*>(player) + engine::ArkPlayerLayout::cachedReticleOrigin;
@@ -240,35 +242,19 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
         return;
     }
 
-    // Publish the shared record before writing anything, so every lane reads the
-    // same instant rather than each sampling the controller for itself. Without
-    // a per-weapon grip-to-barrel rotation this is `Confidence::origin`: an
-    // honest pointing axis, explicitly not a barrel.
-    preyvr::aim::Sample sample;
-    {
-        // The sample carries the best origin available, and says which it is.
-        sample.origin = engineOrigin;
-        {
-            const Pose grip = animik::ControllerWorldFromHead(
-                reference.yawRadians, engineOrigin, headPose, controller.gripPose);
-            Vec3 muzzle{};
-            if (TryGetMuzzleFromGrip(grip, WeaponEquipGeneration(), muzzle)) {
-                sample.origin = muzzle;
-                sample.confidence = preyvr::aim::Confidence::barrel;
-            }
-        }
-        sample.direction = ray->direction;
-        sample.orientation = controller.aimPose.orientation;
-        if (sample.confidence == preyvr::aim::Confidence::none) {
-            sample.confidence = preyvr::aim::Confidence::origin;
-        }
-        sample.equipGeneration = WeaponEquipGeneration();
-        sample.referenceGeneration = frame.referenceGeneration;
-        sample.trackingSequence = frame.tracking.sequence;
-        sample.publishedNs = MonotonicNanoseconds();
-        gAimSample.Publish(sample);
-        gAimSamplePublished.fetch_add(1, std::memory_order_relaxed);
-    }
+    // Describe the ray actually installed below, not the best origin available
+    // regardless of aim.origin. A positional muzzle calibration does not prove
+    // a barrel rotation: this direction is still the runtime's aiming axis.
+    preyvr::aim::Sample sample{};
+    sample.origin = engineOrigin;
+    sample.direction = ray->direction;
+    const Pose hand = animik::ControllerWorldFromHead(
+        reference.yawRadians, engineOrigin, headPose, controller.aimPose);
+    sample.orientation = hand.orientation; // world space, like the direction
+    sample.confidence = preyvr::aim::Confidence::origin;
+    sample.equipGeneration = WeaponEquipGeneration();
+    sample.referenceGeneration = frame.referenceGeneration;
+    sample.trackingSequence = frame.tracking.sequence;
 
     // This selects a pointing direction. Native firing may converge from its
     // authored muzzle toward this ray; a controller point is not that muzzle.
@@ -279,8 +265,6 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
 
     const unsigned int originMode = gOriginMode.load(std::memory_order_acquire);
     if (originMode != 0) {
-        const Pose hand = animik::ControllerWorldFromHead(reference.yawRadians, engineOrigin,
-                                                          headPose, controller.aimPose);
         Vec3 chosen = hand.position;
         bool haveMuzzle = false;
         if (originMode == 2) {
@@ -296,7 +280,8 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
             const Pose grip = animik::ControllerWorldFromHead(
                 reference.yawRadians, engineOrigin, headPose, controller.gripPose);
             Vec3 muzzle{};
-            if (TryGetMuzzleFromGrip(grip, WeaponEquipGeneration(), muzzle)) {
+            if (IsPoseUsable(controller.gripPose, controller.gripValidity, 200000000ull) &&
+                TryGetMuzzleFromGrip(grip, sample.equipGeneration, muzzle)) {
                 chosen = muzzle;
                 haveMuzzle = true;
             } else {
@@ -311,24 +296,19 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
                             playerAddress + engine::ArkPlayerLayout::cachedReticleOrigin),
                         &chosen, sizeof(chosen));
             gLastOriginEdit = {playerAddress, engineOrigin, chosen};
+            sample.origin = chosen;
             gOriginApplied.fetch_add(1, std::memory_order_relaxed);
             if (haveMuzzle) { gMuzzleOriginApplied.fetch_add(1, std::memory_order_relaxed); }
         }
     }
 
-    // Move the crosshair to match. Without this the reticle keeps pointing where
-    // the engine aimed while shots follow the hand, so anyone judging aim by the
-    // crosshair is being told the wrong thing. Independently gated, so a
-    // crosshair that follows while shots do not -- or the reverse -- names which
-    // half is wrong.
-    //
-    // **The published sample is what is passed, not a locally recomputed ray.**
-    // Three lanes answered "where does this weapon aim" from three samples, and
-    // each disagreement looked like a separate bug. The crosshair now reads the
-    // same immutable record the weapon and the firing origin read, including its
-    // origin -- so a muzzle-origin shot and the symbol marking it are built from
-    // one origin rather than two.
-    WriteReticleScreenPosition(player, sample.origin, sample.direction);
+    sample.publishedNs = MonotonicNanoseconds();
+    gAimSample.Publish(sample);
+    gAimSamplePublished.fetch_add(1, std::memory_order_relaxed);
+
+    // Screen projection is deferred until CSystem::Render has installed the
+    // actual eye camera. Here the global camera still has gameplay projection;
+    // the per-eye projection is transient and restored after each render.
 }
 
 bool Install()
@@ -376,6 +356,21 @@ bool Install()
 } // namespace
 
 bool TryGetAimSample(preyvr::aim::Sample& out) { return gAimSample.TryRead(out); }
+
+void UpdateAimReticleForRender()
+{
+    if (!gEnabled.load(std::memory_order_acquire)) { return; }
+    preyvr::aim::Sample sample{};
+    GameplayPoseFrame frame{};
+    if (!TryGetAimSample(sample) || !TryGetGameplayPoseFrame(frame) ||
+        sample.trackingSequence != frame.tracking.sequence ||
+        !preyvr::aim::Usable(sample, WeaponEquipGeneration(),
+                            HeadTrackingReferenceGeneration(), MonotonicNanoseconds())) {
+        return;
+    }
+    WriteReticleScreenPosition(reinterpret_cast<void*>(frame.player),
+                               sample.origin, sample.direction);
+}
 unsigned long long AimSamplePublishedCount()
 {
     return gAimSamplePublished.load(std::memory_order_relaxed);
@@ -454,6 +449,7 @@ DWORD SetAimTakeoverEnabled(unsigned int enabled)
         gRejCompose.store(0, std::memory_order_relaxed);
     }
     gEnabled.store(on, std::memory_order_release);
+    if (!on) { gAimSample.Clear(); }
     Log(std::string("result=0 detail=enabled value=") + (on ? "1" : "0"));
     return 0;
 }

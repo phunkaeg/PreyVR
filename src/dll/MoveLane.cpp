@@ -31,7 +31,10 @@ void Log(const std::string& line) { lifecycle::Log("preyvr_move " + line); }
 //
 // Hooking these rather than reading a guessed player->input pointer chain means
 // the engine hands us the object, so nothing is inferred about where it lives.
-using AnalogHandlerFn = void(__fastcall*)(void*, void*);
+// The action callback has FIVE arguments including this. The target loads
+// value from [rsp+28h] before changing rsp, and returns acceptance in AL.
+// Forwarding only this/event would make its value come from unrelated stack data.
+using AnalogHandlerFn = bool(__fastcall*)(void*, unsigned int, const void*, int, float);
 constexpr std::uintptr_t kAnalogXRva = 0x158FD20;
 constexpr std::uintptr_t kAnalogYRva = 0x158FD80;
 constexpr std::array<std::uint8_t, 23> kAnalogXPrologue{
@@ -63,6 +66,8 @@ std::atomic<int> gCinematic{0};
 // would keep walking after letting go.
 locomotion::StickAxis gStick;
 unsigned int gStickPolicyHundredths = 15;
+std::atomic<bool> gMoveNeutralize{false};
+bool gMoveMayBeHeld = false;
 
 // --- turn and fire, same thread and frame as the move lane ------------------
 std::atomic<bool> gTurnEnabled{false};
@@ -71,12 +76,14 @@ std::atomic<unsigned int> gTurnScalePercent{100};
 std::atomic<unsigned long long> gTurnPosted{0}, gTurnRefused{0};
 float gLastTurnSent = 0.0f;
 bool gTurnPrimed = false;
+std::atomic<bool> gTurnNeutralize{false};
 
 std::atomic<bool> gFireEnabled{false};
 std::atomic<unsigned long long> gFirePressed{0}, gFireReleased{0}, gFireRefused{0};
 bool gFireHeld = false;
 float gLastFireSent = 0.0f;
 bool gFirePrimed = false;
+std::atomic<bool> gFireNeutralize{false};
 
 bool ReadFloat(const void* at, float* out)
 {
@@ -130,18 +137,22 @@ void ObserveHandler(void* inputObject, bool isX)
     }
 }
 
-void __fastcall AnalogXObserved(void* inputObject, void* event)
+bool __fastcall AnalogXObserved(void* inputObject, unsigned int entity,
+                               const void* action, int mode, float value)
 {
-    ObserveHandler(inputObject, true);
     const AnalogHandlerFn original = gOriginalX.load(std::memory_order_acquire);
-    if (original != nullptr) { original(inputObject, event); }
+    const bool accepted = original != nullptr && original(inputObject, entity, action, mode, value);
+    ObserveHandler(inputObject, true);
+    return accepted;
 }
 
-void __fastcall AnalogYObserved(void* inputObject, void* event)
+bool __fastcall AnalogYObserved(void* inputObject, unsigned int entity,
+                               const void* action, int mode, float value)
 {
-    ObserveHandler(inputObject, false);
     const AnalogHandlerFn original = gOriginalY.load(std::memory_order_acquire);
-    if (original != nullptr) { original(inputObject, event); }
+    const bool accepted = original != nullptr && original(inputObject, entity, action, mode, value);
+    ObserveHandler(inputObject, false);
+    return accepted;
 }
 
 bool InstallOne(std::uintptr_t rva, const std::uint8_t* prologue, std::size_t size,
@@ -206,7 +217,7 @@ DWORD SetMoveLaneMode(unsigned int mode)
             return 3;
         }
     }
-    if (mode != 2u) { gStick.Reset(); }
+    if (mode != 2u) { gMoveNeutralize.store(true, std::memory_order_release); }
     gMode.store(mode, std::memory_order_release);
     Log("result=0 detail=mode value=" + std::to_string(mode));
     return 0;
@@ -222,44 +233,74 @@ DWORD SetMoveLaneDeadzone(unsigned int hundredths)
 
 void UpdateMoveLane()
 {
-    if (gMode.load(std::memory_order_acquire) != 2u) { return; }
     // The LEFT stick moves, matching `xi_thumblx`/`xi_thumbly` and every mod in
     // the fleet survey.
     ControllerState state{};
-    if (!TryGetControllerState(Hand::left, state)) {
+    const bool active = gMode.load(std::memory_order_acquire) == 2u;
+    const bool neutralize = gMoveNeutralize.exchange(false, std::memory_order_acq_rel);
+    const bool haveInput = active && !neutralize && TryGetControllerState(Hand::left, state);
+    if (!haveInput) {
+        // A partially delivered X/Y pair can leave one axis held even though
+        // the candidate shaper was not committed. Release both owned axes and
+        // retry refusals; never infer successful delivery from shaper state.
+        bool released = true;
+        if (gMoveMayBeHeld) {
+            for (const int key : {locomotion::kKeyThumbLX, locomotion::kKeyThumbLY}) {
+                if (PostRawInputImmediate(key, locomotion::kStateChanged, 0) == 0) {
+                    gPosted.fetch_add(1, std::memory_order_relaxed);
+                } else {
+                    released = false;
+                    gDropped.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+        }
+        if (released) { gMoveMayBeHeld = false; gStick.Reset(); }
+        else { gMoveNeutralize.store(true, std::memory_order_release); }
         return;
     }
     const unsigned int hundredths = gDeadzoneHundredths.load(std::memory_order_relaxed);
     if (hundredths != gStickPolicyHundredths) {
         locomotion::StickPolicy policy{};
         policy.deadzone = hundredths / 100.0f;
-        gStick = locomotion::StickAxis(policy);
+        // Keep the last successful values when changing the deadzone.
+        gStick.SetPolicy(policy);
         gStickPolicyHundredths = hundredths;
     }
     locomotion::AxisEvent events[2]{};
-    const unsigned int count = gStick.Update(state.thumbstickX, state.thumbstickY, events);
+    auto candidate = gStick;
+    const unsigned int count = candidate.Update(state.thumbstickX, state.thumbstickY, events);
+    bool delivered = true;
     for (unsigned int i = 0; i < count; ++i) {
         const int valueMilli = static_cast<int>(events[i].value * 1000.0f);
         // Immediate, not queued: this already runs on the drain thread, and the
         // queue drains one event per frame while a two-axis stick produces two.
         if (PostRawInputImmediate(events[i].keyId, static_cast<unsigned int>(events[i].state),
                                   valueMilli) == 0) {
+            if (valueMilli != 0) { gMoveMayBeHeld = true; }
             gPosted.fetch_add(1, std::memory_order_relaxed);
         } else {
+            delivered = false;
             gDropped.fetch_add(1, std::memory_order_relaxed);
         }
+    }
+    if (delivered) {
+        gStick = candidate;
+        if (gStick.LastSentX() == 0 && gStick.LastSentY() == 0) { gMoveMayBeHeld = false; }
     }
 }
 
 void UpdateTurnAndFireLanes()
 {
     ControllerState right{};
-    if (!TryGetControllerState(Hand::right, right)) { return; }
+    const bool haveInput = TryGetControllerState(Hand::right, right);
+    if (!haveInput) { right = {}; }
 
-    if (gTurnEnabled.load(std::memory_order_acquire)) {
+    const bool turnOn = gTurnEnabled.load(std::memory_order_acquire);
+    const bool releaseTurn = gTurnNeutralize.exchange(false, std::memory_order_acq_rel);
+    if (turnOn || (gTurnPrimed && gLastTurnSent != 0)) {
         const float dead = gTurnDeadzoneHundredths.load(std::memory_order_relaxed) / 100.0f;
         const float scale = gTurnScalePercent.load(std::memory_order_relaxed) / 100.0f;
-        float value = right.thumbstickX;
+        float value = (turnOn && !releaseTurn) ? right.thumbstickX : 0.0f;
         if (!std::isfinite(value)) { value = 0.0f; }
         // Rescaled past the deadzone rather than clipped, so leaving the dead
         // area is gentle instead of a step to full rate.
@@ -271,7 +312,8 @@ void UpdateTurnAndFireLanes()
         // Emit only on change, and ALWAYS emit the return to zero: the engine
         // keeps turning on the last value it was told until contradicted, which
         // is the same failure the movement lane's release case exists to avoid.
-        if (!gTurnPrimed || std::fabs(value - gLastTurnSent) > 0.002f) {
+        if (!gTurnPrimed || (value == 0 && gLastTurnSent != 0) ||
+            std::fabs(value - gLastTurnSent) > 0.002f) {
             const int milli = static_cast<int>(value * 1000.0f);
             if (PostRawInputImmediate(locomotion::kKeyThumbRX,
                                       locomotion::kStateChanged, milli) == 0) {
@@ -279,22 +321,26 @@ void UpdateTurnAndFireLanes()
                 gTurnPrimed = true;
                 gTurnPosted.fetch_add(1, std::memory_order_relaxed);
             } else {
+                if (releaseTurn) { gTurnNeutralize.store(true, std::memory_order_release); }
                 gTurnRefused.fetch_add(1, std::memory_order_relaxed);
             }
         }
     }
 
-    if (gFireEnabled.load(std::memory_order_acquire)) {
+    const bool fireOn = gFireEnabled.load(std::memory_order_acquire);
+    const bool releaseFire = gFireNeutralize.exchange(false, std::memory_order_acq_rel);
+    if (fireOn || (gFirePrimed && gLastFireSent != 0)) {
         // **The real travel is posted, not a quantised press.** `xi_triggerr` is
         // an analog axis, and sending only 0 or 1000 threw away everything
         // between -- which matters for a weapon whose native binding may ramp.
-        float value = right.triggerValue;
+        float value = (fireOn && !releaseFire) ? right.triggerValue : 0.0f;
         if (!std::isfinite(value)) { value = 0.0f; }
         value = value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
-        const bool pressed = right.triggerPressed;
+        const bool pressed = fireOn && !releaseFire && right.triggerPressed;
         // Emit on a meaningful change OR on a press-state crossing, so the
         // counters still name a discrete pull while the value stays continuous.
-        if (!gFirePrimed || pressed != gFireHeld || std::fabs(value - gLastFireSent) > 0.02f) {
+        if (!gFirePrimed || pressed != gFireHeld ||
+            (value == 0 && gLastFireSent != 0) || std::fabs(value - gLastFireSent) > 0.02f) {
             const int milli = static_cast<int>(value * 1000.0f);
             if (PostRawInputImmediate(input::kTriggerR,
                                       locomotion::kStateChanged, milli) == 0) {
@@ -306,6 +352,7 @@ void UpdateTurnAndFireLanes()
                 gLastFireSent = value;
                 gFirePrimed = true;
             } else {
+                if (releaseFire) { gFireNeutralize.store(true, std::memory_order_release); }
                 gFireRefused.fetch_add(1, std::memory_order_relaxed);
             }
         }
@@ -317,7 +364,7 @@ DWORD SetTurnLaneEnabled(unsigned int enabled)
     if (enabled > 1) { return 1; }
     if (enabled && SetInputPostEnabled(1) != 0) { return 2; }
     gTurnEnabled.store(enabled != 0u, std::memory_order_release);
-    if (!enabled) { gTurnPrimed = false; }
+    if (!enabled) { gTurnNeutralize.store(true, std::memory_order_release); }
     Log(std::string("result=0 detail=turn value=") + (enabled ? "1" : "0"));
     return 0;
 }
@@ -341,6 +388,7 @@ DWORD SetFireLaneEnabled(unsigned int enabled)
     if (enabled > 1) { return 1; }
     if (enabled && SetInputPostEnabled(1) != 0) { return 2; }
     gFireEnabled.store(enabled != 0u, std::memory_order_release);
+    if (!enabled) { gFireNeutralize.store(true, std::memory_order_release); }
     Log(std::string("result=0 detail=fire value=") + (enabled ? "1" : "0"));
     return 0;
 }

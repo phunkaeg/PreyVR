@@ -991,37 +991,28 @@ void ServiceXrFrame(void* renderer)
             XrSwapchainImageWaitInfo waitImage{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
             waitImage.timeout = XR_INFINITE_DURATION;
 
-            if (XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.swapchain, &acquire, &imageIndex)) &&
+            // Check before acquiring an XR image. A resize skips the copy, but
+            // must still reach xrEndFrame/OnSubmitted below with zero layers.
+            // Returning here used to strand both an acquired image and a begun
+            // frame; our FrameContract then refused every subsequent wait.
+            D3D11_TEXTURE2D_DESC backDesc{};
+            backBuffer->GetDesc(&backDesc);
+            const bool matchingSize = backDesc.Width == gHost.width &&
+                                      backDesc.Height == gHost.height;
+            gHost.sizeMismatch = !matchingSize;
+            if (!matchingSize && !gHost.loggedSizeMismatch) {
+                gHost.loggedSizeMismatch = true;
+                std::ostringstream line;
+                line << "result=refused detail=backbuffer_resized"
+                     << " sessionSize=" << gHost.width << "x" << gHost.height
+                     << " nowSize=" << backDesc.Width << "x" << backDesc.Height
+                     << " note=restart_to_adopt_the_new_size";
+                Log(line.str());
+            }
+            if (matchingSize &&
+                XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.swapchain, &acquire, &imageIndex)) &&
                 XR_SUCCEEDED(xrWaitSwapchainImage(gHost.swapchain, &waitImage)) &&
                 imageIndex < gHost.images.size()) {
-                // **Refuse a resized backbuffer rather than copying it.**
-                // The XR swapchain and the held eye textures are sized once, at
-                // session start. D3D11 CopyResource requires matching
-                // dimensions and does not rescale, so a backbuffer that changed
-                // size underneath us -- which is exactly what setting r_Height
-                // or r_Supersampling can do -- would produce a failed or
-                // corrupt copy with no error a player could see.
-                //
-                // Submitting nothing is honest and diagnosable; a plausible
-                // wrong image is neither. The fix for a wanted resize is a
-                // controlled restart, which is what the resolution
-                // investigation recommends for initial tests.
-                D3D11_TEXTURE2D_DESC backDesc{};
-                backBuffer->GetDesc(&backDesc);
-                if (backDesc.Width != gHost.width || backDesc.Height != gHost.height) {
-                    gHost.sizeMismatch = true;
-                    if (!gHost.loggedSizeMismatch) {
-                        gHost.loggedSizeMismatch = true;
-                        std::ostringstream line;
-                        line << "result=refused detail=backbuffer_resized"
-                             << " sessionSize=" << gHost.width << "x" << gHost.height
-                             << " nowSize=" << backDesc.Width << "x" << backDesc.Height
-                             << " note=restart_to_adopt_the_new_size";
-                        Log(line.str());
-                    }
-                    backBuffer->Release();
-                    return;
-                }
                 ID3D11DeviceContext* context = nullptr;
                 gHost.device->GetImmediateContext(&context);
                 if (context != nullptr) {

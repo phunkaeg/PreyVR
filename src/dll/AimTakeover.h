@@ -94,6 +94,8 @@ int AimTrackedHeadMillimetres(unsigned int axis);
 // than trusting the sample they were handed: it is a snapshot, and a weapon
 // change or a recentre invalidates it without anything notifying them.
 bool TryGetAimSample(preyvr::aim::Sample& out);
+// Main render seam only, after installing the camera for the eye being drawn.
+void UpdateAimReticleForRender();
 unsigned long long AimSamplePublishedCount();
 
 DWORD SetAimTakeoverEnabled(unsigned int enabled);

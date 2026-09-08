@@ -1,4 +1,5 @@
 #include "HudBridge.h"
+#include "CameraEditHook.h"
 
 #include "Logger.h"
 
@@ -6,6 +7,8 @@
 #include <atomic>
 #include <cmath>
 #include <cstring>
+#include <deque>
+#include <mutex>
 #include <string>
 
 namespace preyvr::dll {
@@ -67,6 +70,13 @@ using CallTwoFloatFn = void(__fastcall*)(void*, const char*, float, float);
 using CallOneFloatFn = void(__fastcall*)(void*, const char*, float);
 
 std::atomic<unsigned long long> gElement{0}, gCalls{0}, gRefused{0};
+struct PendingHudCall {
+    std::string name;
+    float x = 0, y = 0;
+    bool twoArguments = false;
+};
+std::mutex gQueueMutex;
+std::deque<PendingHudCall> gQueue;
 
 // Every function below that contains __try is POD-only on purpose: SEH cannot
 // live in a function that requires object unwinding, and this project has hit
@@ -194,14 +204,35 @@ DWORD CallHudOneFloat(const char* function, float value)
 
 DWORD CallHudFunction(const char* function, float x, float y, bool twoArguments)
 {
+    // The file-poll worker must not enter Scaleform concurrently with the
+    // game's update/render. Copy arguments into an owned queue; the existing
+    // main-thread render seam drains it, including while a menu is open.
+    if (!ValidName(function)) { return 1; }
+    if (!std::isfinite(x) || (twoArguments && !std::isfinite(y))) { return 2; }
+    if (EnsureRenderHookInstalled() != 0) { return 9; }
+    std::lock_guard lock(gQueueMutex);
+    if (gQueue.size() >= 8) { return 10; }
+    gQueue.push_back({std::string(function), x, y, twoArguments});
+    return 0; // queued, not dispatched
+}
+
+void DrainQueuedHudCalls()
+{
+    PendingHudCall call;
+    {
+        std::unique_lock lock(gQueueMutex, std::try_to_lock);
+        if (!lock.owns_lock() || gQueue.empty()) { return; }
+        call = std::move(gQueue.front());
+        gQueue.pop_front();
+    }
     const DWORD result =
-        twoArguments ? CallHudTwoFloat(function, x, y) : CallHudOneFloat(function, x);
+        call.twoArguments ? CallHudTwoFloat(call.name.c_str(), call.x, call.y)
+                          : CallHudOneFloat(call.name.c_str(), call.x);
     // A completed dispatch is not visual acceptance: a zero says the ABI and the
     // element were right, not that the movie has a function by that name.
     Log("result=" + std::to_string(result) +
-        " fn=" + std::string(function != nullptr ? function : "(null)") +
-        " x=" + std::to_string(x) + (twoArguments ? " y=" + std::to_string(y) : std::string()));
-    return result;
+        " fn=" + call.name + " x=" + std::to_string(call.x) +
+        (call.twoArguments ? " y=" + std::to_string(call.y) : std::string()));
 }
 
 unsigned long long HudElementPointer() { return gElement.load(std::memory_order_relaxed); }

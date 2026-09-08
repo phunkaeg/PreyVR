@@ -52,7 +52,8 @@ unsigned int StickAxis::Update(float x, float y, AxisEvent out[2])
     // value we chose rather than whatever the last real gamepad left there.
     const bool forced = !primed_;
 
-    if (forced || std::fabs(shapedX - lastX_) > policy_.changeEpsilon) {
+    if (forced || (shapedX == 0 && lastX_ != 0) ||
+        std::fabs(shapedX - lastX_) > policy_.changeEpsilon) {
         out[count].keyId = kKeyThumbLX;
         out[count].keyName = "xi_thumblx";
         out[count].value = shapedX;
@@ -61,7 +62,8 @@ unsigned int StickAxis::Update(float x, float y, AxisEvent out[2])
         ++count;
         lastX_ = shapedX;
     }
-    if (forced || std::fabs(shapedY - lastY_) > policy_.changeEpsilon) {
+    if (forced || (shapedY == 0 && lastY_ != 0) ||
+        std::fabs(shapedY - lastY_) > policy_.changeEpsilon) {
         out[count].keyId = kKeyThumbLY;
         out[count].keyName = "xi_thumbly";
         out[count].value = shapedY;

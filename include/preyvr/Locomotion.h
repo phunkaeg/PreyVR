@@ -72,6 +72,9 @@ public:
     // boundary, where the engine's stored axis is no longer ours to reason about.
     void Reset();
 
+    // Changing shaping must preserve the values the engine still holds.
+    void SetPolicy(StickPolicy policy) { policy_ = policy; }
+
     float LastSentX() const { return lastX_; }
     float LastSentY() const { return lastY_; }
 

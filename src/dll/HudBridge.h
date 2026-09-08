@@ -51,8 +51,10 @@ DWORD CallHudTwoFloat(const char* function, float x, float y);
 // reset uses for `reticleXOffset` / `reticleYOffset`.
 DWORD CallHudOneFloat(const char* function, float value);
 
-// Channel-facing form: selects the two-float entry when `twoArguments`.
+// Channel-facing form: copies into a bounded queue; 0 means queued. Native
+// dispatch happens only on the main thread. Completion is logged separately.
 DWORD CallHudFunction(const char* function, float x, float y, bool twoArguments);
+void DrainQueuedHudCalls();
 
 // The last resolved element, or 0. Non-zero means the accessor chain works,
 // which is worth knowing separately from whether a call had any visible effect.

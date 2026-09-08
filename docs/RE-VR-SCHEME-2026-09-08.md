@@ -1,5 +1,12 @@
 # The VR scheme: what was built 2026-09-08, and what was not
 
+> Pre-run review correction: the audit found and fixed native movement ABI,
+> neutralization, resize cleanup, HUD thread ownership, and reticle origin/view
+> timing defects. See [the audit and rebuilt DLL handoff](RE-VR-SCHEME-AUDIT-2026-09-08.md).
+> The measurements below describe the earlier build. Muzzle calibration measures
+> position, not barrel rotation; the six-lane implementation was not yet proof
+> that the complete rendered-barrel/firing/reticle chain agreed.
+
 Six lanes were asked for. Five are built, one is static only, and two of the
 open questions have since been answered by measurement rather than left for the
 headset: the menu is confirmed present in the submitted image, and the render
