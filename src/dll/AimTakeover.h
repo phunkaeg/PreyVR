@@ -77,6 +77,13 @@ unsigned long long AimHeadYawUnavailableCount();
 int AimCameraYawMilliDegrees();
 int AimHeadYawMilliDegrees();
 int AimPlaySpaceYawMilliDegrees();
+// The world anchor the hand is placed against (Prey's cached eye) and the
+// tracked head it is measured from, both in millimetres. The composition
+// assumes these translate together; where they do not, the difference appears
+// as hand movement driven by head movement. Correlating each against head yaw
+// with a motionless controller localises that in one measurement.
+int AimNativeEyeMillimetres(unsigned int axis);
+int AimTrackedHeadMillimetres(unsigned int axis);
 
 DWORD SetAimTakeoverEnabled(unsigned int enabled);
 // 0 preserves native origin; 1 uses the tracked aim point (diagnostic).

@@ -223,6 +223,47 @@ DWORD PostRawInput(int keyId, unsigned int state, int valueMilli)
     return Enqueue(buffer.data()) ? 0u : 4u;
 }
 
+DWORD PostRawInputImmediate(int keyId, unsigned int state, int valueMilli)
+{
+    // **Only from the drain thread**, which is the engine's own input thread.
+    // The queue exists so that a producer on any thread can hand work to that
+    // one; a caller already on it does not need it, and for an analog axis the
+    // queue is actively wrong: it drains ONE event per frame so a menu press and
+    // its release cannot collapse, while this lane produces up to two per frame.
+    // Queued, the axes outrun the drain, the ring fills and every later event is
+    // dropped -- measured as movePosted=0 against moveDropped=109 in 4 s.
+    //
+    // Collapsing is correct for an axis in a way it is not for a button: an
+    // older stick reading is simply a worse answer to the same question.
+    if (!gEnabled.load(std::memory_order_acquire) || gPost == nullptr || gInput == nullptr) {
+        return 1;
+    }
+    const unsigned long thread = GetCurrentThreadId();
+    const unsigned long drain = gDrainThread.load(std::memory_order_acquire);
+    if (drain != 0 && thread != drain) {
+        return 5;   // wrong thread: refuse rather than post from anywhere
+    }
+    const char* const name = input::KeyNameFor(keyId);
+    if (name == nullptr) { return 2; }
+    input::EventFields fields;
+    fields.device = input::DeviceForKeyId(keyId);
+    fields.state = state;
+    fields.inputChar = input::InputCharForKeyId(keyId);
+    fields.keyName = name;
+    fields.keyId = keyId;
+    fields.value = static_cast<float>(valueMilli) / 1000.0f;
+    std::array<std::uint8_t, input::kEventSize> buffer{};
+    if (!input::BuildEvent(fields, buffer.data(), buffer.size())) { return 3; }
+    if (!CallPost(gPost, gInput, buffer.data(), gForce.load(std::memory_order_acquire))) {
+        gRefused.fetch_add(1, std::memory_order_relaxed);
+        gEnabled.store(false, std::memory_order_release);
+        Log("result=failed detail=exception_in_immediate_post disarmed=1");
+        return 4;
+    }
+    gPosted.fetch_add(1, std::memory_order_relaxed);
+    return 0;
+}
+
 unsigned long long InputPostCount() { return gPosted.load(std::memory_order_relaxed); }
 unsigned long long InputPostRefusedCount() { return gRefused.load(std::memory_order_relaxed); }
 unsigned long long InputQueueDroppedCount() { return gQueue.Dropped(); }

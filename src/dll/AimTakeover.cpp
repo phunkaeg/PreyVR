@@ -51,6 +51,8 @@ std::atomic<unsigned int> gNativeMagnitude{0};
 std::atomic<bool> gOriginFromHand{false};
 std::atomic<bool> gBodyYaw{true};
 std::atomic<int> gCamYawMilli{0}, gHeadYawMilli{0}, gPlaySpaceYawMilli{0};
+std::atomic<int> gNativeEyeMilli[3]{0,0,0};
+std::atomic<int> gTrackedHeadMilli[3]{0,0,0};
 // The last head yaw that was defined. Near-vertical, the head's yaw is genuinely
 // undefined but the BODY's has not changed, so holding this keeps the frame
 // correct -- and camera yaw still carries body turning, so the player can look
@@ -143,10 +145,19 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     // body, which is what a head-relative offset must be rotated by; using the
     // camera directly applies the head twice and the hand follows the headset.
     frame.yaw = frame.cameraYaw - frame.referenceYaw;   // aim.bodyyaw 0 behaviour
+    // Measured unconditionally. Recording it only on the body-yaw path made the
+    // instrument unable to describe the mode it was meant to be compared
+    // against: an A/B on 2026-09-08 reported a 0-degree head sweep for
+    // `aim.bodyyaw 0` purely because nothing sampled the head there.
+    const auto measuredHeadYaw = haveTracking
+        ? stereo::RecenterYawFromHeadPose(frame.tracking.head)
+        : std::optional<float>{};
+    if (measuredHeadYaw) {
+        gHeadYawMilli.store(static_cast<int>(*measuredHeadYaw * 57295.78f),
+                            std::memory_order_relaxed);
+    }
     if (gBodyYaw.load(std::memory_order_acquire)) {
-        const auto headYaw = haveTracking
-            ? stereo::RecenterYawFromHeadPose(frame.tracking.head)
-            : std::optional<float>{};
+        const auto headYaw = measuredHeadYaw;
         if (headYaw) {
             gLastHeadYaw.store(*headYaw, std::memory_order_release);
             gHaveHeadYaw.store(true, std::memory_order_release);
@@ -174,8 +185,20 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
         }
     }
     gCamYawMilli.store(static_cast<int>(frame.cameraYaw * 57295.78f), std::memory_order_relaxed);
-    gHeadYawMilli.store(static_cast<int>(frame.headYaw * 57295.78f), std::memory_order_relaxed);
     gPlaySpaceYawMilli.store(static_cast<int>(frame.yaw * 57295.78f), std::memory_order_relaxed);
+    // The anchor the hand is placed against, and the tracked head it is measured
+    // from. A 2026-09-08 measurement found the hand still moving 0.74 mm per
+    // degree of head yaw at r = -0.92 with the controller resting motionless,
+    // *after* the play-space yaw was proved decoupled. The remaining suspect is
+    // these two disagreeing: the composition assumes the native eye translates
+    // by the same amount as the tracked head, and if it translates by less, the
+    // difference lands in the hand. Reporting both makes that one measurement.
+    for (unsigned int i = 0; i < 3; ++i) {
+        const float eye = (&frame.nativeEye.x)[i];
+        const float head = (&frame.tracking.head.position.x)[i];
+        gNativeEyeMilli[i].store(static_cast<int>(eye * 1000.0f), std::memory_order_relaxed);
+        gTrackedHeadMilli[i].store(static_cast<int>(head * 1000.0f), std::memory_order_relaxed);
+    }
     if ((frame.referenceGeneration & 1) ||
         frame.referenceGeneration != HeadTrackingReferenceGeneration() || !std::isfinite(frame.yaw)) { gGameplayFrame.Clear(); return; }
     // IK must never reread the mutable cached origin below.
@@ -323,6 +346,8 @@ unsigned long long AimHeadYawUnavailableCount() { return gHeadYawUnavailable.loa
 int AimCameraYawMilliDegrees() { return gCamYawMilli.load(std::memory_order_relaxed); }
 int AimHeadYawMilliDegrees() { return gHeadYawMilli.load(std::memory_order_relaxed); }
 int AimPlaySpaceYawMilliDegrees() { return gPlaySpaceYawMilli.load(std::memory_order_relaxed); }
+int AimNativeEyeMillimetres(unsigned int axis) { return axis < 3 ? gNativeEyeMilli[axis].load(std::memory_order_relaxed) : 0; }
+int AimTrackedHeadMillimetres(unsigned int axis) { return axis < 3 ? gTrackedHeadMilli[axis].load(std::memory_order_relaxed) : 0; }
 
 DWORD SetAimOriginFromHand(unsigned int enabled)
 {

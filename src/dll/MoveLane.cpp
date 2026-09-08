@@ -225,8 +225,10 @@ void UpdateMoveLane()
     const unsigned int count = gStick.Update(state.thumbstickX, state.thumbstickY, events);
     for (unsigned int i = 0; i < count; ++i) {
         const int valueMilli = static_cast<int>(events[i].value * 1000.0f);
-        if (PostRawInput(events[i].keyId, static_cast<unsigned int>(events[i].state),
-                         valueMilli) == 0) {
+        // Immediate, not queued: this already runs on the drain thread, and the
+        // queue drains one event per frame while a two-axis stick produces two.
+        if (PostRawInputImmediate(events[i].keyId, static_cast<unsigned int>(events[i].state),
+                                  valueMilli) == 0) {
             gPosted.fetch_add(1, std::memory_order_relaxed);
         } else {
             gDropped.fetch_add(1, std::memory_order_relaxed);

@@ -57,6 +57,16 @@ DWORD PostMenuAction(unsigned int action);
 // `valueMilli` is thousandths, so a text channel can carry a float.
 DWORD PostRawInput(int keyId, unsigned int state, int valueMilli);
 
+// The same event, posted straight through instead of queued. **Drain thread
+// only** -- it refuses on any other thread rather than posting from anywhere.
+//
+// For an analog axis the queue is the wrong shape: it deliberately drains one
+// event per frame so a menu press and its release cannot collapse, while a
+// two-axis stick produces two per frame. Queued, the axes outrun the drain and
+// the ring fills. Collapsing is correct for an axis and wrong for a button,
+// which is why these are separate calls rather than a policy flag.
+DWORD PostRawInputImmediate(int keyId, unsigned int state, int valueMilli);
+
 // Drains queued events on the calling thread. Called from the engine's own
 // per-frame seam; safe to call when nothing is queued.
 //

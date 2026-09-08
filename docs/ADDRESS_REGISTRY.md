@@ -2250,3 +2250,71 @@ still across three head yaws, and the camera yaw visibly moves it.
 drive phase, about a fifth of frames, meaning the goal was regularly outside the
 arm's authored reach. Expected at full extension; if it persists with the hand
 near the body, the model-space scale is wrong.
+
+## R-105 -- the near-pass eye defect closes H-019 and half of H-022 (headset)
+
+Confirmed 2026-09-08. `NearViewStereo` chose its eye from `LastRenderedEye()`, a
+mutable **game-thread** global, while the view-info it packs can belong to a
+render frame queued earlier. Every tag on that path is individually valid, which
+is why four separate counters read zero while the wrong eye was in use.
+
+Resolved from the view-info's own camera instead: `+0x08` is the render view's
+current CCamera, verified by reading the builder `0x180FB2AC0` (`param_1[1] =
+param_3`) and its caller `0x180FB1670` (passing `renderView + 0x11A0`). Matching
+its position against records published as each eye was built identifies the eye
+from the data being rendered.
+
+**Live:** 66,840 near draws per 3 s, `nearNoProvenance` and `eyeLookupMiss` both
+**zero** in gameplay. The wearer: *"flicker is gone from the model AND the gloo
+guns little screen"* -- so **H-019 is closed by the same fix**, and was never a
+separate fault.
+
+**The steady mirage survived**, so it is genuinely a different fault and the two
+must stop being treated as one cause.
+
+## R-106 -- the body-yaw fix works; a smaller anchor coupling remains
+
+Measured 2026-09-08 with the right controller **resting motionless** on a
+surface, sampling the model-space hand goal against head yaw.
+
+| quantity | value |
+|---|---|
+| head yaw swept | 75-112 degrees |
+| play-space yaw spread | **0.0 degrees** |
+| goal X vs head yaw, correlation | **-0.92** |
+| goal X vs head yaw, slope | **-0.74 mm/degree** |
+
+**The first row is the body-yaw fix working exactly as intended:** the
+play-space yaw is completely decoupled from the head. **The third and fourth
+rows are a separate, smaller defect that survives it** -- roughly 83 mm of hand
+movement across a 112-degree sweep, which is what the wearer reported as "a
+couple of cm to the right".
+
+At r = -0.92 this is not tracking noise. An earlier attempt with the controller
+*held* gave r = -0.24 against a 248 mm spread and was correctly discarded as
+inconclusive: a hand held "still" moves far more than the effect being measured.
+The resting control is what made the signal readable.
+
+**Leading explanation, not yet proved.** The hand is placed as
+`eyeWorld + Rz(yaw) * ToEngine(controller - head)`, which assumes Prey's cached
+eye translates by the same amount as the tracked head. Yawing a head moves the
+eyes, since they sit forward of the neck pivot; if the native eye translates by
+less than the tracked head, the difference lands in the hand. The predicted
+magnitude is the right order: a 112-degree sweep moves a real eye about 166 mm,
+and 83 mm is roughly half of it.
+
+`report` now carries `eyeMm` and `headMm`. Correlating each against head yaw with
+a motionless controller localises this in one measurement.
+
+**Not the near FOV.** `ikGoalMm` is model space, upstream of projection, so
+`r_DrawNearFoV` cannot cause this coupling. It remains a candidate for the
+*static* forward offset the wearer sees, which is judged visually and therefore
+does depend on projection.
+
+### An instrument that could not describe its own control
+
+The A/B against `aim.bodyyaw 0` returned a **0-degree head sweep**, because head
+yaw was only sampled inside the body-yaw path. The instrument was structurally
+unable to measure the mode it existed to be compared against. Now sampled
+unconditionally. That is the fourth counter in this project to be unable to see
+the thing it was built for.
