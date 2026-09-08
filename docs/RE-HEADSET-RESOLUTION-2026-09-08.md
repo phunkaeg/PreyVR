@@ -22,7 +22,34 @@ The standalone `tools/xr_session_probe/main.cpp:225-240` already demonstrates
 querying runtime recommended view dimensions. It is a reusable API example;
 it does not mean the injected host currently follows the recommendation.
 
-## Step 1 is implemented, 2026-09-08 (not yet run)
+## MEASURED, 2026-09-08: the headset receives 48% of the pixels it asks for
+
+First run of `xr.resolution` on this machine, Quest 3 over Virtual Desktop:
+
+```
+recommended=2688x2880   max=16384x16384   views=2   viewsDiffer=0
+backbuffer=2560x1440    heldEye=2560x1440  submitted=2560x1440
+pixelRatioPercent=48    widthRatioPercent=95   heightRatioPercent=50
+```
+
+**The vertical axis is exactly half.** Width is nearly right at 95%, so this is
+not a uniform scale factor and not a DPI question: the runtime wants each eye
+**taller than it is wide** (2688x2880), and the game supplies a 16:9 desktop
+frame (2560x1440) whose height is half of that. The compositor upscales 2x
+vertically, which is the reported soft image, now a number instead of an
+impression.
+
+This is the shape mismatch section "Desktop DPI and ultrawide aspect" predicted
+in the abstract. The measurement makes it concrete and gives the target: height
+is where the deficit is, so a change that widens the frame buys almost nothing.
+
+**Still not measured:** whether Prey's scene is drawn at the backbuffer size or
+resolved down to it from something else. `r_Supersampling` exists in this binary.
+The ratio above bounds what the compositor receives; it does not prove the scene
+was drawn at 2560x1440 rather than upstream of a resolve. Section 2's leads are
+the route to that, and they now have a reason to matter.
+
+## Step 1 is implemented, 2026-09-08
 
 `xr.resolution` on the command channel reports the chain this document asks for
 before any resolution work:
