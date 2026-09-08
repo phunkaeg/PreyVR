@@ -1940,6 +1940,39 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+
+## 2026-09-08 — R-116: the menu navigator confirmed as a second right-stick producer, in xr-sim
+
+The audit proved in source that `MenuNavigator` is fed whenever `gMenuNavigation`
+is true, with no active-menu predicate. **Confirmed behaviourally under xr-sim,
+with no headset**, which is worth recording because it shows how much of this
+class of question the simulator can answer.
+
+| condition | `menuActions` | `stickR` |
+|---|---|---|
+| `menu.nav 1`, stick right, 3 s | **0 -> 20**, climbing to 148 while held | 1000,0 |
+| `menu.nav 0`, stick right, 4 s | **148 -> 148, zero** | 1000,0 |
+
+Roughly twenty taps in three seconds matches the documented 0.45 s initial delay
+then 0.16 s repeat. `menu.nav 0` silences it completely.
+
+**The turn lane was never armed for any of this** -- `turnEnabled=0` throughout.
+That is the decisive part: it proves `move.turn 0` could not have silenced these
+taps, so the test proposed in the headset handover was invalid, exactly as the
+audit said. It also explains why the `move.turnscale 40` probe changed nothing:
+that scales the move lane, not the navigator.
+
+**The remaining link is static and now has a name.** The action table at
+`FUN_181706DA0` contains `quickselect_left` (0x163), `quickselect_right` (0x164)
+and `quickselect_down` (0x165), and quick-select is what changes the equipped
+weapon. What is **not** established is which key those actions are bound to.
+`GameData.pak` is not a readable zip -- "Bad magic number for central directory"
+-- so the default profile was not reachable that way, and the binding remains
+unproven. Do not treat the chain as closed on the strength of a plausible name.
+
+**What xr-sim cannot answer here:** whether a D-pad tap actually switches a
+weapon. That needs a loaded level with weapons, and this run never left the main
+menu. The behavioural half is closed; the consequence half is not.
 ## 2026-09-08 — Headset session: what worked, what broke, and one good clue
 
 Full write-up: [headset session handover](HANDOVER-HEADSET-SESSION-2026-09-08.md).
