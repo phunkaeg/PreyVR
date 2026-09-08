@@ -2343,6 +2343,16 @@ The cvar's own help string does not list the modes -- it reads only "Enables
 post process based anti-aliasing modes" -- which is why this table had to come
 from the data rather than the help.
 
+**SMAA 1X and FXAA 1X were indistinguishable to the wearer**, tested directly
+on 2026-09-08: *"such a little difference its almost impossible for me to tell"*.
+Worth recording rather than dropping, because the general expectation is that
+SMAA is clearly better -- and at this resolution it is not, to this observer, in
+this headset. The likely reason is that the compositor already upscales 2x
+vertically (R-108), so both filters are working on an image whose detail was
+lost before they ran. Mode 1 is kept for its behaviour on text and thin
+geometry, which is where the two should diverge, but the choice is a weak
+preference and not a measured win.
+
 **Six modes, not four.** `STEREO_ROUTE.md` records a wearer cycling "all four
 modes" and choosing 3. There are six, so that comparison never saw `TSAA` or
 `FXAA 1X`, and it selected the most strongly temporal option available to it.
