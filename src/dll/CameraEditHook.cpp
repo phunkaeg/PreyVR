@@ -66,6 +66,15 @@ std::atomic<float> gStereoIpd{0.0f};
 std::atomic<float> gStereoHalfFov{50.0f};
 std::atomic<unsigned long long> gEyeCounter{0};
 std::atomic<int> gLastEye{-1};
+
+// A small ring of recently built eyes, matched by camera position. Sized well
+// past the game/render thread separation so a view in flight can still find the
+// record that produced it.
+constexpr unsigned int kBuiltEyeSlots = 16;
+std::array<BuiltEye, kBuiltEyeSlots> gBuiltEyes{};
+std::atomic<unsigned long long> gBuiltEyeSerial{0};
+std::atomic<unsigned long long> gBuiltEyeCount{0};
+std::atomic<unsigned long long> gBuiltEyeMisses{0};
 std::atomic<int> gEyeLock{-1};   // -1 = alternate
 std::atomic<float> gAsymmetry{1.1f};
 
@@ -1111,6 +1120,20 @@ void __fastcall RenderWithCameraEdit(void* system)
                                   gStereoIpd.load(std::memory_order_acquire),
                                   gStereoHalfFov.load(std::memory_order_acquire));
         if (built) {
+            // Publish the eye WITH the camera it produced, so a downstream
+            // consumer can identify it from content rather than from the
+            // mutable global below. H-022: the global is a frame ahead of the
+            // render thread and every tag it carries is individually valid.
+            {
+                const stereo::Matrix34 m = stereo::ReadMatrix(edited);
+                BuiltEye record{};
+                record.position[0] = m[3];  record.position[1] = m[7];  record.position[2] = m[11];
+                record.right[0] = m[0];     record.right[1] = m[4];     record.right[2] = m[8];
+                record.eye = eye;
+                record.serial = gBuiltEyeSerial.fetch_add(1, std::memory_order_relaxed) + 1;
+                gBuiltEyes[record.serial % kBuiltEyeSlots] = record;
+                gBuiltEyeCount.store(record.serial, std::memory_order_release);
+            }
             gLastEye.store(eye, std::memory_order_release);
             // Stamp the capture so the two dumps of a pair cannot be confused.
             SetFrameCaptureTagOverride(eye);
@@ -1340,6 +1363,37 @@ DWORD EnsureRenderHookInstalled()
     // Installing without arming is safe by construction: with nothing armed the
     // hook forwards to the original after draining.
     return EnsureHook() ? 0u : 1u;
+}
+
+bool FindBuiltEyeByPosition(const float position[3], BuiltEye& out)
+{
+    const unsigned long long count = gBuiltEyeCount.load(std::memory_order_acquire);
+    if (count == 0) { gBuiltEyeMisses.fetch_add(1, std::memory_order_relaxed); return false; }
+    // Exact-ish: the render view holds a by-value copy of the camera we built,
+    // so the bits should be identical. A small tolerance covers a copy that
+    // passed through a float conversion without admitting a different eye --
+    // the two eyes are an IPD apart, which is orders of magnitude wider.
+    constexpr float kTolerance = 1e-4f;
+    const unsigned long long newest = count;
+    const unsigned long long oldest = newest > kBuiltEyeSlots ? newest - kBuiltEyeSlots + 1 : 1;
+    for (unsigned long long serial = newest; serial >= oldest; --serial) {
+        const BuiltEye& candidate = gBuiltEyes[serial % kBuiltEyeSlots];
+        if (candidate.serial != serial) { continue; }
+        if (std::fabs(candidate.position[0] - position[0]) <= kTolerance &&
+            std::fabs(candidate.position[1] - position[1]) <= kTolerance &&
+            std::fabs(candidate.position[2] - position[2]) <= kTolerance) {
+            out = candidate;
+            return true;
+        }
+        if (serial == 1) { break; }
+    }
+    gBuiltEyeMisses.fetch_add(1, std::memory_order_relaxed);
+    return false;
+}
+
+unsigned long long BuiltEyeLookupMissCount()
+{
+    return gBuiltEyeMisses.load(std::memory_order_relaxed);
 }
 
 DWORD SetCameraYawEdit(float degrees)

@@ -1077,6 +1077,36 @@ the counters below cannot carry the conclusions drawn from them:
 Two guards in a row were aimed at a mechanism they could not detect. The
 negatives stand as *observations*; the exclusions built on them do not.
 
+### Fixed in the build, 2026-09-08 (not yet run)
+
+The near pass no longer asks a global which eye is current. It reads the
+view-info's own camera at `+0x08` and matches its position against records
+published when each eye was built, so the eye and the right axis both come from
+**the camera that produced this view**.
+
+`viewInfo+0x08` was verified independently before being relied on: the builder
+`0x180FB2AC0` opens with `param_1[1] = param_3`, and `0x180FB1670` calls it
+passing `renderView + 0x11A0`. So `+0x08` is the render view's own current
+CCamera, which is a by-value copy of what the game thread built -- matching it by
+position identifies the eye from the data being rendered, and cannot go stale
+because it *is* that data.
+
+Both of the review's points are addressed together: the eye no longer comes from
+a mutable game-thread global, and the right axis no longer comes from CSystem's
+global camera, which could be a newer head orientation than the view was built
+with.
+
+**It fails closed.** A view-info whose camera matches no published eye is
+forwarded un-offset and counted in `nearNoProvenance`, rather than falling back
+to the global. An un-offset near pass is a visible, smaller error than a
+confidently wrong eye -- and this counter, unlike the previous three, reports the
+*absence* of information rather than the absence of a mechanism it could not
+detect. If it climbs, the eye records are not reaching the render thread; that
+is a different fault from the offset being wrong, and it says so.
+
+Whether this is the flicker's cause remains unproven. It is a defect in our own
+source either way.
+
 ### The defect that survives all of it: eye/frame ownership
 
 `NearViewStereo` chooses its offset from `LastRenderedEye()`, which reads a

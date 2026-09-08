@@ -66,6 +66,26 @@ DWORD SetCameraYawEdit(float degrees);
 // The FOV is synthetic and deliberately asymmetric per eye, mirrored the way a
 // real headset reports, so the asymmetry-shift path is exercised too rather than
 // being left untested until a headset is attached.
+// One immutable record of a built eye: where that eye's camera ended up, the
+// right axis it was offset along, and which eye it is.
+//
+// **Why content and not a tag.** `LastRenderedEye()` is a mutable game-thread
+// global, and the render thread is about a frame behind it, so a consumer that
+// reads it may be packing a view built for the *other* eye while every counter
+// stays valid (H-022). Matching a view-info's own camera position against these
+// records identifies the eye from the data being rendered, which cannot go stale
+// because it IS the thing being rendered.
+struct BuiltEye {
+    float position[3];
+    float right[3];
+    int eye;
+    unsigned long long serial;
+};
+// Finds the record whose camera position matches `position`. False when no eye
+// matches, which a caller must treat as "refuse", never as "assume the latest".
+bool FindBuiltEyeByPosition(const float position[3], BuiltEye& out);
+unsigned long long BuiltEyeLookupMissCount();
+
 DWORD SetSyntheticStereo(float ipdMetres, float halfFovDegrees);
 
 // Scales how asymmetric the synthetic per-eye frustum is. 1.0 makes both eyes

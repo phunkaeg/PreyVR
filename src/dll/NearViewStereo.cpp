@@ -47,6 +47,10 @@ constexpr std::array<std::uint8_t, 22> kPackerPrologue{
 
 // Translation-free view x near projection, per the H-011 investigation.
 constexpr std::size_t kNearViewProjection = 0xA0;
+// The render view's own current CCamera, stored by the view-info builder
+// 0x180FB2AC0 (`param_1[1] = param_3`, caller passing renderView + 0x11A0).
+// This is the provenance anchor that replaces the game-thread eye global.
+constexpr std::size_t kViewInfoCamera = 0x08;
 
 void* gTarget = nullptr;
 std::atomic<PackViewInfoFn> gOriginal{nullptr};
@@ -55,6 +59,7 @@ bool gInstalled = false;
 std::atomic<bool> gEnabled{false};
 std::atomic<bool> gZeroDelta{false};
 std::atomic<unsigned long long> gReentered{0};
+std::atomic<unsigned long long> gNoProvenance{0};
 
 // **The near view-projection is a shared buffer, so the edit must not nest.**
 // This hook snapshots it, offsets it, calls the original and restores. If the
@@ -228,6 +233,29 @@ bool CameraRightAxis(Vec3& out)
 // A projection-shaped matrix has a finite, non-trivial magnitude. Several callers
 // build temporary view-info and share this packer, so this is the guard against
 // editing something that is not the pass we mean.
+// POD only, both of them: `__try` cannot appear in a function that requires
+// object unwinding, and the caller below builds Vec3/Matrix34/span. This rake
+// has now been hit three times in this project.
+bool ReadViewInfoCamera(const std::uint8_t* viewInfo, void** out)
+{
+    __try {
+        *out = *reinterpret_cast<void* const*>(viewInfo + kViewInfoCamera);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool ReadCameraBytes(const void* camera, std::uint8_t* out, std::size_t size)
+{
+    __try {
+        std::memcpy(out, camera, size);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 bool LooksLikeProjection(const float* m)
 {
     float magnitude = 0.0f;
@@ -254,17 +282,56 @@ void* __fastcall PackViewInfoWithEyeOffset(void* owner, std::uint8_t* viewInfo,
         return original != nullptr ? original(owner, viewInfo, third, fourth) : nullptr;
     }
 
-    // Which eye is being built. -1 means the camera hook has not published one,
-    // which is a real state during startup and while stereo is disarmed.
-    const int eye = LastRenderedEye();
+    // Which eye this VIEW-INFO belongs to, resolved from its own camera.
+    //
+    // **Not `LastRenderedEye()`.** That is a mutable game-thread global, and
+    // CameraEditHook.h says in its own words that the game and render threads
+    // run about a frame apart, so a view-info queued earlier can be packed
+    // while the global already names the next eye. Every tag on that path is
+    // individually valid, which is exactly why `nearNoEye`, `nearRefused`,
+    // `nearReentered` and `nearAlreadyOffset` could all read zero while the
+    // wrong eye was used (H-022).
+    //
+    // The view-info's `+0x08` is the render view's own current CCamera --
+    // verified by reading the builder `0x180FB2AC0`, whose first act is
+    // `param_1[1] = param_3` with the caller passing `renderView + 0x11A0`.
+    // That camera is a by-value copy of the one the game thread built, so
+    // matching its position against the published eye records identifies the
+    // eye from the data being rendered, and supplies the right axis that
+    // belongs to it rather than a newer head orientation.
+    int eye = -1;
+    Vec3 right{};
+    {
+        void* sourceCamera = nullptr;
+        std::array<std::uint8_t, engine::CameraLayout::size> cameraBytes{};
+        if (!ReadViewInfoCamera(viewInfo, &sourceCamera) || sourceCamera == nullptr ||
+            !ReadCameraBytes(sourceCamera, cameraBytes.data(), cameraBytes.size())) {
+            gNoProvenance.fetch_add(1, std::memory_order_relaxed);
+            return original != nullptr ? original(owner, viewInfo, third, fourth) : nullptr;
+        }
+        const stereo::Matrix34 m = stereo::ReadMatrix(cameraBytes);
+        const float position[3] = {m[3], m[7], m[11]};
+        BuiltEye record{};
+        if (!FindBuiltEyeByPosition(position, record)) {
+            // Refuse rather than fall back to the global. A guessed eye is the
+            // defect this replaces, and an un-offset near pass is a smaller,
+            // visible error than a confidently wrong one.
+            gNoProvenance.fetch_add(1, std::memory_order_relaxed);
+            return original != nullptr ? original(owner, viewInfo, third, fourth) : nullptr;
+        }
+        eye = record.eye;
+        right = Vec3{record.right[0], record.right[1], record.right[2]};
+    }
     if (eye != 0 && eye != 1) {
         gNoEye.fetch_add(1, std::memory_order_relaxed);
         return original != nullptr ? original(owner, viewInfo, third, fourth) : nullptr;
     }
-    Vec3 right{};
-    if (!CameraRightAxis(right)) {
-        gRefused.fetch_add(1, std::memory_order_relaxed);
-        return original != nullptr ? original(owner, viewInfo, third, fourth) : nullptr;
+    {
+        const float length = std::sqrt(right.x * right.x + right.y * right.y + right.z * right.z);
+        if (!std::isfinite(length) || length < 0.9f || length > 1.1f) {
+            gRefused.fetch_add(1, std::memory_order_relaxed);
+            return original != nullptr ? original(owner, viewInfo, third, fourth) : nullptr;
+        }
     }
 
     // Already offset for this eye by an enclosing call on this stack: forward it
@@ -401,6 +468,7 @@ unsigned long long NearViewRefusedCount() { return gRefused.load(std::memory_ord
 unsigned long long NearViewNoEyeCount() { return gNoEye.load(std::memory_order_relaxed); }
 unsigned long long NearViewReenteredCount() { return gReentered.load(std::memory_order_relaxed); }
 unsigned long long NearViewAlreadyOffsetCount() { return gAlreadyOffset.load(std::memory_order_relaxed); }
+unsigned long long NearViewNoProvenanceCount() { return gNoProvenance.load(std::memory_order_relaxed); }
 
 DWORD ArmNearViewLineage(unsigned int enabled)
 {
