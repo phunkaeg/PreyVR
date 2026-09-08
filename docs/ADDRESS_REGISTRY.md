@@ -2357,3 +2357,45 @@ preference and not a measured win.
 modes" and choosing 3. There are six, so that comparison never saw `TSAA` or
 `FXAA 1X`, and it selected the most strongly temporal option available to it.
 Baked into `Invoke-PreyVRStartup.ps1` so the choice is not rediscovered.
+
+## R-108 -- the HUD element dispatch, and the resolution deficit
+
+### HUD (static, 2026-09-08)
+
+| what | where | evidence |
+|---|---|---|
+| `GetHUDUIElement()` | `0x1665780` | tail-calls UI singleton `DAT_18224DAD0` vtable `+0x60` with `"DanielleHUD"` |
+| `GetMarkerUIElement()` | `0x16657A0` | same shape with `"DanielleMarkers"` |
+| **`IUIElement::CallFunction`** | element vtable **`+0x210`** | `0x11797C0` calls `(*(*element + 0x210))(element, name, args, 0, 0)` |
+| two-float call helper | `0x11797C0` | takes `(element, name, float, float)`, builds the argument array itself via `0x2B2870` / `0x2E7BB0` |
+| one-float helper | `0x118C970` | same shape, one argument |
+
+`0x11797C0` is the useful entry point: a complete call taking two floats, so
+moving or hiding the native reticle needs no hand-built `SUIArguments`. **The
+floats arrive in XMM2/XMM3** and the decompiler's `undefined4` parameters must
+not be read as integer arguments -- `0x11797C5/CB` save XMM3/XMM2.
+
+Anchors, not a route. A HUD-only texture still needs the element's rendering
+redirected into a private transparent target *and* the baked-in HUD removed from
+the scene images, and F-014/F-015 record corruption and deadlock from
+second-render experiments.
+
+### Resolution, measured live (2026-09-08)
+
+| quantity | value |
+|---|---|
+| runtime recommended, per eye | **2688 x 2880** |
+| supplied (backbuffer, held eye, submitted) | **2560 x 1440** |
+| width ratio | 95% |
+| **height ratio** | **50%** |
+| **pixel ratio** | **48%** |
+
+The deficit is **entirely vertical**, which rules out a uniform scale factor and
+rules out DPI. The runtime wants each eye taller than it is wide; the game
+supplies a 16:9 desktop frame. Anything that only widens the frame buys nothing.
+
+`r_Width`, `r_Height`, `r_CustomRes*`, `r_Supersampling` and
+`r_SupersamplingFilter` all exist in this build and are now allowlisted, applied
+before `xr.start`. A backbuffer that changes size after the session is built now
+refuses to submit rather than copying mismatched resources, which is what made
+allowlisting them safe.
