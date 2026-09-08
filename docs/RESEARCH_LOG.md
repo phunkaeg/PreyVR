@@ -1939,7 +1939,63 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+
+## 2026-09-08 — Headset session: what worked, what broke, and one good clue
+
+Full write-up: [headset session handover](HANDOVER-HEADSET-SESSION-2026-09-08.md).
+
+**Confirmed live at 2688x2880, pixelRatioPercent=100:** resolution deficit closed,
+head tracking and near pass clean, body yaw holding at exactly 137.957 through a
+26-degree head sweep, locomotion driving with `moveNative=0` and `moveDropped=0`.
+
+**The reticle slides off a fixed object as the head turns, and the wearer found
+the clue that reframes it:** the reticle *shrinks toward the screen edges, "as if
+wrapping a cylinder"*. That is a flat plane at fixed depth viewed through a wide
+field -- `cos 60 = 0.5` at the edge of 120 degrees. It predicts the slide with no
+head coupling at all: the position is a normalised fraction from the camera's
+tangents, the movie lays it across its own plane, and if the two subtend
+different angles the error is zero at centre and grows outward. Turning the head
+moves the target outward. Untested; the discriminating check is whether the
+reticle is accurate dead centre.
+
+Measured `rpTans = +/-1.73205 H, +/-1.85577 V` -- symmetric 120 x 123.363 with
+**zero asymmetry**, while the camera edit writes per-eye asymmetric tangents.
+Eliminated: the near pass (identical at `r_DrawNearFoV` 70 and 123.363), the
+reference yaw, LOCAL reference space, and any aim/hand conversion asymmetry.
+
+**Two of my own conclusions were withdrawn.** "70% head-yaw leakage" divided
+viewport width by FOV, assuming a linear angular projection; the correct centre
+slope is `1/(2*tan(60))` = 5.04 milli/degree. And the convergence result does not
+uniquely identify a direction fault -- a correct ray still separates from a near
+object when the eye translates, and the head rotates about the neck.
+
+**The trigger, and both causes were mine.** The key ids were never wrong:
+`FUN_1809D9EF0` registers name/id pairs and reading them out validates against
+`xi_thumblx = 0x210`. The trigger is simply two keys -- axis `0x20F`, button
+`0x21D` -- and firing binds to the button. Then posting `0x21D` was refused 299
+times by our own name table, which I had not extended. F-011's lesson generalises:
+a valid key nothing is bound to is indistinguishable in the counters from a
+working one.
+
+**`r_DrawNearFoV` is vertical and moves with aspect**, and a level load resets it.
+88.507 is that formula at 16:9; 123.363 at 0.9333, confirmed in the headset.
+
+**The calibration invalidation chain:** `ikEquipGen` went 5 to 29 in minutes
+because the right stick also switches weapons, every switch invalidates the IK
+calibration, and hand rotation is only written once calibrated. That fully
+explains rotation working and then "breaking again".
+
+**`ScaleReach` multiplies**, so raising `ik.reach` to fix clamping made it worse
+and broke 1:1 -- it must go below 100 to compress a longer arm into the
+character's. The wearer caught it immediately, and also caught that my
+crosstalk test was confounded: disabling the left hand removes the observation,
+not the cause.
 ## 2026-09-08 — R-114: the HUD lane, and the lever that places it
+
+**Later static qualification:** the cvar help cited here begins "MP only" and
+the measured menu band does not prove DanielleHUD's reticle coordinate mapping.
+The inferred HUD-wide canvas contract is unverified; see
+`RE-AIM-HEAD-COUPLING-2026-09-08.md` for target registration and replay evidence.
 
 The HUD item was being read as "extract the interface into its own transparent
 OpenXR layer", which is a large piece of work with two recorded failures behind

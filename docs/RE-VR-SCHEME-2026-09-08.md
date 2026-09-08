@@ -198,6 +198,12 @@ frame.
 
 ### HUD placement — built; extraction into its own layer still not
 
+**2026-09-08 static correction:** the measurements below establish a menu content
+band, not DanielleHUD's reticle mapping. The cited cvar help explicitly says
+"MP only"; a native centred reticle value of 0.5 does not establish off-centre
+scale. Treat the following generalization to all HUD elements as unverified.
+See [the aim/head-coupling audit](RE-AIM-HEAD-COUPLING-2026-09-08.md).
+
 **In a headset the HUD's problem is placement, not extraction.** It draws at the
 frame edges, and in a wide field of view the frame edges are the far periphery
 where nothing is readable. That is fixable without a second render pass.

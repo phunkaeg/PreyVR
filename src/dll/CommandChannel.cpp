@@ -204,6 +204,7 @@ void WriteReport(std::ostringstream& out)
         << " reticleXY=" << ReticleFollowLastX() << "," << ReticleFollowLastY()
         << " reticleDispatched=" << ReticleDispatchedCount()
         << " reticleDispatchFailed=" << ReticleDispatchFailedCount()
+        << ReticleProjectionReport()
         << " aimDirMilli=" << AimDirectionMilli(0) << "," << AimDirectionMilli(1) << ","
         << AimDirectionMilli(2)
         << " aimRawQMilli=" << AimRawOrientationMilli(0) << "," << AimRawOrientationMilli(1)

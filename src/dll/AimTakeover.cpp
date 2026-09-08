@@ -306,11 +306,8 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
         }
     }
 
-    // **Instrumented because two code readings disagreed with a wearer.** LOCAL
-    // reference space and a constant play yaw both say this direction cannot
-    // move when only the head rotates, yet a headset measurement put roughly
-    // 70% of head yaw into the reticle. One of those is wrong, and a reported
-    // vector settles it without another round of reading.
+    // Legacy latest-value telemetry; use reticleProjection's coherent render
+    // record to compare a ray with its actual projection camera and raw pose.
     for (unsigned int i = 0; i < 3; ++i) {
         gAimDirMilli[i].store(static_cast<int>((&sample.direction.x)[i] * 1000.0f),
                               std::memory_order_relaxed);
@@ -384,8 +381,11 @@ void UpdateAimReticleForRender()
                             HeadTrackingReferenceGeneration(), MonotonicNanoseconds())) {
         return;
     }
+    const ReticleAimContext context{frame.tracking.sequence, frame.tracking.epoch,
+        frame.referenceGeneration, frame.tracking.displayTime, frame.yaw,
+        frame.tracking.head, frame.tracking.hands[static_cast<int>(Hand::right)].aimPose};
     WriteReticleScreenPosition(reinterpret_cast<void*>(frame.player),
-                               sample.origin, sample.direction);
+                               sample.origin, sample.direction, &context);
 }
 int AimDirectionMilli(unsigned int axis)
 {

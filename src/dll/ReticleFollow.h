@@ -3,6 +3,7 @@
 #include "preyvr/VrMath.h"
 
 #include <windows.h>
+#include <string>
 
 // The indicative overlay: make Prey's own reticle sit where the controller points.
 //
@@ -27,6 +28,21 @@
 // which half is wrong.
 namespace preyvr::dll {
 
+// Copied from the gameplay publication selected by the render consumer. These
+// values travel with the ray; reporting separate latest-value atomics cannot
+// establish whether head motion changed that same ray.
+struct ReticleAimContext {
+    std::uint64_t trackingSequence = 0, trackingEpoch = 0, referenceGeneration = 0;
+    long long displayTime = 0;
+    float playYaw = 0.0f;
+    Pose head{}, controller{};
+};
+
+// One coherent, timestamped projection record. Values are floats in engine
+// units/radians, quaternion XYZW, camera row-major Matrix34, tangents L,R,D,U.
+// This records inputs and dispatch results, not movie pixel acceptance.
+std::string ReticleProjectionReport();
+
 DWORD SetReticleFollowEnabled(unsigned int enabled);
 
 // **The field write alone is not enough, and this is the correction that makes
@@ -48,7 +64,8 @@ DWORD SetReticleDispatchEnabled(unsigned int enabled);
 // from different origins and agreed only at infinity -- the same parallax the
 // barrel calibration removes from firing, left in place for the crosshair.
 bool WriteReticleScreenPosition(void* player, const Vec3& rayOrigin,
-                                const Vec3& worldDirection);
+                                const Vec3& worldDirection,
+                                const ReticleAimContext* context = nullptr);
 
 // The distance along the ray that the crosshair marks. A crosshair marks one
 // point, and a muzzle-origin shot reaches a different screen position at every

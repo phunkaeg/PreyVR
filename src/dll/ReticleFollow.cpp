@@ -6,11 +6,15 @@
 #include "preyvr/EngineMap.h"
 #include "preyvr/StereoCamera.h"
 #include "preyvr/StereoFrame.h"
+#include "preyvr/LatestSnapshot.h"
 
 #include <atomic>
 #include <cmath>
 #include <cstring>
 #include <span>
+#include <iomanip>
+#include <locale>
+#include <sstream>
 
 namespace preyvr::dll {
 namespace {
@@ -24,6 +28,23 @@ std::atomic<unsigned long long> gDispatchFailed{0};
 std::atomic<unsigned int> gLastX{500};
 std::atomic<unsigned int> gLastY{500};
 std::atomic<unsigned long long> gOriginOffset{0};
+
+struct ProjectionRecord {
+    ReticleAimContext context{};
+    bool hasContext = false;
+    std::uint64_t stamp = 0, index = 0;
+    Vec3 origin{}, direction{};
+    stereo::Matrix34 camera{};
+    stereoframe::EyeView view{};
+    float distance = 0, rawX = 0, rawY = 0, x = 0, y = 0;
+    bool clamped = false, dispatch = false;
+    DWORD dispatchX = 0, dispatchY = 0;
+};
+LatestSnapshot<ProjectionRecord> gProjection;
+
+bool WriteReticleForCamera(void* player, const Vec3& rayOrigin,
+    const Vec3& worldDirection, std::span<const std::uint8_t> cameraSpan,
+    const ReticleAimContext* context);
 
 // **The distance at which the crosshair is exact.** A crosshair marks one point,
 // and a shot leaving the muzzle rather than the eye reaches a different screen
@@ -53,6 +74,7 @@ DWORD SetReticleFollowEnabled(unsigned int enabled)
         gOffScreen.store(0, std::memory_order_relaxed);
     }
     gEnabled.store(on, std::memory_order_release);
+    gProjection.Clear();
     lifecycle::Log(std::string("preyvr_reticle result=0 detail=enabled value=") +
                    (on ? "1" : "0"));
     return 0;
@@ -72,8 +94,10 @@ DWORD SetReticleConvergenceMillimetres(unsigned int millimetres)
 
 DWORD ReticleConvergenceMillimetres() { return gConvergenceMm.load(std::memory_order_relaxed); }
 
-bool WriteReticleScreenPosition(void* player, const Vec3& rayOrigin, const Vec3& worldDirection)
+bool WriteReticleScreenPosition(void* player, const Vec3& rayOrigin,
+    const Vec3& worldDirection, const ReticleAimContext* context)
 {
+    gProjection.Clear();
     if (!gEnabled.load(std::memory_order_acquire) || player == nullptr) {
         return false;
     }
@@ -89,8 +113,17 @@ bool WriteReticleScreenPosition(void* player, const Vec3& rayOrigin, const Vec3&
     }
     const auto* const camera = reinterpret_cast<const std::uint8_t*>(
         reinterpret_cast<std::uintptr_t>(systemPtr) + engine::SystemLayout::viewCamera);
-    const auto cameraSpan =
-        std::span<const std::uint8_t>(camera, engine::CameraLayout::size);
+    // One camera copy supplies both projection and diagnostic output.
+    std::array<std::uint8_t, engine::CameraLayout::size> cameraCopy{};
+    std::memcpy(cameraCopy.data(), camera, cameraCopy.size());
+    return WriteReticleForCamera(player, rayOrigin, worldDirection, cameraCopy, context);
+}
+
+namespace {
+bool WriteReticleForCamera(void* player, const Vec3& rayOrigin,
+    const Vec3& worldDirection, std::span<const std::uint8_t> cameraSpan,
+    const ReticleAimContext* context)
+{
 
     // The camera's own frustum, so the projection matches the player's FOV slider
     // rather than a value measured once on one machine.
@@ -169,7 +202,17 @@ bool WriteReticleScreenPosition(void* player, const Vec3& rayOrigin, const Vec3&
         gOffScreen.fetch_add(1, std::memory_order_relaxed);
         return false;
     }
+    ProjectionRecord record{};
+    if (context) { record.context = *context; record.hasContext = true; }
+    record.origin = rayOrigin;
+    record.direction = worldDirection;
+    record.camera = matrix;
+    record.view = *view;
+    record.distance = distance;
+    record.rawX = fractionX;
+    record.rawY = fractionY;
     if (fractionX < 0.0f || fractionX > 1.0f || fractionY < 0.0f || fractionY > 1.0f) {
+        record.clamped = true;
         // **Clamped to the edge, not left where it was.** Returning early here
         // leaves the previous position in place, so the crosshair stays sitting
         // over whatever it happened to be over when the aim left the screen --
@@ -196,7 +239,9 @@ bool WriteReticleScreenPosition(void* player, const Vec3& rayOrigin, const Vec3&
                  std::memory_order_relaxed);
     gLastY.store(static_cast<unsigned int>(fractionY * 1000.0f + 0.5f),
                  std::memory_order_relaxed);
-    gApplied.fetch_add(1, std::memory_order_relaxed);
+    record.index = gApplied.fetch_add(1, std::memory_order_relaxed) + 1;
+    record.x = fractionX;
+    record.y = fractionY;
 
     // **The write alone does not move the crosshair.** The engine's own reticle
     // reset is one short function that writes these two fields and then
@@ -205,24 +250,75 @@ bool WriteReticleScreenPosition(void* player, const Vec3& rayOrigin, const Vec3&
     // Writing one without the other is the defect the reticle report named:
     // proof of a memory write, and no visual movement.
     //
-    // The units come from that same function: it stores 0x3F000000 -- 0.5f --
-    // for centred X, so these are normalised screen fractions, which is exactly
-    // what this lane already computes.
+    // Native reset establishes 0.5 as centred X. It does not establish the
+    // movie's scale away from centre: viewport fractions versus a fitted HUD
+    // canvas remain a separate consumer contract to verify.
     //
     // Dispatch runs on the main game thread, after the render seam installs
     // this eye's camera. It is separately
     // switchable so that a crosshair which does not move can be attributed --
     // dispatch off isolates the write, dispatch on adds the movie call.
     if (gDispatch.load(std::memory_order_acquire)) {
+        record.dispatch = true;
         const DWORD x = CallHudOneFloat(kReticleXOffset, fractionX);
         const DWORD y = CallHudOneFloat(kReticleYOffset, fractionY);
+        record.dispatchX = x;
+        record.dispatchY = y;
         if (x == 0 && y == 0) {
             gDispatched.fetch_add(1, std::memory_order_relaxed);
         } else {
             gDispatchFailed.fetch_add(1, std::memory_order_relaxed);
         }
     }
+    record.stamp = MonotonicNanoseconds();
+    gProjection.Publish(record);
     return true;
+}
+} // namespace
+
+std::string ReticleProjectionReport()
+{
+    ProjectionRecord r{};
+    if (!gProjection.TryRead(r)) { return " reticleProjection=unavailable"; }
+    const auto now = MonotonicNanoseconds();
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    out << std::setprecision(9) << " reticleProjection="
+        << (FreshSample(now, r.stamp) ? "fresh" : "stale")
+        << " rpIndex=" << r.index << " rpStampNs=" << r.stamp
+        << " rpAgeNs=" << (now >= r.stamp ? now - r.stamp : 0)
+        << " rpContext=" << r.hasContext
+        << " rpSeq=" << r.context.trackingSequence
+        << " rpEpoch=" << r.context.trackingEpoch
+        << " rpRef=" << r.context.referenceGeneration
+        << " rpDisplayTime=" << r.context.displayTime
+        << " rpPlayYaw=" << r.context.playYaw;
+    const auto vec = [&](const char* name, const Vec3& v) {
+        out << ' ' << name << '=' << v.x << ',' << v.y << ',' << v.z;
+    };
+    const auto quat = [&](const char* name, const Quaternion& q) {
+        out << ' ' << name << '=' << q.x << ',' << q.y << ',' << q.z << ',' << q.w;
+    };
+    vec("rpHeadPos", r.context.head.position);
+    quat("rpHeadQ", r.context.head.orientation);
+    vec("rpRawPos", r.context.controller.position);
+    quat("rpRawQ", r.context.controller.orientation);
+    vec("rpOrigin", r.origin);
+    vec("rpDir", r.direction);
+    out << " rpCamera=";
+    for (std::size_t i = 0; i < r.camera.size(); ++i) {
+        if (i) { out << ','; }
+        out << r.camera[i];
+    }
+    out << " rpTans=" << r.view.tanLeft << ',' << r.view.tanRight << ','
+        << r.view.tanDown << ',' << r.view.tanUp
+        << " rpDistance=" << r.distance
+        << " rpRawXY=" << r.rawX << ',' << r.rawY
+        << " rpXY=" << r.x << ',' << r.y
+        << " rpClamped=" << r.clamped
+        << " rpDispatch=" << r.dispatch
+        << " rpDispatchResults=" << r.dispatchX << ',' << r.dispatchY;
+    return out.str();
 }
 
 DWORD SetReticleDispatchEnabled(unsigned int enabled)

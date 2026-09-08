@@ -1,7 +1,7 @@
 # Offline VR scheme integration replay
 
-These executables include the production `MoveLane.cpp`, `AimTakeover.cpp`, and
-`HudBridge.cpp`. External game/input boundaries are stubbed. They do not launch,
+These executables include the production `MoveLane.cpp`, `AimTakeover.cpp`,
+`ReticleFollow.cpp` and `HudBridge.cpp`. External game/input boundaries are stubbed. They do not launch,
 attach to, inject into, or post input to Prey. The movement hook fixture checks
 all five arguments and the native return; the native byte verifier independently
 establishes why that signature is required.
@@ -32,3 +32,12 @@ handoff and argument lifetime using a missing-module positive control; they do
 not claim Scaleform accepted a movie function. Aim tests assert that the installed
 gameplay ray, published sample, and reticle input use the same origin in all six
 mode/calibration combinations. They do not test actual movie pixel placement.
+
+The aim replay also provides a synthetic CSystem camera to the real camera-yaw
+reader, holds a LOCAL controller fixed and sweeps head yaw through 60 degrees.
+Camera-relative mode is the positive control. Reticle replay supplies camera
+bytes to the production projection and checks field writes/native-call arguments
+against analytic perspective, including finite origin, eye offset and asymmetry.
+It emits coherent `rp*` reports usable by `tools/re/analyze_aim_projection.py`.
+The movement stub includes the recentre boundary and expects the digital trigger
+event added in `2c48633`, as well as the four analog axes.

@@ -16,6 +16,7 @@ int failures = 0;
 
 namespace preyvr::lifecycle { void Log(std::string_view) {} }
 namespace preyvr::dll {
+DWORD RecenterHeadTracking() { return 0; }
 bool EnsureMinHook() { return false; }
 bool InputPostDrivingThisThread() { return true; }
 DWORD SetInputPostEnabled(unsigned int) { return 0; }
@@ -90,16 +91,16 @@ int main() {
           "hook forwards all arguments and return; telemetry reads AFTER the native handler");
 
     Reset(); Held();
-    Check(posted.size() == 4, "positive control: four held axes reach the posting boundary");
+    Check(posted.size() == 5, "positive control: four held axes and digital trigger reach the posting boundary");
     posted.clear(); focused = false; Tick();
     Check(ZeroFor(locomotion::kKeyThumbLX) && ZeroFor(locomotion::kKeyThumbLY) &&
-          ZeroFor(locomotion::kKeyThumbRX) && ZeroFor(input::kTriggerR),
+          ZeroFor(locomotion::kKeyThumbRX) && ZeroFor(input::kTriggerR) && ZeroFor(input::kTriggerRButton),
           "focus loss neutralizes all previously held axes");
 
     Reset(); Held(); posted.clear();
     SetMoveLaneMode(0); SetTurnLaneEnabled(0); SetFireLaneEnabled(0); Tick();
     Check(ZeroFor(locomotion::kKeyThumbLX) && ZeroFor(locomotion::kKeyThumbLY) &&
-          ZeroFor(locomotion::kKeyThumbRX) && ZeroFor(input::kTriggerR),
+          ZeroFor(locomotion::kKeyThumbRX) && ZeroFor(input::kTriggerR) && ZeroFor(input::kTriggerRButton),
           "disabling lanes neutralizes all previously held axes");
 
     Reset();

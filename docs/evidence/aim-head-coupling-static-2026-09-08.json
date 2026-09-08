@@ -1,0 +1,30 @@
+{
+  "records": 13,
+  "skipped_unavailable_stale_or_no_context": 0,
+  "malformed_records": [],
+  "scope": "Numerical dispatch inputs only; no movie-pixel or headset acceptance.",
+  "groups": [
+    {
+      "tracking_epoch": "5",
+      "reference_generation": "3",
+      "records": 13,
+      "max_head_rotation_from_first_deg": 60.0000005441977,
+      "max_controller_rotation_from_first_deg": 0.0,
+      "max_world_direction_from_first_deg": 0.0,
+      "max_projection_residual_milli": 2.6189805213405748e-05,
+      "max_clamp_residual_milli": 0.0,
+      "max_composition_residual_degrees": 0.0,
+      "max_basis_orthonormal_error": 5.0071676249707764e-08,
+      "clamped_records": 0,
+      "dispatch_disabled_records": 0,
+      "nonzero_dispatch_results": 0
+    }
+  ],
+  "positive_control": "Changed ray without changing raw pose/camera is detected; quaternion sign reversal is equivalent.",
+  "source_base": "2c48633 plus working-tree diagnostic changes",
+  "diagnostic_dll": {
+    "path": "build\\h021-integration-audit\\Release\\PreyVR.dll",
+    "bytes": 774144,
+    "sha256": "2767000d7fd3e5ed4a2dca57cb4e944ee4a15bb780cf3dd275730616bd1fc553"
+  }
+}

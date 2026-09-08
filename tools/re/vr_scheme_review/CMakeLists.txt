@@ -30,3 +30,13 @@ enable_testing()
 add_test(NAME scheme_review COMMAND scheme_review)
 add_test(NAME aim_review COMMAND aim_review)
 add_test(NAME hud_queue_review COMMAND hud_queue_review)
+
+add_executable(reticle_review reticle_review.cpp)
+target_compile_features(reticle_review PRIVATE cxx_std_20)
+target_compile_definitions(reticle_review PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_include_directories(reticle_review PRIVATE "${REPO}/include" "${REPO}/src/lifecycle")
+target_sources(reticle_review PRIVATE
+    "${REPO}/src/common/VrMath.cpp" "${REPO}/src/common/StereoCamera.cpp"
+    "${REPO}/src/common/EngineMap.cpp" "${REPO}/src/common/StereoFrame.cpp"
+    "${REPO}/src/common/RuntimeSnapshot.cpp" "${REPO}/src/common/CameraEdit.cpp")
+add_test(NAME reticle_review COMMAND reticle_review)
