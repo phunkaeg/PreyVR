@@ -40,9 +40,31 @@ DWORD SetReticleFollowEnabled(unsigned int enabled);
 // separately when the crosshair does not move.
 DWORD SetReticleDispatchEnabled(unsigned int enabled);
 
-// Called from the aim takeover with the ray it just wrote, so the crosshair and
-// the shot cannot disagree about direction.
-bool WriteReticleScreenPosition(void* player, const Vec3& worldDirection);
+// Called from the aim takeover with the WHOLE ray it just wrote -- origin and
+// direction -- so the crosshair and the shot cannot disagree about either.
+//
+// **Passing the origin is the third side of the reconciliation.** The weapon
+// starts the shot at the calibrated muzzle and the aim sample carries that same
+// origin, but the crosshair used to be projected from a bare direction, which is
+// the screen position of an EYE-origin ray. The symbol and the shot were built
+// from different origins and agreed only at infinity -- the same parallax the
+// barrel calibration removes from firing, left in place for the crosshair.
+bool WriteReticleScreenPosition(void* player, const Vec3& rayOrigin,
+                                const Vec3& worldDirection);
+
+// The distance along the ray that the crosshair marks. A crosshair marks one
+// point, and a muzzle-origin shot reaches a different screen position at every
+// distance, so without a raycast no single symbol is right at all of them. This
+// picks which distance is exact; the error grows toward the near end, which is
+// where the disagreement is largest and therefore where it should be judged.
+// Clamped to [0.5 m, 200 m].
+DWORD SetReticleConvergenceMillimetres(unsigned int millimetres);
+DWORD ReticleConvergenceMillimetres();
+
+// How far the ray origin sits from the camera, in millimetres. Zero means the
+// shot starts at the eye, so the origin correction is doing nothing -- which is
+// the honest reading when no barrel calibration has been taken.
+unsigned long long ReticleOriginOffsetMillimetres();
 
 unsigned long long ReticleFollowAppliedCount();
 

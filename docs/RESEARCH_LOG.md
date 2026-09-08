@@ -1935,6 +1935,90 @@ run inside an ArkPlayer update.
 F-011 is precisely why the returned zero will not be treated as the answer.
 
 
+
+
+## 2026-09-08 — R-112: the reticle was the third origin, and now is not
+
+The reconciliation was described as complete and was not. `WeaponAim` publishes
+one immutable sample carrying **origin and direction**, and the weapon lane fires
+from the calibrated muzzle -- but `WriteReticleScreenPosition` took only a
+DIRECTION and projected it from the camera. That is the screen position of an
+**eye-origin** ray.
+
+So the symbol and the shot were computed from two different origins and agreed
+only at infinity. It is the identical parallax the barrel calibration was built
+to remove from firing, left in place for the crosshair, and it is largest exactly
+where someone aims at something close.
+
+**The fix is a generalisation, not a second path.** The lane now takes the ray
+origin as well, projects a real point on the firing ray, and where the origin IS
+the camera -- native origin mode, or an uncalibrated weapon -- the offset is zero
+and the arithmetic reduces exactly to what it did before. The aim takeover passes
+the published sample's own fields rather than a locally recomputed ray, so all
+three lanes read one record.
+
+A crosshair marks one point and a muzzle-origin shot reaches a different screen
+position at every distance, so without a raycast no single symbol can be right at
+all of them. `aim.reticleconverge` picks which distance is exact, defaulting to
+ten metres, and `reticleOriginMm` reports how far the origin actually sits from
+the eye -- zero meaning the correction is doing nothing, which is the honest
+reading before any calibration.
+
+**Two tests pin it**, because a fix that silently did nothing would pass a test
+that only checked agreement: a muzzle-origin ray straight ahead must NOT be
+centred and must sit right and low for a muzzle right and low, the disagreement
+must be several times larger at two metres than at fifty, and it must never reach
+zero at finite range. The zero-offset case must reproduce the old behaviour
+exactly at every distance.
+## 2026-09-08 — R-111: the control scheme demonstrated, and two defects it found
+
+The motion controls were built and never shown to work. `Invoke-PreyVRControlDemo.ps1`
+commands real controller values through xr-sim -- a genuine OpenXR runtime -- and
+reads back what each lane did. **All seven cases post an event.**
+
+| case | counter | mod read back |
+|---|---|---|
+| stick forward / back | `movePosted` | `0,1000` / `0,-1000` |
+| stick right / left | `movePosted` | `1000,0` / `-1000,0` |
+| turn | `turnPosted` | `1000,0` |
+| trigger half / full | `inputPosted` / `firePressed` | `500` / `1000` |
+
+**The inferred key ids were not refused.** `turnRefused` and `fireRefused` both
+stayed at zero, and `PostInputEvent` rejects an unknown key id. That was named as
+the one value in the scheme taken from the PDB enum rather than read from a call
+site here, and it is the thing most likely to have been wrong. It is not.
+`moveDropped` stayed at zero, so the direct-post fix for the queue holds.
+
+### The trigger was quantised, and it is now analog
+
+`gTrigger` was an `XR_ACTION_TYPE_BOOLEAN_INPUT` bound to `/input/trigger/value`
+-- a float path. That leans on the runtime performing the spec's bool-from-float
+conversion, and it discarded the travel, posting only 0 or 1000 into
+`xi_triggerr`, **which is an analog axis**. It is now a float action, thresholded
+at half travel in the mod so the trip point is one known number rather than a
+per-runtime behaviour, and the fire lane posts the real value. The demo reads 500
+at half pull, which the boolean could never have produced.
+
+### What the harness cannot see, stated so it is not mistaken for a pass
+
+xr-sim stores **one control per action**: `action.syncedVector` is set from a
+single `action.control`, so an action bound to both hands collapses to whichever
+binding resolved last, and both subaction queries return that one stick. Reading
+back `stickL == stickR` here is therefore a **harness limitation, not a mod
+defect** -- the mod creates one action with two subaction paths and two bindings
+and queries per subaction path, which is what the specification prescribes.
+
+**Left-from-right separation is consequently untested and needs a headset.** It
+would have been easy to read the identical values as a mod bug and "fix" working
+code; the discriminating evidence is xr-sim's own source.
+
+### What this does not prove
+
+That the player moves. The analog handlers the lane feeds belong to a live
+player, so at the main menu `moveInputObj` is null and `moveAxisMilli` stays at
+zero -- that counter reports what the game's own handler saw, not what was
+posted. Movement needs a loaded level, and `moveOursX/Y` against `moveNative` is
+the reading.
 ## 2026-09-08 — R-110: the resolution deficit is fixable, and the route is measured
 
 The 48% pixel deficit had levers built and no evidence they worked. Measured now,

@@ -19,6 +19,13 @@ struct ControllerState {
     PoseValidity aimValidity{};
     float thumbstickX = 0.0f;
     float thumbstickY = 0.0f;
+    // **The trigger is read as a FLOAT, and the press is derived from it.**
+    // Binding a boolean action to `/input/trigger/value` leans on the runtime
+    // performing the spec's bool-from-float conversion, and it throws away the
+    // travel that `xi_triggerr` -- an analog axis -- actually wants. Reading the
+    // float and thresholding here keeps both: consumers that want a button get
+    // one, and the fire lane can post real analog values.
+    float triggerValue = 0.0f;
     bool triggerPressed = false;
     bool gripPressed = false;
     // Menu buttons. A controller that cannot confirm a choice leaves the mod

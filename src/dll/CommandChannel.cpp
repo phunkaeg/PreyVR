@@ -93,6 +93,28 @@ bool ParseU64(const std::string& text, unsigned long long& out)
     }
 }
 
+// The controller values the lanes actually read, in thousandths. Without this
+// a stick that never arrives and a stick that arrives centred produce the same
+// counters, and this session spent a run unable to tell them apart.
+std::string ControllerStickReport()
+{
+    std::ostringstream out;
+    for (const auto hand : {Hand::left, Hand::right}) {
+        ControllerState state{};
+        const bool have = TryGetControllerState(hand, state);
+        out << (hand == Hand::left ? " stickL=" : " stickR=");
+        if (!have) {
+            out << "unavailable";
+            continue;
+        }
+        out << static_cast<int>(state.thumbstickX * 1000.0f) << ","
+            << static_cast<int>(state.thumbstickY * 1000.0f)
+            << (hand == Hand::left ? " trigL=" : " trigR=")
+            << static_cast<int>(state.triggerValue * 1000.0f);
+    }
+    return out.str();
+}
+
 void WriteReport(std::ostringstream& out)
 {
     out << "smoke=" << "n/a"
@@ -182,6 +204,8 @@ void WriteReport(std::ostringstream& out)
         << " reticleXY=" << ReticleFollowLastX() << "," << ReticleFollowLastY()
         << " reticleDispatched=" << ReticleDispatchedCount()
         << " reticleDispatchFailed=" << ReticleDispatchFailedCount()
+        << " reticleOriginMm=" << ReticleOriginOffsetMillimetres()
+        << " reticleConvergeMm=" << ReticleConvergenceMillimetres()
         << " hudElement=0x" << std::hex << HudElementPointer() << std::dec
         << " hudCalls=" << HudCallCount() << " hudRefused=" << HudRefusedCount()
         << " captures=" << CompletedFrameCaptureCount()
@@ -230,6 +254,11 @@ void WriteReport(std::ostringstream& out)
         << " fireEnabled=" << FireLaneEnabled()
         << " firePressed=" << FireLanePressed() << " fireReleased=" << FireLaneReleased()
         << " fireRefused=" << FireLaneRefused()
+        << " xrSyncs=" << XrInputSyncCount()
+        << " xrNotFocused=" << XrInputNotFocusedCount()
+        << " xrLocatedL=" << XrInputLocatedCount(Hand::left)
+        << " xrLocatedR=" << XrInputLocatedCount(Hand::right)
+        << ControllerStickReport()
         << " inputDropped=" << InputQueueDroppedCount()
         << " inputDrainThread=" << InputDrainThreadId()
         << " channelProcessed=" << gProcessed.load(std::memory_order_relaxed)
@@ -408,6 +437,14 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         // current view rather than per eye; that is a real limitation, not an
         // oversight, and a genuinely stereo reticle needs a mod-drawn one.
         out << "aim.reticle result=" << SetReticleFollowEnabled(arg(1, 1));
+    } else if (verb == "aim.reticleconverge") {
+        // The distance the crosshair marks along the firing ray, in mm. Only
+        // matters once a barrel calibration puts the origin off the eye: until
+        // then reticleOriginMm reads 0 and the setting changes nothing, which is
+        // the honest reading rather than a knob that appears to do something.
+        out << "aim.reticleconverge result="
+            << SetReticleConvergenceMillimetres(arg(1, 10000))
+            << " mm=" << ReticleConvergenceMillimetres();
     } else if (verb == "aim.reticledispatch") {
         // Separates the two halves of the reticle write. Off writes only the
         // cached field; on also dispatches the movie call the engine's own reset

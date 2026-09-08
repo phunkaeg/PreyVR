@@ -75,6 +75,8 @@ bool gTurnPrimed = false;
 std::atomic<bool> gFireEnabled{false};
 std::atomic<unsigned long long> gFirePressed{0}, gFireReleased{0}, gFireRefused{0};
 bool gFireHeld = false;
+float gLastFireSent = 0.0f;
+bool gFirePrimed = false;
 
 bool ReadFloat(const void* at, float* out)
 {
@@ -283,15 +285,26 @@ void UpdateTurnAndFireLanes()
     }
 
     if (gFireEnabled.load(std::memory_order_acquire)) {
+        // **The real travel is posted, not a quantised press.** `xi_triggerr` is
+        // an analog axis, and sending only 0 or 1000 threw away everything
+        // between -- which matters for a weapon whose native binding may ramp.
+        float value = right.triggerValue;
+        if (!std::isfinite(value)) { value = 0.0f; }
+        value = value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
         const bool pressed = right.triggerPressed;
-        if (pressed != gFireHeld) {
-            // The analog axis the pad itself produces, so whatever Prey binds to
-            // the right trigger fires, rather than guessing an action name.
-            const int milli = pressed ? 1000 : 0;
+        // Emit on a meaningful change OR on a press-state crossing, so the
+        // counters still name a discrete pull while the value stays continuous.
+        if (!gFirePrimed || pressed != gFireHeld || std::fabs(value - gLastFireSent) > 0.02f) {
+            const int milli = static_cast<int>(value * 1000.0f);
             if (PostRawInputImmediate(input::kTriggerR,
                                       locomotion::kStateChanged, milli) == 0) {
+                if (pressed != gFireHeld) {
+                    (pressed ? gFirePressed : gFireReleased)
+                        .fetch_add(1, std::memory_order_relaxed);
+                }
                 gFireHeld = pressed;
-                (pressed ? gFirePressed : gFireReleased).fetch_add(1, std::memory_order_relaxed);
+                gLastFireSent = value;
+                gFirePrimed = true;
             } else {
                 gFireRefused.fetch_add(1, std::memory_order_relaxed);
             }

@@ -22,6 +22,16 @@ std::atomic<unsigned long long> gDispatched{0};
 std::atomic<unsigned long long> gDispatchFailed{0};
 std::atomic<unsigned int> gLastX{500};
 std::atomic<unsigned int> gLastY{500};
+std::atomic<unsigned long long> gOriginOffset{0};
+
+// **The distance at which the crosshair is exact.** A crosshair marks one point,
+// and a shot leaving the muzzle rather than the eye reaches a different screen
+// position at every distance, so no single symbol can be right at all of them
+// without a raycast. Ten metres is a typical engagement distance; the residual
+// error grows toward the near end, which is where an eye-origin ray and a
+// muzzle-origin shot disagree most and therefore where this is worth judging.
+constexpr unsigned int kDefaultConvergenceMm = 10000;
+std::atomic<unsigned int> gConvergenceMm{kDefaultConvergenceMm};
 
 // The two names the engine's own reticle reset dispatches, read from that call
 // site rather than guessed (R-109). Names not read from a native call site are
@@ -46,7 +56,21 @@ DWORD SetReticleFollowEnabled(unsigned int enabled)
     return 0;
 }
 
-bool WriteReticleScreenPosition(void* player, const Vec3& worldDirection)
+DWORD SetReticleConvergenceMillimetres(unsigned int millimetres)
+{
+    // Clamped rather than rejected: a zero would put the aim point at the muzzle
+    // itself, which projects to a meaningless screen position, and an absurd
+    // value is the same as infinity anyway.
+    const unsigned int clamped = millimetres < 500u      ? 500u
+                                 : (millimetres > 200000u ? 200000u : millimetres);
+    gConvergenceMm.store(clamped, std::memory_order_release);
+    lifecycle::Log("preyvr_reticle result=0 detail=convergence mm=" + std::to_string(clamped));
+    return 0;
+}
+
+DWORD ReticleConvergenceMillimetres() { return gConvergenceMm.load(std::memory_order_relaxed); }
+
+bool WriteReticleScreenPosition(void* player, const Vec3& rayOrigin, const Vec3& worldDirection)
 {
     if (!gEnabled.load(std::memory_order_acquire) || player == nullptr) {
         return false;
@@ -79,8 +103,41 @@ bool WriteReticleScreenPosition(void* player, const Vec3& worldDirection)
     const Vec3 right{matrix[0], matrix[4], matrix[8]};
     const Vec3 forward{matrix[1], matrix[5], matrix[9]};
     const Vec3 up{matrix[2], matrix[6], matrix[10]};
-    const float alongForward = worldDirection.x * forward.x + worldDirection.y * forward.y +
-                               worldDirection.z * forward.z;
+
+    // **The third side of the reconciliation, and the one that was missing.**
+    // The weapon lane starts the shot at the calibrated muzzle; the aim lane
+    // publishes that same origin. The crosshair was projecting a bare DIRECTION
+    // from the camera, which is the screen position of an eye-origin ray -- so
+    // the symbol and the shot were computed from different origins and agreed
+    // only at infinity. That is the identical parallax the barrel calibration
+    // was built to remove from firing, left in place for the crosshair.
+    //
+    // Projecting an actual point on the firing ray fixes it. Where the origin
+    // IS the camera -- native origin mode, or an uncalibrated weapon -- the
+    // offset is zero and this reduces exactly to the previous behaviour, so it
+    // is a generalisation rather than a second code path.
+    const Vec3 cameraPosition = stereo::PositionOf(matrix);
+    const Vec3 offset{rayOrigin.x - cameraPosition.x, rayOrigin.y - cameraPosition.y,
+                      rayOrigin.z - cameraPosition.z};
+    const float offsetLength =
+        std::sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
+    if (!std::isfinite(offsetLength) || offsetLength > 5.0f) {
+        // An origin metres from the camera is a bad sample, not a long weapon.
+        // Refusing beats moving the crosshair somewhere arbitrary.
+        gOffScreen.fetch_add(1, std::memory_order_relaxed);
+        return false;
+    }
+    gOriginOffset.store(static_cast<unsigned long long>(offsetLength * 1000.0f + 0.5f),
+                        std::memory_order_relaxed);
+
+    const float distance =
+        static_cast<float>(gConvergenceMm.load(std::memory_order_acquire)) * 0.001f;
+    const Vec3 aimPoint{offset.x + worldDirection.x * distance,
+                        offset.y + worldDirection.y * distance,
+                        offset.z + worldDirection.z * distance};
+
+    const float alongForward =
+        aimPoint.x * forward.x + aimPoint.y * forward.y + aimPoint.z * forward.z;
     if (!(alongForward > 0.001f)) {
         // Behind the camera. No honest screen position exists, so the crosshair is
         // left where the engine put it -- pinning it to an edge would claim the
@@ -88,10 +145,9 @@ bool WriteReticleScreenPosition(void* player, const Vec3& worldDirection)
         gOffScreen.fetch_add(1, std::memory_order_relaxed);
         return false;
     }
-    const float alongRight = worldDirection.x * right.x + worldDirection.y * right.y +
-                             worldDirection.z * right.z;
-    const float alongUp = worldDirection.x * up.x + worldDirection.y * up.y +
-                          worldDirection.z * up.z;
+    const float alongRight =
+        aimPoint.x * right.x + aimPoint.y * right.y + aimPoint.z * right.z;
+    const float alongUp = aimPoint.x * up.x + aimPoint.y * up.y + aimPoint.z * up.z;
 
     // Tangents at the near plane, mapped into the frustum the camera actually has.
     // Using the asymmetric edges rather than assuming a symmetric field means this
@@ -178,6 +234,10 @@ DWORD SetReticleDispatchEnabled(unsigned int enabled)
     return 0;
 }
 
+unsigned long long ReticleOriginOffsetMillimetres()
+{
+    return gOriginOffset.load(std::memory_order_relaxed);
+}
 unsigned long long ReticleDispatchedCount() { return gDispatched.load(std::memory_order_relaxed); }
 unsigned long long ReticleDispatchFailedCount()
 {

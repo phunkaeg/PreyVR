@@ -244,8 +244,8 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     // same instant rather than each sampling the controller for itself. Without
     // a per-weapon grip-to-barrel rotation this is `Confidence::origin`: an
     // honest pointing axis, explicitly not a barrel.
+    preyvr::aim::Sample sample;
     {
-        preyvr::aim::Sample sample;
         // The sample carries the best origin available, and says which it is.
         sample.origin = engineOrigin;
         {
@@ -321,7 +321,14 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     // crosshair is being told the wrong thing. Independently gated, so a
     // crosshair that follows while shots do not -- or the reverse -- names which
     // half is wrong.
-    WriteReticleScreenPosition(player, ray->direction);
+    //
+    // **The published sample is what is passed, not a locally recomputed ray.**
+    // Three lanes answered "where does this weapon aim" from three samples, and
+    // each disagreement looked like a separate bug. The crosshair now reads the
+    // same immutable record the weapon and the firing origin read, including its
+    // origin -- so a muzzle-origin shot and the symbol marking it are built from
+    // one origin rather than two.
+    WriteReticleScreenPosition(player, sample.origin, sample.direction);
 }
 
 bool Install()

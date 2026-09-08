@@ -142,7 +142,7 @@ bool CreateXrInput(void* instanceHandle, void* sessionHandle)
     gGripPose = CreateAction(XR_ACTION_TYPE_POSE_INPUT, "grip_pose", "Grip Pose", subactions);
     gAimPose = CreateAction(XR_ACTION_TYPE_POSE_INPUT, "aim_pose", "Aim Pose", subactions);
     gThumbstick = CreateAction(XR_ACTION_TYPE_VECTOR2F_INPUT, "thumbstick", "Thumbstick", subactions);
-    gTrigger = CreateAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "trigger", "Trigger", subactions);
+    gTrigger = CreateAction(XR_ACTION_TYPE_FLOAT_INPUT, "trigger", "Trigger", subactions);
     gSqueeze = CreateAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "squeeze", "Squeeze", subactions);
     gMenuAccept = CreateAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "menu_accept", "Menu Accept",
                                subactions);
@@ -291,10 +291,15 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
             state.thumbstickY = stick.currentState.y;
         }
         get.action = gTrigger;
-        XrActionStateBoolean button{XR_TYPE_ACTION_STATE_BOOLEAN};
-        if (XR_SUCCEEDED(xrGetActionStateBoolean(session, &get, &button)) && button.isActive) {
-            state.triggerPressed = button.currentState == XR_TRUE;
+        XrActionStateFloat analog{XR_TYPE_ACTION_STATE_FLOAT};
+        if (XR_SUCCEEDED(xrGetActionStateFloat(session, &get, &analog)) && analog.isActive) {
+            state.triggerValue = analog.currentState;
+            // Half travel is the conventional trip point, and it is applied here
+            // rather than relied on from the runtime so the threshold is one
+            // known number instead of a per-runtime behaviour.
+            state.triggerPressed = analog.currentState >= 0.5f;
         }
+        XrActionStateBoolean button{XR_TYPE_ACTION_STATE_BOOLEAN};
         get.action = gSqueeze;
         if (XR_SUCCEEDED(xrGetActionStateBoolean(session, &get, &button)) && button.isActive) {
             state.gripPressed = button.currentState == XR_TRUE;
