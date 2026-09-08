@@ -57,7 +57,14 @@ param(
     [string]$LogDir = '',
     [int]$IpdMillimetres = 64,
     [int]$HalfFovDegrees = 50,
-    [switch]$SkipRecenter
+    [switch]$SkipRecenter,
+    # Arms the motion-control scheme: left stick moves, right stick turns,
+    # right trigger fires, and the controller drives menus. Off by default
+    # because it posts synthesised input into the engine, which is a write and
+    # every write in this project is opt-in.
+    [switch]$Controls,
+    # Moves Prey's own crosshair to where the controller points.
+    [switch]$Reticle
 )
 
 Set-StrictMode -Version Latest
@@ -162,6 +169,21 @@ if (-not $SkipRecenter) {
 Step 'head rotation' 'view.apply 1'
 Step 'head 6DoF'     'view.position 1'
 
+if ($Controls -or $Reticle) {
+    Write-Host ''
+    Write-Host 'motion controls and reticle:'
+    if ($Controls) {
+        # Menu navigation first: it is the one that works at the main menu,
+        # where the others have no player to drive.
+        Step 'menu navigation' 'menu.nav 1'
+        Step 'move/turn/fire'  'move.all 1'
+    }
+    if ($Reticle) {
+        Step 'aim takeover'  'aim.enable 1'
+        Step 'reticle follow' 'aim.reticle 1'
+    }
+}
+
 Write-Host ''
 Start-Sleep -Seconds 3
 $resolution = Send-Cmd 'xr.resolution'
@@ -181,6 +203,10 @@ if ($failures -gt 0) {
 Write-Host 'startup complete.'
 Write-Host ''
 Write-Host 'Next: load a save and EQUIP A WEAPON, then run Invoke-PreyVRIkTest.ps1.'
+Write-Host '  - -Controls arms the motion scheme (left stick move, right stick turn,'
+Write-Host '    right trigger fire, controller menus). -Reticle moves the crosshair.'
+Write-Host '  - -RenderHeight 2880 -RenderWidth 2688 matches the runtime request;'
+Write-Host '    it must be set before xr.start, which is why it is a parameter here.'
 Write-Host '  - hand.calibrate belongs to the OLD hand lane. For the IK lane use'
 Write-Host '    ik.calibrate, and leave hand.mode at 0 -- the two lanes refuse each'
 Write-Host '    other because running both applies the controller twice.'

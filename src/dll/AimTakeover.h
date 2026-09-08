@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include "XrInput.h"
+#include "preyvr/WeaponAim.h"
 
 // M2: the weapon points where the controller points, not where the head looks.
 //
@@ -84,6 +85,16 @@ int AimPlaySpaceYawMilliDegrees();
 // with a motionless controller localises that in one measurement.
 int AimNativeEyeMillimetres(unsigned int axis);
 int AimTrackedHeadMillimetres(unsigned int axis);
+
+// The one per-frame answer to where the weapon aims, for every lane that needs
+// it. Published by the aim hook because that is where a coherent controller
+// sample, the engine's own eye anchor and the reference frame already meet.
+//
+// Consumers must call `preyvr::aim::Usable` with the CURRENT generations rather
+// than trusting the sample they were handed: it is a snapshot, and a weapon
+// change or a recentre invalidates it without anything notifying them.
+bool TryGetAimSample(preyvr::aim::Sample& out);
+unsigned long long AimSamplePublishedCount();
 
 DWORD SetAimTakeoverEnabled(unsigned int enabled);
 // 0 preserves native origin; 1 uses the tracked aim point (diagnostic).

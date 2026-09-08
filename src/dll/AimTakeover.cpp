@@ -1,4 +1,5 @@
 #include "AimTakeover.h"
+#include "WeaponAttachment.h"
 #include "preyvr/AnimIk.h"
 #include "MinHookInit.h"
 #include "preyvr/LatestSnapshot.h"
@@ -38,6 +39,8 @@ void* gTarget = nullptr;
 std::atomic<UpdateCachedRayFn> gOriginal{nullptr};
 bool gInstalled = false;
 LatestSnapshot<GameplayPoseFrame> gGameplayFrame;
+LatestSnapshot<preyvr::aim::Sample> gAimSample;
+std::atomic<unsigned long long> gAimSamplePublished{0};
 // The native producer and this edit run on the gameplay thread. A TLS record
 // prevents a failed native unprojection from recycling our hand origin.
 thread_local animik::RayOriginEdit gLastOriginEdit;
@@ -235,6 +238,24 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
         return;
     }
 
+    // Publish the shared record before writing anything, so every lane reads the
+    // same instant rather than each sampling the controller for itself. Without
+    // a per-weapon grip-to-barrel rotation this is `Confidence::origin`: an
+    // honest pointing axis, explicitly not a barrel.
+    {
+        preyvr::aim::Sample sample;
+        sample.origin = engineOrigin;
+        sample.direction = ray->direction;
+        sample.orientation = controller.aimPose.orientation;
+        sample.confidence = preyvr::aim::Confidence::origin;
+        sample.equipGeneration = WeaponEquipGeneration();
+        sample.referenceGeneration = frame.referenceGeneration;
+        sample.trackingSequence = frame.tracking.sequence;
+        sample.publishedNs = MonotonicNanoseconds();
+        gAimSample.Publish(sample);
+        gAimSamplePublished.fetch_add(1, std::memory_order_relaxed);
+    }
+
     // This selects a pointing direction. Native firing may converge from its
     // authored muzzle toward this ray; a controller point is not that muzzle.
     std::memcpy(reinterpret_cast<void*>(
@@ -308,6 +329,12 @@ bool Install()
 }
 
 } // namespace
+
+bool TryGetAimSample(preyvr::aim::Sample& out) { return gAimSample.TryRead(out); }
+unsigned long long AimSamplePublishedCount()
+{
+    return gAimSamplePublished.load(std::memory_order_relaxed);
+}
 
 bool EnsureGameplayPoseObservation() { return Install(); }
 

@@ -10,6 +10,7 @@
 #include "Logger.h"
 #include "NearViewStereo.h"
 #include "RenderFrame.h"
+#include "ReticleFollow.h"
 #include "InputPost.h"
 #include "MoveLane.h"
 #include "WeaponAttachment.h"
@@ -167,6 +168,10 @@ void WriteReport(std::ostringstream& out)
         << " weaponSim=0x" << std::hex << WeaponAttachmentSimulationFlags() << std::dec
         << WeaponMuzzleAlignmentReport()
         << " aimOriginApplied=" << AimOriginAppliedCount()
+        << " aimSamples=" << AimSamplePublishedCount()
+        << " reticleApplied=" << ReticleFollowAppliedCount()
+        << " reticleOffScreen=" << ReticleFollowOffScreenCount()
+        << " reticleXY=" << ReticleFollowLastX() << "," << ReticleFollowLastY()
         << " aimBodyYaw=" << AimBodyYawEnabled()
         << " camYawMdeg=" << AimCameraYawMilliDegrees()
         << " headYawMdeg=" << AimHeadYawMilliDegrees()
@@ -383,6 +388,16 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         }
         out << "console result=" << result
             << " command=\"" << command << "\"";
+    } else if (verb == "aim.reticle") {
+        // Moves Prey's own crosshair to where the controller points, so the
+        // symbol a player aims with agrees with the ray gameplay uses. One
+        // screen position exists, not two, so it is projected through the
+        // current view rather than per eye; that is a real limitation, not an
+        // oversight, and a genuinely stereo reticle needs a mod-drawn one.
+        out << "aim.reticle result=" << SetReticleFollowEnabled(arg(1, 1));
+    } else if (verb == "menu.nav") {
+        SetMenuNavigation(arg(1, 1));
+        out << "menu.nav result=0 value=" << arg(1, 1);
     } else if (verb == "aim.bodyyaw") {
         // 1 rotates head-relative offsets by the BODY yaw (camera - head), 0 by
         // the camera yaw. 0 makes the hand and weapon swing with the headset.

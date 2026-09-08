@@ -91,14 +91,30 @@ bool WriteReticleScreenPosition(void* player, const Vec3& worldDirection)
     if (!(spanX > 0.0f) || !(spanY > 0.0f)) {
         return false;
     }
-    const float fractionX = (tanX - view->tanLeft) / spanX;
+    float fractionX = (tanX - view->tanLeft) / spanX;
     // Screen Y runs downward while the up axis runs upward, so this inverts.
-    const float fractionY = 1.0f - (tanY - view->tanDown) / spanY;
+    float fractionY = 1.0f - (tanY - view->tanDown) / spanY;
 
-    if (!std::isfinite(fractionX) || !std::isfinite(fractionY) ||
-        fractionX < 0.0f || fractionX > 1.0f || fractionY < 0.0f || fractionY > 1.0f) {
+    if (!std::isfinite(fractionX) || !std::isfinite(fractionY)) {
         gOffScreen.fetch_add(1, std::memory_order_relaxed);
         return false;
+    }
+    if (fractionX < 0.0f || fractionX > 1.0f || fractionY < 0.0f || fractionY > 1.0f) {
+        // **Clamped to the edge, not left where it was.** Returning early here
+        // leaves the previous position in place, so the crosshair stays sitting
+        // over whatever it happened to be over when the aim left the screen --
+        // an indicator that is confidently wrong, which is worse than one that
+        // is obviously at a limit. The reticle report names this exactly:
+        // "hide or deliberately replace an offscreen aiming symbol rather than
+        // leaving a stale one over an unrelated object."
+        //
+        // Clamping is the honest half of that: the symbol pins to the edge the
+        // aim went out of, so it reads as "off that way" rather than as a lock
+        // on the wrong thing. Hiding it properly needs the native reticleDisplay
+        // dispatch and is a separate, larger piece of work.
+        gOffScreen.fetch_add(1, std::memory_order_relaxed);
+        fractionX = fractionX < 0.0f ? 0.0f : (fractionX > 1.0f ? 1.0f : fractionX);
+        fractionY = fractionY < 0.0f ? 0.0f : (fractionY > 1.0f ? 1.0f : fractionY);
     }
 
     float screen[2] = {fractionX, fractionY};
