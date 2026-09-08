@@ -2187,3 +2187,20 @@ replays and six native landmarks passed. No Prey launch/injection/attach or live
 commands. Rebuilt DLL and exact hash are in the audit handoff; ordinary build
 folders remain older. HUD extraction, movie canvas mapping, hit-depth convergence
 and true barrel orientation remain separately unproven or unbuilt.
+
+**Two corrections to what earlier entries claimed, now the ABI is known.**
+
+R-111 reported the control scheme demonstrated, all seven cases posting. That
+result stands, because it measured `movePosted` -- our posts into the input
+queue, upstream of the handler hook -- and it ran at the main menu, where
+`moveInputObj` was null and the analog handlers were never called at all. **The
+register corruption would have fired on the first loaded level**, which is where
+that session was heading. A demonstration that exercises everything up to a hook
+says nothing about the hook.
+
+The same entry read `moveAxisMilli` as the axis the game's handler saw. With the
+observer sampling before the original ran, that counter described the value from
+the previous call. It reads after the original now.
+
+The ordinary build trees have since been rebuilt at 767488 bytes and re-tested
+here: 28/28 standard, 3/3 replays, 6/6 native landmarks.
