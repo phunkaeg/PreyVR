@@ -522,6 +522,16 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             out << "hud.call result=" << result << " queued=" << (result == 0 ? 1 : 0)
                 << " fn=" << args[1];
         }
+    } else if (verb == "hud.probe") {
+        // hud.probe            -- report the last probe
+        // hud.probe <x> <y>    -- queue one at that viewport fraction
+        if (args.size() >= 3) {
+            const float x = static_cast<float>(std::atof(args[1].c_str()));
+            const float y = static_cast<float>(std::atof(args[2].c_str()));
+            out << "hud.probe result=" << QueueHudProbe(x, y) << " queued=1";
+        } else {
+            out << "hud.probe result=0 " << HudLastProbe();
+        }
     } else if (verb == "frame.capture") {
         out << "frame.capture result=" << SetRenderFrameCapture(arg(1, 1));
     } else if (verb == "frame.character" && args.size() >= 2) {

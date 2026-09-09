@@ -1944,6 +1944,57 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-09 — R-119: the engine already has the conversion R-118 reconstructed
+
+**`IUIElement::ScreenToFlash` exists, at vtable `+0x2D0`, and the offset comes
+from the game's own call site.** R-118 corrected the reticle with a cover-fitted
+16:9 canvas derived from three measured pixels. That model reproduced the
+measurements, but it is a reconstruction: it assumes the canvas aspect, and
+every sample that fixed it sat on one axis at one aspect. Prey ships the
+conversion itself.
+
+The chain, all read in `/Prey/PreyDll.dll` (image base `0x180000000`, disk
+SHA-256 `7d6e...11a7`):
+
+| RVA | What it is |
+|---|---|
+| `0x2F0DD0` | FlowGraph registration: "Node to convert a screen position (Value 0-1) to a actual X,Y position in the flash asset". Inputs are screen x, screen y and `StageScaleMode`. |
+| `0x2F1320` | That node's ProcessEvent. Resolves the element through `GetInstance` at `+0x20`, then invokes the installed callback. |
+| `0x2F2E60` | The callback. Its entire body is argument shuffling and `CALL qword ptr [R10 + 0x2D0]`. |
+
+The forwarder also fixes the shape: it passes the x and y pointers **twice**,
+`(element, &x, &y, &x, &y, flag)`, so the conversion is in place and arguments
+five and six are on the stack. That matches
+`ScreenToFlash(const float&, const float&, float&, float&, bool)` exactly.
+
+**Three slots now agree with the PDB-derived interface order in this build** --
+`CallFunction` at `+0x210` (R-108/R-109), `GetInstance` at `+0x20` and
+`ScreenToFlash` at `+0x2D0`, the last two witnessed at a native call site here.
+`IUIElement` was not shuffled. That is a statement about `IUIElement` only:
+`IFlashPlayer` carries an `<interfuscator:shuffle>` marker and gets no such
+credit from this entry.
+
+**`SUIConstraints` contains the cover/fit switch R-118 inferred.** The struct
+carries `bScale` and `bMax`, and `bMax` selects the larger versus the smaller of
+the two axis ratios -- which is exactly `max(w/16, h/9)` versus `min`. An
+inference drawn from three pixels turns out to be a boolean in the engine's own
+constraint struct. `GetConstraints` at `+0x128` is counted from the interface
+order rather than witnessed, so it is read and reported and never written.
+
+Built as `hud.probe`: it queues onto the main thread beside `hud.call`, because
+reading through a vtable enters the same element on the same thread that a movie
+dispatch does. It converts one input **both** ways -- the engine's conversion at
+each value of the stage flag, our R-118 arithmetic, and the live constraints --
+in one record at one aspect on one frame, so the two models are compared without
+matching separate readings after the fact.
+
+**Not yet established.** Which stage-flag value suits DanielleHUD; whether the
+native conversion agrees with R-118 at the headset aspect; and what the live
+constraints actually say. The probe exists to answer those and has not been run
+against a live game. A vtable slot is bounded into committed executable memory
+rather than prologue-matched, which catches a stale or garbage element but does
+not prove the callee is the intended function.
+
 ## 2026-09-08 — R-118: the reticle slide is a HUD canvas mismatch, measured in pixels
 
 **Found, and it is not the aim.** Prey's HUD draws into a 16:9 canvas scaled to
