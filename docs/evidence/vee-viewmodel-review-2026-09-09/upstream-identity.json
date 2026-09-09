@@ -1,0 +1,27 @@
+{
+  "repository": "https://github.com/vittorioromeo/Vee.ViewmodelTweaks",
+  "commit": "88d62d85b2adcdd810815390ccdf6ec154c8a734",
+  "date": "2026-09-08T20:46:51Z",
+  "files": {
+    "Src/ModMain.cpp": {
+      "url": "https://raw.githubusercontent.com/vittorioromeo/Vee.ViewmodelTweaks/88d62d85b2adcdd810815390ccdf6ec154c8a734/Src/ModMain.cpp",
+      "sha256": "f60d5417f7ca91df40abe169f01d6845b90347eb665890c03b5e0e5389198f39",
+      "bytes": 184674
+    },
+    "DEVNOTES.md": {
+      "url": "https://raw.githubusercontent.com/vittorioromeo/Vee.ViewmodelTweaks/88d62d85b2adcdd810815390ccdf6ec154c8a734/DEVNOTES.md",
+      "sha256": "dd7f75dabf9aa45b5905d0d62e5184ab6326a775ac9aadd74c7d09ae72e85a40",
+      "bytes": 12285
+    },
+    "README.md": {
+      "url": "https://raw.githubusercontent.com/vittorioromeo/Vee.ViewmodelTweaks/88d62d85b2adcdd810815390ccdf6ec154c8a734/README.md",
+      "sha256": "c8cdb3649d18a410f5a7852c39ba3d84966fadfe7562c3d5e3ebb21b370ef56a",
+      "bytes": 6994
+    },
+    "LICENSE": {
+      "url": "https://raw.githubusercontent.com/vittorioromeo/Vee.ViewmodelTweaks/88d62d85b2adcdd810815390ccdf6ec154c8a734/LICENSE",
+      "sha256": "c0409d072e0586d39f3cd350933ebcdcd6b53a1fa55f08434750cd85f2375333",
+      "bytes": 1077
+    }
+  }
+}

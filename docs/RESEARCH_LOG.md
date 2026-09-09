@@ -1944,6 +1944,68 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-09 — R-127: the scene query, found by reading the call site rather than a header
+
+**The mod has never had a world raycast, and that is why two separate problems
+have stayed open.** Barrel/reticle convergence -- what is the crosshair actually
+over -- and weapon-versus-geometry collision both need exactly one scene ray.
+The reconciliation of weapon, aim and reticle has been worked as a geometry
+problem for weeks; it was a missing-query problem.
+
+**Found the way H-021 says to find things: from a native call site, on our own
+binary.** `ArkWrenchComponent::GetHits` (`0x1813BD620`, located live on
+2026-07-31) calls, twice:
+
+```c
+lVar13 = *DAT_18224D9C8;                                        // IPhysicalWorld vtable
+uVar14 = FUN_18124BA90(local_148, &origin, &dir, hits, 1, &skip);
+iVar12 = (**(code **)(lVar13 + 0x118))(pw, uVar14, "RayWorldIntersection(Game)", 4);
+```
+
+**The call identifies itself.** Only `IPhysicalWorld::RayWorldIntersection` takes
+a `pNameTag` in that argument position -- it defaults to `RWI_NAME_TAG`, the
+literal `"RayWorldIntersection"` -- and the four-argument shape
+`this, &rp, pNameTag, iCaller` matches the declaration exactly. No header
+inference was needed for the slot, which matters: a slot index counted out of
+Chairloader's PDB-derived header would have been an EGS-build guess, and a wrong
+one would have been indistinguishable from a working call until it corrupted
+something.
+
+`FUN_18124BA90` builds the parameter block: `memset` `0x70`, then `+0x18` origin,
+`+0x24` direction, `+0x30` objtypes `0x117`, `+0x34` flags `0xF`, `+0x38` hits,
+`+0x40` nMaxHits `1`, `+0x50` skip count, `+0x58` skip list, `+0x64` `0x400000`.
+Slot `+0x110` on the same object is the broadphase the melee path runs first;
+`+0x1D0` is a third query.
+
+**A cross-check nobody arranged.** This decompile computes its record stride as
+`/0x50`, and the 2026-07-31 live x64dbg capture returned four `0x50`-byte
+`ray_hit` records from this same path. Static layout and runtime capture agree,
+and neither was derived from the other.
+
+**Two things are NOT established.** `DAT_18224D9C8` has not been shown to be the
+same pointer as the documented `gEnv+0x48` `pPhysicalWorld`: the first twelve
+xrefs are all reads and the initialiser was not located. Use the global the game
+itself uses rather than assuming the `gEnv` route reaches it. And the meaning of
+objtypes `0x117` and flags `0xF` comes from Chairloader's enum names, not from
+values verified against this binary -- the standing rule is that those headers
+are an oracle, not the target.
+
+**Provenance.** The prompt to look came from Vee.ViewmodelTweaks (MIT), whose
+notes describe the same feature on the EGS build. Nothing of theirs is used
+here: their addresses do not transfer, and the slot above was read from our own
+binary. What their work does supply is tuning already paid for -- smoothstep
+between a start and full distance, an exponential low-pass on the displacement,
+and 1.1x hysteresis on the aim block.
+
+**Their query does not transfer either, and the reason is structural.** Their ray
+runs from the camera along camera-forward, which is only correct because a flat
+game welds the weapon in front of the face. In VR the weapon is wherever the hand
+is: hold it sideways into a doorframe while looking through the gap and the
+camera ray misses while the weapon intersects; hold it out through the doorway
+while facing the wall and the ray hits while the weapon is clear. Ours must run
+along the grip-to-muzzle axis, and a single ray still will not cover weapon
+thickness or fast rotation.
+
 ## 2026-09-09 — R-126: measured, and it is NOT pixel-bound. My lever was wrong.
 
 > **Audit qualification:** [The later review](RE-PERFORMANCE-HANDOVER-AUDIT-2026-09-09.md)

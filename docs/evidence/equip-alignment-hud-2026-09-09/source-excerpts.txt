@@ -1,0 +1,515 @@
+SOURCE COMMIT da1ad4e8355fb4ef3851bd5a7ce3f10e74d72173
+
+FILE include/preyvr/AnimIk.h
+31: // belongs to each selected hand and is consumed only by that hand's write.
+32: struct CalibrationState {
+33:     unsigned int pending = 0;        // asked for by ik.calibrate
+34:     unsigned int autoPending = 0;    // re-queued by a re-bind, after settling
+35:     unsigned int settleFrames = 0;
+36:     unsigned int calibrated = 0;
+37:     Quaternion offsets[2]{};
+38:     std::uint64_t ownerGeneration = 0, referenceGeneration = 0, trackingEpoch = 0;
+39:     // Re-binding after a weapon change, a recentre or a focus loss invalidates
+40:     // the rotation offset -- it maps the controller onto *this* weapon's
+41:     // authored grip, and the next weapon's grip is different.
+42:     //
+43:     // **Re-take it rather than merely dropping it.** Dropping alone leaves the
+44:     // hand tracking position while its rotation silently stops, which a wearer
+45:     // reported on 2026-09-08 after swapping weapons: "it seemed to reset the
+46:     // rotational tracking and it was only tracking positionally". A hand that
+47:     // half-works reads as a bug, not as a prompt to recalibrate, and asking a
+48:     // player to recalibrate after every weapon swap is not a shippable answer.
+49:     //
+50:     // Two properties are preserved from the original contract:
+51:     //
+52:     //  * **No stale offset carries over** -- `calibrated` is still cleared.
+53:     //  * **No stale *request* carries over** -- an outstanding request that
+54:     //    never completed belonged to the old rig and is discarded. Only hands
+55:     //    with a COMPLETED calibration are re-queued.
+56:     //
+57:     // And the re-take waits: `kSettleFrames` matched frames must pass first, so
+58:     // the capture lands on the settled grip rather than midway through the
+59:     // equip animation, which would bake a transient wrist pose into the offset.
+60:     // A manual `ik.calibrate` is deliberate and commits on the next frame.
+61:     static constexpr unsigned int kSettleFrames = 90;
+62: 
+63:     bool Bind(std::uint64_t owner, std::uint64_t reference, std::uint64_t epoch) {
+64:         if (ownerGeneration == owner && referenceGeneration == reference && trackingEpoch == epoch) { return false; }
+65:         pending = 0;                 // whatever the old rig had outstanding
+66:         // A second rebind may arrive before the first automatic retake. In
+67:         // that interval calibrated is zero, but autoPending still records a
+68:         // hand which completed calibration before the transition. Preserve
+69:         // that recovery intent across churn; never carry its old offset as valid.
+70:         autoPending = (ownerGeneration != 0) ? (calibrated | autoPending) : 0u;
+71:         settleFrames = 0;
+72:         calibrated = 0;
+73:         ownerGeneration = owner; referenceGeneration = reference; trackingEpoch = epoch;
+74:         return true;
+75:     }
+76: 
+77:     // One matched frame on the owning rig.
+78:     void Tick() { if (settleFrames < kSettleFrames) { ++settleFrames; } }
+79: 
+80:     void Request(unsigned int hands) { pending |= hands & 3u; }
+81:     // Explicit rig-signature reset is different from Bind's automatic recovery.
+82:     void Invalidate() { pending = autoPending = settleFrames = calibrated = 0; }
+83:     bool Pending(unsigned int hand) const {
+84:         if (hand >= 2) { return false; }
+85:         if (pending & (1u << hand)) { return true; }   // asked for deliberately
+86:         return (autoPending & (1u << hand)) && settleFrames >= kSettleFrames;
+87:     }
+88:     // Queued by a re-bind but still settling. Reported so a wearer whose
+89:     // rotation has not resumed yet can see that it is coming, not broken.
+90:     bool Settling(unsigned int hand) const {
+91:         return hand < 2 && (autoPending & (1u << hand)) && settleFrames < kSettleFrames;
+92:     }
+93:     void Commit(unsigned int hand, const Quaternion& offset) {
+94:         if (hand >= 2) { return; }
+95:         offsets[hand] = offset;
+96:         calibrated |= 1u << hand;
+97:         pending &= ~(1u << hand);
+98:         autoPending &= ~(1u << hand);
+99:     }
+100: };
+101: 
+
+FILE src/dll/AnimIkTakeover.cpp
+354:         oldWeight = *weight;
+355:         haveBackup = true;
+356:         std::memcpy(target + 0x10, &position, sizeof(position));
+357:         if (writeRotation) { std::memcpy(target, &rotation, sizeof(rotation)); }
+358:         *weight = 1.0f;
+359:         return true;
+360:     } __except (EXCEPTION_EXECUTE_HANDLER) {
+361:         if (haveBackup) {
+362:             __try { std::memcpy(target, &backup, sizeof(backup)); *weight = oldWeight; }
+363:             __except (EXCEPTION_EXECUTE_HANDLER) { /* destroyed storage: cannot restore */ }
+364:         }
+365:         return false;
+366:     }
+367: }
+368: 
+369: void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute,
+370:                const animik::Location& location, const GameplayPoseFrame& frame)
+371: {
+372:     const int target = gTargetJoint[hand].load(std::memory_order_relaxed);
+373:     const int weight = gWeightJoint[hand].load(std::memory_order_relaxed);
+374:     const int handJoint = gHandJoint[hand].load(std::memory_order_relaxed);
+375:     if (!animik::ValidJoint(target, DynArrayCount(absolute)) ||
+376:         !animik::ValidJoint(weight, DynArrayCount(relative)) ||
+377:         !animik::ValidJoint(handJoint, DynArrayCount(absolute))) { return; }
+378: 
+379:     QuatT wrist{};
+380:     if (!ReadQuatT(absolute, handJoint, wrist)) { return; }
+381: 
+382:     Vec3 goal{wrist.t[0], wrist.t[1], wrist.t[2]};
+383:     Quaternion rotation{wrist.q[0], wrist.q[1], wrist.q[2], wrist.q[3]};
+384:     bool writeRotation = false;
+385:     bool calibrating = false;
+386:     Quaternion candidateOffset{};
+387: 
+388:     // Hoisted purely so the trace can see them: the controller values are built
+389:     // inside the drive branch, while the reach maths that consumes the goal sits
+390:     // outside it. Zero when the branch did not run, which the trace's own
+391:     // validity flag already distinguishes from a real zero.
+392:     Vec3 traceGrip{}, traceControllerWorld{};
+393:     if (gDrive.load(std::memory_order_acquire)) {
+394:         const auto& state = frame.tracking.hands[static_cast<unsigned int>(hand == 0 ? Hand::right : Hand::left)];
+395:         // Without a play-space yaw the world placement is unknown, and the
+396:         // camera-relative fallback is the defect body yaw exists to remove.
+397:         if (AimBodyYawEnabled() && !frame.headYawUsable) {
+398:             gNoPose.fetch_add(1, std::memory_order_relaxed);
+399:             return;
+400:         }
+401:         if (!IsPoseUsable(state.gripPose, state.gripValidity, 200000000ull)) {
+402:             gNoPose.fetch_add(1, std::memory_order_relaxed);
+403:             return;
+404:         }
+405:         const Pose world = animik::ControllerWorldFromHead(frame.yaw, frame.nativeEye,
+406:                                                           frame.tracking.head, state.gripPose);
+407:         traceGrip = state.gripPose.position;
+408:         traceControllerWorld = world.position;
+409:         goal = animik::WorldToModel(location, world.position);
+410:         const Quaternion controllerModel = animik::WorldToModel(location, world.orientation);
+411:         calibrating = gCalibration.Pending(hand);
+412:         candidateOffset = calibrating ? animik::CalibrateRotationOffset(controllerModel, rotation)
+413:                                       : gCalibration.offsets[hand];
+414:         if (calibrating || (gCalibration.calibrated & (1u << hand))) {
+415:             rotation = animik::ApplyRotationOffset(controllerModel, candidateOffset);
+416:             writeRotation = true;
+417:         }
+418:     } else {
+419:         const Vec3 test{gTestMm[0].load(std::memory_order_relaxed) * 0.001f,
+420:                         gTestMm[1].load(std::memory_order_relaxed) * 0.001f,
+421:                         gTestMm[2].load(std::memory_order_relaxed) * 0.001f};
+422:         if (test.x == 0.0f && test.y == 0.0f && test.z == 0.0f) { return; }
+423:         goal = Vec3{goal.x + test.x, goal.y + test.y, goal.z + test.z};
+424:     }
+425: 
+540:     if (mode != 0 && !stateLock.owns_lock()) { gBusy.fetch_add(1); }
+541:     if (mode != 0 && stateLock.owns_lock() && !haveOwner) { gNoOwner.fetch_add(1); }
+542:     if (haveOwner && gCalibration.Bind(owner.generation, frame.referenceGeneration, frame.tracking.epoch)) {
+543:         for (auto& flag : gCalibrated) { flag.store(false); }
+544:         gRigSkeleton.store(0);
+545:         gOwnerGeneration.store(owner.generation);
+546:         gOwnerCharacter.store(owner.character);
+547:     }
+548:     if (mode != 0 && haveOwner && owner.character == reinterpret_cast<std::uintptr_t>(character) && params != nullptr) {
+549:         auto* const ch = static_cast<std::uint8_t*>(character);
+550:         if (IdentifyRig(ch)) {
+551:             gMatched.fetch_add(1, std::memory_order_relaxed);
+552:             gCalibration.Tick();   // settles an auto re-take past the equip animation
+553:             int gate = 0;
+554:             if (ReadInt(ch + kCharAnimPlaying, &gate)) {
+555:                 gGate.store(static_cast<unsigned int>(gate), std::memory_order_relaxed);
+556:             }
+557:             const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+558:             int cvar = -1;
+559:             if (preyDll != nullptr &&
+560:                 ReadInt(reinterpret_cast<std::uint8_t*>(preyDll) + kUseAdikCvarRva, &cvar)) {
+561:                 gCvar.store(cvar, std::memory_order_relaxed);
+562:             }
+563:             auto* const p = static_cast<std::uint8_t*>(params);
+564:             float loc[8] = {0};
+565:             animik::Location location{};
+566:             bool validLocation = false;
+567:             if (ReadFloats(p + kParamsLocQ, &loc[0], 4) && ReadFloats(p + kParamsLocT, &loc[4], 3) &&
+568:                 ReadFloats(p + kParamsLocS, &loc[7], 1)) {
+569:                 location.q = Quaternion{loc[0], loc[1], loc[2], loc[3]};
+570:                 location.t = Vec3{loc[4], loc[5], loc[6]};
+571:                 location.s = loc[7];
+572:                 validLocation = animik::ValidLocation(location);
+573:             }
+574:             if (validLocation) {
+575:                 gLocMm[0].store(static_cast<int>(loc[4] * 1000.0f), std::memory_order_relaxed);
+576:                 gLocMm[1].store(static_cast<int>(loc[5] * 1000.0f), std::memory_order_relaxed);
+577:                 gLocMm[2].store(static_cast<int>(loc[6] * 1000.0f), std::memory_order_relaxed);
+578:                 gLocYawMilli.store(static_cast<int>(animik::YawOf(location.q) * 57295.78f),
+579:                                    std::memory_order_relaxed);
+580:             }
+581:             if (mode == 2 && validLocation && gate != 0 && cvar != 0 && cvar != -1 &&
+582:                 HandRigMode() != 2 && !WeaponRotationDriveArmed() && !WeaponOffsetArmed()) {
+583:                 void* pose = nullptr;
+584:                 void* relative = nullptr;
+585:                 void* absolute = nullptr;
+586:                 if (ReadPointer(p + kParamsPose, &pose) && pose != nullptr &&
+587:                     ReadPointer(static_cast<std::uint8_t*>(pose) + kPoseRelative, &relative) &&
+588:                     ReadPointer(static_cast<std::uint8_t*>(pose) + kPoseAbsolute, &absolute) &&
+589:                     relative != nullptr && absolute != nullptr) {
+590:                     const unsigned int hands = gHands.load(std::memory_order_relaxed);
+591:                     if (hands & 1u) {
+592:                         DriveHand(0, static_cast<std::uint8_t*>(relative), static_cast<std::uint8_t*>(absolute),
+593:                                   location, frame);
+594:                     }
+595:                     if ((hands & 2u) && gMode.load() == 2) {
+596:                         DriveHand(1, static_cast<std::uint8_t*>(relative), static_cast<std::uint8_t*>(absolute),
+597:                                   location, frame);
+598:                     }
+599:                 }
+600:             }
+601:         }
+602:     }
+603:     if (stateLock.owns_lock()) { stateLock.unlock(); }
+604:     const ProcessAdikFn original = gOriginal.load(std::memory_order_acquire);
+605:     if (original != nullptr) {
+606:         original(character, params);
+607:     }
+608: }
+609: 
+610: bool Install()
+611: {
+612:     if (gInstalled.load(std::memory_order_acquire)) { return true; }
+613:     const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+
+FILE src/dll/AimTakeover.cpp
+225:     if (!gEnabled.load(std::memory_order_acquire)) { return; }
+226:     const auto& controller = frame.tracking.hands[static_cast<unsigned int>(Hand::right)];
+227:     const auto& headPose = frame.tracking.head;
+228:     const Vec3 engineOrigin = frame.nativeEye;
+229:     stereo::ReferenceFrame reference{};
+230:     reference.yawRadians = frame.yaw;
+231:     reference.worldPosition = engineOrigin;
+232: 
+233:     const auto ray = controller::AimFromController(
+234:         reference, controller.aimPose, controller.aimValidity,
+235:         /*maxAgeNanoseconds=*/200ull * 1000ull * 1000ull);
+236:     if (!ray) {
+237:         // AimFromController refuses an untracked or stale pose rather than
+238:         // producing a plausible ray from a dead controller -- the caller then
+239:         // leaves Prey's own ray alone, which is what this does.
+240:         gRejNoPose.fetch_add(1, std::memory_order_relaxed);
+241:         return;
+242:     }
+243:     const float length = Length(ray->direction);
+244:     if (!std::isfinite(length) || length < 0.99f || length > 1.01f) {
+245:         gRejCompose.fetch_add(1, std::memory_order_relaxed);
+246:         return;
+247:     }
+248: 
+249:     // Describe the ray actually installed below, not the best origin available
+250:     // regardless of aim.origin. A positional muzzle calibration does not prove
+251:     // a barrel rotation: this direction is still the runtime's aiming axis.
+252:     preyvr::aim::Sample sample{};
+253:     sample.origin = engineOrigin;
+254:     sample.direction = ray->direction;
+255:     const Pose hand = animik::ControllerWorldFromHead(
+256:         reference.yawRadians, engineOrigin, headPose, controller.aimPose);
+257:     sample.orientation = hand.orientation; // world space, like the direction
+258:     sample.confidence = preyvr::aim::Confidence::origin;
+259:     sample.equipGeneration = WeaponEquipGeneration();
+260:     sample.referenceGeneration = frame.referenceGeneration;
+261:     sample.trackingSequence = frame.tracking.sequence;
+262: 
+263:     // This selects a pointing direction. Native firing may converge from its
+264:     // authored muzzle toward this ray; a controller point is not that muzzle.
+265:     std::memcpy(reinterpret_cast<void*>(
+266:                     playerAddress + engine::ArkPlayerLayout::cachedReticleDirection),
+267:                 &ray->direction, sizeof(ray->direction));
+268:     gApplied.fetch_add(1, std::memory_order_relaxed);
+269: 
+270:     const unsigned int originMode = gOriginMode.load(std::memory_order_acquire);
+271:     if (originMode != 0) {
+272:         Vec3 chosen = hand.position;
+273:         bool haveMuzzle = false;
+274:         if (originMode == 2) {
+275:             // **The reconciliation.** Prey's projectile already leaves the
+276:             // weapon's authored muzzle helper while the reticle ray starts at
+277:             // the eye, so a shot flies from the muzzle toward wherever an eye
+278:             // ray landed and the two agree at exactly one distance. Starting the
+279:             // ray at that same muzzle removes the convergence entirely.
+280:             //
+281:             // The GRIP pose is used, not the aim pose, because the calibration
+282:             // was measured against the grip: an offset is only meaningful in
+283:             // the frame it was captured in.
+284:             const Pose grip = animik::ControllerWorldFromHead(
+285:                 reference.yawRadians, engineOrigin, headPose, controller.gripPose);
+286:             Vec3 muzzle{};
+287:             if (IsPoseUsable(controller.gripPose, controller.gripValidity, 200000000ull) &&
+288:                 TryGetMuzzleFromGrip(grip, sample.equipGeneration, muzzle)) {
+289:                 chosen = muzzle;
+290:                 haveMuzzle = true;
+291:             } else {
+292:                 // Uncalibrated, or a different weapon since. Fall back to the
+293:                 // hand and COUNT it: silently reverting to a less accurate
+294:                 // origin is how a lane looks fine and aims wrong.
+295:                 gMuzzleUnavailable.fetch_add(1, std::memory_order_relaxed);
+296:             }
+297:         }
+298:         if (std::isfinite(chosen.x) && std::isfinite(chosen.y) && std::isfinite(chosen.z)) {
+299:             std::memcpy(reinterpret_cast<void*>(
+300:                             playerAddress + engine::ArkPlayerLayout::cachedReticleOrigin),
+301:                         &chosen, sizeof(chosen));
+302:             gLastOriginEdit = {playerAddress, engineOrigin, chosen};
+303:             sample.origin = chosen;
+304:             gOriginApplied.fetch_add(1, std::memory_order_relaxed);
+305:             if (haveMuzzle) { gMuzzleOriginApplied.fetch_add(1, std::memory_order_relaxed); }
+306:         }
+307:     }
+308: 
+309:     // Legacy latest-value telemetry; use reticleProjection's coherent render
+310:     // record to compare a ray with its actual projection camera and raw pose.
+311:     for (unsigned int i = 0; i < 3; ++i) {
+312:         gAimDirMilli[i].store(static_cast<int>((&sample.direction.x)[i] * 1000.0f),
+313:                               std::memory_order_relaxed);
+314:         gAimRawDirMilli[i].store(
+315:             static_cast<int>((&controller.aimPose.orientation.x)[i] * 1000.0f),
+
+FILE src/dll/WeaponAttachment.cpp
+363: }
+364: 
+365: // The muzzle expressed in the GRIP's frame, so it follows the weapon.
+366: struct BarrelOffset {
+367:     Vec3 local{};
+368:     std::uint64_t equipGeneration = 0;
+369:     bool valid = false;
+370: };
+371: LatestSnapshot<BarrelOffset> gBarrelOffset;
+372: std::atomic<unsigned long long> gBarrelCalibrations{0};
+373: 
+374: DWORD CalibrateWeaponBarrel()
+375: {
+376:     MuzzleSample sample{};
+377:     if (!gMuzzleSample.TryRead(sample)) {
+378:         Log("result=refused detail=no_muzzle_sample note=fire_once_first");
+379:         return 1;
+380:     }
+381:     if (sample.cameraFallback != 0) {
+382:         // The native query fell back to the camera because its safety ray was
+383:         // blocked, so this position is not the muzzle at all. Calibrating from
+384:         // it would bake a wall into the weapon.
+385:         Log("result=refused detail=sample_used_camera_fallback");
+386:         return 2;
+387:     }
+388:     GameplayPoseFrame frame{};
+389:     EquippedRig owner{};
+390:     if (!TryGetGameplayPoseFrame(frame, false) || !TryGetEquippedRig(frame.player, owner) ||
+391:         owner.generation != sample.owner.generation) {
+392:         Log("result=refused detail=sample_belongs_to_another_weapon");
+393:         return 3;
+394:     }
+395:     const Quaternion grip = Normalize(sample.gripOrientation);
+396:     const Vec3 delta{sample.nativeOrigin.x - sample.gripOrigin.x,
+397:                      sample.nativeOrigin.y - sample.gripOrigin.y,
+398:                      sample.nativeOrigin.z - sample.gripOrigin.z};
+399:     BarrelOffset offset{};
+400:     offset.local = Rotate(Conjugate(grip), delta);
+401:     offset.equipGeneration = owner.generation;
+402:     offset.valid = std::isfinite(offset.local.x) && std::isfinite(offset.local.y) &&
+403:                    std::isfinite(offset.local.z);
+404:     // A muzzle a metre from the hand is a bad sample, not a long weapon.
+405:     const float reach = std::sqrt(offset.local.x * offset.local.x +
+406:                                   offset.local.y * offset.local.y +
+407:                                   offset.local.z * offset.local.z);
+408:     if (!offset.valid || reach > 1.0f) {
+409:         Log("result=refused detail=implausible_offset mm=" +
+410:             std::to_string(static_cast<int>(reach * 1000.0f)));
+411:         return 4;
+412:     }
+413:     gBarrelOffset.Publish(offset);
+414:     gBarrelCalibrations.fetch_add(1, std::memory_order_relaxed);
+415:     Log("result=0 detail=barrel_calibrated mm=" +
+416:         std::to_string(static_cast<int>(offset.local.x * 1000.0f)) + "," +
+417:         std::to_string(static_cast<int>(offset.local.y * 1000.0f)) + "," +
+418:         std::to_string(static_cast<int>(offset.local.z * 1000.0f)));
+419:     return 0;
+420: }
+421: 
+422: bool TryGetMuzzleFromGrip(const Pose& gripWorld, std::uint64_t currentEquipGeneration, Vec3& out)
+423: {
+424:     BarrelOffset offset{};
+425:     if (!gBarrelOffset.TryRead(offset) || !offset.valid) { return false; }
+426:     // The offset belongs to the weapon it was measured on. F-009 again: a
+427:     // different weapon has a different muzzle, and reusing one is a confident
+428:     // wrong answer rather than a missing one.
+429:     if (offset.equipGeneration != currentEquipGeneration) { return false; }
+430:     const Vec3 turned = Rotate(Normalize(gripWorld.orientation), offset.local);
+431:     out = Vec3{gripWorld.position.x + turned.x,
+432:                gripWorld.position.y + turned.y,
+433:                gripWorld.position.z + turned.z};
+434:     return true;
+435: }
+436: 
+
+FILE src/dll/HudBridge.h
+31: // would be fabricating a struct, which this project has a standing rule against.
+32: //
+33: // **The floats are passed in XMM2/XMM3.** The decompiler shows them as
+34: // `undefined4`, and reading that as integer arguments in R8D/R9D would put them
+35: // in the wrong registers entirely. The prologues are the evidence: the two-float
+36: // entry saves XMM3 *and* XMM2, the one-float entry saves only XMM2.
+37: //
+38: // **A completed dispatch is not visual acceptance, and this is measured rather
+39: // than assumed.** `hud.call SetCrosshairPosition` returned 0 against a name that
+40: // does not exist anywhere in the binary (F-011). Scaleform resolves the function
+41: // name inside the movie and silently does nothing when it is absent, so a zero
+42: // return proves the ABI and the element -- never the name. Only names read from
+43: // a native call site are known to exist.
+44: namespace preyvr::dll {
+45: 
+46: // Dispatches `function` on the DanielleHUD element with two floats (0x11797C0).
+47: // Fails closed at every step: no UI singleton, no element, a prologue that does
+48: // not match, or a non-finite value all refuse rather than call. Returns 0 on a
+49: // completed dispatch.
+50: DWORD CallHudTwoFloat(const char* function, float x, float y);
+51: 
+115: struct HudConstraints {
+116:     int positionType = -1;   // 0 fixed, 1 fullscreen, 2 dynamic, 3 fixedDynTexSize
+117:     int left = 0, top = 0, width = 0, height = 0;
+118:     int hAlign = -1, vAlign = -1;  // 0 lower, 1 mid, 2 upper
+119:     bool scale = false;
+120:     bool max = false;
+121: };
+122: 
+123: // Returns 0 and fills `out` on success; the same fail-closed codes as above.
+124: DWORD HudReadConstraints(HudConstraints* out);
+125: 
+126: // **MEASURED NO-OP, kept as a probe rather than a fix (F-017).** Changing this
+127: // flips `bMax` and moves `ScreenToFlash`'s answer, both confirmed by readback --
+128: // and the HUD does not move a pixel. Whatever drives the element's render-time
+129: // viewport is not this constraint block. Do not reach for it expecting the HUD
+130: // to shift; it is here because knowing that it does nothing is worth keeping.
+131: //
+132: // It also carries a warning for the conversion: after this changes, the native
+133: // `ScreenToFlash` follows the constraints while the rendering does not, so the
+134: // two disagree and the native answer becomes wrong.
+135: //
+136: // The original reasoning, preserved because the first half of it is correct:
+137: // `bMax` chooses cover over fit, and cover is
+138: // why the 16:9 HUD canvas overflows the frame at the headset aspect: at
+139: // 2688x2880 the canvas is 5120 wide and only its central 2688 is on screen, so
+140: // roughly 1216 px is clipped off each side. Clearing `bMax` fits the canvas
+141: // inside the frame instead, which should bring the clipped edges into view.
+142: //
+143: // Calls the engine's own `SetConstraints` at RVA `0x2FFF30`, found by the log
+144: // line inside it rather than counted off a vtable, and hands it the live struct
+145: // with one byte changed -- so the engine runs its own `UpdateViewPort`
+146: // afterwards rather than us imitating it.
+147: //
+148: // **Verified by readback, and that is not decoration.** The function opens with
+149: // a `cmp dword ptr [rip+..], 0` and silently does nothing when that global is
+150: // zero. F-011 is the standing reminder that a completed call proves nothing;
+151: // this returns 14 when the field did not actually change.
+152: //
+153: // Must run on the main thread -- it re-enters the UI element and triggers a
+154: // viewport update. Use `QueueHudFit` from anywhere else.
+155: DWORD HudSetConstraintMax(bool maximise);
+156: 
+157: // Queue a main-thread `HudSetConstraintMax`; 0 means queued, not applied. The
+158: // outcome is in the log, and `hud.probe` reports the resulting constraints.
+159: DWORD QueueHudFit(bool maximise);
+
+FILE tests/AnimIkTests.cpp
+122: // Calibration must reproduce the animated wrist exactly at the calibration
+123: // instant, and then follow the controller's delta from there.
+124: void TestRotationCalibration()
+125: {
+126:     const Quaternion controllerAtCal = AxisAngle(Vec3{0.1f, 0.9f, 0.2f}, 0.7f);
+127:     const Quaternion wristAtCal = AxisAngle(Vec3{0.0f, 0.0f, 1.0f}, -1.3f);
+128:     const Quaternion offset = CalibrateRotationOffset(controllerAtCal, wristAtCal);
+129:     Require(NearQuat(ApplyRotationOffset(controllerAtCal, offset), wristAtCal),
+130:             "applying the offset at calibration reproduces the wrist");
+131:     const Quaternion turn = AxisAngle(Vec3{1.0f, 0.0f, 0.0f}, 0.4f);
+132:     const Quaternion controllerLater = Normalize(Multiply(turn, controllerAtCal));
+133:     const Quaternion expected = Normalize(Multiply(turn, wristAtCal));
+134:     Require(NearQuat(ApplyRotationOffset(controllerLater, offset), expected),
+135:             "a controller delta on the left turns the wrist by the same delta");
+136: }
+
+FILE docs/RESEARCH_LOG.md
+2127: ## 2026-09-09 — F-017: changing `bMax` moves nothing. The HUD is not cover-clipped.
+2128: 
+2129: **The hypothesis is dead, and it was mine.** R-120 reasoned that the HUD canvas
+2130: is cover-fitted, therefore ~1216 px is clipped off each side at 2688x2880,
+2131: therefore clearing `bMax` should bring the lost edges into view. Every step of
+2132: that was checkable and the last one is false.
+2133: 
+2134: Measured with the gameplay HUD visible, `cMax` confirmed **0 at capture time**
+2135: and restored to 1 afterwards, `stage0X` tracking 758.4 / 854.16 across the
+2136: change. The health and psi meters are at **identical position and identical
+2137: size** in both frames. Nothing moved.
+2138: 
+2139: So `SetConstraints` stores the struct and calls `UpdateViewPort` -- both
+2140: observed -- and the Scaleform rendering does not follow. Whatever drives the
+2141: element's render-time viewport is not the constraint block we can reach. The
+2142: HUD lane needs that seam, not this one.
+2143: 
+2144: **A caveat this forces onto R-119 and R-122, which were too pleased with
+2145: themselves.** `ScreenToFlash` *does* consult the constraints: its answer changed
+2146: the moment `bMax` did. The rendering did not. So after a constraint change the
+2147: native conversion and the actual rendering **disagree**, and the native call
+2148: would confidently return a wrong answer.
+2149: 
+2150: `ScreenToFlash` is authoritative today because the constraints happen to
+2151: describe what renders. It is not automatically authoritative, and the claim in
+2152: R-120 that mode 2 "stays right if the constraints change" is exactly backwards:
+2153: after such a change it is mode 2 that goes wrong, silently.
+2154: 
+2155: **What survives, and is stronger for this.** The cover model is confirmed for
+2156: the real rendering by two independent routes: `ScreenToFlash` reproduces it to
+2157: the reported precision at `cMax=1`, and the HUD stayed put when the constraints
+2158: said fit -- i.e. rendering kept covering. R-118's correction is right, and mode 1
+2159: is not the fragile option it looked like an hour ago.
+2160: 
+2161: **Also observed, not acted on.** The gameplay HUD is not clipped at all: the
+2162: meters sit around canvas x 512-613 of 1920, well inside the visible window.
+2163: There was never anything hidden off the left edge to recover.

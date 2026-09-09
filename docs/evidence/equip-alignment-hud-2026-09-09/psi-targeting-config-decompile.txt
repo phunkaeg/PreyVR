@@ -1,0 +1,65 @@
+
+void FUN_1815b8340(longlong param_1,longlong *param_2)
+
+{
+  char cVar1;
+  int iVar2;
+  undefined8 uVar3;
+  char *local_res8;
+  
+  (**(code **)(*(longlong *)*param_2 + 0xc0))
+            ((longlong *)*param_2,"AudioTriggerCooldownSec",param_1 + 0x20);
+  (**(code **)(*(longlong *)*param_2 + 0xc0))
+            ((longlong *)*param_2,"DepthControlSpeed",param_1 + 0x10);
+  (**(code **)(*(longlong *)*param_2 + 0xc0))((longlong *)*param_2,"CollisionRadius",param_1 + 0x14)
+  ;
+  (**(code **)(*(longlong *)*param_2 + 0xc0))
+            ((longlong *)*param_2,"IndividualTargetingAngle",param_1 + 0x18);
+  (**(code **)(*(longlong *)*param_2 + 0xc0))
+            ((longlong *)*param_2,"MinSizeForCrosshair",param_1 + 0x1c);
+  uVar3 = (**(code **)(*(longlong *)*param_2 + 0xf0))((longlong *)*param_2,"TargetAttachmentName");
+  FUN_1800be9b0(param_1 + 8,uVar3);
+  *(float *)(param_1 + 0x18) = *(float *)(param_1 + 0x18) * 0.017453292;
+  (**(code **)(*(longlong *)*param_2 + 0x78))
+            ((longlong *)*param_2,"ShowHudTargetInfo",param_1 + 0x24);
+  local_res8 = &DAT_18224d03c;
+  cVar1 = (**(code **)(*(longlong *)*param_2 + 0x70))
+                    ((longlong *)*param_2,"CycleTargetAudioTrigger",&local_res8);
+  if (cVar1 != '\0') {
+    *(undefined4 *)(param_1 + 0x40) = 0;
+    if ((local_res8 != (char *)0x0) && (*local_res8 != '\0')) {
+      (**(code **)(*DAT_18224da50 + 0x40))();
+    }
+  }
+  cVar1 = (**(code **)(*(longlong *)*param_2 + 0x70))
+                    ((longlong *)*param_2,"ParticleEffect",&local_res8);
+  if (cVar1 != '\0') {
+    uVar3 = (**(code **)(*DAT_18224da00 + 0x30))
+                      (DAT_18224da00,local_res8,"ArkPsiTargetingData::Initialize",1);
+    *(undefined8 *)(param_1 + 0x28) = uVar3;
+  }
+  cVar1 = (**(code **)(*(longlong *)*param_2 + 0x70))
+                    ((longlong *)*param_2,"CrosshairEffect",&local_res8);
+  if (cVar1 != '\0') {
+    uVar3 = (**(code **)(*DAT_18224da00 + 0x30))
+                      (DAT_18224da00,local_res8,"ArkPsiTargetingData::Initialize",1);
+    *(undefined8 *)(param_1 + 0x30) = uVar3;
+  }
+  cVar1 = (**(code **)(*(longlong *)*param_2 + 0x70))
+                    ((longlong *)*param_2,"TargeParticleEffect",&local_res8);
+  if (cVar1 != '\0') {
+    uVar3 = (**(code **)(*DAT_18224da00 + 0x30))
+                      (DAT_18224da00,local_res8,"ArkPsiTargetingData::Initialize",1);
+    *(undefined8 *)(param_1 + 0x38) = uVar3;
+  }
+  iVar2 = *(int *)(local_res8 + -0xc);
+  if ((-1 < iVar2) && (iVar2 = iVar2 + -1, *(int *)(local_res8 + -0xc) = iVar2, iVar2 < 1)) {
+    FUN_1800a8b20();
+  }
+  if ((longlong *)*param_2 != (longlong *)0x0) {
+    (**(code **)(*(longlong *)*param_2 + 0x20))();
+  }
+  return;
+}
+
+
