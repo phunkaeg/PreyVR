@@ -123,7 +123,18 @@ struct HudConstraints {
 // Returns 0 and fills `out` on success; the same fail-closed codes as above.
 DWORD HudReadConstraints(HudConstraints* out);
 
-// **The HUD lane's actual lever.** `bMax` chooses cover over fit, and cover is
+// **MEASURED NO-OP, kept as a probe rather than a fix (F-017).** Changing this
+// flips `bMax` and moves `ScreenToFlash`'s answer, both confirmed by readback --
+// and the HUD does not move a pixel. Whatever drives the element's render-time
+// viewport is not this constraint block. Do not reach for it expecting the HUD
+// to shift; it is here because knowing that it does nothing is worth keeping.
+//
+// It also carries a warning for the conversion: after this changes, the native
+// `ScreenToFlash` follows the constraints while the rendering does not, so the
+// two disagree and the native answer becomes wrong.
+//
+// The original reasoning, preserved because the first half of it is correct:
+// `bMax` chooses cover over fit, and cover is
 // why the 16:9 HUD canvas overflows the frame at the headset aspect: at
 // 2688x2880 the canvas is 5120 wide and only its central 2688 is on screen, so
 // roughly 1216 px is clipped off each side. Clearing `bMax` fits the canvas

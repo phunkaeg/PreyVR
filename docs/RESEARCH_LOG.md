@@ -1944,6 +1944,44 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-09 — F-017: changing `bMax` moves nothing. The HUD is not cover-clipped.
+
+**The hypothesis is dead, and it was mine.** R-120 reasoned that the HUD canvas
+is cover-fitted, therefore ~1216 px is clipped off each side at 2688x2880,
+therefore clearing `bMax` should bring the lost edges into view. Every step of
+that was checkable and the last one is false.
+
+Measured with the gameplay HUD visible, `cMax` confirmed **0 at capture time**
+and restored to 1 afterwards, `stage0X` tracking 758.4 / 854.16 across the
+change. The health and psi meters are at **identical position and identical
+size** in both frames. Nothing moved.
+
+So `SetConstraints` stores the struct and calls `UpdateViewPort` -- both
+observed -- and the Scaleform rendering does not follow. Whatever drives the
+element's render-time viewport is not the constraint block we can reach. The
+HUD lane needs that seam, not this one.
+
+**A caveat this forces onto R-119 and R-122, which were too pleased with
+themselves.** `ScreenToFlash` *does* consult the constraints: its answer changed
+the moment `bMax` did. The rendering did not. So after a constraint change the
+native conversion and the actual rendering **disagree**, and the native call
+would confidently return a wrong answer.
+
+`ScreenToFlash` is authoritative today because the constraints happen to
+describe what renders. It is not automatically authoritative, and the claim in
+R-120 that mode 2 "stays right if the constraints change" is exactly backwards:
+after such a change it is mode 2 that goes wrong, silently.
+
+**What survives, and is stronger for this.** The cover model is confirmed for
+the real rendering by two independent routes: `ScreenToFlash` reproduces it to
+the reported precision at `cMax=1`, and the HUD stayed put when the constraints
+said fit -- i.e. rendering kept covering. R-118's correction is right, and mode 1
+is not the fragile option it looked like an hour ago.
+
+**Also observed, not acted on.** The gameplay HUD is not clipped at all: the
+meters sit around canvas x 512-613 of 1920, well inside the visible window.
+There was never anything hidden off the left edge to recover.
+
 ## 2026-09-09 — R-122: measured live — the engine confirms R-118, and catches a bug in R-119
 
 First live run of everything built today. Prey at 2688x2880 on the real runtime,

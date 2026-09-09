@@ -108,7 +108,11 @@ unsigned long long ReticleFollowOffScreenCount();
 //   1 -- the R-118 cover-canvas reconstruction (default, and measured)
 //   2 -- Prey's own ScreenToFlash (R-119), which assumes no canvas aspect
 // Kept switchable because two conversions now exist and only one can be right;
-// stepping between them in one session is what says which. Mode 2 falls back to
+// stepping between them in one session is what says which. Measured: at the
+// live constraints they agree exactly on both axes, so mode 1 is correct.
+// Mode 2 is NOT the safer default -- F-017 found that after a constraint change
+// ScreenToFlash follows the constraints while the rendering does not, so mode 2
+// is the one that goes wrong there, silently. Mode 2 falls back to
 // mode 1 when the native call refuses, and counts that separately rather than
 // letting the fallback pass for the native answer.
 DWORD SetReticleCanvasMode(unsigned int mode);
