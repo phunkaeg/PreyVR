@@ -1944,6 +1944,52 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-09 — R-126: measured, and it is NOT pixel-bound. My lever was wrong.
+
+**The counters answered on their first outing, and the answer kills the
+optimisation they were built to justify.** Controlled comparison, same aspect so
+`r_DrawNearFoV` was not a variable, same settings, two 30-second samples:
+
+| | 2688x2880 | 2016x2160 | change |
+|---|---|---|---|
+| pixels | 7,741,440 | 4,354,560 | **-43.7%** |
+| frame p50 | 13,128 us | 12,771 us | **-2.7%** |
+| missed deadlines | 1891 | 1575 | -17% |
+
+**44% of the pixels removed bought 2.7% of the frame.** The workload is not
+pixel-limited, and R-125's runtime-frustum work -- which I built specifically to
+reclaim that 59% -- will not make this faster. Nor would DLSS, FSR or foveation.
+It remains worth having as image quality at unchanged cost. It is not a
+performance fix, and I said it would be.
+
+Corroborating: `waitP95` moved 8 us -> 5,216 us between the runs. At the lower
+resolution the app sometimes finishes early and blocks in `xrWaitFrame`, which is
+what happens once the GPU stops being the constraint and would not happen if
+pixels were the limit.
+
+**The mod's XR path is cleared by direct measurement**, not by argument: whole
+service 534 us at 2688 and 247 us at 2016, against a ~12.8 ms frame -- 4% at
+worst. `xrWaitFrame` returns in 5 us, so the compositor is not pacing us either;
+we run flat out and still miss.
+
+**Three things this does NOT establish, recorded because the temptation is to
+read them in anyway.**
+
+1. Whether the remaining ~12.6 ms is CPU or GPU. The instrument times CPU
+   duration inside our own call. `CopyResource` is asynchronous, so the three
+   93 MB copies per submission return instantly and cost somewhere this cannot
+   see. "CPU-bound" is the leading inference, not a receipt.
+2. **What Prey costs unmodded. There is no vanilla baseline at all** -- every
+   number ever taken here is the modded game, so the share belonging to our own
+   per-frame hooks is unmeasured. This is the largest gap and the cheapest to
+   close.
+3. Any per-lane attribution. A bisect was run and is **unusable**: the wearer was
+   moving, so the scene differed between samples, and one reading came back at
+   31.5 ms. That is scene change, not the reticle lane costing 2.5x the frame.
+   Recorded so the same mistake is not repeated the same way.
+
+Bundled for Codex as `HANDOVER-PERFORMANCE-2026-09-09.md`.
+
 ## 2026-09-09 — R-125: frame-stage timing, and a runtime-frustum prototype
 
 **Two halves of the same question, built together on purpose.** A wearer
