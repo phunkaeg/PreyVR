@@ -159,6 +159,12 @@ void ServiceXrFrame(void* renderer);
 DWORD SetXrTimingEnabled(unsigned int enabled, unsigned int displayHz);
 std::string XrTimingReport();
 
+// The frustum the RUNTIME asked for, in radians, for one eye. False before
+// `xrLocateViews` has ever answered, or if what it answered is degenerate --
+// never a default, because a fabricated frustum would be rendered and submitted
+// as if it were the headset's own.
+bool XrRequestedEyeFov(int eye, float* left, float* right, float* up, float* down);
+
 std::string XrCoverageReport();
 
 DWORD XrResolutionChain(unsigned int field);

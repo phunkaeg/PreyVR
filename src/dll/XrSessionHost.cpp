@@ -1195,6 +1195,24 @@ DWORD SetXrStereoSubmission(unsigned int enabled)
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
 }
 
+bool XrRequestedEyeFov(int eye, float* left, float* right, float* up, float* down)
+{
+    if (eye < 0 || eye > 1 || left == nullptr || right == nullptr ||
+        up == nullptr || down == nullptr) {
+        return false;
+    }
+    if (!gHost.requestedFovValid[eye]) { return false; }
+    const XrFovf& fov = gHost.requestedFov[eye];
+    if (!(fov.angleRight > fov.angleLeft) || !(fov.angleUp > fov.angleDown)) {
+        return false;
+    }
+    *left = fov.angleLeft;
+    *right = fov.angleRight;
+    *up = fov.angleUp;
+    *down = fov.angleDown;
+    return true;
+}
+
 DWORD SetXrTimingEnabled(unsigned int enabled, unsigned int displayHz)
 {
     if (enabled == 0) {

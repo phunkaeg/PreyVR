@@ -539,6 +539,11 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         const bool fitInside = arg(1, 1) != 0;
         out << "hud.fit result=" << QueueHudFit(!fitInside) << " queued=1"
             << " fitInside=" << (fitInside ? 1 : 0);
+    } else if (verb == "xr.frustum") {
+        out << "xr.frustum result=" << SetRuntimeFrustum(arg(1, 1))
+            << " used=" << RuntimeFrustumUsedCount()
+            << " missing=" << RuntimeFrustumMissingCount()
+            << XrCoverageReport();
     } else if (verb == "xr.timing") {
         // xr.timing            -- report
         // xr.timing 1 [hz]     -- arm and reset, default 90 Hz deadline

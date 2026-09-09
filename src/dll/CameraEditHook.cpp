@@ -1,4 +1,5 @@
 #include "CameraEditHook.h"
+#include "XrSessionHost.h"
 #include "MinHookInit.h"
 
 #include "InputPost.h"
@@ -106,6 +107,17 @@ std::atomic<float> gAsymmetry{1.1f};
 // Off by default: leaving it off keeps every prior measurement meaning what it
 // meant when it was taken.
 std::atomic<bool> gNativeProjection{false};
+// **Render the frustum the headset actually asked for.** Measured on this
+// machine: only 41.25% of the submitted pixel rectangle falls inside the
+// runtime's requested frustum, with nothing missing (R-121). The other 59% is
+// rasterised and then discarded by the compositor.
+//
+// Off by default and deliberately so. This changes the scene projection, and
+// the near pass carries its own FOV (`r_DrawNearFoV`) that was tuned against the
+// old one -- so enabling this without matching the near pass leaves the weapon
+// model at the wrong scale. It is a prototype behind an opt-in, not a default.
+std::atomic<bool> gRuntimeFrustum{false};
+std::atomic<unsigned long long> gRuntimeFrustumUsed{0}, gRuntimeFrustumMissing{0};
 
 // Head rotation on the upstream camera -- the one culling reads from.
 std::atomic<bool> gHeadRotationArmed{false};
@@ -351,6 +363,24 @@ void PublishRenderedTangents(
     gRenderedTangentsValid.store(true, std::memory_order_release);
 }
 
+// The six fields Prey's CCamera needs to carry an asymmetric frustum. Shared by
+// both replacement paths so they cannot drift: a projection written one way in
+// one branch and another way in the other is a bug that only appears in the
+// branch nobody is testing.
+void WriteEyeProjection(std::array<std::uint8_t, cameraedit::kCameraSize>& edited,
+                        const stereoframe::EyeProjection& projection)
+{
+    const auto write = [&edited](std::size_t offsetBytes, float value) {
+        std::memcpy(edited.data() + offsetBytes, &value, sizeof(float));
+    };
+    write(engine::CameraLayout::fov, projection.fov);
+    write(engine::CameraLayout::projectionRatio, projection.projectionRatio);
+    write(engine::CameraLayout::asymLeft, projection.asymmetry.left);
+    write(engine::CameraLayout::asymRight, projection.asymmetry.right);
+    write(engine::CameraLayout::asymBottom, projection.asymmetry.bottom);
+    write(engine::CameraLayout::asymTop, projection.asymmetry.top);
+}
+
 bool BuildSyntheticEye(
     std::array<std::uint8_t, cameraedit::kCameraSize>& edited,
     int eye,
@@ -371,6 +401,35 @@ bool BuildSyntheticEye(
     // Translation only, and nothing else touched. The engine's fov, projection
     // ratio and asymmetry stay exactly as it built them, so the rendered frustum
     // is still the one TangentsFromCamera reads and declares.
+    // **Ahead of the native check on purpose.** Native means "keep Prey's
+    // frustum"; this means "use the headset's". Both cannot hold, and silently
+    // preferring native would make the opt-in look enabled while doing nothing --
+    // the exact failure shape as a Scaleform call to a function that is not there.
+    if (gRuntimeFrustum.load(std::memory_order_acquire)) {
+        float left = 0, right = 0, up = 0, down = 0;
+        if (XrRequestedEyeFov(eye, &left, &right, &up, &down)) {
+            stereoframe::EyeView view{};
+            view.tanLeft = std::tan(left);
+            view.tanRight = std::tan(right);
+            view.tanDown = std::tan(down);
+            view.tanUp = std::tan(up);
+            const float nearPlane = stereoframe::NearPlaneOf(edited);
+            const auto projection = stereoframe::ProjectionFromTangents(view, nearPlane);
+            if (projection) {
+                WriteEyeProjection(edited, *projection);
+                PublishRenderedTangents(edited);
+                gRuntimeFrustumUsed.fetch_add(1, std::memory_order_relaxed);
+                return true;
+            }
+        }
+        // **Falls through to the existing behaviour rather than guessing.** No
+        // located view yet, or a degenerate one, means we do not know the
+        // headset's frustum -- and rendering an invented one would be submitted
+        // as though it were the headset's own. Counted, so a mode that never
+        // actually engaged cannot read as one that did.
+        gRuntimeFrustumMissing.fetch_add(1, std::memory_order_relaxed);
+    }
+
     if (gNativeProjection.load(std::memory_order_acquire)) {
         // Prey's own frustum, unchanged -- so this should match what the
         // submission path declares. Published anyway rather than assumed: an
@@ -397,15 +456,7 @@ bool BuildSyntheticEye(
         return false;
     }
 
-    const auto write = [&edited](std::size_t offsetBytes, float value) {
-        std::memcpy(edited.data() + offsetBytes, &value, sizeof(float));
-    };
-    write(engine::CameraLayout::fov, projection->fov);
-    write(engine::CameraLayout::projectionRatio, projection->projectionRatio);
-    write(engine::CameraLayout::asymLeft, projection->asymmetry.left);
-    write(engine::CameraLayout::asymRight, projection->asymmetry.right);
-    write(engine::CameraLayout::asymBottom, projection->asymmetry.bottom);
-    write(engine::CameraLayout::asymTop, projection->asymmetry.top);
+    WriteEyeProjection(edited, *projection);
     // The synthetic path REPLACED the projection. This is the case no external
     // tool can catch: the declaration still reports Prey's frustum while the
     // pixels came from this one. Measured 2026-09-05 as wall-eyed divergence,
@@ -1440,6 +1491,27 @@ DWORD SetCameraYawEdit(float degrees)
     line << "preyvr_camera_edit result=0 detail=armed yawDegrees=" << degrees;
     lifecycle::Log(line.str());
     return static_cast<DWORD>(CameraEditStatus::armed);
+}
+
+DWORD SetRuntimeFrustum(unsigned int enabled)
+{
+    const bool on = enabled != 0;
+    gRuntimeFrustum.store(on, std::memory_order_release);
+    std::ostringstream line;
+    line << "preyvr_camera result=0 detail=runtime_frustum enabled=" << (on ? "1" : "0")
+         << " used=" << gRuntimeFrustumUsed.load(std::memory_order_relaxed)
+         << " missing=" << gRuntimeFrustumMissing.load(std::memory_order_relaxed);
+    lifecycle::Log(line.str());
+    return 0;
+}
+
+unsigned long long RuntimeFrustumUsedCount()
+{
+    return gRuntimeFrustumUsed.load(std::memory_order_relaxed);
+}
+unsigned long long RuntimeFrustumMissingCount()
+{
+    return gRuntimeFrustumMissing.load(std::memory_order_relaxed);
 }
 
 DWORD SetSyntheticStereo(float ipdMetres, float halfFovDegrees)

@@ -86,6 +86,32 @@ struct BuiltEye {
 bool FindBuiltEyeByPosition(const float position[3], BuiltEye& out);
 unsigned long long BuiltEyeLookupMissCount();
 
+// **Render the frustum the headset asked for, instead of Prey's.** Measured on
+// this machine: 41.25% of the submitted pixel rectangle lands inside the
+// runtime's requested frustum, and the request is fully covered -- so the other
+// 59% is rasterised and thrown away by the compositor (R-121).
+//
+// **This alone does not make anything faster.** At an unchanged target size it
+// spends the reclaimed area on detail: the same pixels now cover a narrower
+// field, so angular density rises. The speed comes from ALSO shrinking the
+// target -- 1719x1857 carries the saved session's density against 2688x2880 --
+// and the target is latched at session creation, so that is a launch argument,
+// not a runtime one.
+//
+// **Off by default, and it should stay that way until the near pass follows.**
+// The weapon model is drawn with its own FOV (`r_DrawNearFoV`), tuned against
+// the old frustum; changing the scene without it leaves the weapon at the wrong
+// scale. Culling and weapon scale need checking together, which is why this is
+// a prototype behind an explicit opt-in rather than a new default.
+//
+// Takes precedence over `xr.native`. When the runtime frustum is not known --
+// before `xrLocateViews` has answered, or if it answered something degenerate --
+// this falls through to the previous behaviour and counts the miss, rather than
+// inventing a frustum that would then be submitted as if it were the headset's.
+DWORD SetRuntimeFrustum(unsigned int enabled);
+unsigned long long RuntimeFrustumUsedCount();
+unsigned long long RuntimeFrustumMissingCount();
+
 DWORD SetSyntheticStereo(float ipdMetres, float halfFovDegrees);
 
 // Scales how asymmetric the synthetic per-eye frustum is. 1.0 makes both eyes

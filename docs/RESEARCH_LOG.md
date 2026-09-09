@@ -1944,6 +1944,60 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-09 — R-125: frame-stage timing, and a runtime-frustum prototype
+
+**Two halves of the same question, built together on purpose.** A wearer
+reported shockingly bad performance. R-121 measured that 59% of the rendered
+pixels fall outside the runtime's frustum, which is a real waste -- but wasted
+pixels only explain a frame rate if pixels are what is limiting it, and nothing
+here could say. A mod waiting 8 ms inside `xrWaitFrame` shows the same symptom
+while rendering fewer pixels would change nothing.
+
+**Counters.** `xr.timing 1 [hz]` times `xrWaitFrame`, swapchain acquire+wait,
+`xrEndFrame`, the whole service call, and the service-to-service interval, with
+p50/p95/p99, max, and a separate missed-deadline count. Microseconds: at 90 Hz
+the budget is 11111 us and milliseconds would round away the differences that
+decide the answer. Recording is one relaxed store and one release increment into
+a fixed ring of atomics; percentiles are computed only on request. The reader
+races the writer deliberately -- locking would move the reader's cost into the
+render thread, which is the one thing a profiler must not do.
+
+The decision rule is the plan's: if `wait` dominates we are being paced and
+pixels are not the problem; if `service` minus `wait` dominates, the scene is.
+
+**Runtime frustum.** `xr.frustum 1` builds the eye projection from the FOV the
+runtime actually asked for, through the tangent path that already exists --
+Prey's CCamera folds `m_asymL/R/B/T` into the render frustum, so a genuinely
+asymmetric projection is expressible without new machinery.
+
+**Three honest limits, all of which matter more than the feature.**
+
+1. **It does not by itself make anything faster.** At an unchanged target size
+   the reclaimed area becomes detail, not speed: the same pixels now cover a
+   narrower field. The saving requires ALSO shrinking the target, and the target
+   is latched at session creation -- so that is a launch argument, not a runtime
+   toggle. 1719x1857 carries the saved session's density against 2688x2880.
+2. **The near pass does not follow it.** The weapon is drawn with its own
+   `r_DrawNearFoV`, tuned against the old frustum. Enabling this without matching
+   the near pass leaves the weapon at the wrong scale.
+3. **Untested.** Nothing here has run against a live game. Culling behaviour and
+   weapon scale need checking together, which is exactly why the plan asked for a
+   prototype behind an opt-in rather than a new default.
+
+It takes precedence over `xr.native`, because "keep Prey's frustum" and "use the
+headset's" cannot both hold and silently preferring native would make the opt-in
+read as enabled while doing nothing -- the same failure shape as F-011. When the
+runtime frustum is unknown it falls through to the previous behaviour and counts
+the miss, so a mode that never engaged cannot be mistaken for one that did.
+
+**Also this session:** the wearer confirmed the trigger fires; the D-pad
+quick-select cause of the right-stick weapon changes was found and gated
+(R-123); interaction bindings were added with their binding table admitted as
+unknown (R-124); and 1.44 GB of my own frame captures were deleted from the
+build directory. The xr-tape recording layer was left enabled during the
+measurement session -- 27.2 MB of NDJSON, an API layer in the frame path -- which
+is overhead I introduced and did not flag at launch.
+
 ## 2026-09-09 — R-124: interaction bindings, with the binding table admitted as unknown
 
 Built on the wearer's report that no interaction inputs exist: grip to use, face
