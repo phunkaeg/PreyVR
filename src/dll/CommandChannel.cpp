@@ -111,6 +111,25 @@ std::string ControllerStickReport()
             << static_cast<int>(state.thumbstickY * 1000.0f)
             << (hand == Hand::left ? " trigL=" : " trigR=")
             << static_cast<int>(state.triggerValue * 1000.0f);
+        // **The grip POSITION, per hand, in millimetres.**
+        //
+        // A wearer reported the left hand mirroring the right. A fixed test goal
+        // with no controller in the loop raised the correct hand, so the chain
+        // and the joint indices are right and the fault is in the pose feeding
+        // the goal. Thumbsticks are already proved separate -- the left stick
+        // walks and the right turns -- but those come from `xrGetActionState*`
+        // with a subaction path, while the poses come from `xrLocateSpace` on a
+        // per-hand action SPACE. Different mechanism, separately fallible.
+        //
+        // If these two positions read the same while the controllers are held
+        // apart, both spaces resolve to one controller and that is the bug. It
+        // is one line to check and it was not checkable at all before.
+        out << (hand == Hand::left ? " gripL=" : " gripR=")
+            << static_cast<int>(state.gripPose.position.x * 1000.0f) << ","
+            << static_cast<int>(state.gripPose.position.y * 1000.0f) << ","
+            << static_cast<int>(state.gripPose.position.z * 1000.0f)
+            << (hand == Hand::left ? " gripLok=" : " gripRok=")
+            << (state.gripValidity.positionValid ? 1 : 0);
     }
     return out.str();
 }
@@ -553,7 +572,12 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         } else {
             out << "xr.timing result=0";
         }
-        out << XrTimingReport();
+        const std::string report = XrTimingReport();
+        // **Persisted, because results.txt is overwritten by the next command.**
+        // A quantitative run whose numbers exist only in a file the poller
+        // clobbers is a run that cannot be re-read or audited.
+        lifecycle::Log("preyvr_timing" + report);
+        out << report;
     } else if (verb == "xr.coverage") {
         out << "xr.coverage result=0" << XrCoverageReport();
     } else if (verb == "move.act") {

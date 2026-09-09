@@ -533,6 +533,11 @@ void LogOnce(const std::string& line)
 std::atomic<bool> gTimingEnabled{false};
 preyvr::timing::IntervalSeries gServiceInterval;
 preyvr::timing::DurationSeries gWaitFrame, gAcquireWait, gEndFrame, gServiceTotal;
+// The runtime's OWN display period, from XrFrameState, reported beside the
+// configured budget so nobody has to assume the two agree. `xr.timing 1 90`
+// configures 11111 us; if the runtime is at 72 Hz that budget is simply wrong,
+// and only this number says so.
+std::atomic<std::uint32_t> gRuntimePeriodUs{0};
 
 std::atomic<unsigned long long> gFovAgree{0};
 std::atomic<unsigned long long> gFovDiverge{0};
@@ -934,6 +939,14 @@ void ServiceXrFrame(void* renderer)
     // most diagnostic number here: time spent waiting is the runtime pacing us,
     // not the scene costing us, and reclaiming pixels would not touch it.
     const bool timing = gTimingEnabled.load(std::memory_order_acquire);
+    // Applied here, on the thread that records, before any sample this frame.
+    // A reset run from the command thread could race an in-flight writer and let
+    // a fresh epoch inherit a stale sample.
+    gServiceInterval.ApplyPendingReset();
+    gWaitFrame.ApplyPendingReset();
+    gAcquireWait.ApplyPendingReset();
+    gEndFrame.ApplyPendingReset();
+    gServiceTotal.ApplyPendingReset();
     const std::uint64_t serviceStart = timing ? preyvr::timing::MonotonicNanoseconds() : 0;
     if (timing) { gServiceInterval.Mark(serviceStart); }
 
@@ -946,6 +959,11 @@ void ServiceXrFrame(void* renderer)
     }
     if (XR_FAILED(waitResult)) {
         return;
+    }
+    if (frameState.predictedDisplayPeriod > 0) {
+        gRuntimePeriodUs.store(
+            static_cast<std::uint32_t>(frameState.predictedDisplayPeriod / 1000),
+            std::memory_order_relaxed);
     }
     if (gHost.contract.OnWaited(frameState.predictedDisplayTime,
                                 frameState.shouldRender != XR_FALSE, thread) !=
@@ -1219,15 +1237,16 @@ DWORD SetXrTimingEnabled(unsigned int enabled, unsigned int displayHz)
         gTimingEnabled.store(false, std::memory_order_release);
         return 0;
     }
-    // Reset on arming, so a session's numbers never mix frames from before a
-    // change with frames from after it -- which is the whole point of measuring.
-    gServiceInterval.Reset();
-    gWaitFrame.Reset();
-    gAcquireWait.Reset();
-    gEndFrame.Reset();
-    gServiceTotal.Reset();
+    // Requested, not performed: the clear happens on the render thread at the
+    // top of the next service. Arming therefore takes effect one frame later,
+    // which is the price of an epoch boundary that cannot straddle a writer.
+    gServiceInterval.RequestReset();
+    gWaitFrame.RequestReset();
+    gAcquireWait.RequestReset();
+    gEndFrame.RequestReset();
+    gServiceTotal.RequestReset();
     if (displayHz > 0 && displayHz <= 1000) {
-        gServiceInterval.SetDeadlineMicroseconds(1000000u / displayHz);
+        gServiceInterval.SetBudgetMicroseconds(1000000u / displayHz);
     }
     gTimingEnabled.store(true, std::memory_order_release);
     return 0;
@@ -1237,25 +1256,45 @@ std::string XrTimingReport()
 {
     std::ostringstream out;
     out.imbue(std::locale::classic());
+    out << std::fixed << std::setprecision(2);
     out << " timing=" << (gTimingEnabled.load(std::memory_order_acquire) ? 1 : 0);
 
-    const auto emit = [&out](const char* name, const preyvr::timing::DurationStats& s) {
-        if (!s.valid) { out << ' ' << name << "=none"; return; }
-        // Microseconds throughout: at 90 Hz the budget is 11111 us, and a
-        // millisecond figure would round away exactly the differences that
-        // decide which stage is limiting.
-        out << ' ' << name << "P50=" << s.p50 << ' ' << name << "P95=" << s.p95
-            << ' ' << name << "P99=" << s.p99 << ' ' << name << "Max=" << s.max
-            << ' ' << name << "N=" << s.count;
+    const auto emit = [&out](const char* name, const preyvr::timing::DurationStats& d) {
+        if (!d.valid) { out << ' ' << name << "=none"; return; }
+        // **Window and lifetime, always both.** The percentiles describe at most
+        // the last 512 samples -- a few seconds, not a run -- while `Total` is
+        // every sample this generation. Emitting only the first is what let a
+        // 512-sample window be described as a 30-second one.
+        out << ' ' << name << "P50=" << d.p50 << ' ' << name << "P95=" << d.p95
+            << ' ' << name << "P99=" << d.p99 << ' ' << name << "Max=" << d.max
+            << ' ' << name << "N=" << d.count << ' ' << name << "Total=" << d.total;
     };
+
     const auto interval = gServiceInterval.Compute();
-    emit("frame", interval);
-    out << " frameDeadline=" << gServiceInterval.DeadlineMicroseconds()
-        << " frameMissed=" << gServiceInterval.MissedDeadlineCount();
+    emit("frame", interval.duration);
+    // **"Over budget", never "missed".** No compositor is consulted: this counts
+    // service-to-service intervals longer than a configured threshold. One long
+    // interval counts once however many display periods it spans, and a sample a
+    // microsecond over counts the same as a stall.
+    out << " frameBudgetUs=" << interval.budgetMicroseconds
+        << " frameRuntimePeriodUs=" << gRuntimePeriodUs.load(std::memory_order_relaxed)
+        << " frameOverBudgetWindow=" << interval.windowOverBudget
+        << " frameOverBudgetTotal=" << interval.lifetimeOverBudget
+        << " frameWindowSec=" << interval.windowSeconds
+        << " frameSessionSec=" << interval.sessionSeconds
+        << " timingGeneration=" << interval.generation;
+
     emit("wait", gWaitFrame.Compute());
     emit("acquire", gAcquireWait.Compute());
     emit("end", gEndFrame.Compute());
     emit("service", gServiceTotal.Compute());
+
+    // **Stages are separate rings and are NOT paired by frame.** Subtracting one
+    // stage's median from another's does not give a per-frame remainder, and an
+    // early return can produce an interval sample with no matching service
+    // sample. Comparing these populations needs frame-linked records, which this
+    // instrument does not produce.
+    out << " timingNote=unpaired_stage_rings";
     return out.str();
 }
 

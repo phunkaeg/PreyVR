@@ -91,16 +91,27 @@ void TestNanosecondsConvert()
     Require(stats.p50 == 11110, "11.11 ms is 11110 us");
 }
 
+void TestThresholdCountIsOptIn()
+{
+    DurationSeries series;
+    for (int i = 0; i < 10; ++i) { series.AddMicroseconds(100); }
+    for (int i = 0; i < 5; ++i) { series.AddMicroseconds(300); }
+    Require(series.Compute().aboveThreshold == 0,
+            "no threshold means not counted, never 'none exceeded'");
+    Require(series.Compute(200).aboveThreshold == 5, "five samples are above 200");
+    Require(series.Compute(300).aboveThreshold == 0, "the comparison is strict");
+}
+
 void TestFirstMarkEstablishesTheOriginAndRecordsNothing()
 {
     IntervalSeries intervals;
     intervals.Mark(1'000'000'000ull);
-    Require(!intervals.Compute().valid, "one timestamp is not an interval");
+    Require(!intervals.Compute().duration.valid, "one timestamp is not an interval");
     intervals.Mark(1'011'110'000ull);
     const auto stats = intervals.Compute();
-    Require(stats.valid, "two timestamps make one interval");
-    Require(stats.count == 1, "exactly one interval");
-    Require(stats.p50 == 11110, "and it is 11.11 ms");
+    Require(stats.duration.valid, "two timestamps make one interval");
+    Require(stats.duration.count == 1, "exactly one interval");
+    Require(stats.duration.p50 == 11110, "and it is 11.11 ms");
 }
 
 // A clock that repeats or goes backwards must contribute nothing. Recording a
@@ -111,49 +122,120 @@ void TestBackwardsClockIsRefused()
     IntervalSeries intervals;
     intervals.Mark(5'000'000'000ull);
     intervals.Mark(4'000'000'000ull);   // backwards
-    Require(!intervals.Compute().valid, "a backwards step is not an interval");
+    Require(!intervals.Compute().duration.valid, "a backwards step is not an interval");
     intervals.Mark(4'000'000'000ull);   // repeated
-    Require(!intervals.Compute().valid, "a repeated timestamp is not an interval");
+    Require(!intervals.Compute().duration.valid, "a repeated timestamp is not an interval");
 }
 
-void TestMissedDeadlinesAreCountedSeparately()
+// **Window and lifetime are different populations, and conflating them is the
+// defect an audit caught in a shipped handover.** 2000 slow intervals then 512
+// fast ones: the window sees only the fast, the lifetime counter remembers the
+// slow. Both are right; a ratio mixing them is not.
+void TestWindowAndLifetimePopulationsAreReportedSeparately()
 {
     IntervalSeries intervals;
-    intervals.SetDeadlineMicroseconds(11111);   // 90 Hz
+    intervals.SetBudgetMicroseconds(11111);
     std::uint64_t now = 1'000'000'000ull;
     intervals.Mark(now);
-    for (int i = 0; i < 99; ++i) {              // 99 good frames
-        now += 11'000'000ull;
+    for (int i = 0; i < 2000; ++i) { now += 20'000'000ull; intervals.Mark(now); }
+    for (int i = 0; i < 512; ++i) { now += 10'000'000ull; intervals.Mark(now); }
+
+    const auto stats = intervals.Compute();
+    Require(stats.duration.count == 512, "the window holds only its capacity");
+    Require(stats.duration.total == 2512, "the lifetime total remembers everything");
+    Require(stats.duration.p50 == 10000, "the window sees only the fast intervals");
+    Require(stats.windowOverBudget == 0, "nothing in the window is over budget");
+    Require(stats.lifetimeOverBudget == 2000, "but 2000 were, across the session");
+
+    // The window's own duration, not the session's: 512 x 10 ms = 5.12 s.
+    Require(stats.windowSeconds > 5.0 && stats.windowSeconds < 5.3,
+            "window seconds describes the window, not the run");
+    Require(stats.sessionSeconds > 45.0, "session seconds is much longer");
+}
+
+// Threshold semantics, not compositor drops.
+void TestOverBudgetIsAThresholdCountNotADropCount()
+{
+    IntervalSeries intervals;
+    intervals.SetBudgetMicroseconds(11111);
+    // Non-zero on purpose: zero is the "no origin yet" sentinel, so a test that
+    // starts there quietly loses its first interval.
+    std::uint64_t now = 1'000'000'000ull;
+    intervals.Mark(now);
+    for (int i = 0; i < 1000; ++i) {
+        now += (i % 2 == 0) ? 11'110'000ull : 11'112'000ull;
         intervals.Mark(now);
     }
-    Require(intervals.MissedDeadlineCount() == 0, "good frames miss nothing");
-    now += 40'000'000ull;                       // one 40 ms hitch
-    intervals.Mark(now);
-    Require(intervals.MissedDeadlineCount() == 1, "the hitch is counted");
+    Require(intervals.Compute().lifetimeOverBudget == 500,
+            "half the intervals are one microsecond over the threshold");
 
-    // **And this is why the count exists.** One dropped frame in a hundred is
-    // invisible at p95 and p99, and it is exactly what a wearer notices.
+    // And one long stall counts ONCE however many display periods it spans.
+    IntervalSeries stall;
+    stall.SetBudgetMicroseconds(11111);
+    stall.Mark(1'000'000'000ull);
+    stall.Mark(2'000'000'000ull);   // a full second, ~90 periods at 90 Hz
+    Require(stall.Compute().lifetimeOverBudget == 1,
+            "a one-second stall is one over-budget interval, not ninety");
+}
+
+void TestASingleHitchHidesFromPercentilesButNotTheCounter()
+{
+    IntervalSeries intervals;
+    intervals.SetBudgetMicroseconds(11111);
+    std::uint64_t now = 1'000'000'000ull;
+    intervals.Mark(now);
+    for (int i = 0; i < 99; ++i) { now += 11'000'000ull; intervals.Mark(now); }
+    Require(intervals.Compute().lifetimeOverBudget == 0, "good frames exceed nothing");
+    now += 40'000'000ull;
+    intervals.Mark(now);
     const auto stats = intervals.Compute();
-    Require(stats.p95 == 11000, "p95 is unmoved by a single hitch");
-    Require(stats.max == 40000, "only max and the counter see it");
+    Require(stats.lifetimeOverBudget == 1, "the hitch is counted");
+    Require(stats.duration.p95 == 11000, "p95 is unmoved by a single hitch");
+    Require(stats.duration.max == 40000, "only max and the counter see it");
+}
+
+// **Reset must not take effect until the recording thread applies it.** A clear
+// run from another thread can race an in-flight writer, letting a fresh epoch
+// inherit a stale sample.
+void TestResetIsDeferredToTheRecordingThread()
+{
+    DurationSeries series;
+    series.AddMicroseconds(5000);
+    const unsigned int before = series.Generation();
+
+    series.RequestReset();
+    Require(series.Compute().valid, "requesting a reset does not clear anything");
+    Require(series.Compute().count == 1, "the sample is still there");
+    Require(series.Generation() == before, "and the generation has not moved");
+
+    Require(series.ApplyPendingReset(), "applying performs the pending reset");
+    Require(!series.Compute().valid, "now it is cleared");
+    Require(series.Generation() == before + 1, "and the generation advanced");
+
+    Require(!series.ApplyPendingReset(), "a second apply has nothing to do");
+    Require(series.Generation() == before + 1, "so the generation does not move again");
 }
 
 void TestResetClearsEverything()
 {
     IntervalSeries intervals;
-    intervals.SetDeadlineMicroseconds(1000);
+    intervals.SetBudgetMicroseconds(1000);
     intervals.Mark(1'000'000'000ull);
     intervals.Mark(1'100'000'000ull);
-    Require(intervals.MissedDeadlineCount() == 1, "premise: one miss recorded");
-    intervals.Reset();
-    Require(!intervals.Compute().valid, "reset clears the samples");
-    Require(intervals.MissedDeadlineCount() == 0, "reset clears the miss count");
-    Require(intervals.DeadlineMicroseconds() == 1000, "but keeps the configured deadline");
+    Require(intervals.Compute().lifetimeOverBudget == 1, "premise: one over budget");
 
-    // The origin is cleared too, so the first mark after a reset does not
-    // record the gap across the reset as if it were a frame.
+    intervals.RequestReset();
+    Require(intervals.Compute().lifetimeOverBudget == 1, "still pending, nothing cleared");
+    Require(intervals.ApplyPendingReset(), "the recording thread applies it");
+
+    Require(!intervals.Compute().duration.valid, "reset clears the samples");
+    Require(intervals.Compute().lifetimeOverBudget == 0, "and the over-budget count");
+    Require(intervals.BudgetMicroseconds() == 1000, "but keeps the configured budget");
+
+    // The origin is cleared too, so the first mark after a reset does not record
+    // the gap across the reset as if it were a frame.
     intervals.Mark(9'000'000'000ull);
-    Require(!intervals.Compute().valid, "the first mark after reset is an origin");
+    Require(!intervals.Compute().duration.valid, "the first mark after reset is an origin");
 }
 
 void TestMonotonicClockAdvances()
@@ -175,9 +257,13 @@ int main()
     TestRingKeepsTheRecentWindow();
     TestSaturatesInsteadOfWrapping();
     TestNanosecondsConvert();
+    TestThresholdCountIsOptIn();
     TestFirstMarkEstablishesTheOriginAndRecordsNothing();
     TestBackwardsClockIsRefused();
-    TestMissedDeadlinesAreCountedSeparately();
+    TestWindowAndLifetimePopulationsAreReportedSeparately();
+    TestOverBudgetIsAThresholdCountNotADropCount();
+    TestASingleHitchHidesFromPercentilesButNotTheCounter();
+    TestResetIsDeferredToTheRecordingThread();
     TestResetClearsEverything();
     TestMonotonicClockAdvances();
     std::cout << "frame timing tests passed\n";
