@@ -539,6 +539,16 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         const bool fitInside = arg(1, 1) != 0;
         out << "hud.fit result=" << QueueHudFit(!fitInside) << " queued=1"
             << " fitInside=" << (fitInside ? 1 : 0);
+    } else if (verb == "xr.timing") {
+        // xr.timing            -- report
+        // xr.timing 1 [hz]     -- arm and reset, default 90 Hz deadline
+        if (args.size() >= 2) {
+            out << "xr.timing result="
+                << SetXrTimingEnabled(arg(1, 1), static_cast<unsigned int>(arg(2, 90)));
+        } else {
+            out << "xr.timing result=0";
+        }
+        out << XrTimingReport();
     } else if (verb == "xr.coverage") {
         out << "xr.coverage result=0" << XrCoverageReport();
     } else if (verb == "move.act") {

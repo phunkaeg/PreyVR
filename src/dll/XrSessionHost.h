@@ -149,6 +149,16 @@ void ServiceXrFrame(void* renderer);
 // figure means "reclaimable pixels" only when the request is fully covered;
 // with a shortfall the same figure means content is missing. See
 // FrustumCoverage.h.
+// Frame-stage timing, off by default. `displayHz` sets the missed-deadline
+// threshold; arming resets every series so a run's numbers cannot mix frames
+// from before a change with frames from after it.
+//
+// Answers the question nothing else here can: time inside `xrWaitFrame` is the
+// runtime pacing us, time in the scene is work we chose. Reclaiming pixels helps
+// only the second kind.
+DWORD SetXrTimingEnabled(unsigned int enabled, unsigned int displayHz);
+std::string XrTimingReport();
+
 std::string XrCoverageReport();
 
 DWORD XrResolutionChain(unsigned int field);

@@ -91,6 +91,7 @@ add_library(preyvr_core STATIC
     src/common/StereoCamera.cpp
     src/common/StereoFrame.cpp
     src/common/VrMath.cpp
+    src/common/FrameTiming.cpp
     src/common/FrustumCoverage.cpp
     src/common/WeaponAim.cpp
     src/common/WrenchQuery.cpp
@@ -339,6 +340,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_frustum_coverage_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_frustum_coverage_tests)
     add_test(NAME frustum_coverage COMMAND preyvr_frustum_coverage_tests)
+
+    add_executable(preyvr_frame_timing_tests tests/FrameTimingTests.cpp)
+    target_link_libraries(preyvr_frame_timing_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_frame_timing_tests)
+    add_test(NAME frame_timing COMMAND preyvr_frame_timing_tests)
 
     add_executable(preyvr_input_event_tests tests/InputEventTests.cpp)
     target_link_libraries(preyvr_input_event_tests PRIVATE preyvr_core)

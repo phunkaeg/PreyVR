@@ -1,5 +1,6 @@
 #include "XrSessionHost.h"
 
+#include "preyvr/FrameTiming.h"
 #include "preyvr/FrustumCoverage.h"
 
 #include "Logger.h"
@@ -526,6 +527,13 @@ void LogOnce(const std::string& line)
 //
 // Returns nothing rather than guessing. Every caller must treat that as "do not
 // submit a layer".
+// **Off by default, because a profiler that is always on is a profiler nobody
+// trusts.** Recording is a store and an increment, but the honest way to answer
+// "did measuring change the number" is to be able to turn it off.
+std::atomic<bool> gTimingEnabled{false};
+preyvr::timing::IntervalSeries gServiceInterval;
+preyvr::timing::DurationSeries gWaitFrame, gAcquireWait, gEndFrame, gServiceTotal;
+
 std::atomic<unsigned long long> gFovAgree{0};
 std::atomic<unsigned long long> gFovDiverge{0};
 std::atomic<unsigned int> gWorstDivergenceMilliTan{0};
@@ -922,9 +930,21 @@ void ServiceXrFrame(void* renderer)
 
     const std::uint32_t thread = GetCurrentThreadId();
 
+    // **`xrWaitFrame` blocks on purpose**, and how long it blocks is the single
+    // most diagnostic number here: time spent waiting is the runtime pacing us,
+    // not the scene costing us, and reclaiming pixels would not touch it.
+    const bool timing = gTimingEnabled.load(std::memory_order_acquire);
+    const std::uint64_t serviceStart = timing ? preyvr::timing::MonotonicNanoseconds() : 0;
+    if (timing) { gServiceInterval.Mark(serviceStart); }
+
     XrFrameWaitInfo waitInfo{XR_TYPE_FRAME_WAIT_INFO};
     XrFrameState frameState{XR_TYPE_FRAME_STATE};
-    if (XR_FAILED(xrWaitFrame(gHost.session, &waitInfo, &frameState))) {
+    const std::uint64_t waitStart = timing ? preyvr::timing::MonotonicNanoseconds() : 0;
+    const XrResult waitResult = xrWaitFrame(gHost.session, &waitInfo, &frameState);
+    if (timing) {
+        gWaitFrame.AddNanoseconds(preyvr::timing::MonotonicNanoseconds() - waitStart);
+    }
+    if (XR_FAILED(waitResult)) {
         return;
     }
     if (gHost.contract.OnWaited(frameState.predictedDisplayTime,
@@ -1021,10 +1041,20 @@ void ServiceXrFrame(void* renderer)
                      << " note=restart_to_adopt_the_new_size";
                 Log(line.str());
             }
-            if (matchingSize &&
+            // Timed together: they are one logical "get me an image to draw
+            // into", and splitting them would suggest the acquire can be slow
+            // independently of the wait it exists to set up.
+            const std::uint64_t acquireStart =
+                timing ? preyvr::timing::MonotonicNanoseconds() : 0;
+            const bool gotImage =
+                matchingSize &&
                 XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.swapchain, &acquire, &imageIndex)) &&
-                XR_SUCCEEDED(xrWaitSwapchainImage(gHost.swapchain, &waitImage)) &&
-                imageIndex < gHost.images.size()) {
+                XR_SUCCEEDED(xrWaitSwapchainImage(gHost.swapchain, &waitImage));
+            if (timing && matchingSize) {
+                gAcquireWait.AddNanoseconds(
+                    preyvr::timing::MonotonicNanoseconds() - acquireStart);
+            }
+            if (gotImage && imageIndex < gHost.images.size()) {
                 ID3D11DeviceContext* context = nullptr;
                 gHost.device->GetImmediateContext(&context);
                 if (context != nullptr) {
@@ -1117,7 +1147,13 @@ void ServiceXrFrame(void* renderer)
     endInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
     endInfo.layerCount = rendered ? 1u : 0u;
     endInfo.layers = rendered ? layers : nullptr;
+    const std::uint64_t endStart = timing ? preyvr::timing::MonotonicNanoseconds() : 0;
     xrEndFrame(gHost.session, &endInfo);
+    if (timing) {
+        const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
+        gEndFrame.AddNanoseconds(now - endStart);
+        gServiceTotal.AddNanoseconds(now - serviceStart);
+    }
     gHost.contract.OnSubmitted(thread);
 
     if (rendered) {
@@ -1157,6 +1193,52 @@ DWORD SetXrStereoSubmission(unsigned int enabled)
     line << "result=0 detail=stereo_submission enabled=" << (on ? "1" : "0");
     Log(line.str());
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+
+DWORD SetXrTimingEnabled(unsigned int enabled, unsigned int displayHz)
+{
+    if (enabled == 0) {
+        gTimingEnabled.store(false, std::memory_order_release);
+        return 0;
+    }
+    // Reset on arming, so a session's numbers never mix frames from before a
+    // change with frames from after it -- which is the whole point of measuring.
+    gServiceInterval.Reset();
+    gWaitFrame.Reset();
+    gAcquireWait.Reset();
+    gEndFrame.Reset();
+    gServiceTotal.Reset();
+    if (displayHz > 0 && displayHz <= 1000) {
+        gServiceInterval.SetDeadlineMicroseconds(1000000u / displayHz);
+    }
+    gTimingEnabled.store(true, std::memory_order_release);
+    return 0;
+}
+
+std::string XrTimingReport()
+{
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    out << " timing=" << (gTimingEnabled.load(std::memory_order_acquire) ? 1 : 0);
+
+    const auto emit = [&out](const char* name, const preyvr::timing::DurationStats& s) {
+        if (!s.valid) { out << ' ' << name << "=none"; return; }
+        // Microseconds throughout: at 90 Hz the budget is 11111 us, and a
+        // millisecond figure would round away exactly the differences that
+        // decide which stage is limiting.
+        out << ' ' << name << "P50=" << s.p50 << ' ' << name << "P95=" << s.p95
+            << ' ' << name << "P99=" << s.p99 << ' ' << name << "Max=" << s.max
+            << ' ' << name << "N=" << s.count;
+    };
+    const auto interval = gServiceInterval.Compute();
+    emit("frame", interval);
+    out << " frameDeadline=" << gServiceInterval.DeadlineMicroseconds()
+        << " frameMissed=" << gServiceInterval.MissedDeadlineCount();
+    emit("wait", gWaitFrame.Compute());
+    emit("acquire", gAcquireWait.Compute());
+    emit("end", gEndFrame.Compute());
+    emit("service", gServiceTotal.Compute());
+    return out.str();
 }
 
 std::string XrCoverageReport()
