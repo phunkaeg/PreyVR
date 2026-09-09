@@ -303,9 +303,9 @@ bool WriteReticleForCamera(void* player, const Vec3& rayOrigin,
                                                      frameWidth, frameHeight);
         } else if (mode == 2) {
             float nativeX = 0, nativeY = 0;
-            if (HudScreenToFlash(fractionX, fractionY,
-                                 gStageScaleMode.load(std::memory_order_acquire),
-                                 &nativeX, &nativeY) == 0) {
+            if (HudScreenToFlashFraction(fractionX, fractionY,
+                                         gStageScaleMode.load(std::memory_order_acquire),
+                                         &nativeX, &nativeY) == 0) {
                 canvas.x = nativeX;
                 canvas.y = nativeY;
                 gNativeCanvasOk.fetch_add(1, std::memory_order_relaxed);

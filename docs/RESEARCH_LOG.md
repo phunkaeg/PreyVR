@@ -1944,6 +1944,67 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-09 — R-122: measured live — the engine confirms R-118, and catches a bug in R-119
+
+First live run of everything built today. Prey at 2688x2880 on the real runtime,
+DLL injected, XR session running, `pixelRatioPercent=100 sizeMismatch=0`.
+
+**The HUD constraints, read from the live element rather than inferred:**
+
+```
+cType=2 (Dynamic)  cRect=0,0,1920,1080  cHAlign=1  cVAlign=1 (both Mid)
+cScale=1  cMax=1
+```
+
+Three R-118 assumptions become observations. The canvas really is **1920x1080**,
+so the 16:9 figure was right. It is **centred** on both axes. And **`cMax=1`** --
+the cover fit, inferred from three measured pixels, is what the engine says.
+
+**The two conversions agree exactly, on both axes.** `ScreenToFlash` answers in
+canvas pixels:
+
+| input | native (stage flag 0) | R-118 model | model x 1920 or 1080 |
+|---|---|---|---|
+| x 0.395 | 854.16 | 0.444875 | **854.16** |
+| y 0.395 | 426.6 | 0.395 | **426.6** |
+
+Exact, to the reported precision. **The Y half is now measured rather than
+assumed** -- it was the gap flagged when R-118 shipped, because every sample
+behind it sat at y=0.5 where both models agree. At this aspect the model
+predicts Y is the identity, and the engine returns the identity.
+
+`stageScaleMode=false` is the right flag; `true` returns different numbers
+(811.824 / 237.6) that match neither model.
+
+**A bug in R-119's mode 2, caught before it was ever default.** The reticle
+dispatch takes a fraction; `ScreenToFlash` returns canvas pixels. Mode 2 passed
+the native value straight through, so it would have dispatched **854.16 where
+0.44 belongs** -- far off screen. Fixed with `HudScreenToFlashFraction`, which
+divides by the constraint rect. The probe existed to compare the two models and
+instead caught our own wiring; that is the argument for building the measurement
+before trusting the thing it measures.
+
+**`hud.fit` works.** `cMax` flipped 1 -> 0, confirmed by readback, and the
+engine's own conversion moved with it: 854.16 -> 758.4. That is exactly the fit
+prediction -- scale becomes min(2688/1920, 2880/1080) = 1.4, and 0.395 x 2688 /
+1.4 = 758.4. Restored to 1 afterwards, verified.
+
+**It also shows why mode 2 beats mode 1.** After the constraint changed, the
+R-118 arithmetic still returned 0.444875 -- it hardcodes cover. The native call
+tracked the change. Mode 1 is correct today and stale the moment anything moves.
+
+**Frustum coverage, live:** `leftUsed=0.41249 leftCovered=1 leftShort=0
+leftEqualDensity=1719x1857`, both eyes. Reproduces the plan's hand-computed
+0.41249 and its 1719x1858 to a pixel of rounding. **59% of the rendered pixels
+fall outside what the runtime can show, with nothing missing** -- reclaimable,
+not a shortfall.
+
+**Not established.** `hud.fit`'s visible effect: both captures were taken at the
+pause menu, which is `DaniellePauseMenu`, a different element with its own
+constraints, so the frames are identical and say nothing about the gameplay HUD.
+The pause menu renders into a 16:9 letterbox using about 53% of the frame height
+at this aspect -- observed, not yet acted on. No wearer has confirmed anything.
+
 ## 2026-09-09 — R-121: frustum coverage measured live, and split into two numbers
 
 The performance plan computed one figure by hand from a saved session: 41% of

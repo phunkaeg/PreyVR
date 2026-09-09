@@ -495,6 +495,35 @@ DWORD HudScreenToFlash(float screenX, float screenY, bool stageScaleMode,
     return 0;
 }
 
+DWORD HudScreenToFlashFraction(float screenX, float screenY, bool stageScaleMode,
+                               float* outX, float* outY)
+{
+    if (outX == nullptr || outY == nullptr) { gRefused.fetch_add(1); return 1; }
+
+    // **ScreenToFlash answers in CANVAS PIXELS, not in a fraction.** Measured
+    // live at 2688x2880: input 0.395 came back as 854.16, against a constraint
+    // rect of 1920x1080 -- and 854.16 / 1920 is 0.444875, which is exactly what
+    // the R-118 model computes. The reticle dispatch wants the fraction, so
+    // handing it the raw native value would send 854.16 where 0.44 belongs
+    // (R-122). The probe existed precisely to catch this before it shipped.
+    HudConstraints constraints{};
+    const DWORD read = HudReadConstraints(&constraints);
+    if (read != 0) { return read; }
+    if (constraints.width <= 0 || constraints.height <= 0) {
+        Log("result=refused detail=constraint_rect_degenerate");
+        gRefused.fetch_add(1);
+        return 15;
+    }
+
+    float pixelX = 0, pixelY = 0;
+    const DWORD converted = HudScreenToFlash(screenX, screenY, stageScaleMode, &pixelX, &pixelY);
+    if (converted != 0) { return converted; }
+
+    *outX = pixelX / static_cast<float>(constraints.width);
+    *outY = pixelY / static_cast<float>(constraints.height);
+    return 0;
+}
+
 DWORD HudReadConstraints(HudConstraints* out)
 {
     if (out == nullptr) { gRefused.fetch_add(1); return 1; }

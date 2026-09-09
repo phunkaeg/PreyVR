@@ -92,6 +92,17 @@ void DrainQueuedHudCalls();
 DWORD HudScreenToFlash(float screenX, float screenY, bool stageScaleMode,
                        float* outX, float* outY);
 
+// The same conversion, divided by the constraint rect so the answer is a
+// FRACTION rather than canvas pixels.
+//
+// `ScreenToFlash` answers in the canvas's own pixel space. Measured live at
+// 2688x2880: 0.395 came back as 854.16 against a 1920x1080 rect, and
+// 854.16 / 1920 = 0.444875, exactly the R-118 model's number. The reticle
+// dispatch takes a fraction, so this is the form it needs; passing the raw
+// native value would send 854.16 where 0.44 belongs.
+DWORD HudScreenToFlashFraction(float screenX, float screenY, bool stageScaleMode,
+                               float* outX, float* outY);
+
 // `IUIElement::SUIConstraints`, read straight out of the element at `+0x84`.
 //
 // **This is the cover-fit at its source.** The struct carries `bScale` and
