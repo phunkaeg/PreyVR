@@ -68,6 +68,12 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
 // this mod performs.
 void SetMenuNavigation(unsigned int enabled);
 unsigned long long MenuNavigationActionCount();
+// Suppresses navigator output unless a menu is actually open. On by default:
+// without it the right stick changes weapons during play, because the taps the
+// navigator posts are the D-pad and Prey binds the D-pad to quick-select.
+// Turn off to reproduce the ungated behaviour deliberately.
+void SetMenuNavigationGate(unsigned int enabled);
+unsigned long long MenuNavigationSuppressedCount();
 
 void DestroyXrInput();
 

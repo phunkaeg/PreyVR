@@ -541,6 +541,12 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << " fitInside=" << (fitInside ? 1 : 0);
     } else if (verb == "xr.coverage") {
         out << "xr.coverage result=0" << XrCoverageReport();
+    } else if (verb == "menu.gate") {
+        SetMenuNavigationGate(arg(1, 1));
+        out << "menu.gate result=0 value=" << arg(1, 1)
+            << " menuOpen=" << (HudMenuIsOpen() ? 1 : 0)
+            << " samples=" << HudMenuStateSampleCount()
+            << " suppressed=" << MenuNavigationSuppressedCount();
     } else if (verb == "hud.probe") {
         // hud.probe            -- report the last probe
         // hud.probe <x> <y>    -- queue one at that viewport fraction

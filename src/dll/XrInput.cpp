@@ -5,6 +5,8 @@
 
 #include "preyvr/MenuNavigator.h"
 
+#include "HudBridge.h"
+
 #include "Logger.h"
 
 // Core OpenXR only. This file touches no graphics API, so it deliberately does
@@ -51,6 +53,14 @@ std::array<HandActions, 2> gHands{};
 
 std::atomic<bool> gCreated{false};
 std::atomic<bool> gMenuNavigation{false};
+// **Gated on a menu actually being open, and on by default.** The navigator
+// posts D-pad taps; in gameplay Prey's D-pad is the weapon quick-select, so an
+// ungated navigator switches weapons every time the right stick moves. A wearer
+// reported exactly that -- forward torch, back GLOO, left and right the wrench
+// and pistol. Switchable so the ungated behaviour can be reproduced rather than
+// only remembered.
+std::atomic<bool> gMenuNavGate{true};
+std::atomic<unsigned long long> gMenuSuppressed{0};
 std::atomic<long long> gLastDisplayTime{0};
 std::atomic<unsigned long long> gMenuActions{0};
 // One navigator, touched only from the frame service that owns UpdateXrInput.
@@ -340,6 +350,17 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
     // actually seeing. A first frame, or a backwards or absurd step, contributes
     // nothing rather than a guess.
     if (gMenuNavigation.load(std::memory_order_acquire)) {
+        // Read as a value sampled by the main thread; this runs on the frame
+        // service and must not enter Scaleform to ask.
+        if (gMenuNavGate.load(std::memory_order_acquire) && !HudMenuIsOpen()) {
+            // Reset so the stick's current deflection is not treated as a fresh
+            // push the moment a menu does open -- otherwise stepping into a menu
+            // with the stick already held would fire an immediate action.
+            gNavigator.Reset();
+            gLastDisplayTime.store(predictedDisplayTime, std::memory_order_release);
+            gMenuSuppressed.fetch_add(1, std::memory_order_relaxed);
+            return;
+        }
         float delta = 0.0f;
         const long long previous = gLastDisplayTime.exchange(predictedDisplayTime,
                                                              std::memory_order_acq_rel);
@@ -366,6 +387,17 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
             gMenuActions.fetch_add(1, std::memory_order_relaxed);
         }
     }
+}
+
+void SetMenuNavigationGate(unsigned int enabled)
+{
+    gMenuNavGate.store(enabled != 0, std::memory_order_release);
+    Log(std::string("result=0 detail=menu_nav_gate value=") + (enabled != 0 ? "1" : "0"));
+}
+
+unsigned long long MenuNavigationSuppressedCount()
+{
+    return gMenuSuppressed.load(std::memory_order_relaxed);
 }
 
 void SetMenuNavigation(unsigned int enabled)

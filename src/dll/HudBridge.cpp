@@ -115,6 +115,23 @@ constexpr std::array<std::uint8_t, 12> kSetConstraintsHead{
 constexpr std::array<std::uint8_t, 8> kSetConstraintsTail{
     0x48, 0x8B, 0xFA, 0x48, 0x8B, 0xD9, 0x74, 0x48};
 
+// **A named-element lookup, derived rather than hardcoded.** The DanielleHUD
+// accessor's first instruction is `mov rcx, [rip+disp]`, and that displacement
+// names the UI singleton. Reading it out of the instruction gives the singleton
+// without a second hardcoded address, and it is the same value the engine uses
+// by construction. The accessor then tail-calls `[vtable+0x60]` with the name,
+// so any element the binary names can be reached the same way (R-123).
+constexpr std::size_t kGetElementByNameSlot = 0x60;
+constexpr std::size_t kIsVisibleSlot = 0xE8;   // IUIElement slot 29
+using GetElementByNameFn = void*(__fastcall*)(void*, const char*);
+using IsVisibleFn = bool(__fastcall*)(void*);
+
+// Sampled on the main thread, read from the frame service. The navigator runs
+// on the XR frame service and must not enter Scaleform there -- the same reason
+// `hud.call` is queued -- so the predicate is a value, not a call.
+std::atomic<bool> gMenuOpen{false};
+std::atomic<unsigned long long> gMenuStateSamples{0};
+
 using ScreenToFlashFn =
     void(__fastcall*)(void*, const float*, const float*, float*, float*, bool);
 using SetConstraintsFn = void(__fastcall*)(void*, const void*);
@@ -290,6 +307,47 @@ void DecodeConstraints(const unsigned char* raw, HudConstraints* out)
     out->max = raw[29] != 0;
 }
 
+std::int32_t ReadRelativeDisplacement(const std::uint8_t* at)
+{
+    __try {
+        std::int32_t value = 0;
+        std::memcpy(&value, at, sizeof(value));
+        return value;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return 0;
+    }
+}
+
+std::uintptr_t ReadPointer(std::uintptr_t at)
+{
+    __try {
+        return *reinterpret_cast<const std::uintptr_t*>(at);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return 0;
+    }
+}
+
+void* CallGetElementByName(std::uintptr_t address, void* singleton, const char* name)
+{
+    __try {
+        return reinterpret_cast<GetElementByNameFn>(address)(singleton, name);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return nullptr;
+    }
+}
+
+bool CallIsVisible(std::uintptr_t address, void* element, bool* ok)
+{
+    __try {
+        const bool visible = reinterpret_cast<IsVisibleFn>(address)(element);
+        *ok = true;
+        return visible;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        *ok = false;
+        return false;
+    }
+}
+
 bool ValidName(const char* function) { return function != nullptr && function[0] != 0; }
 
 } // namespace
@@ -431,6 +489,11 @@ void RunHudProbe(float screenX, float screenY)
 
 void DrainQueuedHudCalls()
 {
+    // Sampled here because this already runs on the main thread every frame, and
+    // the navigator that consumes it must not enter Scaleform from the frame
+    // service.
+    HudRefreshMenuOpenState();
+
     PendingHudCall call;
     {
         std::unique_lock lock(gQueueMutex, std::try_to_lock);
@@ -454,6 +517,82 @@ void DrainQueuedHudCalls()
     Log("result=" + std::to_string(result) +
         " fn=" + call.name + " x=" + std::to_string(call.x) +
         (call.twoArguments ? " y=" + std::to_string(call.y) : std::string()));
+}
+
+namespace {
+
+// The names checked for "a menu is open". All read from this build's string
+// table; a name that does not resolve simply contributes nothing, which is the
+// honest behaviour for an element that is not loaded rather than a reason to
+// fail the whole predicate.
+constexpr const char* kMenuElements[] = {
+    "DaniellePauseMenu",
+    "DanielleShell",
+    "DanielleOptions",
+    "DanielleSaveLoad",
+};
+
+void* ResolveNamedElement(std::uintptr_t base, const char* name)
+{
+    const auto* const accessor = reinterpret_cast<const std::uint8_t*>(base + kGetHudElementRva);
+    // Same prologue gate as the HUD accessor -- this reuses its instructions, so
+    // if they have moved, nothing here may be trusted either.
+    if (!BytesMatch(accessor, kGetHudHead.data(), kGetHudHead.size()) ||
+        !BytesMatch(accessor + 7, kGetHudLea.data(), kGetHudLea.size()) ||
+        !BytesMatch(accessor + 14, kGetHudTail.data(), kGetHudTail.size())) {
+        return nullptr;
+    }
+    // `mov rcx, [rip+disp]` is 7 bytes; the displacement is relative to the end
+    // of the instruction.
+    const std::int32_t displacement = ReadRelativeDisplacement(accessor + 3);
+    if (displacement == 0) { return nullptr; }
+    const std::uintptr_t singletonSlot =
+        reinterpret_cast<std::uintptr_t>(accessor) + 7 + static_cast<std::intptr_t>(displacement);
+    const std::uintptr_t singleton = ReadPointer(singletonSlot);
+    if (singleton == 0) { return nullptr; }
+    const std::uintptr_t vtable = ReadPointer(singleton);
+    if (vtable == 0) { return nullptr; }
+    const std::uintptr_t getter = ReadPointer(vtable + kGetElementByNameSlot);
+    if (!PointerIsExecutable(getter)) { return nullptr; }
+    return CallGetElementByName(getter, reinterpret_cast<void*>(singleton), name);
+}
+
+} // namespace
+
+DWORD HudRefreshMenuOpenState()
+{
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) { return 4; }
+    const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+
+    bool anyVisible = false;
+    bool anyAnswered = false;
+    for (const char* const name : kMenuElements) {
+        void* const element = ResolveNamedElement(base, name);
+        if (element == nullptr) { continue; }
+        const std::uintptr_t isVisible = ReadVtableSlot(element, kIsVisibleSlot);
+        if (!PointerIsExecutable(isVisible)) { continue; }
+        bool ok = false;
+        const bool visible = CallIsVisible(isVisible, element, &ok);
+        if (!ok) { continue; }
+        anyAnswered = true;
+        if (visible) { anyVisible = true; break; }
+    }
+
+    // **An unanswered poll must not read as "no menu".** If nothing resolved, the
+    // previous value stands rather than silently becoming false -- otherwise a
+    // load screen or an early frame would look exactly like gameplay and re-arm
+    // the D-pad taps this predicate exists to suppress.
+    if (!anyAnswered) { return 7; }
+    gMenuOpen.store(anyVisible, std::memory_order_release);
+    gMenuStateSamples.fetch_add(1, std::memory_order_relaxed);
+    return 0;
+}
+
+bool HudMenuIsOpen() { return gMenuOpen.load(std::memory_order_acquire); }
+unsigned long long HudMenuStateSampleCount()
+{
+    return gMenuStateSamples.load(std::memory_order_relaxed);
 }
 
 DWORD HudScreenToFlash(float screenX, float screenY, bool stageScaleMode,

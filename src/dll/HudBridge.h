@@ -166,6 +166,24 @@ DWORD QueueHudFit(bool maximise);
 DWORD QueueHudProbe(float screenX, float screenY);
 std::string HudLastProbe();
 
+// **Is a menu actually open?** The controller menu navigator posts D-pad taps,
+// and in gameplay Prey's D-pad is the weapon quick-select -- so an unguarded
+// navigator changes weapons every time the right stick moves, which is exactly
+// what a wearer reported: stick forward gave the torch, back the GLOO gun, left
+// and right the wrench and pistol. R-116 saw the navigator was a second
+// right-stick producer; this is the routing predicate it said was missing.
+//
+// Sampled on the MAIN thread by `HudRefreshMenuOpenState` and read as a plain
+// value by the frame service, because the navigator runs there and entering
+// Scaleform off the main thread is the hazard the HUD queue exists for.
+//
+// A poll where nothing resolved leaves the previous value alone rather than
+// reporting "no menu": during a load, every element is absent, and that must not
+// read as gameplay and re-arm the very taps this suppresses.
+DWORD HudRefreshMenuOpenState();
+bool HudMenuIsOpen();
+unsigned long long HudMenuStateSampleCount();
+
 unsigned long long HudElementPointer();
 unsigned long long HudCallCount();
 unsigned long long HudRefusedCount();

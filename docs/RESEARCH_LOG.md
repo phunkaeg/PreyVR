@@ -1944,6 +1944,47 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-09 — R-123: the right stick changed weapons because the navigator is ungated
+
+**Reported by the wearer, and the mapping identifies the cause exactly.** Right
+stick forward gave the torch, back the GLOO gun, left and right the wrench and
+pistol. Four directions, four weapons: that is Prey's **D-pad quick-select**, and
+the mod's menu navigator posts D-pad taps. R-116 already found the navigator was
+a second right-stick producer; this is the routing predicate it said was missing.
+
+`XrInput.cpp` posted navigator actions whenever `menu.nav` was armed, with no
+check that a menu was open. In gameplay every stick deflection became a weapon
+change.
+
+**Also confirmed by the wearer: the right trigger fires.** That closes the last
+open item in the motion-control lane -- left stick moves, right stick turns,
+trigger fires, all confirmed in a headset.
+
+**The predicate.** `IUIElement::IsVisible` is slot 29 = `+0xE8`, in the vtable
+order now confirmed at five independent offsets (R-119/R-120). Elements are
+resolved by name through the singleton the DanielleHUD accessor already uses --
+read out of its own `mov rcx, [rip+disp]` rather than hardcoded a second time,
+so it is the engine's value by construction. Checked: `DaniellePauseMenu`,
+`DanielleShell`, `DanielleOptions`, `DanielleSaveLoad`.
+
+**Threading decided the design.** The navigator runs on the XR frame service,
+and entering Scaleform from there is the hazard the HUD queue exists for. So the
+state is sampled on the MAIN thread in the existing drain and read as a plain
+atomic. A poll where nothing resolved leaves the previous value alone rather
+than reporting "no menu" -- during a load every element is absent, and that must
+not read as gameplay and re-arm the taps.
+
+Gated on by default, `menu.gate 0` reproduces the old behaviour deliberately.
+
+**Not established.** No live test: Prey had exited before this was built. The
+element-name list is a first cut and may miss a modal. Whether suppression makes
+the menus feel unresponsive at their edges is a wearer question.
+
+**Still open from the same report:** no interaction bindings exist yet -- pick
+up, inventory, use. And mouse pitch still rotates the torso in VR; the move
+handlers at `+0x5C`/`+0x60` are movement axes, not look, so that seam is not
+found yet.
+
 ## 2026-09-09 — F-017: changing `bMax` moves nothing. The HUD is not cover-clipped.
 
 **The hypothesis is dead, and it was mine.** R-120 reasoned that the HUD canvas
