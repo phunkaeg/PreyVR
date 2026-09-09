@@ -1,4 +1,6 @@
 #include "CameraEditHook.h"
+
+#include "NearFovOverride.h"
 #include "XrSessionHost.h"
 #include "MinHookInit.h"
 
@@ -1039,6 +1041,7 @@ void __fastcall RenderWithCameraEdit(void* system)
          !gHeadRotationArmed.load(std::memory_order_acquire)) || system == nullptr) {
         if (original != nullptr) {
             UpdateAimReticleForRender();
+            AssertNearFovForRender();
             original(system);
         }
         return;
@@ -1104,6 +1107,7 @@ void __fastcall RenderWithCameraEdit(void* system)
             SetFrameCaptureTagOverride(eye);
             if (original != nullptr) {
                 UpdateAimReticleForRender();
+            AssertNearFovForRender();
                 original(system);
             }
         }
@@ -1235,6 +1239,7 @@ void __fastcall RenderWithCameraEdit(void* system)
     std::memcpy(camera, edited.data(), cameraedit::kCameraSize);
 
     UpdateAimReticleForRender();
+            AssertNearFovForRender();
 
     // Publish the forward axis we just wrote, so the pass-camera probe can ask
     // whether the camera the engine culls with is this one.

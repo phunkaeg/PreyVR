@@ -76,6 +76,13 @@ param(
     # because it posts synthesised input into the engine, which is a write and
     # every write in this project is opt-in.
     [switch]$Controls,
+    # Arm rig from the controllers, position and rotation. On with -Controls
+    # unless -NoHands is given, because a VR body whose arms do not follow the
+    # hands is not a baseline anybody wants to opt into each session.
+    [switch]$NoHands,
+    # Compression of the player's reach into the character's, as a percentage.
+    # BELOW 100 is the working range: see the note at the call site.
+    [int]$IkReachPercent = 65,
     # Moves Prey's own crosshair to where the controller points.
     [switch]$Reticle,
     # How much of the headset's view the flat mirror spans, as a percentage of
@@ -197,6 +204,17 @@ if ($nearAspect -gt 0) {
     Write-Host '  (near FoV: no backbuffer size read, using the 16:9 value 88.507)'
 }
 Step "weapon FoV $nearFov" "console r_DrawNearFoV $nearFov"
+# **And assert it where the renderer actually reads it, every frame.**
+#
+# The cvar above is not what the near pass consumes: RT_BeginFrame latches it
+# once per frame into CD3D9Renderer+0x95B4 (R-069), and Prey's zoom manager
+# rewrites the cvar continuously -- hard-coding 55 on reset and rescaling it with
+# the horizontal FOV while zooming. That is why a level load has always lost this
+# setting and why it had to be reapplied by hand after every load.
+#
+# Both are sent: the cvar keeps the console reading the truth, and this makes the
+# viewmodel actually obey it. Decidegrees, so the channel stays integral.
+Step "weapon FoV asserted" ("near.fov " + [int][Math]::Round($nearFov * 10))
 Start-Sleep -Milliseconds 800
 
 Write-Host ''
@@ -217,6 +235,7 @@ if ($MirrorFov -gt 0) {
 
 if ($Controls -or $Reticle) {
     Write-Host ''
+    $Hands = $Controls -and -not $NoHands
     Write-Host 'motion controls and reticle:'
     if ($Controls) {
         # Menu navigation first: it is the one that works at the main menu,
@@ -231,6 +250,45 @@ if ($Controls -or $Reticle) {
         # which half was armed. The write alone moves nothing -- the engine's
         # own reset writes the field AND dispatches, and so must this (R-109).
         Step 'reticle dispatch' 'aim.reticledispatch 1'
+    }
+
+    # --- arm rig ------------------------------------------------------------
+    #
+    # **Part of the baseline now, not a separate ritual.** Position and rotation
+    # both come from the controllers, so the arms belong with stereo rather than
+    # behind four commands a wearer has to remember.
+    #
+    # Order matters. `ik.drive` must be on before `ik.calibrate`, which refuses
+    # outright without it, and the calibration captures on the next SOLVED frame
+    # with a tracked controller -- so the wearer has to be holding still when it
+    # lands, which is why it is prompted rather than fired silently.
+    if ($Hands) {
+        Step 'arm IK apply'    'ik.mode 2'
+        Step 'arm IK drive'    'ik.drive 1'
+        Step 'both arms'       'ik.hands 3'
+        # **Below 100 on purpose.** ScaleReach compresses the player's reach into
+        # the character's BEFORE the clamp, so 100 means no compression and a
+        # normal arm extension runs straight into the clamp. Measured live at
+        # 2026-09-09: reach 100 clamped roughly nine frames in ten, 80 clamped
+        # four in ten, and 65 clamped under one in twenty. Raising this number
+        # does not lengthen the arm -- it removes the compression that keeps the
+        # motion continuous, which is the opposite of what it sounds like.
+        Step 'reach compression' "ik.reach $IkReachPercent"
+        Write-Host '  -- hold both controllers still --'
+        Start-Sleep -Seconds 3
+        Step 'arm calibration' 'ik.calibrate'
+        # Reported rather than assumed: `ik.calibrate` returning 0 means the
+        # request was accepted, never that it was captured. Only ikCalR/ikCalL
+        # say it landed, and a weapon change silently invalidates both.
+        Start-Sleep -Milliseconds 800
+        $ik = Send-Cmd 'report'
+        $flags = ($ik -split ' ' | Where-Object { $_ -match '^ik(CalR|CalL)=' }) -join ' '
+        if ($flags -match 'ikCalR=1' -and $flags -match 'ikCalL=1') {
+            Write-Host "  ok   calibration captured  $flags"
+        } else {
+            Write-Host "  WARN calibration NOT captured  $flags"
+            Write-Host '       hold the controllers still and re-run: ik.calibrate'
+        }
     }
 }
 

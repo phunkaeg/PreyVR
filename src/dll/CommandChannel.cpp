@@ -2,6 +2,7 @@
 
 #include "AimTakeover.h"
 #include "AnimIkTakeover.h"
+#include "NearFovOverride.h"
 #include "CameraEditHook.h"
 #include "ConsoleBridgeWin32.h"
 #include "FrameObserverHook.h"
@@ -374,6 +375,13 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "view.apply result=" << SetViewHookApplying(arg(1, 1));
     } else if (verb == "view.position") {
         out << "view.position result=" << SetViewPositionApplying(arg(1, 1));
+    } else if (verb == "near.fov") {
+        // Decidegrees: `near.fov 1234` is 123.4 degrees, 0 disables.
+        out << "near.fov result=" << SetNearFovDeciDegrees(arg(1, 0))
+            << " deciDegrees=" << NearFovDeciDegrees()
+            << " applied=" << NearFovAppliedCount()
+            << " refused=" << NearFovRefusedCount()
+            << " observedDeciDegrees=" << NearFovObservedDeciDegrees();
     } else if (verb == "near.enable") {
         out << "near.enable result=" << SetNearViewStereo(arg(1, 1));
     } else if (verb == "near.halfipd") {
