@@ -1,0 +1,128 @@
+src/dll/XrSessionHost.cpp @ d0a64f12ff84162a1ecb1fd0be5809ac8ac240e5
+906: void ServiceXrFrame(void* renderer)
+907: {
+908:     if (gStatus.load(std::memory_order_acquire) != static_cast<DWORD>(XrSessionStatus::running)) {
+909:         return; // the hot path
+910:     }
+911:     // The render thread never waits. Skipping a frame is free; blocking Prey's
+912:     // renderer on a control call is not.
+913:     std::unique_lock lock(gMutex, std::try_to_lock);
+914:     if (!lock.owns_lock() || !gHost.started) {
+915:         return;
+916:     }
+917: 
+918:     if (gStopRequested.load(std::memory_order_acquire)) {
+919:         // Torn down here rather than in StopXrSession, because the D3D resources
+920:         // belong to this thread.
+921:         Teardown();
+922:         gStatus.store(static_cast<DWORD>(XrSessionStatus::stopped), std::memory_order_release);
+923:         return;
+924:     }
+925: 
+926:     PumpEvents();
+927:     if (!gHost.sessionBegun) {
+928:         return;
+929:     }
+930: 
+931:     const std::uint32_t thread = GetCurrentThreadId();
+932: 
+933:     // **`xrWaitFrame` blocks on purpose**, and how long it blocks is the single
+934:     // most diagnostic number here: time spent waiting is the runtime pacing us,
+935:     // not the scene costing us, and reclaiming pixels would not touch it.
+936:     const bool timing = gTimingEnabled.load(std::memory_order_acquire);
+937:     const std::uint64_t serviceStart = timing ? preyvr::timing::MonotonicNanoseconds() : 0;
+938:     if (timing) { gServiceInterval.Mark(serviceStart); }
+939: 
+940:     XrFrameWaitInfo waitInfo{XR_TYPE_FRAME_WAIT_INFO};
+941:     XrFrameState frameState{XR_TYPE_FRAME_STATE};
+942:     const std::uint64_t waitStart = timing ? preyvr::timing::MonotonicNanoseconds() : 0;
+943:     const XrResult waitResult = xrWaitFrame(gHost.session, &waitInfo, &frameState);
+944:     if (timing) {
+945:         gWaitFrame.AddNanoseconds(preyvr::timing::MonotonicNanoseconds() - waitStart);
+946:     }
+1150:     const std::uint64_t endStart = timing ? preyvr::timing::MonotonicNanoseconds() : 0;
+1151:     xrEndFrame(gHost.session, &endInfo);
+1152:     if (timing) {
+1153:         const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
+1154:         gEndFrame.AddNanoseconds(now - endStart);
+1155:         gServiceTotal.AddNanoseconds(now - serviceStart);
+1156:     }
+1157:     gHost.contract.OnSubmitted(thread);
+1158: 
+1159:     if (rendered) {
+1160:         const unsigned long long count = gSubmitted.fetch_add(1, std::memory_order_relaxed) + 1;
+1161:         if (count == 1) {
+1216: DWORD SetXrTimingEnabled(unsigned int enabled, unsigned int displayHz)
+1217: {
+1218:     if (enabled == 0) {
+1219:         gTimingEnabled.store(false, std::memory_order_release);
+1220:         return 0;
+1221:     }
+1222:     // Reset on arming, so a session's numbers never mix frames from before a
+1223:     // change with frames from after it -- which is the whole point of measuring.
+1224:     gServiceInterval.Reset();
+1225:     gWaitFrame.Reset();
+1226:     gAcquireWait.Reset();
+1227:     gEndFrame.Reset();
+1228:     gServiceTotal.Reset();
+1229:     if (displayHz > 0 && displayHz <= 1000) {
+1230:         gServiceInterval.SetDeadlineMicroseconds(1000000u / displayHz);
+1231:     }
+1232:     gTimingEnabled.store(true, std::memory_order_release);
+1233:     return 0;
+1234: }
+1235: 
+1236: std::string XrTimingReport()
+1237: {
+1238:     std::ostringstream out;
+1239:     out.imbue(std::locale::classic());
+1240:     out << " timing=" << (gTimingEnabled.load(std::memory_order_acquire) ? 1 : 0);
+1241: 
+1242:     const auto emit = [&out](const char* name, const preyvr::timing::DurationStats& s) {
+1243:         if (!s.valid) { out << ' ' << name << "=none"; return; }
+1244:         // Microseconds throughout: at 90 Hz the budget is 11111 us, and a
+1245:         // millisecond figure would round away exactly the differences that
+1246:         // decide which stage is limiting.
+1247:         out << ' ' << name << "P50=" << s.p50 << ' ' << name << "P95=" << s.p95
+1248:             << ' ' << name << "P99=" << s.p99 << ' ' << name << "Max=" << s.max
+1249:             << ' ' << name << "N=" << s.count;
+1250:     };
+1251:     const auto interval = gServiceInterval.Compute();
+1252:     emit("frame", interval);
+1253:     out << " frameDeadline=" << gServiceInterval.DeadlineMicroseconds()
+1254:         << " frameMissed=" << gServiceInterval.MissedDeadlineCount();
+1255:     emit("wait", gWaitFrame.Compute());
+1256:     emit("acquire", gAcquireWait.Compute());
+1257:     emit("end", gEndFrame.Compute());
+1258:     emit("service", gServiceTotal.Compute());
+1259:     return out.str();
+src/dll/CommandChannel.cpp @ d0a64f12ff84162a1ecb1fd0be5809ac8ac240e5
+547:     } else if (verb == "xr.timing") {
+548:         // xr.timing            -- report
+549:         // xr.timing 1 [hz]     -- arm and reset, default 90 Hz deadline
+550:         if (args.size() >= 2) {
+551:             out << "xr.timing result="
+552:                 << SetXrTimingEnabled(arg(1, 1), static_cast<unsigned int>(arg(2, 90)));
+553:         } else {
+554:             out << "xr.timing result=0";
+555:         }
+556:         out << XrTimingReport();
+557:     } else if (verb == "xr.coverage") {
+558:         out << "xr.coverage result=0" << XrCoverageReport();
+748:             // is not replayed on the next poll and on every poll after it.
+749:             { std::ofstream clear(commands, std::ios::trunc); }
+750: 
+751:             std::ostringstream out;
+752:             for (const std::string& line : lines) {
+753:                 const auto args = Split(line);
+754:                 if (args.empty() || args[0].empty() || args[0][0] == '#') {
+755:                     continue;
+756:                 }
+757:                 Execute(args, out);
+758:                 out << '\n';
+759:             }
+760:             std::ofstream(results, std::ios::trunc) << out.str();
+761:         }
+762:         Sleep(200);
+763:     }
+764:     return 0;

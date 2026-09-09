@@ -1,12 +1,5 @@
 # Handover — the right controller drags the left hand
 
-> **Static follow-up:** [The producer-to-consumer investigation](RE-IK-CROSSTALK-2026-09-09.md)
-> identifies two additional paths: `nativeEye` is the reticle-dependent native
-> ray origin, and reach=65 retains 35% of animated-shoulder motion. Both reproduce
-> in fixed-input math without yaw changes or clamping. The shared-yaw hypothesis
-> below is not unique; its requested yaw/eye counters already exist. Runtime
-> attribution remains pending; the original wearer observations are preserved.
-
 For Codex. Wearer-observed, reproduced repeatedly on 2026-09-09 against
 `PreyVR.dll` 800,768 bytes (SHA-256 `FE8C93CC…7277AC`), Quest 3 / VDXR,
 run `run-20260909-134810`.

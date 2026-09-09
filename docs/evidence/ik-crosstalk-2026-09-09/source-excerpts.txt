@@ -1,0 +1,290 @@
+src/dll/AimTakeover.cpp @ 087d3be09dfb209cf9cc260062192ce009241864
+85: {
+86:     return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+87: }
+88: 
+89: // The yaw the engine's own view camera is facing. Read live rather than cached,
+90: // because the whole point is to follow the player's facing as it changes.
+91: float GameCameraYaw()
+92: {
+93:     const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+94:     if (preyDll == nullptr) {
+95:         return 0.0f;
+96:     }
+97:     const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+98:     auto* const systemPtr =
+99:         *reinterpret_cast<std::uint8_t**>(base + engine::SystemLayout::pointerRva);
+100:     if (systemPtr == nullptr) {
+101:         return 0.0f;
+102:     }
+103:     const auto* const camera = reinterpret_cast<const std::uint8_t*>(
+104:         reinterpret_cast<std::uintptr_t>(systemPtr) + engine::SystemLayout::viewCamera);
+105:     const stereo::Matrix34 matrix =
+106:         stereo::ReadMatrix(std::span<const std::uint8_t>(camera, engine::CameraLayout::size));
+107:     return stereo::CameraYawOf(matrix);
+108: }
+109: 
+110: void __fastcall UpdateCachedRayWithTakeover(void* player)
+111: {
+112:     // Every refusal below invalidates the previous publication immediately.
+113:     gAimSample.Clear();
+114:     const UpdateCachedRayFn original = gOriginal.load(std::memory_order_acquire);
+115:     if (player && gLastOriginEdit.owner == reinterpret_cast<std::uintptr_t>(player)) {
+116:         auto* originAt = static_cast<std::uint8_t*>(player) + engine::ArkPlayerLayout::cachedReticleOrigin;
+117:         Vec3 current{};
+118:         std::memcpy(&current, originAt, sizeof(current));
+119:         if (gLastOriginEdit.Restore(reinterpret_cast<std::uintptr_t>(player), current)) {
+120:             std::memcpy(originAt, &current, sizeof(current));
+121:         }
+122:         gLastOriginEdit = {};
+123:     }
+124:     if (original != nullptr) {
+125:         original(player);   // let the engine build its own ray first
+126:     }
+127:     if (player == nullptr || original == nullptr) {
+128:         gGameplayFrame.Clear();
+129:         gRejNoPlayer.fetch_add(1, std::memory_order_relaxed);
+130:         return;
+131:     }
+132:     const auto playerAddress = reinterpret_cast<std::uintptr_t>(player);
+133:     GameplayPoseFrame frame{};
+134:     frame.player = playerAddress;
+135:     std::memcpy(&frame.nativeEye, reinterpret_cast<const void*>(
+136:         playerAddress + engine::ArkPlayerLayout::cachedReticleOrigin), sizeof(Vec3));
+137:     Vec3 nativeDirection{};
+138:     std::memcpy(&nativeDirection, reinterpret_cast<const void*>(
+139:         playerAddress + engine::ArkPlayerLayout::cachedReticleDirection), sizeof(Vec3));
+140:     const float nativeLength = Length(nativeDirection);
+141:     if (!std::isfinite(nativeLength) || nativeLength < 0.9f || nativeLength > 1.1f ||
+142:         !std::isfinite(frame.nativeEye.x) || !std::isfinite(frame.nativeEye.y) ||
+143:         !std::isfinite(frame.nativeEye.z)) {
+144:         gGameplayFrame.Clear();
+145:         gRejCompose.fetch_add(1, std::memory_order_relaxed);
+146:         return;
+147:     }
+148:     gNativeMagnitude.store(static_cast<unsigned int>(nativeLength * 1000.0f + 0.5f));
+149:     const bool haveTracking = TryGetTrackingFrame(frame.tracking) &&
+150:         IsPoseUsable(frame.tracking.head, frame.tracking.headValidity, 200000000ull);
+151:     frame.referenceGeneration = HeadTrackingReferenceGeneration();
+152:     frame.referenceYaw = HeadTrackingReferenceYaw();
+153:     frame.cameraYaw = GameCameraYaw();
+154:     // Camera yaw is body + (head - reference) because this mod writes head
+155:     // tracking into that camera. Subtracting the head's own yaw leaves the
+156:     // body, which is what a head-relative offset must be rotated by; using the
+157:     // camera directly applies the head twice and the hand follows the headset.
+158:     frame.yaw = frame.cameraYaw - frame.referenceYaw;   // aim.bodyyaw 0 behaviour
+159:     // Measured unconditionally. Recording it only on the body-yaw path made the
+212:     }
+213:     if ((frame.referenceGeneration & 1) ||
+214:         frame.referenceGeneration != HeadTrackingReferenceGeneration() || !std::isfinite(frame.yaw)) { gGameplayFrame.Clear(); return; }
+215:     // IK must never reread the mutable cached origin below.
+216:     frame.publishedNs = MonotonicNanoseconds();
+217:     gGameplayFrame.Publish(frame);
+218:     if (!haveTracking) { gRejNoPose.fetch_add(1); return; }
+219:     // A frame whose play-space yaw is unknown cannot aim, and must not silently
+220:     // aim with the camera-relative yaw the body-yaw mode exists to replace.
+221:     if (gBodyYaw.load(std::memory_order_acquire) && !frame.headYawUsable) {
+222:         gRejNoPose.fetch_add(1, std::memory_order_relaxed);
+223:         return;
+224:     }
+225:     if (!gEnabled.load(std::memory_order_acquire)) { return; }
+226:     const auto& controller = frame.tracking.hands[static_cast<unsigned int>(Hand::right)];
+227:     const auto& headPose = frame.tracking.head;
+228:     const Vec3 engineOrigin = frame.nativeEye;
+229:     stereo::ReferenceFrame reference{};
+230:     reference.yawRadians = frame.yaw;
+231:     reference.worldPosition = engineOrigin;
+232: 
+233:     const auto ray = controller::AimFromController(
+249:     // Describe the ray actually installed below, not the best origin available
+250:     // regardless of aim.origin. A positional muzzle calibration does not prove
+251:     // a barrel rotation: this direction is still the runtime's aiming axis.
+252:     preyvr::aim::Sample sample{};
+253:     sample.origin = engineOrigin;
+254:     sample.direction = ray->direction;
+255:     const Pose hand = animik::ControllerWorldFromHead(
+256:         reference.yawRadians, engineOrigin, headPose, controller.aimPose);
+257:     sample.orientation = hand.orientation; // world space, like the direction
+258:     sample.confidence = preyvr::aim::Confidence::origin;
+259:     sample.equipGeneration = WeaponEquipGeneration();
+260:     sample.referenceGeneration = frame.referenceGeneration;
+261:     sample.trackingSequence = frame.tracking.sequence;
+262: 
+263:     // This selects a pointing direction. Native firing may converge from its
+264:     // authored muzzle toward this ray; a controller point is not that muzzle.
+265:     std::memcpy(reinterpret_cast<void*>(
+266:                     playerAddress + engine::ArkPlayerLayout::cachedReticleDirection),
+267:                 &ray->direction, sizeof(ray->direction));
+270:     const unsigned int originMode = gOriginMode.load(std::memory_order_acquire);
+271:     if (originMode != 0) {
+272:         Vec3 chosen = hand.position;
+273:         bool haveMuzzle = false;
+274:         if (originMode == 2) {
+275:             // **The reconciliation.** Prey's projectile already leaves the
+276:             // weapon's authored muzzle helper while the reticle ray starts at
+277:             // the eye, so a shot flies from the muzzle toward wherever an eye
+278:             // ray landed and the two agree at exactly one distance. Starting the
+279:             // ray at that same muzzle removes the convergence entirely.
+280:             //
+281:             // The GRIP pose is used, not the aim pose, because the calibration
+282:             // was measured against the grip: an offset is only meaningful in
+283:             // the frame it was captured in.
+284:             const Pose grip = animik::ControllerWorldFromHead(
+285:                 reference.yawRadians, engineOrigin, headPose, controller.gripPose);
+286:             Vec3 muzzle{};
+287:             if (IsPoseUsable(controller.gripPose, controller.gripValidity, 200000000ull) &&
+288:                 TryGetMuzzleFromGrip(grip, sample.equipGeneration, muzzle)) {
+289:                 chosen = muzzle;
+290:                 haveMuzzle = true;
+291:             } else {
+292:                 // Uncalibrated, or a different weapon since. Fall back to the
+293:                 // hand and COUNT it: silently reverting to a less accurate
+294:                 // origin is how a lane looks fine and aims wrong.
+295:                 gMuzzleUnavailable.fetch_add(1, std::memory_order_relaxed);
+296:             }
+297:         }
+298:         if (std::isfinite(chosen.x) && std::isfinite(chosen.y) && std::isfinite(chosen.z)) {
+299:             std::memcpy(reinterpret_cast<void*>(
+300:                             playerAddress + engine::ArkPlayerLayout::cachedReticleOrigin),
+301:                         &chosen, sizeof(chosen));
+302:             gLastOriginEdit = {playerAddress, engineOrigin, chosen};
+303:             sample.origin = chosen;
+304:             gOriginApplied.fetch_add(1, std::memory_order_relaxed);
+305:             if (haveMuzzle) { gMuzzleOriginApplied.fetch_add(1, std::memory_order_relaxed); }
+src/dll/ReticleFollow.cpp @ 087d3be09dfb209cf9cc260062192ce009241864
+175:     }
+176:     gOriginOffset.store(static_cast<unsigned long long>(offsetLength * 1000.0f + 0.5f),
+177:                         std::memory_order_relaxed);
+178: 
+179:     const float distance =
+180:         static_cast<float>(gConvergenceMm.load(std::memory_order_acquire)) * 0.001f;
+181:     const Vec3 aimPoint{offset.x + worldDirection.x * distance,
+182:                         offset.y + worldDirection.y * distance,
+183:                         offset.z + worldDirection.z * distance};
+184: 
+185:     const float alongForward =
+186:         aimPoint.x * forward.x + aimPoint.y * forward.y + aimPoint.z * forward.z;
+187:     if (!(alongForward > 0.001f)) {
+188:         // Behind the camera. No honest screen position exists, so the crosshair is
+189:         // left where the engine put it -- pinning it to an edge would claim the
+190:         // target is over there when it is not.
+191:         gOffScreen.fetch_add(1, std::memory_order_relaxed);
+192:         return false;
+193:     }
+194:     const float alongRight =
+195:         aimPoint.x * right.x + aimPoint.y * right.y + aimPoint.z * right.z;
+196:     const float alongUp = aimPoint.x * up.x + aimPoint.y * up.y + aimPoint.z * up.z;
+197: 
+198:     // Tangents at the near plane, mapped into the frustum the camera actually has.
+199:     // Using the asymmetric edges rather than assuming a symmetric field means this
+200:     // stays correct if a per-eye projection is ever in play.
+244:     float screen[2] = {fractionX, fractionY};
+245:     std::memcpy(reinterpret_cast<void*>(
+246:                     reinterpret_cast<std::uintptr_t>(player) +
+247:                     engine::ArkPlayerLayout::reticleScreenPosition),
+248:                 screen, sizeof(screen));
+249:     gLastX.store(static_cast<unsigned int>(fractionX * 1000.0f + 0.5f),
+250:                  std::memory_order_relaxed);
+251:     gLastY.store(static_cast<unsigned int>(fractionY * 1000.0f + 0.5f),
+src/dll/AnimIkTakeover.cpp @ 087d3be09dfb209cf9cc260062192ce009241864
+327: void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute,
+328:                const animik::Location& location, const GameplayPoseFrame& frame)
+329: {
+330:     const int target = gTargetJoint[hand].load(std::memory_order_relaxed);
+331:     const int weight = gWeightJoint[hand].load(std::memory_order_relaxed);
+332:     const int handJoint = gHandJoint[hand].load(std::memory_order_relaxed);
+333:     if (!animik::ValidJoint(target, DynArrayCount(absolute)) ||
+334:         !animik::ValidJoint(weight, DynArrayCount(relative)) ||
+335:         !animik::ValidJoint(handJoint, DynArrayCount(absolute))) { return; }
+336: 
+337:     QuatT wrist{};
+338:     if (!ReadQuatT(absolute, handJoint, wrist)) { return; }
+339: 
+340:     Vec3 goal{wrist.t[0], wrist.t[1], wrist.t[2]};
+341:     Quaternion rotation{wrist.q[0], wrist.q[1], wrist.q[2], wrist.q[3]};
+342:     bool writeRotation = false;
+343:     bool calibrating = false;
+344:     Quaternion candidateOffset{};
+345: 
+346:     if (gDrive.load(std::memory_order_acquire)) {
+347:         const auto& state = frame.tracking.hands[static_cast<unsigned int>(hand == 0 ? Hand::right : Hand::left)];
+348:         // Without a play-space yaw the world placement is unknown, and the
+349:         // camera-relative fallback is the defect body yaw exists to remove.
+350:         if (AimBodyYawEnabled() && !frame.headYawUsable) {
+351:             gNoPose.fetch_add(1, std::memory_order_relaxed);
+352:             return;
+353:         }
+354:         if (!IsPoseUsable(state.gripPose, state.gripValidity, 200000000ull)) {
+355:             gNoPose.fetch_add(1, std::memory_order_relaxed);
+356:             return;
+357:         }
+358:         const Pose world = animik::ControllerWorldFromHead(frame.yaw, frame.nativeEye,
+359:                                                           frame.tracking.head, state.gripPose);
+360:         goal = animik::WorldToModel(location, world.position);
+361:         const Quaternion controllerModel = animik::WorldToModel(location, world.orientation);
+362:         calibrating = gCalibration.Pending(hand);
+363:         candidateOffset = calibrating ? animik::CalibrateRotationOffset(controllerModel, rotation)
+364:                                       : gCalibration.offsets[hand];
+365:         if (calibrating || (gCalibration.calibrated & (1u << hand))) {
+366:             rotation = animik::ApplyRotationOffset(controllerModel, candidateOffset);
+367:             writeRotation = true;
+377:     // Reach: the authored bone lengths are the relative translations of the mid
+378:     // and end joints, rebuilt from animation every frame before this runs.
+379:     const int upper = gLimbUpper[hand].load(std::memory_order_relaxed);
+380:     const int mid = gLimbMid[hand].load(std::memory_order_relaxed);
+381:     const int end = gLimbEnd[hand].load(std::memory_order_relaxed);
+382:     if (upper < 0 || mid < 0 || end < 0) { return; }
+383:     {
+384:         QuatT upperAbs{}, midRel{}, endRel{};
+385:         if (ReadQuatT(absolute, upper, upperAbs) && ReadQuatT(relative, mid, midRel) &&
+386:             ReadQuatT(relative, end, endRel)) {
+387:             const float reach = 0.995f * (std::sqrt(midRel.t[0]*midRel.t[0] + midRel.t[1]*midRel.t[1] + midRel.t[2]*midRel.t[2]) +
+388:                                           std::sqrt(endRel.t[0]*endRel.t[0] + endRel.t[1]*endRel.t[1] + endRel.t[2]*endRel.t[2]));
+389:             if (!std::isfinite(reach) || reach <= 1e-6f) { return; }
+390:             const Vec3 shoulder{upperAbs.t[0], upperAbs.t[1], upperAbs.t[2]};
+391:             // Compress the player's reach into the character's BEFORE clamping,
+392:             // so a longer-armed player keeps continuous motion instead of dead
+393:             // travel at full extension.
+394:             goal = animik::ScaleReach(shoulder, goal,
+395:                                       gReachPercent.load(std::memory_order_relaxed) / 100.0f);
+396:             const Vec3 clamped = animik::ClampToReach(shoulder, goal, reach);
+397:             if (clamped.x != goal.x || clamped.y != goal.y || clamped.z != goal.z) {
+398:                 gClamped.fetch_add(1, std::memory_order_relaxed);
+399:                 goal = clamped;
+400:             }
+401:         } else { return; }
+402:     }
+403:     if (!std::isfinite(goal.x) || !std::isfinite(goal.y) || !std::isfinite(goal.z)) { return; }
+404: 
+405:     // Target: absolute position (and rotation once calibrated); weight: relative X = 1.
+406:     auto* const targetAt = absolute + static_cast<std::size_t>(target) * kQuatTStride;
+407:     auto* const weightAt = reinterpret_cast<float*>(relative + static_cast<std::size_t>(weight) * kQuatTStride + 0x10);
+408:     if (!WriteGoal(targetAt, weightAt, goal, rotation, writeRotation)) {
+409:         gMode.store(0);
+410:         gCalibration = {};
+411:         for (auto& flag : gCalibrated) { flag.store(false); }
+412:         Log("result=fault detail=target_write_disarmed");
+413:         return;
+414:     }
+415:     if (calibrating) {
+416:         gCalibration.Commit(hand, candidateOffset);
+417:         gCalibrated[hand].store(true);
+418:         Log("result=0 detail=calibrated hand=" + std::to_string(hand));
+419:     }
+420:     gUsedSequence.store(frame.tracking.sequence);
+421:     gWritten[hand].fetch_add(1, std::memory_order_relaxed);
+422:     if (hand == 0) {
+src/dll/CommandChannel.cpp @ 087d3be09dfb209cf9cc260062192ce009241864
+238:         << " reticleConvergeMm=" << ReticleConvergenceMillimetres()
+239:         << " hudElement=0x" << std::hex << HudElementPointer() << std::dec
+240:         << " hudCalls=" << HudCallCount() << " hudRefused=" << HudRefusedCount()
+241:         << " captures=" << CompletedFrameCaptureCount()
+242:         << " aimBodyYaw=" << AimBodyYawEnabled()
+243:         << " camYawMdeg=" << AimCameraYawMilliDegrees()
+244:         << " headYawMdeg=" << AimHeadYawMilliDegrees()
+245:         << " playYawMdeg=" << AimPlaySpaceYawMilliDegrees()
+246:         << " eyeMm=" << AimNativeEyeMillimetres(0) << "," << AimNativeEyeMillimetres(1)
+247:         << "," << AimNativeEyeMillimetres(2)
+248:         << " headMm=" << AimTrackedHeadMillimetres(0) << "," << AimTrackedHeadMillimetres(1)
+249:         << "," << AimTrackedHeadMillimetres(2)
+250:         << " yawHeld=" << AimHeadYawHeldCount()

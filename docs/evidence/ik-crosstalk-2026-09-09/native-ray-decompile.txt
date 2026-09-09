@@ -1,0 +1,214 @@
+
+/* Steam SHA-256 7D6E322F...B05311A7. Mapped from PDB-backed EGS
+   ArkPlayer::UpdateCachedReticleViewPosAndDir and live-hit every frame. Unprojects ArkPlayer
+   reticle screen coordinates at +0x17EC into world ray origin +0x17D4 and direction +0x17E0.
+   Reversible fixed-camera probe changing reticle X 0.500->0.625 changed the cached direction; all
+   bytes restored. */
+
+void UpdateCachedReticleViewPosAndDir_ArkPlayer(longlong param_1)
+
+{
+  char cVar1;
+  int iVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  longlong *plVar6;
+  longlong lVar7;
+  float fVar8;
+  undefined8 uVar9;
+  float fVar10;
+  undefined1 auVar11 [16];
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  float fVar15;
+  float fVar16;
+  float fVar17;
+  float local_res10 [2];
+  int local_res18 [2];
+  int local_res20 [2];
+  float local_178;
+  float local_174;
+  float local_170;
+  float local_168;
+  float local_164;
+  float local_160;
+  float local_15c;
+  float local_158;
+  float local_154;
+  float local_150;
+  float local_14c;
+  float local_148;
+  float local_144;
+  float local_140;
+  float local_13c;
+  float local_138;
+  float local_134;
+  float local_130;
+  float local_12c;
+  float local_128;
+  float local_124;
+  float local_120;
+  float local_11c;
+  float local_118;
+  float local_114;
+  float local_108;
+  float local_104;
+  float local_100;
+  float local_fc;
+  float local_f8;
+  float local_f4;
+  float local_f0;
+  float local_ec;
+  float local_e8;
+  float local_e4;
+  float local_e0;
+  float local_dc;
+  float local_d8;
+  float local_d4;
+  float local_d0;
+  float local_cc;
+  int local_c8;
+  undefined1 local_c4 [172];
+  
+  plVar6 = (longlong *)FUN_181665780();
+  if (plVar6 == (longlong *)0x0) {
+    local_170 = 0.0;
+    *(undefined8 *)(param_1 + 0x17d4) = 0;
+    uVar9 = 0;
+    *(undefined4 *)(param_1 + 0x17dc) = 0;
+  }
+  else {
+    lVar7 = 0xa10;
+    if (*(int *)(param_1 + 0xa48) != 1) {
+      lVar7 = 0x17ec;
+    }
+    (**(code **)(*plVar6 + 0x1e8))(plVar6,local_res18,&local_c8,local_res10,local_res20,local_c4);
+    plVar6 = DAT_18224daa0;
+    fVar17 = (float)(int)local_res10[0] * *(float *)(lVar7 + param_1) + (float)local_res18[0];
+    fVar16 = ((float)local_res20[0] - (float)local_res20[0] * *(float *)(lVar7 + 4 + param_1)) +
+             (float)local_c8;
+    iVar2 = (**(code **)(*DAT_18224daa0 + 0x230))(DAT_18224daa0);
+    iVar3 = (**(code **)(*plVar6 + 0x218))(plVar6);
+    iVar4 = (**(code **)(*plVar6 + 0x228))(plVar6);
+    iVar5 = (**(code **)(*plVar6 + 0x210))(plVar6);
+    lVar7 = (**(code **)(*DAT_18224da60 + 0x388))();
+    fVar12 = *(float *)(lVar7 + 100);
+    fVar14 = *(float *)(lVar7 + 0x4c);
+    fVar8 = tanf(*(float *)(lVar7 + 0x30) * 0.5);
+    fVar8 = 1.0 / fVar8;
+    fVar13 = fVar8 / *(float *)(lVar7 + 0x40);
+    fVar10 = 1.0 / (fVar14 - fVar12);
+    fVar15 = fVar10 * fVar12;
+    local_128 = *(float *)(lVar7 + 8);
+    local_178 = *(float *)(lVar7 + 0xc);
+    local_174 = *(float *)(lVar7 + 0x1c);
+    local_170 = *(float *)(lVar7 + 0x2c);
+    local_120 = *(float *)(lVar7 + 0x28);
+    local_11c = local_178 + *(float *)(lVar7 + 4);
+    fVar10 = fVar14 * fVar12 * fVar10;
+    local_124 = *(float *)(lVar7 + 0x18);
+    local_114 = local_170 + *(float *)(lVar7 + 0x24);
+    local_118 = local_174 + *(float *)(lVar7 + 0x14);
+    FUN_1801278f0(&local_108,&local_178,&local_11c,&local_128);
+    local_158 = fVar13 * local_f8;
+    local_154 = fVar8 * local_f4;
+    fVar16 = (fVar16 + fVar16) * ((float)iVar5 / (float)iVar4);
+    fVar17 = (fVar17 + fVar17) * ((float)iVar3 / (float)iVar2);
+    fVar12 = fVar17 / (float)*(int *)(lVar7 + 0x38) - 1.0;
+    local_168 = local_108 * fVar13;
+    fVar14 = fVar16 / (float)*(int *)(lVar7 + 0x3c) - 1.0;
+    local_148 = fVar13 * local_e8;
+    local_138 = fVar13 * local_d8;
+    local_164 = local_104 * fVar8;
+    local_144 = fVar8 * local_e4;
+    local_134 = fVar8 * local_d4;
+    local_160 = local_fc * fVar10 + local_100 * fVar15;
+    local_150 = fVar10 * local_ec + fVar15 * local_f0;
+    local_140 = fVar10 * local_dc + fVar15 * local_e0;
+    local_130 = fVar10 * local_cc + fVar15 * local_d0;
+    local_15c = local_100 * -1.0;
+    local_14c = local_f0 * -1.0;
+    local_13c = local_e0 * -1.0;
+    local_12c = local_d0 * -1.0;
+    FUN_1802143c0(&local_168);
+    cVar1 = FUN_18157e590(&local_168);
+    if (cVar1 != '\0') {
+      fVar8 = local_15c * fVar12 + local_14c * fVar14 + local_12c;
+      if (fVar8 != 0.0) {
+        fVar8 = 1.0 / fVar8;
+        local_170 = (local_160 * fVar12 + local_150 * fVar14 + local_130) * fVar8;
+        *(ulonglong *)(param_1 + 0x17d4) =
+             CONCAT44((local_164 * fVar12 + local_154 * fVar14 + local_134) * fVar8,
+                      (local_168 * fVar12 + local_158 * fVar14 + local_138) * fVar8);
+        *(float *)(param_1 + 0x17dc) = local_170;
+      }
+    }
+    fVar12 = *(float *)(lVar7 + 100);
+    fVar14 = *(float *)(lVar7 + 0x4c);
+    fVar8 = tanf(*(float *)(lVar7 + 0x30) * 0.5);
+    local_128 = *(float *)(lVar7 + 0xc);
+    local_124 = *(float *)(lVar7 + 0x1c);
+    local_118 = *(float *)(lVar7 + 0x14) + local_124;
+    fVar8 = 1.0 / fVar8;
+    fVar13 = fVar8 / *(float *)(lVar7 + 0x40);
+    fVar10 = 1.0 / (fVar14 - fVar12);
+    local_178 = *(float *)(lVar7 + 8);
+    fVar14 = fVar14 * fVar12 * fVar10;
+    local_174 = *(float *)(lVar7 + 0x18);
+    local_170 = *(float *)(lVar7 + 0x28);
+    local_11c = *(float *)(lVar7 + 4) + local_128;
+    local_120 = *(float *)(lVar7 + 0x2c);
+    local_114 = *(float *)(lVar7 + 0x24) + local_120;
+    fVar10 = fVar10 * fVar12;
+    FUN_1801278f0(&local_108,&local_128,&local_11c,&local_178);
+    local_158 = fVar13 * local_f8;
+    local_154 = fVar8 * local_f4;
+    fVar17 = fVar17 / (float)*(int *)(lVar7 + 0x38) - 1.0;
+    local_168 = fVar13 * local_108;
+    fVar15 = fVar16 / (float)*(int *)(lVar7 + 0x3c) - 1.0;
+    local_148 = fVar13 * local_e8;
+    local_138 = fVar13 * local_d8;
+    local_164 = fVar8 * local_104;
+    local_144 = fVar8 * local_e4;
+    local_134 = fVar8 * local_d4;
+    local_160 = fVar14 * local_fc + fVar10 * local_100;
+    local_150 = fVar14 * local_ec + fVar10 * local_f0;
+    local_15c = local_100 * -1.0;
+    local_14c = local_f0 * -1.0;
+    local_13c = local_e0 * -1.0;
+    local_140 = fVar14 * local_dc + fVar10 * local_e0;
+    local_12c = local_d0 * -1.0;
+    local_130 = fVar14 * local_cc + fVar10 * local_d0;
+    FUN_1802143c0(&local_168);
+    cVar1 = FUN_18157e590(&local_168);
+    fVar14 = local_res10[0];
+    fVar12 = local_res10[0];
+    if (cVar1 != '\0') {
+      local_12c = local_15c * fVar17 + local_14c * fVar15 + local_13c + local_12c;
+      if (local_12c != 0.0) {
+        local_12c = 1.0 / local_12c;
+        local_res10[0] =
+             (local_160 * fVar17 + local_150 * fVar15 + local_140 + local_130) * local_12c;
+        fVar14 = (local_164 * fVar17 + local_154 * fVar15 + local_144 + local_134) * local_12c;
+        fVar12 = (local_168 * fVar17 + local_158 * fVar15 + local_148 + local_138) * local_12c;
+      }
+    }
+    fVar12 = fVar12 - *(float *)(param_1 + 0x17d4);
+    fVar14 = fVar14 - *(float *)(param_1 + 0x17d8);
+    local_res10[0] = local_res10[0] - *(float *)(param_1 + 0x17dc);
+    *(undefined1 *)(param_1 + 0x188c) = 1;
+    fVar10 = fVar14 * fVar14 + fVar12 * fVar12 + local_res10[0] * local_res10[0] + 1.1754944e-38;
+    auVar11 = rsqrtss(ZEXT416((uint)fVar10),ZEXT416((uint)fVar10));
+    fVar8 = auVar11._0_4_;
+    fVar8 = (1.5 - fVar8 * fVar10 * fVar8 * 0.5) * fVar8;
+    local_170 = local_res10[0] * fVar8;
+    uVar9 = CONCAT44(fVar14 * fVar8,fVar8 * fVar12);
+  }
+  *(undefined8 *)(param_1 + 0x17e0) = uVar9;
+  *(float *)(param_1 + 0x17e8) = local_170;
+  return;
+}
+
+

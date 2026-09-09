@@ -1,5 +1,7 @@
 #include "AnimIkTakeover.h"
 
+#include "preyvr/FrameTiming.h"
+
 #include "HandRigTakeover.h"
 #include "AimTakeover.h"
 #include "WeaponAttachment.h"
@@ -99,6 +101,46 @@ std::atomic<unsigned long long> gClamped{0};
 std::atomic<bool> gCalibrated[2]{false, false};
 std::atomic<int> gLocMm[3]{0, 0, 0};
 std::atomic<int> gLocYawMilli{0};
+// **One coherent per-hand record from inside the IK callback.**
+//
+// Separate latest-value counters cannot reconstruct a transformation chain: by
+// the time three of them are read, they may describe three different frames, and
+// the whole question here is which term in ONE frame's arithmetic moved. The
+// static audit named two candidate paths -- a reticle-derived shared anchor, and
+// reach compression retaining animated-shoulder motion -- and no existing counter
+// can tell them apart, because `ikGoalMm` publishes only the right hand's final
+// model-space goal.
+//
+// Captured under the lock that already serialises the write, published per hand.
+struct IkTraceRecord {
+    std::uint64_t stamp = 0;
+    std::uint64_t trackingSequence = 0;
+    std::uint64_t publishedNs = 0;
+    std::uintptr_t owner = 0;
+    // The shared anchor. Currently `GameplayPoseFrame::nativeEye`, which holds
+    // the native cached RETICLE ray origin rather than a head position -- so a
+    // reticle write that moves this moves both hands. Recorded so that claim is
+    // measured rather than argued.
+    Vec3 anchor{};
+    float yaw = 0.0f;
+    Pose head{}, grip{};
+    Vec3 controllerWorld{};
+    Vec3 characterLocation{};
+    Vec3 shoulderModel{};
+    // The three stages the audit asks to see separated. Raw is the controller's
+    // goal before compression; scaled is after ScaleReach, which mixes in
+    // (1-k) * shoulder; clamped is after the reach sphere.
+    Vec3 goalRaw{}, goalScaled{}, goalClamped{};
+    float reachLimit = 0.0f;
+    unsigned int reachPercent = 0;
+    bool clamped = false;
+    bool calibrated = false;
+    bool wroteRotation = false;
+    bool valid = false;
+};
+IkTraceRecord gTrace[2]{};
+std::atomic<bool> gTraceEnabled{false};
+
 std::atomic<int> gLastGoalMm[3]{0, 0, 0};
 
 // --- raw reads, SEH-guarded, POD only --------------------------------------
@@ -343,6 +385,11 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
     bool calibrating = false;
     Quaternion candidateOffset{};
 
+    // Hoisted purely so the trace can see them: the controller values are built
+    // inside the drive branch, while the reach maths that consumes the goal sits
+    // outside it. Zero when the branch did not run, which the trace's own
+    // validity flag already distinguishes from a real zero.
+    Vec3 traceGrip{}, traceControllerWorld{};
     if (gDrive.load(std::memory_order_acquire)) {
         const auto& state = frame.tracking.hands[static_cast<unsigned int>(hand == 0 ? Hand::right : Hand::left)];
         // Without a play-space yaw the world placement is unknown, and the
@@ -357,6 +404,8 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
         }
         const Pose world = animik::ControllerWorldFromHead(frame.yaw, frame.nativeEye,
                                                           frame.tracking.head, state.gripPose);
+        traceGrip = state.gripPose.position;
+        traceControllerWorld = world.position;
         goal = animik::WorldToModel(location, world.position);
         const Quaternion controllerModel = animik::WorldToModel(location, world.orientation);
         calibrating = gCalibration.Pending(hand);
@@ -388,15 +437,47 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
                                           std::sqrt(endRel.t[0]*endRel.t[0] + endRel.t[1]*endRel.t[1] + endRel.t[2]*endRel.t[2]));
             if (!std::isfinite(reach) || reach <= 1e-6f) { return; }
             const Vec3 shoulder{upperAbs.t[0], upperAbs.t[1], upperAbs.t[2]};
+            const Vec3 goalRaw = goal;
             // Compress the player's reach into the character's BEFORE clamping,
             // so a longer-armed player keeps continuous motion instead of dead
             // travel at full extension.
-            goal = animik::ScaleReach(shoulder, goal,
-                                      gReachPercent.load(std::memory_order_relaxed) / 100.0f);
+            //
+            // **This mixes the shoulder into the goal**, which is a dependency
+            // the trace exists to expose: with k = 0.65, a stationary controller
+            // still moves the goal by 35% of any shoulder movement. Zero clamping
+            // does not mean zero shoulder contribution.
+            const unsigned int reachPercent = gReachPercent.load(std::memory_order_relaxed);
+            goal = animik::ScaleReach(shoulder, goal, reachPercent / 100.0f);
+            const Vec3 goalScaled = goal;
             const Vec3 clamped = animik::ClampToReach(shoulder, goal, reach);
-            if (clamped.x != goal.x || clamped.y != goal.y || clamped.z != goal.z) {
+            const bool didClamp =
+                clamped.x != goal.x || clamped.y != goal.y || clamped.z != goal.z;
+            if (didClamp) {
                 gClamped.fetch_add(1, std::memory_order_relaxed);
                 goal = clamped;
+            }
+            if (gTraceEnabled.load(std::memory_order_acquire) && hand < 2) {
+                auto& t = gTrace[hand];
+                t.stamp = preyvr::timing::MonotonicNanoseconds();
+                t.trackingSequence = frame.tracking.sequence;
+                t.publishedNs = frame.publishedNs;
+                t.owner = frame.player;
+                t.anchor = frame.nativeEye;
+                t.yaw = frame.yaw;
+                t.head = frame.tracking.head;
+                t.grip.position = traceGrip;
+                t.controllerWorld = traceControllerWorld;
+                t.characterLocation = location.t;
+                t.shoulderModel = shoulder;
+                t.goalRaw = goalRaw;
+                t.goalScaled = goalScaled;
+                t.goalClamped = goal;
+                t.reachLimit = reach;
+                t.reachPercent = reachPercent;
+                t.clamped = didClamp;
+                t.calibrated = (gCalibration.calibrated & (1u << hand)) != 0;
+                t.wroteRotation = writeRotation;
+                t.valid = true;
             }
         } else { return; }
     }
@@ -631,6 +712,58 @@ DWORD SetAnimIkReachPercent(int percent)
 }
 
 int AnimIkReachPercent() { return gReachPercent.load(std::memory_order_relaxed); }
+
+DWORD SetAnimIkTrace(unsigned int enabled)
+{
+    const bool on = enabled != 0;
+    if (!on) {
+        std::lock_guard stateLock(gIkMutex);
+        gTrace[0] = {};
+        gTrace[1] = {};
+    }
+    gTraceEnabled.store(on, std::memory_order_release);
+    lifecycle::Log(std::string("preyvr_ik result=0 detail=trace enabled=") + (on ? "1" : "0"));
+    return 0;
+}
+
+std::string AnimIkTraceReport()
+{
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    if (!gTraceEnabled.load(std::memory_order_acquire)) { return " ikTrace=off"; }
+    std::lock_guard stateLock(gIkMutex);
+    const auto mm = [](float v) { return static_cast<int>(v * 1000.0f); };
+    const auto vec = [&out, &mm](const char* name, const Vec3& v) {
+        out << ' ' << name << '=' << mm(v.x) << ',' << mm(v.y) << ',' << mm(v.z);
+    };
+    for (unsigned int hand = 0; hand < 2; ++hand) {
+        const auto& t = gTrace[hand];
+        const char* const tag = hand == 0 ? "R" : "L";
+        out << " ikTrace" << tag << '=' << (t.valid ? "fresh" : "none");
+        if (!t.valid) { continue; }
+        out << " ikSeq" << tag << '=' << t.trackingSequence
+            << " ikOwner" << tag << "=0x" << std::hex << t.owner << std::dec;
+        // Millimetres throughout, so a term that moves is visible against terms
+        // that do not without reading floats out of a log.
+        vec((std::string("ikAnchor") + tag).c_str(), t.anchor);
+        vec((std::string("ikHeadPos") + tag).c_str(), t.head.position);
+        vec((std::string("ikGrip") + tag).c_str(), t.grip.position);
+        vec((std::string("ikCtrlWorld") + tag).c_str(), t.controllerWorld);
+        vec((std::string("ikCharLoc") + tag).c_str(), t.characterLocation);
+        vec((std::string("ikShoulder") + tag).c_str(), t.shoulderModel);
+        vec((std::string("ikGoalRaw") + tag).c_str(), t.goalRaw);
+        vec((std::string("ikGoalScaled") + tag).c_str(), t.goalScaled);
+        vec((std::string("ikGoalClamped") + tag).c_str(), t.goalClamped);
+        out << " ikYawMdeg" << tag << '='
+            << static_cast<int>(t.yaw * 57295.779513f)
+            << " ikReachLimit" << tag << '=' << mm(t.reachLimit)
+            << " ikReachPct" << tag << '=' << t.reachPercent
+            << " ikDidClamp" << tag << '=' << (t.clamped ? 1 : 0)
+            << " ikCal" << tag << '=' << (t.calibrated ? 1 : 0)
+            << " ikRot" << tag << '=' << (t.wroteRotation ? 1 : 0);
+    }
+    return out.str();
+}
 
 DWORD SetAnimIkHands(unsigned int mask)
 {

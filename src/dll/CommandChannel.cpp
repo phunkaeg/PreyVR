@@ -403,6 +403,15 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << " percent=" << AnimIkReachPercent();
     } else if (verb == "ik.hands") {
         out << "ik.hands result=" << SetAnimIkHands(arg(1, 1));
+    } else if (verb == "ik.trace") {
+        if (args.size() >= 2) { out << "ik.trace result=" << SetAnimIkTrace(arg(1, 1)); }
+        else { out << "ik.trace result=0"; }
+        const std::string trace = AnimIkTraceReport();
+        // Persisted: results.txt is overwritten by the next command, and a
+        // per-frame transformation chain that only exists there cannot be
+        // compared across a sweep.
+        lifecycle::Log("preyvr_ik_trace" + trace);
+        out << trace;
     } else if (verb == "ik.dump") {
         out << "ik.dump result=" << DumpAnimIk();
     } else if (verb == "hand.mode") {

@@ -1,0 +1,54 @@
+{
+  "source_commit": "d0a64f12ff84162a1ecb1fd0be5809ac8ac240e5",
+  "scope": "Read-only snapshots of existing files; no process interaction. Absence is limited to these log/results files at read time.",
+  "runs": [
+    {
+      "run_id": "run-20260909-134151",
+      "metadata": {
+        "startedUtc": "2026-09-09T03:42:01.2650653Z",
+        "dllSha256": "FE8C93CC3752C46C00EB0472F79077121318B018922E945548973AB6657277AC",
+        "dllBytes": 800768,
+        "tapeDir": null
+      },
+      "observed_log_bytes": 13108,
+      "observed_log_sha256": "d6fd08ce9eda31d47819999ff17245b5d8f9ddcc3eb182d1f1f0a28e94d2f2d7",
+      "relevant_log_lines": [
+        {
+          "line": 56,
+          "text": "2026-09-09T03:42:19.990Z preyvr_xr_session runtime name=\"VirtualDesktopXR\""
+        },
+        {
+          "line": 61,
+          "text": "2026-09-09T03:42:20.218Z preyvr_xr_session swapchain created 2688x2880 format=29 arraySize=2 images=3 colour_conversion=yes"
+        }
+      ],
+      "timing_response_in_log": false,
+      "latest_result_first_token": "xr.coverage",
+      "timing_response_in_latest_result": false
+    },
+    {
+      "run_id": "run-20260909-134810",
+      "metadata": {
+        "startedUtc": "2026-09-09T03:48:19.4714143Z",
+        "dllSha256": "FE8C93CC3752C46C00EB0472F79077121318B018922E945548973AB6657277AC",
+        "dllBytes": 800768,
+        "tapeDir": null
+      },
+      "observed_log_bytes": 118017,
+      "observed_log_sha256": "f420cd1a432a2ff32f2ac392204d8028fb660daaba99c7d15f72902c85200506",
+      "relevant_log_lines": [
+        {
+          "line": 56,
+          "text": "2026-09-09T03:48:36.896Z preyvr_xr_session runtime name=\"VirtualDesktopXR\""
+        },
+        {
+          "line": 61,
+          "text": "2026-09-09T03:48:37.138Z preyvr_xr_session swapchain created 2016x2160 format=29 arraySize=2 images=3 colour_conversion=yes"
+        }
+      ],
+      "timing_response_in_log": false,
+      "latest_result_first_token": "smoke=n/a",
+      "timing_response_in_latest_result": false
+    }
+  ]
+}

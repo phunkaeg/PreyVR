@@ -34,9 +34,13 @@
 // it is togglable live rather than fixed at startup.
 namespace preyvr::dll {
 
-// Clean producer output plus one XR publication, captured before aim writes.
+// Native producer output plus one XR publication, captured before aim writes.
 struct GameplayPoseFrame {
     TrackingFrame tracking{};
+    // Historical name: this currently holds cachedReticleOrigin, an unprojected
+    // reticle-ray point, NOT the camera centre. A fresh pre-write snapshot does
+    // not make it independent of aim.reticle. Anchor separation is still pending;
+    // see docs/RE-IK-CROSSTALK-2026-09-09.md before treating this as a head anchor.
     Vec3 nativeEye{};
     // The play-space -> engine-world yaw, the one every lane must rotate a
     // head-relative offset by. See SetAimBodyYaw for why it is not simply

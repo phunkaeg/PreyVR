@@ -1946,6 +1946,14 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 ## 2026-09-09 — R-126: measured, and it is NOT pixel-bound. My lever was wrong.
 
+> **Audit qualification:** [The later review](RE-PERFORMANCE-HANDOVER-AUDIT-2026-09-09.md)
+> finds that this conclusion exceeds the instrument's scope: rolling 512-sample
+> percentiles were compared with lifetime over-budget counts, CPU service medians
+> do not establish a worst-case cost or clear GPU work, and runtime waits can
+> absorb saved rendering time. Retain the reported observations; CPU/GPU/pacing
+> attribution and universal exclusions remain unresolved. The original account
+> follows for provenance.
+
 **The counters answered on their first outing, and the answer kills the
 optimisation they were built to justify.** Controlled comparison, same aspect so
 `r_DrawNearFoV` was not a variable, same settings, two 30-second samples:

@@ -1,0 +1,33 @@
+COMMAND: "C:/Program Files/CMake/bin/cmake.exe" -S docs\evidence\performance-handover-audit-2026-09-09 -B build\performance-handover-audit -G "Visual Studio 18 2026" -A x64
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26200.
+-- The CXX compiler identification is MSVC 19.50.35729.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (3.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: D:/Dev Debug/PreyVR/build/performance-handover-audit
+
+EXIT: 0
+
+COMMAND: "C:/Program Files/CMake/bin/cmake.exe" --build build\performance-handover-audit --config Release
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/Dev Debug/PreyVR/docs/evidence/performance-handover-audit-2026-09-09/CMakeLists.txt
+  FrameTimingAudit.cpp
+  FrameTiming.cpp
+  Generating Code...
+  frame_timing_audit.vcxproj -> D:\Dev Debug\PreyVR\build\performance-handover-audit\Release\frame_timing_audit.exe
+  Building Custom Rule D:/Dev Debug/PreyVR/docs/evidence/performance-handover-audit-2026-09-09/CMakeLists.txt
+
+EXIT: 0
+
+COMMAND: build\performance-handover-audit\Release\frame_timing_audit.exe
+mixed_window: n=512 total=2512 p50_us=10000 max_us=10000 lifetime_over_budget=2000 window_over_budget=0 window_seconds=5.12
+threshold_control: intervals=1000 configured_budget_us=11111 alternating_us=11110,11112 over_budget=500 compositor_drops=NOT_MEASURED
+PASS: offline instrument semantics only; no game/GPU benchmark
+
+EXIT: 0

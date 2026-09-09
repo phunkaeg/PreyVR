@@ -1,0 +1,15 @@
+{
+  "source_commit": "087d3be09dfb209cf9cc260062192ce009241864",
+  "binary_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "ghidra_import_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "ghidra_import_identity_source": "Program Information / Executable SHA256",
+  "program": "/Prey/PreyDll.dll",
+  "image_base": "0x180000000",
+  "machine": "0x8664",
+  "producer_rva": "0x1585320",
+  "checked_function_bytes": 2230,
+  "function_sha256": "abab7ff68c33ca70835b144624c385deaae47bc49e18bf2ee78a3e373471cd58",
+  "ghidra_function_bytes_match_file": true,
+  "verifier_python": "3.12",
+  "scope": "Static file/import identity; not process memory or loaded build verification."
+}

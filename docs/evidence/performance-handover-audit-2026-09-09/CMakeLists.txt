@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.24)
+project(PreyVRFrameTimingAudit LANGUAGES CXX)
+add_executable(frame_timing_audit FrameTimingAudit.cpp FrameTiming.cpp)
+target_include_directories(frame_timing_audit PRIVATE include)
+target_compile_features(frame_timing_audit PRIVATE cxx_std_17)

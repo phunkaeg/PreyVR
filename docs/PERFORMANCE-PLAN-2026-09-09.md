@@ -1,5 +1,12 @@
 # PreyVR performance priorities — 2026-09-09
 
+> **Update after R-125/R-126:** Timing counters and a runtime-frustum prototype
+> now exist. The [handover audit](RE-PERFORMANCE-HANDOVER-AUDIT-2026-09-09.md)
+> identifies limits in their measurement scope and gives the current next steps.
+> Repair timing/retention and establish controlled CPU/GPU evidence before
+> prioritizing the pixel-saving implementations proposed below. This document
+> retains the original investigation at `bd7f281`.
+
 Read-only investigation of implementation at `bd7f281`, with saved Quest 3 / VDXR
 evidence from `run-20260908-143942`. No runtime interaction, settings changes or
 new benchmark was performed. The saved session predates the latest HUD fix.

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include <windows.h>
 
 // The animation-driven-IK lane (H-021, R-102).
@@ -34,6 +36,26 @@ DWORD CalibrateAnimIk();
 // Re-equip after observation is installed; each attach invalidates calibration.
 DWORD SetAnimIkJointSignature(unsigned int joints);
 // 1 right, 2 left, 3 both.
+// **One coherent per-hand record from inside the IK callback**, off by default.
+//
+// The static audit (docs/RE-IK-CROSSTALK-2026-09-09.md) names two candidate
+// paths for the right controller dragging the left hand, and no existing counter
+// separates them: the shared anchor is the native cached RETICLE origin, which
+// our own reticle write moves; and reach compression retains (1-k) of the
+// animated shoulder, so a stationary controller still yields a moving goal.
+//
+// Latest-value counters cannot settle this. Read one at a time they may describe
+// different frames, and the question is which term in ONE frame's arithmetic
+// moved. This publishes anchor, yaw, head, grip, character location, world
+// shoulder and all three goal stages -- raw, scaled, clamped -- per hand, with
+// the tracking sequence that produced them.
+//
+// Read it with only the right controller moving: whichever of `ikAnchorL` or
+// `ikShoulderL` tracks that motion is the path, and if `ikGoalRawL` is static
+// while `ikGoalScaledL` moves, compression is responsible rather than the anchor.
+DWORD SetAnimIkTrace(unsigned int enabled);
+std::string AnimIkTraceReport();
+
 DWORD SetAnimIkHands(unsigned int mask);
 // Scales the goal's distance from the shoulder, 50..150, default 100. Below 100
 // maps a longer-armed player onto a shorter character arm so the hand keeps

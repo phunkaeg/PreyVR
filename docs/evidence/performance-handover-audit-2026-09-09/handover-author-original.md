@@ -1,12 +1,5 @@
 # Handover — PreyVR performance, measured 2026-09-09
 
-> **Later audit:** Read [the instrument/interpretation review](RE-PERFORMANCE-HANDOVER-AUDIT-2026-09-09.md)
-> before treating the conclusions below as established. Percentiles cover a
-> 512-sample window; `frameMissed` counts lifetime over-budget intervals, not
-> measured compositor drops. CPU medians do not rule out GPU cost or pacing.
-> The original account is retained below; its universal performance exclusions
-> and “4% at worst” conclusion are not supported by these instruments.
-
 For Codex. Everything below was measured on the wearer's machine (RTX 5070 Ti,
 Quest 3 over VirtualDesktopXR) against `PreyVR.dll` at 800,768 bytes,
 SHA-256 `FE8C93CC3752C46C00EB0472F79077121318B018922E945548973AB6657277AC`,
