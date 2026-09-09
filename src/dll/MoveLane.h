@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include <windows.h>
 
 // Locomotion: the thumbstick moves the player capsule.
@@ -78,6 +80,29 @@ unsigned int FireLaneEnabled();
 unsigned long long FireLanePressed();
 unsigned long long FireLaneReleased();
 unsigned long long FireLaneRefused();
+
+// **Interaction bindings: grip to use, and the face buttons.** Sources are the
+// right grip (interact), left X (inventory), right A (jump) and right B
+// (crouch). Suppressed while a menu is open, so a button cannot both confirm a
+// menu choice and act in the world -- the same double-binding that made the
+// right stick change weapons.
+//
+// **Which XInput button Prey binds to each action is NOT established.** The
+// binding table is in the shipped PAKs, unreadable as ordinary ZIPs (H-018), so
+// the defaults are the conventional layout and no more. `SetInteractionBinding`
+// exists because of that: one headset session settles empirically what could not
+// be read, which is how the trigger was resolved after R-115.
+//
+// The counters name presses SENT. A valid key nothing is bound to posts cleanly
+// and does nothing -- that cost a whole session once, and no counter here can
+// distinguish it. Only a wearer can.
+DWORD SetInteractionEnabled(unsigned int enabled);
+
+// slot: 0 interact, 1 inventory, 2 jump, 3 crouch. Refuses a key id this build
+// has no name for, rather than posting something nothing can consume.
+DWORD SetInteractionBinding(unsigned int slot, int keyId);
+
+std::string InteractionReport();
 
 unsigned int MoveLaneHooked();
 // Analog handler calls, split by who caused them. `native` counting up while

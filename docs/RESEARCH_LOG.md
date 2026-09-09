@@ -1944,6 +1944,37 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-09 — R-124: interaction bindings, with the binding table admitted as unknown
+
+Built on the wearer's report that no interaction inputs exist: grip to use, face
+buttons for the rest. Sources are the right grip (interact), left X (inventory),
+right A (jump), right B (crouch), posted as press/release EDGES exactly as the
+trigger is -- a button posted as a changed value is not a press.
+
+**The honest gap, stated rather than papered over: which XInput button Prey binds
+to each action is NOT established.** That table lives in the shipped GameData
+PAKs, which H-018 records as unreadable as ordinary ZIPs. The defaults here are
+the conventional gamepad layout and nothing stronger.
+
+`move.bind <slot> <keyId>` exists because of that. One headset session settles
+empirically what could not be read statically, which is precisely how the trigger
+was resolved after R-115 -- and it refuses a key id this build has no name for,
+so a typo fails at the command rather than posting something nothing consumes.
+
+**Suppressed while a menu is open**, sharing R-123's predicate. Otherwise A would
+both confirm a menu choice and jump: the same double-binding as the right stick
+that also changed weapons, which is a mistake worth not making twice in one day.
+
+A refused RELEASE re-arms the neutraliser, as the fire lane does. A stuck "use"
+is worse than a stuck trigger because it re-triggers whatever it points at.
+
+`move.all` now arms it, so the startup script's `-Controls` picks it up.
+
+**The counters name presses SENT, and cannot do better.** A valid key id bound to
+nothing posts cleanly, increments everything and does nothing -- that cost a
+whole headset session at R-115, and no counter here distinguishes it. Only a
+wearer can say which of the four actually did something.
+
 ## 2026-09-09 — R-123: the right stick changed weapons because the navigator is ungated
 
 **Reported by the wearer, and the mapping identifies the cause exactly.** Right

@@ -541,6 +541,15 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << " fitInside=" << (fitInside ? 1 : 0);
     } else if (verb == "xr.coverage") {
         out << "xr.coverage result=0" << XrCoverageReport();
+    } else if (verb == "move.act") {
+        out << "move.act result=" << SetInteractionEnabled(arg(1, 1))
+            << InteractionReport();
+    } else if (verb == "move.bind" && args.size() >= 3) {
+        // move.bind <slot 0-3> <keyId>  -- 0 interact, 1 inventory, 2 jump, 3 crouch
+        const unsigned int slot = static_cast<unsigned int>(arg(1, 0));
+        const int keyId = static_cast<int>(arg(2, 0));
+        out << "move.bind result=" << SetInteractionBinding(slot, keyId)
+            << InteractionReport();
     } else if (verb == "menu.gate") {
         SetMenuNavigationGate(arg(1, 1));
         out << "menu.gate result=0 value=" << arg(1, 1)
@@ -639,13 +648,15 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << " enabled=" << FireLaneEnabled();
     } else if (verb == "move.all") {
         // The whole control scheme in one command: left stick moves, right stick
-        // turns, right trigger fires.
+        // turns, right trigger fires, grip and face buttons interact.
         const unsigned int on = static_cast<unsigned int>(arg(1, 1)) != 0u ? 1u : 0u;
         const DWORD m = SetMoveLaneMode(on ? 2u : 0u);
         const DWORD t = SetTurnLaneEnabled(on);
         const DWORD f = SetFireLaneEnabled(on);
-        out << "move.all result=" << (m | t | f)
-            << " move=" << m << " turn=" << t << " fire=" << f;
+        const DWORD a = SetInteractionEnabled(on);
+        out << "move.all result=" << (m | t | f | a)
+            << " move=" << m << " turn=" << t << " fire=" << f << " act=" << a
+            << InteractionReport();
     } else if (verb == "move.deadzone") {
         out << "move.deadzone result=" << SetMoveLaneDeadzone(arg(1, 15));
     } else if (verb == "input.post") {

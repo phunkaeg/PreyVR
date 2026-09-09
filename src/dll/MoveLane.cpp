@@ -2,6 +2,7 @@
 
 #include "InputPost.h"
 #include "HeadTrackingHook.h"
+#include "HudBridge.h"
 #include "Logger.h"
 #include "MinHookInit.h"
 #include "XrInput.h"
@@ -9,6 +10,8 @@
 #include "preyvr/Locomotion.h"
 
 #include <MinHook.h>
+
+#include <sstream>
 #include <array>
 #include <atomic>
 #include <cmath>
@@ -52,6 +55,44 @@ std::atomic<bool> gInstalled{false};
 std::atomic<AnalogHandlerFn> gOriginalX{nullptr}, gOriginalY{nullptr};
 void* gTargetX = nullptr;
 void* gTargetY = nullptr;
+
+// --- interaction bindings ----------------------------------------------------
+//
+// **Which XInput button Prey binds to "use" is NOT established here.** The
+// binding table lives in the shipped GameData PAKs, which H-018 records as
+// unreadable as ordinary ZIPs, so the defaults below are the conventional
+// gamepad layout and nothing stronger. They are remappable at runtime precisely
+// because of that: `move.bind <slot> <keyId>` and one session in a headset
+// settles empirically what could not be read statically -- exactly how the
+// trigger was resolved after R-115.
+//
+// The lesson from that episode is built in: a valid key id that nothing is bound
+// to is accepted, posts cleanly, increments every counter and does nothing at
+// all. So these counters name presses SENT, never presses that acted.
+enum ActionSlot {
+    kActionInteract = 0,
+    kActionInventory = 1,
+    kActionJump = 2,
+    kActionCrouch = 3,
+    kActionCount = 4,
+};
+
+struct ActionBinding {
+    std::atomic<int> keyId;
+    std::atomic<unsigned long long> pressed;
+    std::atomic<unsigned long long> released;
+    std::atomic<unsigned long long> refused;
+    bool held;
+};
+
+ActionBinding gActions[kActionCount] = {
+    {{input::kButtonX}, {0}, {0}, {0}, false},   // interact  <- right grip
+    {{input::kBack}, {0}, {0}, {0}, false},      // inventory <- left X
+    {{input::kButtonA}, {0}, {0}, {0}, false},   // jump      <- right A
+    {{input::kButtonB}, {0}, {0}, {0}, false},   // crouch    <- right B
+};
+std::atomic<bool> gActionsEnabled{false};
+std::atomic<bool> gActionsNeutralize{false};
 
 std::atomic<unsigned int> gMode{0};
 std::atomic<unsigned int> gDeadzoneHundredths{15};
@@ -408,6 +449,48 @@ void UpdateTurnAndFireLanes()
             }
         }
     }
+
+    // --- interaction bindings -------------------------------------------------
+    //
+    // Suppressed while a menu is open. The navigator owns A/B there, and a
+    // button that both confirms a menu choice and jumps is the same class of
+    // double-binding as the right stick that also changed weapons.
+    const bool actionsOn = gActionsEnabled.load(std::memory_order_acquire) &&
+                           !HudMenuIsOpen();
+    const bool releaseActions = gActionsNeutralize.exchange(false, std::memory_order_acq_rel);
+    {
+        // The left hand is fetched here rather than reused from the recenter
+        // chord's scope: that one is only read when the chord is being checked,
+        // and an inventory button must not depend on it.
+        ControllerState leftHand{};
+        const bool haveLeftHand = TryGetControllerState(Hand::left, leftHand);
+        const bool sources[kActionCount] = {
+            right.gripPressed,                        // interact  <- right grip
+            haveLeftHand && leftHand.menuAccept,      // inventory <- left X
+            right.menuAccept,                         // jump      <- right A
+            right.menuCancel,                         // crouch    <- right B
+        };
+        for (int slot = 0; slot < kActionCount; ++slot) {
+            ActionBinding& binding = gActions[slot];
+            const bool wanted = actionsOn && !releaseActions && sources[slot];
+            if (wanted == binding.held) { continue; }
+            const int keyId = binding.keyId.load(std::memory_order_acquire);
+            const unsigned int state = wanted ? static_cast<unsigned int>(input::kStatePressed)
+                                              : static_cast<unsigned int>(input::kStateReleased);
+            if (PostRawInputImmediate(keyId, state, wanted ? 1000 : 0) == 0) {
+                binding.held = wanted;
+                (wanted ? binding.pressed : binding.released)
+                    .fetch_add(1, std::memory_order_relaxed);
+            } else {
+                // A refused RELEASE must be retried or the button sticks down --
+                // the same hazard the fire lane guards, and worse here because a
+                // stuck "use" re-triggers whatever it is pointed at.
+                if (!wanted) { gActionsNeutralize.store(true, std::memory_order_release); }
+                binding.refused.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+    }
+
 }
 
 DWORD SetTurnLaneEnabled(unsigned int enabled)
@@ -459,6 +542,41 @@ unsigned long long FireLaneReleased() { return gFireReleased.load(std::memory_or
 unsigned long long FireLaneRefused() { return gFireRefused.load(std::memory_order_relaxed); }
 
 unsigned int MoveLaneMode() { return gMode.load(std::memory_order_relaxed); }
+DWORD SetInteractionEnabled(unsigned int enabled)
+{
+    const bool on = enabled != 0;
+    if (!on) { gActionsNeutralize.store(true, std::memory_order_release); }
+    gActionsEnabled.store(on, std::memory_order_release);
+    return 0;
+}
+
+DWORD SetInteractionBinding(unsigned int slot, int keyId)
+{
+    if (slot >= kActionCount) { return 2; }
+    // Only names read from the target are accepted, so a typo refuses here
+    // rather than posting an id nothing can consume (F-011's shape).
+    if (input::KeyNameFor(keyId) == nullptr) { return 3; }
+    gActions[slot].keyId.store(keyId, std::memory_order_release);
+    return 0;
+}
+
+std::string InteractionReport()
+{
+    static const char* const kSlotNames[kActionCount] = {
+        "interact", "inventory", "jump", "crouch"};
+    std::ostringstream out;
+    out << " actions=" << (gActionsEnabled.load(std::memory_order_relaxed) ? 1 : 0);
+    for (int slot = 0; slot < kActionCount; ++slot) {
+        const int keyId = gActions[slot].keyId.load(std::memory_order_relaxed);
+        const char* const name = input::KeyNameFor(keyId);
+        out << ' ' << kSlotNames[slot] << "=0x" << std::hex << keyId << std::dec
+            << '(' << (name != nullptr ? name : "?") << ')'
+            << " sent=" << gActions[slot].pressed.load(std::memory_order_relaxed)
+            << " refused=" << gActions[slot].refused.load(std::memory_order_relaxed);
+    }
+    return out.str();
+}
+
 unsigned int MoveLaneHooked() { return gInstalled.load(std::memory_order_relaxed) ? 1u : 0u; }
 unsigned long long MoveLaneOursX() { return gOursX.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneOursY() { return gOursY.load(std::memory_order_relaxed); }
