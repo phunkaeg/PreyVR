@@ -1,4 +1,5 @@
 #include "ReticleFollow.h"
+#include "HudBridge.h"
 
 #include "HudBridge.h"
 #include "XrSessionHost.h"
@@ -33,6 +34,11 @@ std::atomic<unsigned long long> gOriginOffset{0};
 // The canvas fraction actually dispatched, reported beside the viewport fraction
 // it came from so the correction is checkable rather than assumed.
 std::atomic<unsigned int> gCanvasX{500}, gCanvasY{500};
+// 1 = the R-118 reconstruction, the measured default. 2 = Prey's own
+// ScreenToFlash. 0 = raw viewport fraction, i.e. the pre-R-118 defect.
+std::atomic<unsigned int> gCanvasMode{1};
+std::atomic<bool> gStageScaleMode{false};
+std::atomic<unsigned long long> gNativeCanvasOk{0}, gNativeCanvasFailed{0};
 
 struct ProjectionRecord {
     ReticleAimContext context{};
@@ -278,10 +284,41 @@ bool WriteReticleForCamera(void* player, const Vec3& rayOrigin,
         // because the camera carries a frustum and this needs pixels. A zero
         // there makes the conversion the identity, which is the previous
         // behaviour rather than a wrong correction.
+        //
+        // **Which conversion is a switch, because two exist and only one can be
+        // right.** Mode 1 is our R-118 reconstruction. Mode 2 asks Prey, through
+        // the `ScreenToFlash` seam witnessed at the engine's own call site
+        // (R-119); it makes no assumption about the canvas aspect and answers
+        // for Y as readily as X, which the reconstruction was never measured on.
+        // Mode 0 dispatches the raw viewport fraction -- the behaviour before
+        // R-118 -- so the defect can be reproduced deliberately rather than
+        // remembered. A wearer can step 1 -> 2 -> 0 in one session and say which
+        // sits on the target.
         const float frameWidth = static_cast<float>(XrResolutionChain(4));
         const float frameHeight = static_cast<float>(XrResolutionChain(5));
-        const auto canvas = preyvr::aim::ViewportToHudCanvas(fractionX, fractionY,
-                                                            frameWidth, frameHeight);
+        const unsigned int mode = gCanvasMode.load(std::memory_order_acquire);
+        auto canvas = preyvr::aim::CanvasPoint{fractionX, fractionY};
+        if (mode == 1) {
+            canvas = preyvr::aim::ViewportToHudCanvas(fractionX, fractionY,
+                                                     frameWidth, frameHeight);
+        } else if (mode == 2) {
+            float nativeX = 0, nativeY = 0;
+            if (HudScreenToFlash(fractionX, fractionY,
+                                 gStageScaleMode.load(std::memory_order_acquire),
+                                 &nativeX, &nativeY) == 0) {
+                canvas.x = nativeX;
+                canvas.y = nativeY;
+                gNativeCanvasOk.fetch_add(1, std::memory_order_relaxed);
+            } else {
+                // Refusing to guess: fall back to the measured reconstruction
+                // rather than dispatching a viewport fraction we already know is
+                // wrong at this aspect, and count it so the fallback is visible
+                // instead of silently standing in for the native answer.
+                canvas = preyvr::aim::ViewportToHudCanvas(fractionX, fractionY,
+                                                          frameWidth, frameHeight);
+                gNativeCanvasFailed.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
         gCanvasX.store(static_cast<unsigned int>(canvas.x * 1000.0f + 0.5f),
                        std::memory_order_relaxed);
         gCanvasY.store(static_cast<unsigned int>(canvas.y * 1000.0f + 0.5f),
@@ -356,6 +393,29 @@ DWORD SetReticleDispatchEnabled(unsigned int enabled)
     lifecycle::Log(std::string("preyvr_reticle result=0 detail=dispatch value=") +
                    (on ? "1" : "0"));
     return 0;
+}
+
+DWORD SetReticleCanvasMode(unsigned int mode)
+{
+    if (mode > 2) { return 2; }
+    gCanvasMode.store(mode, std::memory_order_release);
+    return 0;
+}
+
+DWORD SetReticleStageScaleMode(unsigned int enabled)
+{
+    gStageScaleMode.store(enabled != 0, std::memory_order_release);
+    return 0;
+}
+
+DWORD ReticleCanvasMode() { return gCanvasMode.load(std::memory_order_relaxed); }
+unsigned long long ReticleNativeCanvasCount()
+{
+    return gNativeCanvasOk.load(std::memory_order_relaxed);
+}
+unsigned long long ReticleNativeCanvasFailedCount()
+{
+    return gNativeCanvasFailed.load(std::memory_order_relaxed);
 }
 
 DWORD ReticleCanvasX() { return gCanvasX.load(std::memory_order_relaxed); }

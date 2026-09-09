@@ -103,6 +103,25 @@ unsigned long long ReticleFollowOffScreenCount();
 // actually dispatched after correcting for Prey's cover-fitted 16:9 canvas.
 // They are equal at 16:9 and diverge with the aspect; seeing both side by side
 // is what makes the correction checkable rather than assumed.
+// How a viewport fraction becomes the fraction the movie is handed.
+//   0 -- raw viewport fraction, the behaviour R-118 found to be wrong
+//   1 -- the R-118 cover-canvas reconstruction (default, and measured)
+//   2 -- Prey's own ScreenToFlash (R-119), which assumes no canvas aspect
+// Kept switchable because two conversions now exist and only one can be right;
+// stepping between them in one session is what says which. Mode 2 falls back to
+// mode 1 when the native call refuses, and counts that separately rather than
+// letting the fallback pass for the native answer.
+DWORD SetReticleCanvasMode(unsigned int mode);
+DWORD ReticleCanvasMode();
+
+// The engine's own flag on ScreenToFlash, described in the binary as "If flash
+// asset uses stage.scaleMode this must be true". Which value suits DanielleHUD
+// is not established, so it is switchable rather than baked in.
+DWORD SetReticleStageScaleMode(unsigned int enabled);
+
+unsigned long long ReticleNativeCanvasCount();
+unsigned long long ReticleNativeCanvasFailedCount();
+
 DWORD ReticleCanvasX();
 DWORD ReticleCanvasY();
 DWORD ReticleFollowLastX();

@@ -78,19 +78,46 @@ constexpr std::array<std::uint8_t, 7> kGetHudTail{0x48, 0x8B, 0x01, 0x48, 0xFF, 
 // and that function's entire body is `CALL qword ptr [R10 + 0x2D0]` after
 // shuffling the arguments -- so the offset is the engine's, not a slot count.
 //
-// `+0x128` is `GetConstraints`. That one is NOT independently witnessed at a
-// call site here; it is counted from the PDB-derived interface order, which is
-// why it only ever READS. The count is trustworthy enough to read a struct and
-// report it, because two other slots counted the same way -- `CallFunction` at
-// `+0x210` (R-108/R-109) and `GetInstance` at `+0x20` (R-119) -- both match
-// offsets independently established in this build. It is not trustworthy enough
-// to write through, and nothing here does.
+// No counted slot is needed for the constraints at all. `SetConstraints` was
+// found whole at a FIXED RVA by the log line inside it -- "%s (%i): UIElement
+// set new constraints" at `0x181CABD38` has exactly one xref, and it lands in
+// the middle of the implementation (R-120). Reading that function gave both the
+// entry point and the storage:
+//
+//   MOVUPS XMM0, [RDI]         ; the caller's 32-byte SUIConstraints
+//   MOVUPS [RBX + 0x84], XMM0
+//   MOVUPS XMM1, [RDI + 0x10]
+//   MOVUPS [RBX + 0x94], XMM1
+//   CALL   qword ptr [RAX + 0x1E0]   ; UpdateViewPort
+//
+// So the live constraints ARE the 32 bytes at `element + 0x84`, and they can be
+// read as a plain field rather than through a virtual. That removes the counted
+// slot this file previously leaned on for reading them.
 constexpr std::size_t kScreenToFlashSlot = 0x2D0;
-constexpr std::size_t kGetConstraintsSlot = 0x128;
+constexpr std::size_t kConstraintsFieldOffset = 0x84;
+constexpr std::size_t kConstraintsSize = 32;
+constexpr std::uintptr_t kSetConstraintsRva = 0x2FFF30;
+
+// Two SSE stores of the caller's struct, then UpdateViewPort. Excluding the
+// RIP-relative displacement in the middle, per the standing rule: a signature
+// that includes one is a signature that breaks for a reason unrelated to the
+// code.
+//
+//   48 89 5C 24 08     mov  [rsp+8], rbx
+//   57                 push rdi
+//   48 83 EC 20        sub  rsp, 20h
+//   83 3D <rel32> 00   cmp  dword ptr [rip+..], 0    <- the enable gate
+//   48 8B FA           mov  rdi, rdx                 <- arg 2 is the struct
+//   48 8B D9           mov  rbx, rcx                 <- arg 1 is the element
+//   74 48              jz   (skip everything)
+constexpr std::array<std::uint8_t, 12> kSetConstraintsHead{
+    0x48, 0x89, 0x5C, 0x24, 0x08, 0x57, 0x48, 0x83, 0xEC, 0x20, 0x83, 0x3D};
+constexpr std::array<std::uint8_t, 8> kSetConstraintsTail{
+    0x48, 0x8B, 0xFA, 0x48, 0x8B, 0xD9, 0x74, 0x48};
 
 using ScreenToFlashFn =
     void(__fastcall*)(void*, const float*, const float*, float*, float*, bool);
-using GetConstraintsFn = const void*(__fastcall*)(void*);
+using SetConstraintsFn = void(__fastcall*)(void*, const void*);
 
 using GetHudElementFn = void*(__fastcall*)();
 using CallTwoFloatFn = void(__fastcall*)(void*, const char*, float, float);
@@ -105,6 +132,8 @@ struct PendingHudCall {
     // queue because it enters the same element on the same thread; the reason
     // `hud.call` is queued applies unchanged to reading through a vtable.
     bool probe = false;
+    // 0 none, 1 clear bMax (fit inside), 2 set bMax (cover, the engine default)
+    int fit = 0;
 };
 std::mutex gProbeMutex;
 std::string gLastProbe = "none";
@@ -221,31 +250,44 @@ bool CallScreenToFlash(std::uintptr_t address, void* element, const float* x, co
     }
 }
 
-std::uintptr_t CallGetConstraints(std::uintptr_t address, void* element)
+bool CallSetConstraints(std::uintptr_t address, void* element, const void* constraints)
 {
     __try {
-        return reinterpret_cast<std::uintptr_t>(
-            reinterpret_cast<GetConstraintsFn>(address)(element));
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return 0;
-    }
-}
-
-// SUIConstraints is 32 bytes: four-byte enum, four ints, two four-byte enums,
-// then two bools. Copied field by field under SEH rather than memcpy'd into a
-// struct, so a bad pointer refuses instead of faulting.
-bool ReadConstraintFields(std::uintptr_t at, int* fields, unsigned char* flags)
-{
-    __try {
-        const auto* const words = reinterpret_cast<const int*>(at);
-        for (int i = 0; i < 7; ++i) { fields[i] = words[i]; }
-        const auto* const bytes = reinterpret_cast<const unsigned char*>(at);
-        flags[0] = bytes[28];
-        flags[1] = bytes[29];
+        reinterpret_cast<SetConstraintsFn>(address)(element, constraints);
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return false;
     }
+}
+
+// The live 32 bytes at `element + 0x84`. Raw bytes rather than a typed struct,
+// because the bytes are what was observed; they are interpreted once, at the
+// reporting edge.
+bool ReadConstraintBytes(void* element, unsigned char* out)
+{
+    __try {
+        const auto* const at = reinterpret_cast<const unsigned char*>(element) +
+                               kConstraintsFieldOffset;
+        for (std::size_t i = 0; i < kConstraintsSize; ++i) { out[i] = at[i]; }
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+void DecodeConstraints(const unsigned char* raw, HudConstraints* out)
+{
+    int words[7] = {};
+    std::memcpy(words, raw, sizeof(words));
+    out->positionType = words[0];
+    out->left = words[1];
+    out->top = words[2];
+    out->width = words[3];
+    out->height = words[4];
+    out->hAlign = words[5];
+    out->vAlign = words[6];
+    out->scale = raw[28] != 0;
+    out->max = raw[29] != 0;
 }
 
 bool ValidName(const char* function) { return function != nullptr && function[0] != 0; }
@@ -326,6 +368,15 @@ DWORD QueueHudProbe(float screenX, float screenY)
     return 0;
 }
 
+DWORD QueueHudFit(bool maximise)
+{
+    if (EnsureRenderHookInstalled() != 0) { return 9; }
+    std::lock_guard lock(gQueueMutex);
+    if (gQueue.size() >= 8) { return 10; }
+    gQueue.push_back({std::string(), 0.0f, 0.0f, false, false, maximise ? 2 : 1});
+    return 0;
+}
+
 std::string HudLastProbe()
 {
     std::lock_guard lock(gProbeMutex);
@@ -386,6 +437,10 @@ void DrainQueuedHudCalls()
         if (!lock.owns_lock() || gQueue.empty()) { return; }
         call = std::move(gQueue.front());
         gQueue.pop_front();
+    }
+    if (call.fit != 0) {
+        HudSetConstraintMax(call.fit == 2);
+        return;
     }
     if (call.probe) {
         RunHudProbe(call.x, call.y);
@@ -449,36 +504,76 @@ DWORD HudReadConstraints(HudConstraints* out)
     void* const element = ResolveElement(base, code);
     if (element == nullptr) { gRefused.fetch_add(1); return code; }
 
-    const std::uintptr_t slot = ReadVtableSlot(element, kGetConstraintsSlot);
-    if (!PointerIsExecutable(slot)) {
-        Log("result=unavailable detail=get_constraints_slot_not_executable");
-        gRefused.fetch_add(1);
-        return 11;
-    }
-    const std::uintptr_t constraints = CallGetConstraints(slot, element);
-    if (constraints == 0) {
-        Log("result=failed detail=get_constraints_returned_null");
-        gRefused.fetch_add(1);
-        return 13;
-    }
-
-    int fields[7] = {};
-    unsigned char flags[2] = {};
-    if (!ReadConstraintFields(constraints, fields, flags)) {
+    unsigned char raw[kConstraintsSize] = {};
+    if (!ReadConstraintBytes(element, raw)) {
         Log("result=failed detail=exception_reading_constraints");
         gRefused.fetch_add(1);
         return 8;
     }
-    out->positionType = fields[0];
-    out->left = fields[1];
-    out->top = fields[2];
-    out->width = fields[3];
-    out->height = fields[4];
-    out->hAlign = fields[5];
-    out->vAlign = fields[6];
-    out->scale = flags[0] != 0;
-    out->max = flags[1] != 0;
+    DecodeConstraints(raw, out);
     gCalls.fetch_add(1, std::memory_order_relaxed);
+    return 0;
+}
+
+DWORD HudSetConstraintMax(bool maximise)
+{
+    std::uintptr_t base = 0;
+    DWORD code = 0;
+    void* const element = ResolveElement(base, code);
+    if (element == nullptr) { gRefused.fetch_add(1); return code; }
+
+    const auto* const setter = reinterpret_cast<const std::uint8_t*>(base + kSetConstraintsRva);
+    if (!BytesMatch(setter, kSetConstraintsHead.data(), kSetConstraintsHead.size()) ||
+        !BytesMatch(setter + 0x11, kSetConstraintsTail.data(), kSetConstraintsTail.size())) {
+        Log("result=unavailable detail=set_constraints_prologue_mismatch");
+        gRefused.fetch_add(1);
+        return 6;
+    }
+
+    // **Edited, not fabricated.** The struct handed to the engine is the live
+    // one read back from the element with a single byte changed. Nothing here
+    // invents a layout or a value it did not first observe.
+    unsigned char raw[kConstraintsSize] = {};
+    if (!ReadConstraintBytes(element, raw)) {
+        Log("result=failed detail=exception_reading_constraints");
+        gRefused.fetch_add(1);
+        return 8;
+    }
+    const unsigned char wanted = maximise ? 1 : 0;
+    if (raw[29] == wanted) {
+        Log("result=0 detail=constraint_max_already bMax=" + std::to_string(wanted));
+        return 0;
+    }
+    unsigned char edited[kConstraintsSize] = {};
+    std::memcpy(edited, raw, kConstraintsSize);
+    edited[29] = wanted;
+
+    if (!CallSetConstraints(base + kSetConstraintsRva, element, edited)) {
+        Log("result=failed detail=exception_in_set_constraints");
+        gRefused.fetch_add(1);
+        return 8;
+    }
+
+    // **The readback is the whole point, and F-011 is why.** SetConstraints
+    // opens with `cmp dword ptr [rip+..], 0` and returns without doing anything
+    // when that global is zero -- a completed call that changed nothing, which
+    // is exactly the shape of failure that made a nonexistent Scaleform function
+    // return success. Reading the field back is the only thing that separates
+    // "the engine accepted this" from "the call returned".
+    unsigned char after[kConstraintsSize] = {};
+    if (!ReadConstraintBytes(element, after)) {
+        Log("result=failed detail=exception_reading_constraints_after");
+        gRefused.fetch_add(1);
+        return 8;
+    }
+    if (after[29] != wanted) {
+        Log("result=refused detail=set_constraints_did_not_take"
+            " note=gate_disabled_or_element_replaced bMax=" + std::to_string(after[29]));
+        gRefused.fetch_add(1);
+        return 14;
+    }
+    gCalls.fetch_add(1, std::memory_order_relaxed);
+    Log("result=0 detail=constraint_max_set bMax=" + std::to_string(wanted));
     return 0;
 }
 

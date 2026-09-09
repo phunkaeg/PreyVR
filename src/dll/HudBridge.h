@@ -92,15 +92,15 @@ void DrainQueuedHudCalls();
 DWORD HudScreenToFlash(float screenX, float screenY, bool stageScaleMode,
                        float* outX, float* outY);
 
-// `IUIElement::SUIConstraints`, read through `GetConstraints` at vtable `+0x128`.
+// `IUIElement::SUIConstraints`, read straight out of the element at `+0x84`.
 //
 // **This is the cover-fit at its source.** The struct carries `bScale` and
 // `bMax`, and `bMax` is exactly the max-versus-min choice R-118 inferred from
 // three measured pixels: cover takes the larger of the two axis ratios, fit
 // takes the smaller. Reading it turns that inference into an observation.
 //
-// Reported, not fabricated -- this reads the live struct the element already
-// holds. Nothing here writes constraints back.
+// The offset is not counted -- `SetConstraints` (R-120) stores the caller's 32
+// bytes to `element + 0x84` in two SSE moves, so that IS the storage.
 struct HudConstraints {
     int positionType = -1;   // 0 fixed, 1 fullscreen, 2 dynamic, 3 fixedDynTexSize
     int left = 0, top = 0, width = 0, height = 0;
@@ -111,6 +111,30 @@ struct HudConstraints {
 
 // Returns 0 and fills `out` on success; the same fail-closed codes as above.
 DWORD HudReadConstraints(HudConstraints* out);
+
+// **The HUD lane's actual lever.** `bMax` chooses cover over fit, and cover is
+// why the 16:9 HUD canvas overflows the frame at the headset aspect: at
+// 2688x2880 the canvas is 5120 wide and only its central 2688 is on screen, so
+// roughly 1216 px is clipped off each side. Clearing `bMax` fits the canvas
+// inside the frame instead, which should bring the clipped edges into view.
+//
+// Calls the engine's own `SetConstraints` at RVA `0x2FFF30`, found by the log
+// line inside it rather than counted off a vtable, and hands it the live struct
+// with one byte changed -- so the engine runs its own `UpdateViewPort`
+// afterwards rather than us imitating it.
+//
+// **Verified by readback, and that is not decoration.** The function opens with
+// a `cmp dword ptr [rip+..], 0` and silently does nothing when that global is
+// zero. F-011 is the standing reminder that a completed call proves nothing;
+// this returns 14 when the field did not actually change.
+//
+// Must run on the main thread -- it re-enters the UI element and triggers a
+// viewport update. Use `QueueHudFit` from anywhere else.
+DWORD HudSetConstraintMax(bool maximise);
+
+// Queue a main-thread `HudSetConstraintMax`; 0 means queued, not applied. The
+// outcome is in the log, and `hud.probe` reports the resulting constraints.
+DWORD QueueHudFit(bool maximise);
 
 // Queue a main-thread probe of `screenX,screenY`; 0 means queued. The result is
 // read back with `HudLastProbe`, which reports the engine's conversion at both

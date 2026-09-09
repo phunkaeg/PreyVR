@@ -204,6 +204,9 @@ void WriteReport(std::ostringstream& out)
         << " reticleOffScreen=" << ReticleFollowOffScreenCount()
         << " reticleXY=" << ReticleFollowLastX() << "," << ReticleFollowLastY()
         << " reticleCanvasXY=" << ReticleCanvasX() << "," << ReticleCanvasY()
+        << " reticleCanvasMode=" << ReticleCanvasMode()
+        << " reticleNativeCanvas=" << ReticleNativeCanvasCount()
+        << " reticleNativeCanvasFailed=" << ReticleNativeCanvasFailedCount()
         << " reticleDispatched=" << ReticleDispatchedCount()
         << " reticleDispatchFailed=" << ReticleDispatchFailedCount()
         << ReticleProjectionReport()
@@ -467,6 +470,14 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         // makes. If the crosshair does not move, this says which half to blame.
         out << "aim.reticledispatch result=" << SetReticleDispatchEnabled(arg(1, 1))
             << " value=" << arg(1, 1);
+    } else if (verb == "aim.reticlecanvas") {
+        // aim.reticlecanvas 0|1|2 -- raw viewport / R-118 model / native
+        out << "aim.reticlecanvas result=" << SetReticleCanvasMode(arg(1, 1))
+            << " mode=" << ReticleCanvasMode()
+            << " native=" << ReticleNativeCanvasCount()
+            << " nativeFailed=" << ReticleNativeCanvasFailedCount();
+    } else if (verb == "aim.reticlestage") {
+        out << "aim.reticlestage result=" << SetReticleStageScaleMode(arg(1, 0));
     } else if (verb == "menu.nav") {
         SetMenuNavigation(arg(1, 1));
         out << "menu.nav result=0 value=" << arg(1, 1);
@@ -522,6 +533,12 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             out << "hud.call result=" << result << " queued=" << (result == 0 ? 1 : 0)
                 << " fn=" << args[1];
         }
+    } else if (verb == "hud.fit" && args.size() >= 2) {
+        // hud.fit 1 -- fit the HUD canvas inside the frame (clear bMax)
+        // hud.fit 0 -- restore the engine's cover fit (set bMax)
+        const bool fitInside = arg(1, 1) != 0;
+        out << "hud.fit result=" << QueueHudFit(!fitInside) << " queued=1"
+            << " fitInside=" << (fitInside ? 1 : 0);
     } else if (verb == "hud.probe") {
         // hud.probe            -- report the last probe
         // hud.probe <x> <y>    -- queue one at that viewport fraction

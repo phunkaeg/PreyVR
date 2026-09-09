@@ -1944,6 +1944,61 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-09 — R-120: SetConstraints found whole, and the HUD's cover fit is now writable
+
+**Found by the log line inside it.** `"%s (%i): UIElement set new constraints"`
+at `0x181CABD38` has exactly one xref, and it lands in the middle of
+`CFlashUIElement::SetConstraints` at **RVA `0x2FFF30`**. That is a fixed address
+with a matchable prologue, not a vtable slot, so the HUD lane no longer depends
+on a counted offset for anything.
+
+The body is short and settles three separate questions at once:
+
+```
+MOVUPS XMM0, [RDI]              ; the caller's 32-byte SUIConstraints
+MOVUPS [RBX + 0x84], XMM0
+MOVUPS XMM1, [RDI + 0x10]
+MOVUPS [RBX + 0x94], XMM1
+CALL   qword ptr [RAX + 0x1E0]  ; UpdateViewPort
+```
+
+1. **The live constraints are the 32 bytes at `element + 0x84`.** They can be
+   read as a plain field. R-119's `HudReadConstraints` went through a counted
+   `GetConstraints` slot; it now reads the storage the setter writes, and the
+   counted slot is gone from the file.
+2. **ABI is `(RCX = element, RDX = const SUIConstraints*)`**, and the struct is
+   contiguous: type, left, top, width, height, hAlign, vAlign at `+0x84..+0x9F`,
+   then `bScale` at `+0xA0` and `bMax` at `+0xA1`.
+3. **`UpdateViewPort` at `+0x1E0` and `GetName` at `+0x48`** are called here --
+   slots 60 and 9 in the PDB-derived order. With `GetInstance` (+0x20),
+   `CallFunction` (+0x210) and `ScreenToFlash` (+0x2D0), **five** offsets in
+   `IUIElement` now match the header. It is not shuffled in this build.
+
+**Built as `hud.fit`.** It reads the live 32 bytes, changes the single `bMax`
+byte, and hands the result to the engine's own setter -- which then runs its own
+`UpdateViewPort`. The struct is edited, never fabricated: every other byte is
+one the element already held.
+
+**Verified by readback, and that is the point rather than a flourish.**
+`SetConstraints` opens with `cmp dword ptr [rip+..], 0` and returns having done
+nothing when that global is zero. That is precisely the F-011 shape -- a
+completed call that changed nothing. The lane reads the field back and returns
+refused when it did not take, so "the engine accepted this" is never inferred
+from "the call returned".
+
+**Also built: `aim.reticlecanvas 0|1|2`.** Two conversions now exist and only one
+can be right, so which one the reticle dispatches is a switch -- 0 the raw
+viewport fraction (the pre-R-118 defect, reproducible on demand), 1 the R-118
+reconstruction, 2 Prey's own `ScreenToFlash`. Mode 2 falls back to mode 1 when
+the native call refuses and counts that separately, so a fallback never passes
+for the native answer.
+
+**Not established.** Whether clearing `bMax` actually brings the clipped HUD
+edges into view; whether the enable gate is set in a normal session; whether
+native and reconstructed conversions agree. None of this has run against a live
+game. The predicted clipping -- canvas 5120 wide at 2688x2880, roughly 1216 px
+lost each side -- follows from the R-118 model and has not been seen.
+
 ## 2026-09-09 — R-119: the engine already has the conversion R-118 reconstructed
 
 **`IUIElement::ScreenToFlash` exists, at vtable `+0x2D0`, and the offset comes
