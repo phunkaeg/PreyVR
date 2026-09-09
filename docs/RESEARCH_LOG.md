@@ -1982,13 +1982,71 @@ Slot `+0x110` on the same object is the broadphase the melee path runs first;
 `ray_hit` records from this same path. Static layout and runtime capture agree,
 and neither was derived from the other.
 
-**Two things are NOT established.** `DAT_18224D9C8` has not been shown to be the
-same pointer as the documented `gEnv+0x48` `pPhysicalWorld`: the first twelve
-xrefs are all reads and the initialiser was not located. Use the global the game
-itself uses rather than assuming the `gEnv` route reaches it. And the meaning of
-objtypes `0x117` and flags `0xF` comes from Chairloader's enum names, not from
-values verified against this binary -- the standing rule is that those headers
-are an oracle, not the target.
+### Receiver and slot: proven by a second, independent consumer
+
+`Prey_CArkWeaponGetFiringPosition` (`0x181694D6A`) -- a function already in the
+registry from H-021, and semantically **the weapon-versus-geometry obstruction
+test** -- calls the same thing three times:
+
+```c
+(**(code **)(*DAT_18224D9C8 + 0x118))(DAT_18224D9C8, params, "RayWorldIntersection(Game)", 4);
+```
+
+Same global, same slot, same name tag, same `iCaller`. A melee component and the
+weapon firing guard are unrelated code paths and agree exactly. That is the
+receiver and the slot established from the target, not from a header.
+
+Note what the native guard does with it: raycast along the owner's forward from
+the muzzle, and **if blocked, return the camera position instead of the muzzle**.
+Prey already has a weapon-obstruction policy; we are not inventing the concept.
+
+`DAT_18224D9C8` still has no located writer -- 400 xrefs are all reads, and the
+`WRITE` filter returns the same list -- so it has NOT been shown to be the same
+pointer as the documented `gEnv+0x48`. That does not matter for calling it: use
+the global the game itself uses.
+
+### The flag values, proven by two builders that differ in exactly one bit
+
+Two independent parameter builders, both `memset(0x70)`, agreeing on every
+offset -- which is itself the layout proof:
+
+| | `0x18124BA90` (melee) | `0x18124C210` (weapon guard) |
+| --- | --- | --- |
+| `+0x30` objtypes | `0x117` | **`0x11F`** |
+| `+0x34` flags | `0xF` | `0xF` |
+| `+0x38` hits | caller's buffer | shared global `DAT_182BE0A40` |
+| `+0x40` nMaxHits | `1` | `1` |
+| `+0x64` | `0x400000` | `param | 0x400000` |
+
+**`0x11F` is `ent_all` exactly** -- `ent_static|ent_sleeping_rigid|ent_rigid|
+ent_living|ent_independent|ent_terrain` = `1|2|4|8|16|0x100`. The weapon
+obstruction test asks about everything.
+
+**`0x117` is `ent_all` without `ent_living`.** The single differing bit is 8,
+and its presence in one query and absence from the other matches each query's
+purpose precisely: a body between muzzle and target blocks a projectile spawn,
+while the melee wall-check must not treat a character as a wall -- it enumerates
+characters separately through the broadphase at `+0x110` first.
+
+**That correlation is the actual proof.** The header supplies candidate values;
+what makes the reading sound is that the one bit which differs between two
+independently-written native queries is exactly the one whose meaning explains
+why they differ. A wrong value assignment would have to survive that coincidence.
+
+**`0xF` in `+0x34` is `rwi_stop_at_pierceable`** -- which is also
+`rwi_pierceability_mask`, i.e. stop at the first surface not pierceable at all.
+Vee's EGS-build mod passes the named constant `rwi_stop_at_pierceable`; our Steam
+binary's own weapon code passes `0xF` in that field. Two builds, two codebases,
+same value, arrived at independently.
+
+**`+0x64` is NOT identified.** It always carries `0x400000` and the weapon guard
+ORs a caller value into it. It cannot be the collision-type flags in the obvious
+way: `rwi_colltype_bit` is 16, so `rwi_colltype_all(x)` is `x << 16`, and
+`0x400000 >> 16` is `0x40` -- not `geom_colltype_ray` (`0x8000`). And `+0x34`
+already holds the pierceability flags, so this is a second field, not more of the
+same word. Recorded as open rather than guessed: a wrong collision-type mask
+yields a query that returns plausible hits from the wrong geometry set, which is
+the failure that reads as "nearly working".
 
 **Provenance.** The prompt to look came from Vee.ViewmodelTweaks (MIT), whose
 notes describe the same feature on the EGS build. Nothing of theirs is used
