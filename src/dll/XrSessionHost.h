@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include <Windows.h>
 
 // Hurdle 2: an OpenXR session hosted inside Prey, bound to **Prey's own D3D11
@@ -142,6 +144,13 @@ void ServiceXrFrame(void* renderer);
 // internally at another size and resolve before the backbuffer, and a
 // supersampling path exists in the binary. A recommendation-to-backbuffer ratio
 // bounds what the compositor receives, not what was actually drawn.
+// How much of each rendered eye the runtime can actually show, and how much of
+// what it asked for we supplied. Two numbers rather than one, because a low
+// figure means "reclaimable pixels" only when the request is fully covered;
+// with a shortfall the same figure means content is missing. See
+// FrustumCoverage.h.
+std::string XrCoverageReport();
+
 DWORD XrResolutionChain(unsigned int field);
 
 unsigned long long DeclaredFovAgreeCount();

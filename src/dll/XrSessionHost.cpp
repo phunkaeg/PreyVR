@@ -1,5 +1,7 @@
 #include "XrSessionHost.h"
 
+#include "preyvr/FrustumCoverage.h"
+
 #include "Logger.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/XrFrameContract.h"
@@ -109,6 +111,11 @@ struct Host {
     // rather than after.
     XrPosef eyePose[2]{};
     XrFovf eyeFov[2]{};
+    // What the runtime asked for, kept beside what we declared. The two are
+    // different frusta and the gap between them is spent pixels: comparing them
+    // is the only way to say how much of the render the headset can show.
+    XrFovf requestedFov[2]{};
+    bool requestedFovValid[2]{};
     XrTime eyeDisplayTime[2]{};
     xrframe::FrameContract contract;
 };
@@ -703,6 +710,11 @@ bool SubmitStereoPair(
         // downstream may pair this image with any other frame's pose or FOV.
         gHost.eyePose[target] = views[target].pose;
         gHost.eyeFov[target] = declaredFov ? *declaredFov : views[target].fov;
+        // Stored in the SAME publication unit as the declaration it is compared
+        // against, so a coverage figure can never pair this frame's request with
+        // another frame's render.
+        gHost.requestedFov[target] = views[target].fov;
+        gHost.requestedFovValid[target] = true;
         // Checked here, at the one point the declaration is bound to the pixels
         // it describes -- the same publication unit FAIL-STR-044 established.
         AssertDeclaredMatchesRendered(gHost.eyeFov[target]);
@@ -1145,6 +1157,50 @@ DWORD SetXrStereoSubmission(unsigned int enabled)
     line << "result=0 detail=stereo_submission enabled=" << (on ? "1" : "0");
     Log(line.str());
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+
+std::string XrCoverageReport()
+{
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    out << std::setprecision(5);
+    for (int eye = 0; eye < 2; ++eye) {
+        const char* const name = eye == 0 ? " left" : " right";
+        if (!gHost.requestedFovValid[eye]) {
+            out << name << "=unavailable";
+            continue;
+        }
+        const preyvr::xr::FovAngles rendered{gHost.eyeFov[eye].angleLeft,
+                                             gHost.eyeFov[eye].angleRight,
+                                             gHost.eyeFov[eye].angleUp,
+                                             gHost.eyeFov[eye].angleDown};
+        const preyvr::xr::FovAngles requested{gHost.requestedFov[eye].angleLeft,
+                                              gHost.requestedFov[eye].angleRight,
+                                              gHost.requestedFov[eye].angleUp,
+                                              gHost.requestedFov[eye].angleDown};
+        const auto coverage = preyvr::xr::TangentCoverage(rendered, requested);
+        if (!coverage.valid) {
+            out << name << "=invalid";
+            continue;
+        }
+        out << name << "Used=" << coverage.utilisationArea
+            << name << "Covered=" << coverage.satisfactionArea
+            << name << "Short=" << (coverage.requestExceedsRender ? 1 : 0);
+        // The equal-density target size, so the figure lands as pixels rather
+        // than as a ratio to be multiplied out by hand later. Margin for
+        // reprojection is NOT included; this is the floor, not a launch preset.
+        const DWORD width = XrResolutionChain(4);
+        const DWORD height = XrResolutionChain(5);
+        if (width > 0 && height > 0) {
+            out << name << "EqualDensity="
+                << static_cast<int>(static_cast<float>(width) *
+                                    preyvr::xr::EqualDensityScale(coverage.utilisationWidth))
+                << "x"
+                << static_cast<int>(static_cast<float>(height) *
+                                    preyvr::xr::EqualDensityScale(coverage.utilisationHeight));
+        }
+    }
+    return out.str();
 }
 
 DWORD XrResolutionChain(unsigned int field)

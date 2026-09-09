@@ -1944,6 +1944,45 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-09 — R-121: frustum coverage measured live, and split into two numbers
+
+The performance plan computed one figure by hand from a saved session: 41% of
+the submitted pixel rectangle falls inside the runtime's requested frustum. That
+number is now computed by the mod, per eye, per frame, from the request and the
+declaration stored in the SAME publication unit -- so a coverage figure can
+never pair one frame's request with another frame's render.
+
+**Split into two, because one number hides a real fault.** Dividing overlap by
+the rendered area gives "wasted pixels"; the same ratio also moves when the
+rendered frustum is too SMALL on an edge, which is not waste but missing content
+the wearer sees as a black or stretched border. Reported separately:
+
+- `used` = overlap / rendered -- how much of the pixel budget the lens can show
+- `covered` = overlap / requested -- how much of the ask was actually supplied
+- `short` -- set when the request reaches past what was rendered on any edge
+
+On the saved Quest 3 / VDXR data: **used 0.4125, covered 1.0000, short 0.** The
+41% is pure reclaimable waste with nothing missing. Had `covered` been below 1,
+the identical 41% would have meant the opposite.
+
+All in tangent space. A frustum is linear in tangents and not in degrees, and
+the withdrawn "70% head-yaw leakage" claim came from exactly that confusion; a
+test pins an asymmetric frustum whose ANGLES average to a symmetric one but
+whose tangent extent is more than double, which an angle-space implementation
+would report as equal.
+
+Six tests, pinned to the saved measurement rather than the algebra: they
+reproduce the plan's 0.63955 x 0.64497 = 0.41249 and its 1719 x 1858
+equal-density size, and separately check that under-rendering shows as full
+utilisation with reduced satisfaction. Half-angles at or beyond 90 degrees
+refuse rather than returning an infinity into a resolution decision.
+
+**Not established.** No resolution has been changed. The equal-density size
+excludes the overscan margin reprojection needs and assumes the eye orientation
+the coverage was computed for; it is a floor, not a launch preset. Whether
+reclaiming those pixels improves the image is a headset question, and the
+CPU/GPU timing breakdown the plan asks for first is still unbuilt.
+
 ## 2026-09-09 — R-120: SetConstraints found whole, and the HUD's cover fit is now writable
 
 **Found by the log line inside it.** `"%s (%i): UIElement set new constraints"`

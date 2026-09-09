@@ -91,3 +91,17 @@ For scripts use `D:/Dev Debug/VR Modding/tools/graphio.py` (`load_graph`): node-
 relationships live under `links`; a defaulted lookup of `edges` can hide real data.
 Check the interpreter before running helpers. Rebuild instructions live in
 `cross-engine-graph/README.md`; do not rebuild the whole fleet for a routine lookup.
+
+
+<!-- vr-research-integration:start -->
+## Research receipts and playbook contributions
+
+For a substantial VR research finding or failed approach, read
+`D:/Dev Debug/VR Modding/docs/research-receipts.md` and use the
+`vr-research-receipts` skill when available. `tools/research_receipt.py` in the
+playbook creates/validates a project-owned receipt and queues a candidate for review.
+Keep validity, fact verdict, baseline health, evidence grade and observation environment
+separate. Raw evidence stays in this project; intake never promotes claims or clears
+bottlenecks. Use the numerical camera-mapping recipe and `tools/research_checks.py`
+when that is the cheapest relevant proof. Existing runtime/launch restrictions apply.
+<!-- vr-research-integration:end -->

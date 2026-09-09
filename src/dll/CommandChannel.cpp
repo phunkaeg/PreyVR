@@ -539,6 +539,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         const bool fitInside = arg(1, 1) != 0;
         out << "hud.fit result=" << QueueHudFit(!fitInside) << " queued=1"
             << " fitInside=" << (fitInside ? 1 : 0);
+    } else if (verb == "xr.coverage") {
+        out << "xr.coverage result=0" << XrCoverageReport();
     } else if (verb == "hud.probe") {
         // hud.probe            -- report the last probe
         // hud.probe <x> <y>    -- queue one at that viewport fraction
