@@ -1944,6 +1944,103 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-10 — R-128: Luma's Prey renderer layout reconciled. Zero conflicts.
+
+**A second project has reverse-engineered the same binary, and the two maps do
+not contradict each other anywhere.** `D:/Dev Debug/Luma-Framework` is a D3D11
+graphics-modding framework (ReShade addon) by Filippo Tarpini. Prey is one of its
+first-class targets, with a native plugin carrying a `static_assert`-checked
+`CD3D9Renderer` layout.
+
+**Build identity is proven, not assumed.** Luma discriminates builds by PE
+`TimeDateStamp` and tabulates six: Steam, GOG and Epic, each for Prey and
+Mooncrash. Our installed `PreyDll.dll` reads `0x5D1CB240`, which is exactly their
+`PreySteam`. So their index-0 column is valid against our target with no transfer
+problem -- unlike the Vee.ViewmodelTweaks notes, which are Epic-build.
+
+This also turns F-005 from a defect into a tool. We recorded that Prey is not
+built with `/Brepro`, so the PE timestamp is merely link time; Luma uses that
+same timestamp as the build discriminator. It is a usable identity for telling
+six Prey variants apart, which is more than our single-SHA refusal can do.
+
+### The reconciliation
+
+| Field | Offset | Source |
+| --- | --- | --- |
+| `m_vProjMatrixSubPixoffset` (Vec2) | `0xD70` | Luma |
+| frame slot index | `0x499C` | ours (R-026) |
+| frame block, stride `0x328` | `0x4A08` | ours (R-026) |
+| `SRenderPipeline::m_pRenderViews` | `0x6F38` | ours (R-033) |
+| `r_DrawNearFoV` latched copy | `0x95B4` | ours (R-069) |
+| `m_nAsyncDeviceState` | `0x9898` | Luma |
+| `m_pNativeZSurface` (DSV) | `0x9970` | Luma |
+| `m_pBackBuffer` (RTV) | `0xAE00` | Luma |
+| swapchain | `0xAE88` | ours |
+| device | `0xAF28` | ours |
+| `m_pDeviceContext` | `0xAF38` | Luma |
+| `m_devInfo` | `0xAF80` | Luma |
+
+**Every field we hold falls inside a region Luma marks as unknown padding, and
+every field Luma holds falls in a region we never mapped.** Ours at `0x499C`,
+`0x4A08`, `0x6F38` and `0x95B4` all sit within their `unkD78[0x8B20]`; ours at
+`0xAE88` and `0xAF28` sit within their `unkAE08[0x130]`. Nothing overlaps and
+nothing disagrees. Two independent efforts on the same binary produced
+complementary maps, which is weak mutual corroboration for both.
+
+The apparent near-collisions are different fields, not a contradiction. Our
+`device` at `0xAF28` sits `0x10` before their `m_pDeviceContext` at `0xAF38` --
+an `ID3D11Device*` and an `ID3D11DeviceContext1*` stored adjacently is exactly
+what CryEngine's renderer would do. Our swapchain at `0xAE88` is *before*
+`m_devInfo` (`0xAF80`), so it is not their `m_devInfo.m_pSwapChain`; Prey caches
+more than one reference.
+
+Vtable indices likewise do not collide: Luma names `GetHeight`/`GetWidth` at
+indices 69/70 (byte `0x228`/`0x230`) and declares nothing past index 79, while
+our `getRenderViewForThread` is index 51 (`0x198`), `getFrameId` 169 (`0x548`)
+and `EF_Query` 273 (`0x888`).
+
+### What we gain, and its evidence grade
+
+New to us, on our exact build: the projection sub-pixel jitter at `0xD70`, the
+native depth-stencil view at `0x9970`, the backbuffer RTV at `0xAE00`, the device
+context at `0xAF38`, `m_devInfo` at `0xAF80`, and
+`CD3D9Renderer::RT_RenderScene` at RVA `0xF41CA0` -- the function the
+2026-09-01 entry records hunting.
+
+`RT_RenderScene` is the only one verified here. Its RVA lands in `.text` and
+begins `44 89 44 24 18 48 89 54 24 10 53 55`
+(`mov [rsp+18h],r8d; mov [rsp+10h],rdx; push rbx; push rbp`), a textbook x64
+prologue with home-space parameter spills. The three `.data` addresses read empty
+from the file because `.data`'s virtual size exceeds its raw size, which is
+expected for runtime-initialised pointers -- and both Luma's renderer global
+(`0x2B24E80`) and ours (`0x2B3E8E0`) behave identically there.
+
+**The struct offsets are recorded as LEADS, not as project findings, and are
+deliberately NOT wired into `EngineMap.h`.** They are another project's
+assertions. Build identity being proven removes the transfer problem; it does not
+remove the need to verify a value before shipping a write through it. The
+standing rule that source ancestors and model agreement are leads rather than
+target proof applies to a neighbouring RE project too.
+
+Two of them are worth verifying first when Ghidra is back.
+`m_pNativeZSurface` would give us depth, which we have never had and which
+`XR_KHR_composition_layer_depth` wants. `m_vProjMatrixSubPixoffset` is TAA/DLSS
+jitter applied to the projection -- and a jitter applied per frame to an
+alternating-eye stereo scheme is a candidate explanation for artefacts we have
+attributed elsewhere.
+
+### Licence, and a conflict warning
+
+Luma is **"Custom MIT"**, not MIT: reuse must credit the authors or the project,
+and commercial use requires prior permission. PreyVR ships plain MIT and cannot
+absorb their code without carrying those terms. Nothing of theirs is compiled in;
+what is recorded above is factual offsets about a third-party binary, which is
+not their copyrightable expression.
+
+Both projects hook D3D11 in the same process -- Luma replaces render passes and
+shaders as a ReShade addon, PreyVR hooks the swapchain, camera and render seam.
+Running them together should not be assumed to work.
+
 ## 2026-09-09 — R-127: the scene query, found by reading the call site rather than a header
 
 **The mod has never had a world raycast, and that is why two separate problems
