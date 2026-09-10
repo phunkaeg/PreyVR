@@ -1944,6 +1944,69 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-10 - R-133: read from outside the process, on xr-sim, with no headset
+
+A wearer asked for confirmation without a headset. xr-sim plus xr-tape answered
+three questions and refused a fourth, which is the more useful result.
+
+### xr-sim cannot test the curve, and that is the finding
+
+| extension | xr-sim | VirtualDesktopXR |
+| --- | --- | --- |
+| `XR_KHR_composition_layer_cylinder` | **0** | **1** |
+| `XR_KHR_composition_layer_depth` | **0** | **1** |
+
+The mod logs `ui_cylinder supported=0 flat_fallback=1` under xr-sim and
+`supported=1` under VDXR, and the tape's own instance record confirms it from
+outside the process: `"extensions":["XR_KHR_D3D11_enable"]` -- one extension, no
+cylinder, no depth.
+
+So a curved UI panel **cannot be validated on the substitute runtime at all**.
+Confirming it needs a headset. This is not a mod defect and not a capture
+failure; it is a coverage gap in the harness, and it would have wasted a session
+to discover mid-test. Any feature gated on an extension has the same problem.
+
+The corollary matters for the depth work: `xr_depth extension_supported=1` on
+VDXR, so `XR_KHR_composition_layer_depth` **is** available on the real runtime
+once `$ZTarget` (R-132) is wired.
+
+### The submission law is being obeyed, measured from outside
+
+`xrEndFrame` records show the declared frustum as symmetric
+`l=-0.7467 r=0.7467 u=0.4800 d=-0.4800` -- **85.6 x 55.0 degrees**. The runtime
+asked for `l=-54 r=44 u=55 d=-55` degrees, asymmetric and mirrored per eye.
+
+**They differ, and that is correct.** `XrCompositionLayerProjectionView::fov`
+describes the frustum the submitted image was rendered with, not the frustum the
+runtime would like. An injected flat-to-VR mod renders through the game's own
+projection, so declaring the runtime's values back would be a lie -- the failure
+that reads in a headset as eyes driven apart and unable to fuse.
+
+This is the one check no in-process test can perform on itself, and it passes by
+failing: xr-tape's `submitted_fov_matches_located` **should** disagree here, and
+it does.
+
+Also confirmed in the same records: two views per frame with distinct
+`arrayIndex` 0 and 1, eyes at +/-0.0315 m for a 63 mm IPD, and 19,969 matched
+`wait`/`views`/`begin`/`end` records with `result: 0` and no discarded frames.
+
+### Panel mode replaces the projection, as designed
+
+With `ui.panel 2` (always), 18,478 frames carried `layerCount=3` and **every
+layer was `structType 36`, `XR_TYPE_COMPOSITION_LAYER_QUAD`** -- no projection
+layer at all. Only 5 frames in the run ever carried one.
+
+That is the mode behaving as written rather than a fault: entering panel mode
+invalidates the held eye pair, and the world is then presented inside the panel.
+Worth recording because `projectionViews: 0` in xr-sim's `state.json` says
+exactly this, and that field was read as ambiguous for an hour before the tape
+made it plain.
+
+**A caution for the next reader.** These are xr-sim submissions. The frame
+lifecycle, the declared frustum and the layer structure are real, but xr-sim is a
+substitute runtime whose extension set differs from the headset's, and nothing
+here is evidence about what a wearer sees.
+
 ## 2026-09-10 - R-132: the scene depth located, and the AFR clock built pure
 
 ### `$ZTarget` found: the depth we actually want
