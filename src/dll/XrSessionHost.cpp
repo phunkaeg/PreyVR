@@ -684,9 +684,16 @@ std::atomic<unsigned int> gUiScalePercent{100};
 // gUiGuide: the instruction card stacked under the menu. It is ours, added for
 // onboarding -- not a native Prey element -- and it is charged to the same
 // vertical budget, so the menu above it is roughly a sixth smaller than it
-// would be alone. A wearer who already knows the controls is paying for it.
+// would be alone.
+//
+// **Off by default from 2026-09-11**, at the wearer's request after measuring
+// what it costs: the card is read once and then paid for on every menu, and a
+// wearer who already knows the controls was giving up a sixth of the panel to
+// keep it. `ui.guide 1` brings it back for the session, and UiGuide in
+// PreyVR.json brings it back for good -- which is what to set when handing the
+// package to someone who has not seen the controls before.
 std::atomic<unsigned int> gUiFitMarginPercent{72};
-std::atomic<bool> gUiGuide{true};
+std::atomic<bool> gUiGuide{false};
 float UiFitMargin() {
     return static_cast<float>(gUiFitMarginPercent.load(std::memory_order_relaxed))*.01f;
 }

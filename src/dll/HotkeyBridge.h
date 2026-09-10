@@ -42,6 +42,11 @@ DWORD SetHotkeysEnabled(unsigned int enabled);
 // about precision anyway.
 DWORD HotkeyIpdTenthsMm();
 
+// How many times the ~ key has toggled Prey's console. Zero after pressing it
+// means the key never reached us -- Prey was not the foreground window, or the
+// hotkey thread is not running -- which is a different fault from the console
+// opening and drawing nothing.
+DWORD HotkeyConsoleToggles();
 DWORD HotkeyAaMode();
 
 DWORD HotkeyEyeSwap();

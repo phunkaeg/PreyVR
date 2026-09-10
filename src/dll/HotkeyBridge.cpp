@@ -81,8 +81,50 @@ void ApplyPositionScale()
     Log("result=0 detail=position_scale milli=" + std::to_string(milli));
 }
 
+// **Only while Prey is in front.** Every other hotkey here is Ctrl+Alt chorded,
+// so a stray match is unlikely. The console key is deliberately not chorded --
+// a tilde is what anyone reaches for -- and an unchorded GetAsyncKeyState poll
+// is global, so without this it would toggle Prey's console while the wearer
+// typed a tilde in any other application on the machine.
+bool ForegroundIsPrey()
+{
+    DWORD owner = 0;
+    if (!GetWindowThreadProcessId(GetForegroundWindow(), &owner)) {
+        return false;
+    }
+    return owner == GetCurrentProcessId();
+}
+
+std::atomic<bool> gConsoleOpen{false};
+std::atomic<bool> gConsoleUngated{false};
+std::atomic<unsigned int> gConsoleToggles{0};
+
+// Prey ships the console UI but binds no key to it: CXConsole::Init registers
+// ConsoleShow and ConsoleHide with Crytek's own help text, and each tail-calls
+// ShowConsole through the console object's vtable. This supplies the binding
+// the retail build lacks.
+//
+// sys_DeactivateConsole is the engine's own gate ("1: hide the console") and is
+// cleared once, on the first open rather than at startup, so a wearer who never
+// presses the key never has it touched.
+void ToggleConsole()
+{
+    if (!gConsoleUngated.exchange(true)) {
+        QueueConsoleCommand("sys_DeactivateConsole 0");
+        Sleep(40);
+    }
+    const bool open = !gConsoleOpen.load(std::memory_order_relaxed);
+    gConsoleOpen.store(open, std::memory_order_relaxed);
+    QueueConsoleCommand(open ? "ConsoleShow" : "ConsoleHide");
+    gConsoleToggles.fetch_add(1, std::memory_order_relaxed);
+    Log(std::string("result=0 detail=console open=") + (open ? "1" : "0"));
+}
+
 void Poll()
 {
+    // The console key is edge-detected separately from the chorded table below,
+    // because it is the one binding here that must work without a chord.
+    bool consoleWas = false;
     // Edge-detected: a held key must not repeat, or one press walks the whole
     // table before the wearer has looked at anything.
     std::array<bool, 9> was{};
@@ -175,6 +217,28 @@ void Poll()
                     break;
             }
         }
+        // **Resolved from the scan code, not hard-coded to VK_OEM_3.**
+        //
+        // VK_OEM_3 is the tilde key on a US layout only -- it is produced BY the
+        // layout, not by the hardware, so on other layouts that virtual key sits
+        // somewhere else entirely. Scan code 0x29 is the physical key below Esc
+        // on every PC keyboard, and MapVirtualKey turns it into whatever virtual
+        // key the wearer's current layout puts there. A console key belongs to a
+        // position, not to a glyph.
+        //
+        // Falls back to VK_OEM_3 if the layout reports nothing for that scan
+        // code, which is no worse than hard-coding it would have been.
+        const UINT tildeVk = []() -> UINT {
+            const UINT mapped = MapVirtualKeyW(0x29, MAPVK_VSC_TO_VK);
+            return mapped ? mapped : static_cast<UINT>(VK_OEM_3);
+        }();
+        const bool consoleDown = ForegroundIsPrey() &&
+                                 (GetAsyncKeyState(static_cast<int>(tildeVk)) & 0x8000) != 0;
+        if (consoleDown && !consoleWas) {
+            gPressCount.fetch_add(1, std::memory_order_relaxed);
+            ToggleConsole();
+        }
+        consoleWas = consoleDown;
         Sleep(30);
     }
 }
@@ -207,6 +271,11 @@ DWORD HotkeyIpdTenthsMm()
 {
     const float ipd = kIpdSteps[static_cast<std::size_t>(gIpdIndex.load(std::memory_order_relaxed))];
     return static_cast<DWORD>((ipd * 10000.0f) + 0.5f);
+}
+
+DWORD HotkeyConsoleToggles()
+{
+    return static_cast<DWORD>(gConsoleToggles.load(std::memory_order_relaxed));
 }
 
 DWORD HotkeyAaMode()

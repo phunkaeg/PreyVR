@@ -6,6 +6,7 @@
 #include "NearFovOverride.h"
 #include "CameraEditHook.h"
 #include "ConsoleBridgeWin32.h"
+#include "HotkeyBridge.h"
 #include "preyvr/ConsolePolicy.h"
 #include "FrameObserverHook.h"
 #include "HandRigTakeover.h"
@@ -355,6 +356,14 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     } else if (verb == "hud.layer") {
         const auto result=args.size()>1?SetHudLayerEnabled(arg(1,0)):0;
         out << "hud.layer result=" << result << ' ' << HudLayerReport();
+    } else if (verb == "input.hotkeys") {
+        // **Nothing started this thread.** SetHotkeysEnabled was reachable only
+        // through an exported entry point that the startup path never calls, so
+        // every keyboard binding in the bridge -- including the ~ console key --
+        // was dead in the player package. Building a binding and never checking
+        // the path that arms it is the same mistake twice in one session.
+        out << "input.hotkeys result=" << (args.size()>1?SetHotkeysEnabled(arg(1,1)):0)
+            << " consoleToggles=" << HotkeyConsoleToggles();
     } else if (verb == "ui.inventory") {
         // Off by default: arming it redirects the inventory's one draw into a
         // private texture, and nothing submits that texture yet.
@@ -381,7 +390,10 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "ui.margin result=" << SetUiFitMarginPercent(arg(1, 72))
             << " percent=" << UiFitMarginPercent();
     } else if (verb == "ui.guide") {
-        out << "ui.guide result=" << SetUiGuideEnabled(arg(1, 1))
+        // Reports when given no argument. It used to default the argument to 1,
+        // which was harmless while the card was on by default and would now mean
+        // a bare `ui.guide` silently switched it back on.
+        out << "ui.guide result=" << (args.size() > 1 ? SetUiGuideEnabled(arg(1, 0)) : 0)
             << " enabled=" << UiGuideEnabled();
     } else if (verb == "ui.curve") {
         out << "ui.curve result=" << SetUiCurveDegrees(arg(1,35));

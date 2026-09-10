@@ -14,6 +14,10 @@ param(
     # wearer had to rediscover their number every session. Persisted with the
     # rest below and re-sent once VR is up.
     [int]$UiScalePercent=100,
+    # The onboarding card under the menu. Off by default since 2026-09-11: it is
+    # read once and then costs about a sixth of the panel on every menu after.
+    # Set to 1 when handing the package to someone who has not seen the controls.
+    [int]$UiGuide=0,
     [switch]$DryRun
 )
 Set-StrictMode -Version Latest
@@ -42,6 +46,7 @@ try {
         if (!$PSBoundParameters.ContainsKey('UiCurveDegrees') -and $saved.PSObject.Properties['UiCurveDegrees']) {$UiCurveDegrees=[int]$saved.UiCurveDegrees}
         if (!$PSBoundParameters.ContainsKey('PointerHand') -and $saved.PSObject.Properties['PointerHand']) {$PointerHand=[int]$saved.PointerHand}
         if (!$PSBoundParameters.ContainsKey('UiScalePercent') -and $saved.PSObject.Properties['UiScalePercent']) {$UiScalePercent=[int]$saved.UiScalePercent}
+        if (!$PSBoundParameters.ContainsKey('UiGuide') -and $saved.PSObject.Properties['UiGuide']) {$UiGuide=[int]$saved.UiGuide}
     }
     if ($Width -lt 1280 -or $Width -gt 8192 -or $Height -lt 720 -or $Height -gt 8192) {
         throw 'Render size must be 1280..8192 by 720..8192.'
@@ -50,6 +55,7 @@ try {
     if ($UiCurveDegrees -lt 0 -or $UiCurveDegrees -gt 60) {throw 'UiCurveDegrees must be 0..60 (0 is flat).'}
     if ($PointerHand -notin @(0,1,2)) {throw 'PointerHand must be 0 (left), 1 (right), or 2 (buttons only).'}
     if ($UiScalePercent -lt 20 -or $UiScalePercent -gt 200) {throw 'UiScalePercent must be 20..200.'}
+    if ($UiGuide -notin @(0,1)) {throw 'UiGuide must be 0 (hidden) or 1 (shown).'}
     if (!$GameExe) {
         $candidates=@()
         foreach ($key in @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 480490',
@@ -102,13 +108,14 @@ try {
         'SystemShock2','SystemShock2Remastered','Swat4','Swat4X','SoF','TS4_x64','moh','moh_s','Il-2','Launcher64','carrier_command_2')
     $running=@(Get-Process -Name $fleetNames -ErrorAction SilentlyContinue)
     if ($running.Count) {throw ('Close the running game first: '+(($running | Select-Object -ExpandProperty ProcessName) -join ', '))}
-    Write-Host "Prey VR: $Width x $Height per eye; UI scale $UiScalePercent%; runtime: $(if($Runtime){$Runtime}else{'system OpenXR runtime'})"
+    Write-Host "Prey VR: $Width x $Height per eye; UI scale $UiScalePercent%; guide $(if($UiGuide){'on'}else{'off'}); runtime: $(if($Runtime){$Runtime}else{'system OpenXR runtime'})"
     Write-Host "Mod binaries: $BinDir"
     Write-Host 'Controls: menu button = pause; right stick = navigate; A = select; B = back.'
     Write-Host 'Point + beam-hand trigger = click/drag; grips = tabs; X/Y = actions.'
     Write-Host 'F12 or both grips = reset view. Press A at the title/loading prompt.'
+    Write-Host 'Tilde (the key below Esc) opens Prey''s own console, when focused.'
     if ($DryRun) {Write-Host 'Preflight passed. Nothing launched.';exit 0}
-    @{GameExe=$GameExe;Width=$Width;Height=$Height;HudLayer=$HudLayer;UiCurveDegrees=$UiCurveDegrees;PointerHand=$PointerHand;UiScalePercent=$UiScalePercent} | ConvertTo-Json | Set-Content -LiteralPath $config -Encoding UTF8
+    @{GameExe=$GameExe;Width=$Width;Height=$Height;HudLayer=$HudLayer;UiCurveDegrees=$UiCurveDegrees;PointerHand=$PointerHand;UiScalePercent=$UiScalePercent;UiGuide=$UiGuide} | ConvertTo-Json | Set-Content -LiteralPath $config -Encoding UTF8
     $run=Join-Path $RunRoot ('player-{0:yyyyMMdd-HHmmss}' -f (Get-Date))
     [void](New-Item -ItemType Directory -Path $run -Force)
     $info=New-Object System.Diagnostics.ProcessStartInfo
@@ -168,7 +175,15 @@ try {
     # sent before the session exists has nothing to rebuild.
     if ($UiScalePercent -ne 100) {
         "ui.scale $UiScalePercent" | Set-Content -LiteralPath (Join-Path $run 'commands.txt') -Encoding ASCII
+        Start-Sleep -Milliseconds 400
     }
+    if ($UiGuide -ne 0) {
+        "ui.guide 1" | Set-Content -LiteralPath (Join-Path $run 'commands.txt') -Encoding ASCII
+        Start-Sleep -Milliseconds 400
+    }
+    # Starts the keyboard bridge, which nothing else does. Without it the ~
+    # console key and the Ctrl+Alt adjustments are all inert.
+    "input.hotkeys 1" | Set-Content -LiteralPath (Join-Path $run 'commands.txt') -Encoding ASCII
     Write-Host "VR is ready. Diagnostics: $run"
     Write-Host ''
     Write-Host 'To adjust while playing, run "Tune Prey VR.cmd" beside this launcher'

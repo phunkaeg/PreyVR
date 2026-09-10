@@ -70,6 +70,9 @@ try {
     # with an error rather than doing something surprising.
     $help=@(
         'ui.scale 130          HUD/menu panel size, 20..200 percent (100 = default)'
+        'ui.margin 85          the REAL size ceiling, 30..100 (default 72). Past'
+        '                      the point this binds, ui.scale does nothing.'
+        'ui.guide 1            show the control card under the menu (off by default)'
         'ui.curve 35           panel curvature in degrees, 0 = flat'
         'ui.pointer 1          laser hand: 0 left, 1 right, 2 buttons only'
         'hud.layer 1           draw the HUD as its own layer (0 = in-world)'

@@ -45,6 +45,7 @@ After the first launch, edit `PreyVR.json` beside the launcher:
 | `UiCurveDegrees` | `35` | `0` for flat; `1`–`60` for curvature when the runtime supports it. |
 | `PointerHand` | `1` | `0` left beam, `1` right beam, `2` button navigation only. In button-only mode both triggers retain page actions. |
 | `HudLayer` | `1` | `1` floating native gameplay HUD; `0` native scene HUD. |
+| `UiGuide` | `0` | The control card under the menu. `0` hides it and gives its height back to the menu; `1` shows it, which is worth setting when someone is using the mod for the first time. |
 | `UiScalePercent` | `100` | Panel size for the HUD and menus, `20`-`200`. Raise it if the UI sits too small in the headset, lower it if the edges fall outside your view. |
 
 Restart Prey after changing these settings. Lower render sizes such as 1920×1080 reduce GPU cost; 3200×1800 or 3840×2160 increase detail and cost.
@@ -62,7 +63,15 @@ preyvr> ui.scale 130
   ui.scale result=0
 ```
 
-`help` lists the common ones. The useful one for fit is `ui.scale` (20-200);
+`help` lists the common ones. The two that decide panel size are `ui.margin`
+(30-100, default 72) and `ui.guide`. `ui.margin` is the real ceiling: the panel
+is shrunk until it sits inside that fraction of the frustum the headset reports,
+so once it binds, raising `ui.scale` does nothing at all. Raising it is a trade
+-- the reported frustum is already wider than the lenses show, so at high values
+the corners go where you cannot see them. `ui.guide 0` is free by comparison and
+gives back about a sixth of the panel.
+
+The useful one for fit is `ui.scale` (20-200);
 once you find your number, put it in `PreyVR.json` as `UiScalePercent` and every
 later launch starts there. `vr.recenter` re-centres, and so do F12 and squeezing
 both grips -- the grips are the ones that work with the headset on, since F12
