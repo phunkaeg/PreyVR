@@ -141,6 +141,19 @@ function Step($label, $line, [switch]$AllowNonZero) {
     # mistake this project has already made three times.
     $bad = $false
     if (-not $AllowNonZero -and $reply -match 'result=(\d+)' -and [int]$Matches[1] -ne 0) { $bad = $true }
+    # **But some statuses ARE failures, and printing them as ok is how a dead
+    # session read as a good start.** On 2026-09-10 this reported
+    # "ok  xr.start  status=unavailable(3)" -- the runtime had no headset
+    # (XR_ERROR_FORM_FACTOR_UNAVAILABLE) and every later step was meaningless,
+    # yet the script said it was fine. The rule above was written to stop status
+    # values being mistaken for error codes, which was right; it then treated
+    # every status as success, which is the opposite error.
+    #
+    # Judged by NAME, not number, and by an explicit bad list rather than a good
+    # one: a name nobody has seen yet should not be failed on sight, but these
+    # four are unambiguous.
+    if ($reply -match 'status=([a-z_]+)\(' -and
+        $Matches[1] -in @('unavailable', 'failed', 'refused', 'stopped')) { $bad = $true }
     if ($reply -eq '(no result)') { $bad = $true }
     if ($bad) { $script:failures++ ; Write-Host ("  FAIL {0,-22} {1}" -f $label, $reply) }
     else { Write-Host ("  ok   {0,-22} {1}" -f $label, $reply) }
