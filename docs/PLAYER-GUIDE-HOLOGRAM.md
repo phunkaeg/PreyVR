@@ -45,10 +45,33 @@ After the first launch, edit `PreyVR.json` beside the launcher:
 | `UiCurveDegrees` | `35` | `0` for flat; `1`–`60` for curvature when the runtime supports it. |
 | `PointerHand` | `1` | `0` left beam, `1` right beam, `2` button navigation only. In button-only mode both triggers retain page actions. |
 | `HudLayer` | `1` | `1` floating native gameplay HUD; `0` native scene HUD. |
+| `UiScalePercent` | `100` | Panel size for the HUD and menus, `20`-`200`. Raise it if the UI sits too small in the headset, lower it if the edges fall outside your view. |
 
 Restart Prey after changing these settings. Lower render sizes such as 1920×1080 reduce GPU cost; 3200×1800 or 3840×2160 increase detail and cost.
 
 The gameplay HUD stays on its own transparent, flat canvas. Health, ammo, interaction prompts and reticle remain Prey's own graphics. The reticle lies at the HUD's fixed depth; it is not a marker painted onto world geometry. Subtitles and world markers remain in the scene. In-world computer terminals have a separate native interaction path; this menu beam does not replace that path yet.
+
+## Changing things while you play
+
+Prey 2017 has no user console, so this mod is driven by a small file the game
+watches. **`Tune Prey VR.cmd`**, beside the launcher, does that for you: run it
+while the game is up, type a command, and the reply prints back.
+
+```
+preyvr> ui.scale 130
+  ui.scale result=0
+```
+
+`help` lists the common ones. The useful one for fit is `ui.scale` (20-200);
+once you find your number, put it in `PreyVR.json` as `UiScalePercent` and every
+later launch starts there. `vr.recenter` re-centres, and so do F12 and squeezing
+both grips -- the grips are the ones that work with the headset on, since F12
+needs the Prey desktop window focused.
+
+You can also pass a command straight in: `Tune Prey VR.cmd ui.scale 130`.
+
+If it answers `(no reply ...)`, the mod is not loaded in the running game --
+start it with the launcher rather than from Steam.
 
 ## Recovery and current limits
 

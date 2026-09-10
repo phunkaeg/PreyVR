@@ -23,7 +23,7 @@ if (-not $BuildDir)       { $BuildDir = Join-Path $here '../build/headless/Relea
 if (-not $OutputDir)      { $OutputDir = Join-Path $here '../build/packages/PreyVR-hologram-preview-20260910' }
 if (-not $GuidePath)      { $GuidePath = Join-Path $here '../docs/PLAYER-GUIDE-HOLOGRAM.md' }
 if (-not $ValidationPath) { $ValidationPath = Join-Path $here '../docs/HOLOGRAM-VALIDATION.md' }
-$root=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$root=(Resolve-Path (Join-Path $here '..')).Path
 $destination=[System.IO.Path]::GetFullPath($OutputDir)
 if (!(Test-Path -LiteralPath $destination)) {[void](New-Item -ItemType Directory -Path $destination)}
 # Never overwrite a frozen player package or its settings.
@@ -31,7 +31,12 @@ if (@(Get-ChildItem -LiteralPath $destination -Force).Count) {throw 'Choose an e
 foreach($name in @('PreyVR.dll','openxr_loader.dll','preyvr_injector.exe')) {
     Copy-Item -LiteralPath (Join-Path $BuildDir $name) -Destination $destination
 }
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Start-PreyVR.ps1'),(Join-Path $PSScriptRoot 'Start Prey VR.cmd') -Destination $destination
+# Ships the tuner too: Prey has no user console, so the command channel is the
+# only way to change anything at runtime, and telling a wearer to hand-edit a
+# timestamped path under AppData is not a usable instruction.
+foreach($script in @('Start-PreyVR.ps1','Start Prey VR.cmd','Send-PreyVR.ps1','Tune Prey VR.cmd')) {
+    Copy-Item -LiteralPath (Join-Path $here $script) -Destination $destination
+}
 Copy-Item -LiteralPath $GuidePath -Destination (Join-Path $destination 'README.md')
 Copy-Item -LiteralPath $ValidationPath -Destination (Join-Path $destination 'VALIDATION.md')
 $licenses=Join-Path $destination 'licenses'
