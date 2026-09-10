@@ -667,6 +667,14 @@ preyvr::timing::DurationSeries gEyeSkew;
 std::atomic<int> gStaleEye{-1};              // which eye currently holds the older image
 std::atomic<unsigned long long> gEyeSkewSamples{0};
 
+// **A wearer's dial on panel size, in percent.** FitPanel's 60/40 caps are a
+// comfort default and the corner test uses the frustum the runtime REPORTS,
+// which on a Quest 3 is wider than the lenses show. Where the real edge sits is
+// not derivable -- only a wearer can find it -- so this is a knob rather than a
+// constant. Applied to the menu panel and the HUD alike, because they are the
+// same presentation and one dial is easier to reason about than two.
+std::atomic<unsigned int> gUiScalePercent{100};
+
 std::atomic<bool> gDepthEnabled{false};
 std::atomic<unsigned long long> gDepthSubmitted{0}, gDepthRefused{0};
 std::atomic<int> gDepthNearMilli{0}, gDepthFarMilli{0};
@@ -1283,7 +1291,8 @@ void ServiceXrFrame(void* renderer)
         const float aspect=static_cast<float>(gHost.width)/static_cast<float>(gHost.height);
         constexpr float guideRatio=static_cast<float>(kGuideHeight)/kGuideWidth;
         constexpr float gapRatio=.015f;
-        auto layout=ui::FitPanel(inputHead,optical,1/(1/aspect+guideRatio+gapRatio));
+        auto layout=ui::FitPanel(inputHead,optical,1/(1/aspect+guideRatio+gapRatio),2.0f,
+            static_cast<float>(gUiScalePercent.load(std::memory_order_relaxed))*.01f);
         if(layout) {
             gHost.menuPanel.reset();gHost.guidePanel.reset();
             for(int attempt=0;attempt<80;++attempt) {
@@ -1610,7 +1619,9 @@ void ServiceXrFrame(void* renderer)
                     {p.position.x,p.position.y,p.position.z}},views[eye].fov.angleLeft,views[eye].fov.angleRight,
                     views[eye].fov.angleUp,views[eye].fov.angleDown};
             }
-            auto panel=ui::FitPanel(inputHead,optical,static_cast<float>(desc.Width)/desc.Height);
+            auto panel=ui::FitPanel(inputHead,optical,
+                static_cast<float>(desc.Width)/desc.Height,2.0f,
+                static_cast<float>(gUiScalePercent.load(std::memory_order_relaxed))*.01f);
             hudActive=hudActive && panel.has_value();
             if(hudActive) {
                 const auto& p=*panel;
@@ -1743,6 +1754,25 @@ bool XrRequestedEyeFov(int eye, float* left, float* right, float* up, float* dow
     *down = fov.angleDown;
     return true;
 }
+
+DWORD SetUiScalePercent(unsigned int percent)
+{
+    if (percent < 20 || percent > 200) {
+        Log("result=refused detail=ui_scale_out_of_range");
+        return 1;
+    }
+    gUiScalePercent.store(percent, std::memory_order_release);
+    // The panels are rebuilt from the fit on the next frame that needs one, so
+    // drop the cached ones rather than waiting for a reference change.
+    gHost.menuPanel.reset();
+    gHost.guidePanel.reset();
+    std::ostringstream line;
+    line << "result=0 detail=ui_scale percent=" << percent;
+    Log(line.str());
+    return 0;
+}
+
+DWORD UiScalePercent() { return gUiScalePercent.load(std::memory_order_acquire); }
 
 DWORD SetXrTimingEnabled(unsigned int enabled, unsigned int displayHz)
 {

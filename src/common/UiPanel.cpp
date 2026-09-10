@@ -105,7 +105,13 @@ std::optional<Panel> FitPanel(const Pose& head, const std::array<Eye,2>& eyes,
         !std::isfinite(aspect) || aspect < .25f || aspect > 5 ||
         !std::isfinite(distance) || distance < 1 || distance > 4 ||
         !std::isfinite(scale)) return {};
-    if (scale > 1) scale = 1; if (scale < .2f) scale = .2f;
+    // **Above 1 is allowed on purpose.** The 60/40 caps are a comfort default,
+    // not a safety limit -- the corner test below still refuses anything whose
+    // corners leave the frustum, so a wearer asking for a bigger panel cannot
+    // push it somewhere invisible. Clamping at 1 made the dial one-directional,
+    // and at a portrait render aspect the vertical cap binds and forces the
+    // panel narrow, which is exactly when a wearer needs to go the other way.
+    if (scale > 2) scale = 2; if (scale < .2f) scale = .2f;
     Panel panel{};
     panel.pose=Compose(head,Pose{{},{0,0,-distance}});
     // At most 60 degrees horizontally / 40 vertically, times the wearer's scale.

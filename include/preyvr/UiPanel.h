@@ -15,8 +15,10 @@ struct Panel { Pose pose{}; float width=0, height=0; };
 // than the lenses actually show, so a panel that passes the test is still
 // cropped at the edges by the optics. A wearer is the only instrument that can
 // settle where the real edge is, so this is a dial rather than a constant.
-// Clamped to [0.2, 1.0]: above 1 would exceed the caps, and below 0.2 is a
-// postage stamp nobody asked for.
+// Clamped to [0.2, 2.0]. Above 1 exceeds the default caps deliberately: they are
+// a comfort choice, not a limit, and the corner test still refuses a panel whose
+// corners leave the frustum. At a portrait render aspect the vertical cap binds
+// and forces the panel narrow, which is precisely when a wearer needs more.
 std::optional<Panel> FitPanel(const Pose& head, const std::array<Eye,2>& eyes,
                              float aspect, float distance=2.0f, float scale=1.0f);
 bool CornersVisible(const Panel& panel, const std::array<Eye,2>& eyes);

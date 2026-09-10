@@ -166,6 +166,14 @@ void ServiceXrFrame(void* renderer);
 // Answers the question nothing else here can: time inside `xrWaitFrame` is the
 // runtime pacing us, time in the scene is work we chose. Reclaiming pixels helps
 // only the second kind.
+// Panel size as a percentage of FitPanel's default caps, 20..200. Those caps
+// are a comfort choice and the corner test measures the frustum the runtime
+// REPORTS, which is wider than a Quest 3's lenses actually show -- so where the
+// usable edge is cannot be derived, only worn. Applies to the menu panel and
+// the HUD together.
+DWORD SetUiScalePercent(unsigned int percent);
+DWORD UiScalePercent();
+
 DWORD SetXrTimingEnabled(unsigned int enabled, unsigned int displayHz);
 std::string XrTimingReport();
 

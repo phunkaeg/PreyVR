@@ -80,5 +80,47 @@ int main() {
     eyes[0].left=std::nanf("");
     Require(!ui::FitPanel({},eyes,1),"reject bad FOV");
     Require(!ui::FitPanel({},eyes,0),"reject zero aspect");
+    // --- the wearer's scale dial ------------------------------------------
+    // A clean pair of eyes: the ones above were deliberately damaged by the
+    // rejection cases, so reusing them would test the wrong thing.
+    std::array<ui::Eye,2> plain{};
+    for(int e=0;e<2;++e){plain[e].pose={{0,0,0,1},{e?.032f:-.032f,0,0}};
+        plain[e].left=-.9f;plain[e].right=.9f;plain[e].up=.9f;plain[e].down=-.9f;}
+
+    auto base=ui::FitPanel({},plain,16.f/9);
+    auto same=ui::FitPanel({},plain,16.f/9,2.0f,1.0f);
+    Require(base && same,"premise: both fit");
+    Require(std::abs(base->width-same->width)<.0001f,"scale 1.0 is the default");
+
+    auto half=ui::FitPanel({},plain,16.f/9,2.0f,.5f);
+    Require(half && std::abs(half->width-base->width*.5f)<.0001f,"0.5 halves the width");
+    Require(std::abs(half->height-base->height*.5f)<.0001f,"and the height");
+    Require(std::abs(half->width/half->height-16.f/9)<.0001f,"aspect survives scaling");
+
+    // **Above 1 must actually grow.** The 60/40 caps are a comfort default, and
+    // at a portrait aspect the vertical one binds and forces the panel narrow --
+    // the case a wearer hit at 2688x2880, where it came out around 37.5 degrees:
+    // too small, and notably NOT clipping anywhere, which is what proves the cap
+    // was binding rather than the corner test.
+    auto big=ui::FitPanel({},plain,16.f/9,2.0f,1.5f);
+    Require(big && big->width>base->width,"1.5 grows the panel past the default cap");
+    Require(std::abs(big->width-base->width*1.5f)<.0001f,"by exactly the factor asked for");
+
+    // Clamped at both ends rather than refused, so a fat-fingered value degrades
+    // to the nearest sane panel instead of removing the UI entirely.
+    auto huge=ui::FitPanel({},plain,16.f/9,2.0f,50.f);
+    auto twice=ui::FitPanel({},plain,16.f/9,2.0f,2.0f);
+    Require(huge && twice && std::abs(huge->width-twice->width)<.0001f,"clamped at 2.0");
+    auto tiny=ui::FitPanel({},plain,16.f/9,2.0f,.001f);
+    auto floorPanel=ui::FitPanel({},plain,16.f/9,2.0f,.2f);
+    Require(tiny && floorPanel && std::abs(tiny->width-floorPanel->width)<.0001f,"clamped at 0.2");
+    Require(!ui::FitPanel({},plain,16.f/9,2.0f,std::nanf("")),"a non-finite scale is refused");
+
+    // The portrait aspect is the case that motivated the dial.
+    auto wide=ui::FitPanel({},plain,2560.f/1440);
+    auto square=ui::FitPanel({},plain,2688.f/2880);
+    Require(wide && square,"both aspects fit");
+    Require(square->width<wide->width,"the portrait aspect yields a NARROWER panel");
+
     std::cout<<"UI panel geometry passed\n";
 }

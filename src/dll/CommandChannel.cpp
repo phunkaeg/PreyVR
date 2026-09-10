@@ -358,6 +358,10 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "ui.panel result=" << SetUiPanelMode(arg(1,1)) << ' ' << VrModeReport();
     } else if (verb == "ui.pointer") {
         out << "ui.pointer result=" << (args.size()>1?SetUiPointerHand(arg(1,1)):0) << ' ' << UiPointerReport();
+    } else if (verb == "ui.scale") {
+        if (args.size() > 1) { out << "ui.scale result=" << SetUiScalePercent(arg(1, 100)); }
+        else { out << "ui.scale result=0"; }
+        out << " percent=" << UiScalePercent();
     } else if (verb == "ui.curve") {
         out << "ui.curve result=" << SetUiCurveDegrees(arg(1,35));
     } else if (verb == "observer") {
