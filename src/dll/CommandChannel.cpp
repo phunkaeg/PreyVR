@@ -449,6 +449,11 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << " percent=" << AnimIkReachPercent();
     } else if (verb == "ik.hands") {
         out << "ik.hands result=" << SetAnimIkHands(arg(1, 1));
+    } else if (verb == "ik.anchor") {
+        out << "ik.anchor result=" << SetAnimIkCameraAnchor(arg(1, 1))
+            << " camera=" << AnimIkAnchorCameraCount()
+            << " reticle=" << AnimIkAnchorReticleCount()
+            << " missing=" << AnimIkAnchorMissingCount();
     } else if (verb == "ik.trace") {
         if (args.size() >= 2) { out << "ik.trace result=" << SetAnimIkTrace(arg(1, 1)); }
         else { out << "ik.trace result=0"; }

@@ -1944,6 +1944,66 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-11 - R-134: the crosstalk fixed, and a one-button bring-up that already existed
+
+### The fix: anchor both hands at the camera, not at the reticle
+
+`ControllerWorldFromHead(frame.yaw, frame.nativeEye, ...)` rotated every hand's
+head-relative offset about `nativeEye` -- which is the native cached RETICLE ray
+origin, an unprojected screen point. Our own reticle lane writes that reticle,
+the engine unprojects it, and the result landed in the shared anchor. So the
+right controller's aim reached BOTH hands through one term, which is the
+left-hand drag a wearer reported across four sessions.
+
+`GameplayPoseFrame` now also carries `cameraCentre`, read from the view camera's
+Matrix34 translation (elements 3, 7, 11) in the same place the declared frustum
+is read, so the anchor and the projection cannot come from different frames. It
+is the gameplay camera on the game thread, before the render seam installs a
+per-eye offset, so it carries no half IPD -- the trap H-005C / FAIL-HAND-037
+records for the live render camera.
+
+`ik.anchor 1` (default) uses it; `ik.anchor 0` restores the reticle anchor **only
+so a wearer can A/B the two**. It is the defect, not a fallback. When the camera
+cannot be read the frame is refused rather than falling back, because a silent
+fallback would reintroduce the defect on exactly the frames where the camera is
+unreadable -- the worst place to hide it. Counters: `camera`, `reticle`,
+`missing`.
+
+**Not yet judged in a headset.** The mechanism is Codex's static trace
+(RE-IK-CROSSTALK-2026-09-09) and the fix follows its recommended design, but
+nobody has worn it. `ik.trace 1` publishes the per-hand record that shows the
+anchor directly.
+
+### The one-button bring-up was already built, and this project kept ignoring it
+
+A wearer asked for a function key that would enable stereo and 6DoF, turn off
+motion blur, enable and calibrate the motion controllers, and set the near-model
+FOV -- one press for the whole configuration.
+
+**`EnableVrMode` already does all of it, on F11.** It waits for the renderer and
+backbuffer, resolves the input path, starts the session with sRGB in the correct
+order, runs the console settings, **derives the near FOV from the actual aspect**
+with the same `2*atan(tan(60 deg) * height / width)` the startup script uses,
+recenters, then arms stereo with the runtime's own IPD, view and position hooks,
+near-view stereo, move/turn/fire/interaction, aim, reticle and dispatch, IK mode
+2 with drive, weapon alignment, both hands and reach 65.
+
+And in its `active` phase it **re-calibrates automatically** whenever the owner
+generation or the head reference changes -- that is, on every weapon change and
+every recentre. Those are exactly the two invalidations that made calibration
+appear to fail all session.
+
+**Everything hand-driven through the command channel this session was a worse
+reimplementation of this.** The research startup script has its own bring-up, so
+using it silently bypasses the player path: `vr.enable` never runs,
+`uiPanelFrames` stays 0, modal screens are drawn flat across the whole view, and
+calibration is one-shot instead of self-repairing. Two bring-up paths existing
+side by side is the defect; `-PlayerUi` is a bridge, not a reconciliation.
+
+`SetAnimIkWeaponAlignment(1)` is in that sequence, which is the `ik.align 1` that
+restored right-hand rotation when it was sent by hand -- it would have been on
+from the start under F11.
+
 ## 2026-09-10 - R-133: read from outside the process, on xr-sim, with no headset
 
 A wearer asked for confirmation without a headset. xr-sim plus xr-tape answered

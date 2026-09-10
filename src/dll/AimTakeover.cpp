@@ -134,6 +134,25 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     frame.player = playerAddress;
     std::memcpy(&frame.nativeEye, reinterpret_cast<const void*>(
         playerAddress + engine::ArkPlayerLayout::cachedReticleOrigin), sizeof(Vec3));
+    // The view camera's own translation -- Matrix34, translation in column 3,
+    // so elements 3, 7 and 11. This is the gameplay camera on the game thread,
+    // before the render seam installs a per-eye offset, so it carries no half
+    // IPD (the trap H-005C / FAIL-HAND-037 records for the live render camera).
+    frame.cameraCentreValid = false;
+    if (const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll")) {
+        const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+        if (auto* const systemPtr =
+                *reinterpret_cast<std::uint8_t**>(base + engine::SystemLayout::pointerRva)) {
+            const auto* const camera = reinterpret_cast<const float*>(
+                reinterpret_cast<std::uintptr_t>(systemPtr) + engine::SystemLayout::viewCamera +
+                engine::CameraLayout::matrix);
+            const Vec3 centre{camera[3], camera[7], camera[11]};
+            if (std::isfinite(centre.x) && std::isfinite(centre.y) && std::isfinite(centre.z)) {
+                frame.cameraCentre = centre;
+                frame.cameraCentreValid = true;
+            }
+        }
+    }
     Vec3 nativeDirection{};
     std::memcpy(&nativeDirection, reinterpret_cast<const void*>(
         playerAddress + engine::ArkPlayerLayout::cachedReticleDirection), sizeof(Vec3));

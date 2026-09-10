@@ -42,6 +42,19 @@ struct GameplayPoseFrame {
     // not make it independent of aim.reticle. Anchor separation is still pending;
     // see docs/RE-IK-CROSSTALK-2026-09-09.md before treating this as a head anchor.
     Vec3 nativeEye{};
+    // **The camera centre, which is what a head-relative offset must be rotated
+    // about.** `nativeEye` above is the native cached RETICLE ray origin -- an
+    // unprojected screen point that moves when the reticle moves, and our own
+    // reticle lane writes that reticle. Using it as the shared hand anchor feeds
+    // the right controller's aim back into BOTH hands' world positions, which is
+    // the reported left-hand drag (RE-IK-CROSSTALK-2026-09-09).
+    //
+    // Read from the same view camera as the declared frustum, so the anchor and
+    // the projection cannot come from two different frames. Invalid means the
+    // camera could not be read: consumers must refuse rather than fall back to
+    // the reticle point, because falling back silently restores the defect.
+    Vec3 cameraCentre{};
+    bool cameraCentreValid = false;
     // The play-space -> engine-world yaw, the one every lane must rotate a
     // head-relative offset by. See SetAimBodyYaw for why it is not simply
     // cameraYaw - referenceYaw.

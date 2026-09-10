@@ -59,6 +59,17 @@ DWORD SetAnimIkJointSignature(unsigned int joints);
 // Read it with only the right controller moving: whichever of `ikAnchorL` or
 // `ikShoulderL` tracks that motion is the path, and if `ikGoalRawL` is static
 // while `ikGoalScaledL` moves, compression is responsible rather than the anchor.
+// **The crosstalk fix.** 1 (default) anchors both hands at the view camera's
+// centre; 0 restores the reticle-derived anchor so a wearer can A/B them.
+// `nativeEye` is the native cached RETICLE ray origin, which our own reticle
+// lane moves, so it carried the right controller's aim into both hands
+// (RE-IK-CROSSTALK-2026-09-09). Refuses the frame when the camera cannot be
+// read rather than falling back, since a silent fallback restores the defect.
+DWORD SetAnimIkCameraAnchor(unsigned int enabled);
+unsigned long long AnimIkAnchorCameraCount();
+unsigned long long AnimIkAnchorReticleCount();
+unsigned long long AnimIkAnchorMissingCount();
+
 DWORD SetAnimIkTrace(unsigned int enabled);
 std::string AnimIkTraceReport();
 

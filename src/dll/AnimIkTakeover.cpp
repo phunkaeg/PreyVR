@@ -146,6 +146,13 @@ struct IkTraceRecord {
 };
 IkTraceRecord gTrace[2]{};
 std::atomic<bool> gTraceEnabled{false};
+// **The crosstalk fix, switchable so it can be A/B'd by a wearer.**
+//
+// 1 (default) anchors both hands at the view camera's centre. 0 restores the
+// old reticle-derived anchor, which is kept ONLY so the two can be compared in
+// a headset -- it is the defect, not a fallback.
+std::atomic<bool> gCameraAnchor{true};
+std::atomic<unsigned long long> gAnchorCamera{0}, gAnchorReticle{0}, gAnchorMissing{0};
 
 std::atomic<int> gLastGoalMm[3]{0, 0, 0};
 
@@ -416,7 +423,26 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
             gNoPose.fetch_add(1, std::memory_order_relaxed);
             return;
         }
-        const Pose world = animik::ControllerWorldFromHead(frame.yaw, frame.nativeEye,
+        // **Anchor selection, and the whole point of the fix.** `nativeEye` is the
+        // native cached reticle ray origin: our reticle lane moves the reticle,
+        // the engine unprojects it, and the result lands here -- so the right
+        // controller's aim reaches BOTH hands through this one term. The camera
+        // centre does not move with the reticle.
+        Vec3 anchor = frame.nativeEye;
+        if (gCameraAnchor.load(std::memory_order_acquire)) {
+            if (!frame.cameraCentreValid) {
+                // Refuse rather than fall back: a silent fall back to nativeEye
+                // would reintroduce the defect on exactly the frames where the
+                // camera is unreadable, which is the worst place to hide it.
+                gAnchorMissing.fetch_add(1, std::memory_order_relaxed);
+                return;
+            }
+            anchor = frame.cameraCentre;
+            gAnchorCamera.fetch_add(1, std::memory_order_relaxed);
+        } else {
+            gAnchorReticle.fetch_add(1, std::memory_order_relaxed);
+        }
+        const Pose world = animik::ControllerWorldFromHead(frame.yaw, anchor,
                                                           frame.tracking.head, state.gripPose);
         traceGrip = state.gripPose.position;
         traceControllerWorld = world.position;
@@ -434,7 +460,10 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
                 reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll")), owner,
                 reinterpret_cast<std::uintptr_t>(absolute), poseCount, handJoint, gAlignBasis);
             if (gAlignStatus != weaponrig::Status::ready) { ++gAlignRefused; return; }
-            const Pose aimWorld = animik::ControllerWorldFromHead(frame.yaw, frame.nativeEye,
+            const Vec3 aimAnchor = (gCameraAnchor.load(std::memory_order_acquire) &&
+                                    frame.cameraCentreValid)
+                                       ? frame.cameraCentre : frame.nativeEye;
+            const Pose aimWorld = animik::ControllerWorldFromHead(frame.yaw, aimAnchor,
                 frame.tracking.head, state.aimPose);
             if (!weaponrig::SolveWrist(location.q, aimWorld.orientation, gAlignBasis, rotation)) {
                 gAlignStatus = weaponrig::Status::invalidBasis;
@@ -500,7 +529,8 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
                 t.trackingSequence = frame.tracking.sequence;
                 t.publishedNs = frame.publishedNs;
                 t.owner = frame.player;
-                t.anchor = frame.nativeEye;
+                t.anchor = gCameraAnchor.load(std::memory_order_acquire) && frame.cameraCentreValid
+                              ? frame.cameraCentre : frame.nativeEye;
                 t.yaw = frame.yaw;
                 t.head = frame.tracking.head;
                 t.grip.position = traceGrip;
@@ -821,6 +851,18 @@ DWORD SetAnimIkReachPercent(int percent)
 }
 
 int AnimIkReachPercent() { return gReachPercent.load(std::memory_order_relaxed); }
+
+DWORD SetAnimIkCameraAnchor(unsigned int enabled)
+{
+    const bool on = enabled != 0;
+    gCameraAnchor.store(on, std::memory_order_release);
+    lifecycle::Log(std::string("preyvr_anim_ik result=0 detail=camera_anchor enabled=") +
+                   (on ? "1" : "0"));
+    return 0;
+}
+unsigned long long AnimIkAnchorCameraCount() { return gAnchorCamera.load(std::memory_order_relaxed); }
+unsigned long long AnimIkAnchorReticleCount() { return gAnchorReticle.load(std::memory_order_relaxed); }
+unsigned long long AnimIkAnchorMissingCount() { return gAnchorMissing.load(std::memory_order_relaxed); }
 
 DWORD SetAnimIkTrace(unsigned int enabled)
 {
