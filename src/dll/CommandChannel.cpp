@@ -6,6 +6,7 @@
 #include "NearFovOverride.h"
 #include "CameraEditHook.h"
 #include "ConsoleBridgeWin32.h"
+#include "preyvr/ConsolePolicy.h"
 #include "FrameObserverHook.h"
 #include "HandRigTakeover.h"
 #include "HeadTrackingHook.h"
@@ -823,11 +824,34 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         // snapshot so a headset sweep survives beyond its final sample. This
         // runs on the command thread, not on every render frame.
         lifecycle::Log("preyvr_report " + out.str());
+    } else if (console::IsAllowlistedCvar(verb)) {
+        // **A bare allowlisted name routes to the console.**
+        //
+        // Without this, typing exactly what the allowlist contains --
+        // `ConsoleShow`, `hud_tutorials 0` -- answered "rejected", because the
+        // channel's own verb table does not contain them and only the `console`
+        // prefix reached the bridge. That is a dead end with no hint in it, and
+        // it cost a live test.
+        //
+        // This is dispatch, not a widening: the identical fail-closed policy
+        // still classifies the line, so nothing becomes reachable that was not
+        // already reachable through `console <name>`.
+        std::string command = verb;
+        for (std::size_t i = 1; i < args.size(); ++i) {
+            command += " " + args[i];
+        }
+        DWORD result = QueueConsoleCommand(command.c_str());
+        for (int attempt = 0; attempt < 40 && result == 4u; ++attempt) {
+            Sleep(25);
+            result = QueueConsoleCommand(command.c_str());
+        }
+        out << "console result=" << result << " command=\"" << command << "\"";
     } else {
         // Reported, not ignored. A typo that silently does nothing is
         // indistinguishable from a mechanism that does not work.
         gRejected.fetch_add(1, std::memory_order_relaxed);
-        out << "result=rejected verb=\"" << verb << "\"";
+        out << "result=rejected verb=\"" << verb << "\""
+            << " detail=not_a_channel_verb_and_not_allowlisted";
         return;
     }
     gProcessed.fetch_add(1, std::memory_order_relaxed);
