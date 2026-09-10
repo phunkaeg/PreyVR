@@ -140,6 +140,62 @@ void TestAllowlistContents()
     Require(!IsAllowlistedCvar(""), "an empty name is not allowlisted");
 }
 
+// The 2026-09-11 widening, pinned so the reason survives the entries.
+//
+// Two groups, added for two different asks, and separated here because they
+// carry different risk. The hud_ ones are display toggles a wearer can flip
+// back. The console pair opens the engine's own UI, which is a bigger door.
+void TestHudAndConsoleEntriesAreAllowed()
+{
+    // Display toggles, verbatim from the engine's registration help strings:
+    // "Tutorial mode. 0=Off, 1=Non-Tutorial Prompts Only, 2=All" (default 2).
+    Require(Classify("hud_tutorials 0") == Classification::sceneControl,
+        "tutorial prompts can be switched off");
+    Require(Classify("hud_tutorials 1") == Classification::sceneControl,
+        "and set to non-tutorial prompts only");
+    Require(Classify("hud_showLegends 0") == Classification::sceneControl,
+        "the input legend bar can be hidden");
+    Require(Classify("hud_showOptionalHud 0") == Classification::sceneControl,
+        "so can every optional element at once");
+    Require(Classify("hud_showHudLog 0") == Classification::sceneControl,
+        "and the pickup/combat log");
+
+    // **A bare verb must classify as a query, or the console cannot be opened
+    // at all.** ConsoleShow and ConsoleHide take no argument -- they are
+    // commands, not cvars -- and the query form is the only shape that fits.
+    Require(Classify("ConsoleShow") == Classification::query,
+        "the console can be opened");
+    Require(Classify("ConsoleHide") == Classification::query,
+        "and closed again");
+    Require(Classify("consoleshow") == Classification::query,
+        "casing does not matter, as CryEngine matches names case-insensitively");
+    Require(Classify("sys_DeactivateConsole 0") == Classification::sceneControl,
+        "the engine's own console gate is settable");
+}
+
+// What the widening deliberately did NOT admit.
+//
+// Worth a test rather than a comment: the entries above are the first that
+// reach a UI a person types into, so the boundary should fail loudly if
+// someone widens it later by pattern instead of by name.
+void TestConsoleWideningIsExact()
+{
+    // con_restricted 0 lifts the engine's restriction on every other command
+    // at once. That is a different decision from three named entries.
+    RequireDenied("con_restricted 0", "lifting the engine's own restriction is not on the list");
+    RequireDenied("con_showonload 1", "neighbouring console cvars are not admitted by association");
+    // No hud_ prefix rule: a prefix would silently admit every future hud_ cvar.
+    RequireDenied("hud_startPaused 1", "an unlisted hud_ cvar is still denied");
+    RequireDenied("hud_allowMouseInput 1", "including one that sounds harmless");
+    // The separator ban still applies to the new entries, which is the whole
+    // reason it exists -- an opened console must not be a smuggling route.
+    RequireDenied("ConsoleShow; quit", "a console command cannot carry a second one");
+    RequireDenied("hud_tutorials 0; map neuromod_division", "nor can a display toggle");
+    // Commands still take at most one numeric argument.
+    RequireDenied("ConsoleShow 1 2", "more than one argument is refused");
+    RequireDenied("hud_tutorials off", "a non-numeric value is refused");
+}
+
 } // namespace
 
 // The weapon-offset entries added 2026-09-03, pinned deliberately.
@@ -230,6 +286,8 @@ int main()
     TestMalformedInputIsDenied();
     TestPathAndQuoteCharactersAreDenied();
     TestAllowlistContents();
+    TestHudAndConsoleEntriesAreAllowed();
+    TestConsoleWideningIsExact();
     std::cout << "PreyVR console policy tests passed\n";
     return 0;
 }

@@ -362,6 +362,14 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         if (args.size() > 1) { out << "ui.scale result=" << SetUiScalePercent(arg(1, 100)); }
         else { out << "ui.scale result=0"; }
         out << " percent=" << UiScalePercent();
+    } else if (verb == "ui.margin") {
+        // The real size ceiling. ui.scale above ~130 was being absorbed by the
+        // fit loops shrinking the panel back inside 72% of the reported frustum.
+        out << "ui.margin result=" << SetUiFitMarginPercent(arg(1, 72))
+            << " percent=" << UiFitMarginPercent();
+    } else if (verb == "ui.guide") {
+        out << "ui.guide result=" << SetUiGuideEnabled(arg(1, 1))
+            << " enabled=" << UiGuideEnabled();
     } else if (verb == "ui.curve") {
         out << "ui.curve result=" << SetUiCurveDegrees(arg(1,35));
     } else if (verb == "observer") {

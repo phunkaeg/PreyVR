@@ -173,6 +173,16 @@ void ServiceXrFrame(void* renderer);
 // the HUD together.
 DWORD SetUiScalePercent(unsigned int percent);
 DWORD UiScalePercent();
+// The fraction of the RUNTIME-REPORTED frustum a panel must stay inside, 30..100.
+// This, not ui.scale, is what caps panel size: the fit loops shrink the panel
+// until it satisfies this, so past the point where it binds, raising the scale
+// does nothing. Default 72. Raising it trades edge visibility for size.
+DWORD SetUiFitMarginPercent(unsigned int percent);
+DWORD UiFitMarginPercent();
+// The onboarding card stacked under the menu -- ours, not Prey's. It shares the
+// menu's vertical budget, so turning it off also makes the menu bigger.
+DWORD SetUiGuideEnabled(unsigned int enabled);
+DWORD UiGuideEnabled();
 
 DWORD SetXrTimingEnabled(unsigned int enabled, unsigned int displayHz);
 std::string XrTimingReport();

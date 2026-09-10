@@ -65,7 +65,15 @@ std::optional<RayHit> Intersect(const Surface& s,const Pose& aim) {
     return RayHit{u,v,t,{aim.position.x+t*direction.x,aim.position.y+t*direction.y,aim.position.z+t*direction.z},
         u>=0&&u<=1&&v>=0&&v<=1};
 }
-bool SurfaceVisible(const Surface& s,const std::array<Eye,2>& eyes) {
+// A non-finite margin is refused rather than clamped: it means the caller lost
+// track of the value, and silently substituting a default would hide that.
+bool ClampMargin(float& margin) {
+    if(!std::isfinite(margin))return false;
+    if(margin>1)margin=1; if(margin<.3f)margin=.3f;
+    return true;
+}
+bool SurfaceVisible(const Surface& s,const std::array<Eye,2>& eyes,float margin) {
+    if(!ClampMargin(margin))return false;
     if(!Valid(s.panel.pose)||!std::isfinite(s.panel.width)||!std::isfinite(s.panel.height)||
        s.panel.width<=0||s.panel.height<=0||!std::isfinite(s.angle)||s.angle<0||s.angle>1.2f)return false;
     for(const auto& eye:eyes) {
@@ -75,12 +83,13 @@ bool SurfaceVisible(const Surface& s,const std::array<Eye,2>& eyes) {
             const auto q=Rotate(stereo::Conjugate(eye.pose.orientation),{p.x-eye.pose.position.x,p.y-eye.pose.position.y,p.z-eye.pose.position.z});
             if(q.z>=-.01f)return false;
             const float x=q.x/-q.z,y=q.y/-q.z;
-            if(x<std::tan(eye.left)*.72f||x>std::tan(eye.right)*.72f||y<std::tan(eye.down)*.72f||y>std::tan(eye.up)*.72f)return false;
+            if(x<std::tan(eye.left)*margin||x>std::tan(eye.right)*margin||y<std::tan(eye.down)*margin||y>std::tan(eye.up)*margin)return false;
         }
     }
     return true;
 }
-bool CornersVisible(const Panel& panel, const std::array<Eye,2>& eyes) {
+bool CornersVisible(const Panel& panel, const std::array<Eye,2>& eyes, float margin) {
+    if (!ClampMargin(margin)) return false;
     if (!Valid(panel.pose) || !std::isfinite(panel.width) || !std::isfinite(panel.height) ||
         panel.width <= 0 || panel.height <= 0) return false;
     for (const auto& eye : eyes) {
@@ -92,7 +101,6 @@ bool CornersVisible(const Panel& panel, const std::array<Eye,2>& eyes) {
             const auto local=Rotate(stereo::Conjugate(eye.pose.orientation),delta);
             if (local.z >= -.01f) return false;
             const float tx=local.x/-local.z, ty=local.y/-local.z;
-            constexpr float margin=.72f;
             if (tx < std::tan(eye.left)*margin || tx > std::tan(eye.right)*margin ||
                 ty < std::tan(eye.down)*margin || ty > std::tan(eye.up)*margin) return false;
         }
@@ -100,11 +108,12 @@ bool CornersVisible(const Panel& panel, const std::array<Eye,2>& eyes) {
     return true;
 }
 std::optional<Panel> FitPanel(const Pose& head, const std::array<Eye,2>& eyes,
-                             float aspect, float distance, float scale) {
+                             float aspect, float distance, float scale, float margin) {
     if (!Valid(head) || !Valid(eyes[0]) || !Valid(eyes[1]) ||
         !std::isfinite(aspect) || aspect < .25f || aspect > 5 ||
         !std::isfinite(distance) || distance < 1 || distance > 4 ||
-        !std::isfinite(scale)) return {};
+        !std::isfinite(scale) || !std::isfinite(margin)) return {};
+    ClampMargin(margin);
     // **Above 1 is allowed on purpose.** The 60/40 caps are a comfort default,
     // not a safety limit -- the corner test below still refuses anything whose
     // corners leave the frustum, so a wearer asking for a bigger panel cannot
@@ -122,7 +131,7 @@ std::optional<Panel> FitPanel(const Pose& head, const std::array<Eye,2>& eyes,
                          2*distance*std::tan(.34906585f)*aspect);
     panel.height=panel.width/aspect;
     for (int attempt=0;attempt<80;++attempt) {
-        if (CornersVisible(panel,eyes)) return panel;
+        if (CornersVisible(panel,eyes,margin)) return panel;
         panel.width*=.95f; panel.height*=.95f;
     }
     return {};

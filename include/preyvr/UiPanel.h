@@ -19,9 +19,20 @@ struct Panel { Pose pose{}; float width=0, height=0; };
 // a comfort choice, not a limit, and the corner test still refuses a panel whose
 // corners leave the frustum. At a portrait render aspect the vertical cap binds
 // and forces the panel narrow, which is precisely when a wearer needs more.
+//
+// `margin` is the fraction of the reported frustum a panel must stay inside,
+// and it is the REAL ceiling on size -- not `scale`. Both fit loops shrink
+// until every sampled point sits within it, so once the margin binds, raising
+// `scale` changes nothing at all: a wearer at 2688x2880 found the panel stopped
+// growing at about 130 percent and reasonably read that as the maximum.
+// Default 0.72, clamped to [0.3, 1.0]. Raising it trades the safety comment
+// above for size, which is the wearer's trade to make and is reversible.
+inline constexpr float kDefaultFitMargin=.72f;
 std::optional<Panel> FitPanel(const Pose& head, const std::array<Eye,2>& eyes,
-                             float aspect, float distance=2.0f, float scale=1.0f);
-bool CornersVisible(const Panel& panel, const std::array<Eye,2>& eyes);
+                             float aspect, float distance=2.0f, float scale=1.0f,
+                             float margin=kDefaultFitMargin);
+bool CornersVisible(const Panel& panel, const std::array<Eye,2>& eyes,
+                    float margin=kDefaultFitMargin);
 // angle=0 is a plane; otherwise width is arc length. The panel pose always
 // denotes the visible surface centre, while OpenXR's cylinder pose is its axis.
 struct Surface { Panel panel{}; float angle=0; };
@@ -29,7 +40,8 @@ struct RayHit { float u=0,v=0,distance=0; Vec3 point{}; bool inside=false; };
 Pose CylinderAxis(const Surface& surface);
 Pose SurfacePoint(const Surface& surface,float u,float v);
 std::optional<RayHit> Intersect(const Surface& surface,const Pose& aim);
-bool SurfaceVisible(const Surface& surface,const std::array<Eye,2>& eyes);
+bool SurfaceVisible(const Surface& surface,const std::array<Eye,2>& eyes,
+                    float margin=kDefaultFitMargin);
 // Neutral on entry; losing the target releases outside it, never clicks the
 // last hovered item. A captured drag can travel beyond the screen boundary.
 struct PointerButtons {

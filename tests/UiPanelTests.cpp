@@ -122,5 +122,58 @@ int main() {
     Require(wide && square,"both aspects fit");
     Require(square->width<wide->width,"the portrait aspect yields a NARROWER panel");
 
+    // --- the fit margin, and why ui.scale looked capped ---------------------
+    //
+    // A wearer at 2688x2880 reported that ui.scale stopped doing anything above
+    // about 130 and read that as its maximum. It is not: FitPanel shrinks the
+    // panel in 0.95 steps until it sits inside `margin` of the frustum the
+    // runtime reports, so once that binds, every further increase in scale is
+    // shrunk straight back off. These eyes reproduce it -- a 40-degree vertical
+    // half-angle, which is the bound that binds at a portrait render aspect.
+    std::array<ui::Eye,2> tight{};
+    for(int e=0;e<2;++e){tight[e].pose={{0,0,0,1},{e?.032f:-.032f,0,0}};
+        tight[e].left=-.9f;tight[e].right=.9f;tight[e].up=.7f;tight[e].down=-.7f;}
+    const float portrait=2688.f/2880;
+
+    auto s18=ui::FitPanel({},tight,portrait,2.0f,1.8f);
+    auto s20=ui::FitPanel({},tight,portrait,2.0f,2.0f);
+    Require(s18&&s20,"both scales fit once shrunk");
+    // Asking for 11 percent more delivers under 1 percent: the defect itself.
+    Require(s20->height/s18->height<1.01f,
+        "past the margin, raising the scale does almost nothing -- the reported cap");
+
+    // The margin is the dial that actually moves it.
+    auto wideM=ui::FitPanel({},tight,portrait,2.0f,2.0f,.95f);
+    Require(wideM.has_value(),"a looser margin still fits");
+    Require(wideM->height>s20->height*1.15f,
+        "loosening the margin grows the panel where scale could not");
+    Require(std::abs(wideM->width/wideM->height-portrait)<.0001f,"aspect survives the margin change");
+
+    // The default must stay the default: passing it explicitly changes nothing.
+    auto implicitM=ui::FitPanel({},tight,portrait,2.0f,2.0f);
+    auto explicitM=ui::FitPanel({},tight,portrait,2.0f,2.0f,ui::kDefaultFitMargin);
+    Require(implicitM&&explicitM&&
+        std::abs(implicitM->height-explicitM->height)<.0001f,"0.72 is the default margin");
+
+    // Clamped at both ends rather than refused, so a fat-fingered value degrades
+    // to the nearest sane panel -- but a non-finite one is refused outright,
+    // because it means the caller lost the value rather than mistyped it.
+    auto overM=ui::FitPanel({},tight,portrait,2.0f,2.0f,4.f);
+    auto atOneM=ui::FitPanel({},tight,portrait,2.0f,2.0f,1.f);
+    Require(overM&&atOneM&&std::abs(overM->height-atOneM->height)<.0001f,"margin clamped at 1.0");
+    auto underM=ui::FitPanel({},tight,portrait,2.0f,2.0f,.01f);
+    auto floorM=ui::FitPanel({},tight,portrait,2.0f,2.0f,.3f);
+    Require(underM&&floorM&&std::abs(underM->height-floorM->height)<.0001f,"margin clamped at 0.3");
+    Require(!ui::FitPanel({},tight,portrait,2.0f,2.0f,std::nanf("")),"a non-finite margin is refused");
+    Require(!ui::CornersVisible(*atOneM,tight,std::nanf("")),"and refused by the corner test");
+    Require(!ui::SurfaceVisible({*atOneM,0},tight,std::nanf("")),"and by the surface test");
+
+    // A tighter margin must never admit what a looser one rejects.
+    for(float m:{.3f,.5f,.72f,.9f,1.f}) {
+        auto pm=ui::FitPanel({},tight,portrait,2.0f,2.0f,m);
+        Require(pm&&ui::CornersVisible(*pm,tight,m),"a fitted panel passes its own margin");
+        if(m>.3f)Require(ui::CornersVisible(*pm,tight,1.f),"and passes every looser one");
+    }
+
     std::cout<<"UI panel geometry passed\n";
 }

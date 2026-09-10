@@ -674,6 +674,22 @@ std::atomic<unsigned long long> gEyeSkewSamples{0};
 // constant. Applied to the menu panel and the HUD alike, because they are the
 // same presentation and one dial is easier to reason about than two.
 std::atomic<unsigned int> gUiScalePercent{100};
+// **The two things that actually cap panel size, both reported as `ui.scale`
+// doing nothing above ~130.**
+//
+// gUiFitMargin: the fraction of the reported frustum a panel must stay inside.
+// Once it binds, the fit loops shrink away every further increase in scale, so
+// the dial appears to have a maximum it does not have. See kDefaultFitMargin.
+//
+// gUiGuide: the instruction card stacked under the menu. It is ours, added for
+// onboarding -- not a native Prey element -- and it is charged to the same
+// vertical budget, so the menu above it is roughly a sixth smaller than it
+// would be alone. A wearer who already knows the controls is paying for it.
+std::atomic<unsigned int> gUiFitMarginPercent{72};
+std::atomic<bool> gUiGuide{true};
+float UiFitMargin() {
+    return static_cast<float>(gUiFitMarginPercent.load(std::memory_order_relaxed))*.01f;
+}
 
 std::atomic<bool> gDepthEnabled{false};
 std::atomic<unsigned long long> gDepthSubmitted{0}, gDepthRefused{0};
@@ -1291,8 +1307,14 @@ void ServiceXrFrame(void* renderer)
         const float aspect=static_cast<float>(gHost.width)/static_cast<float>(gHost.height);
         constexpr float guideRatio=static_cast<float>(kGuideHeight)/kGuideWidth;
         constexpr float gapRatio=.015f;
-        auto layout=ui::FitPanel(inputHead,optical,1/(1/aspect+guideRatio+gapRatio),2.0f,
-            static_cast<float>(gUiScalePercent.load(std::memory_order_relaxed))*.01f);
+        const float margin=UiFitMargin();
+        const bool wantGuide=gUiGuide.load(std::memory_order_relaxed);
+        // Without the card the menu is fitted on its own aspect, so the height
+        // the card and its gap used to reserve goes back to the menu instead of
+        // being left empty -- which is the whole point of switching it off.
+        const float stackAspect=wantGuide?1/(1/aspect+guideRatio+gapRatio):aspect;
+        auto layout=ui::FitPanel(inputHead,optical,stackAspect,2.0f,
+            static_cast<float>(gUiScalePercent.load(std::memory_order_relaxed))*.01f,margin);
         if(layout) {
             gHost.menuPanel.reset();gHost.guidePanel.reset();
             for(int attempt=0;attempt<80;++attempt) {
@@ -1300,10 +1322,17 @@ void ServiceXrFrame(void* renderer)
                 menu.height=menu.width/aspect;
                 guide.height=guide.width*guideRatio;
                 const float gap=menu.width*gapRatio;
-                menu.pose=Compose(layout->pose,Pose{{},{0,(guide.height+gap)*.5f,0}});
-                guide.pose=Compose(layout->pose,Pose{{},{0,-(menu.height+gap)*.5f,0}});
-                if(ui::SurfaceVisible({menu,curve},optical)&&ui::SurfaceVisible({guide,0},optical)) {
-                    gHost.menuPanel=menu;gHost.guidePanel=guide;break;
+                if(wantGuide) {
+                    menu.pose=Compose(layout->pose,Pose{{},{0,(guide.height+gap)*.5f,0}});
+                    guide.pose=Compose(layout->pose,Pose{{},{0,-(menu.height+gap)*.5f,0}});
+                } else {
+                    menu.pose=layout->pose;
+                }
+                if(ui::SurfaceVisible({menu,curve},optical,margin)&&
+                   (!wantGuide||ui::SurfaceVisible({guide,0},optical,margin))) {
+                    gHost.menuPanel=menu;
+                    if(wantGuide)gHost.guidePanel=guide;
+                    break;
                 }
                 layout->width*=.95f;layout->height*=.95f;
             }
@@ -1621,7 +1650,8 @@ void ServiceXrFrame(void* renderer)
             }
             auto panel=ui::FitPanel(inputHead,optical,
                 static_cast<float>(desc.Width)/desc.Height,2.0f,
-                static_cast<float>(gUiScalePercent.load(std::memory_order_relaxed))*.01f);
+                static_cast<float>(gUiScalePercent.load(std::memory_order_relaxed))*.01f,
+                UiFitMargin());
             hudActive=hudActive && panel.has_value();
             if(hudActive) {
                 const auto& p=*panel;
@@ -1773,6 +1803,44 @@ DWORD SetUiScalePercent(unsigned int percent)
 }
 
 DWORD UiScalePercent() { return gUiScalePercent.load(std::memory_order_acquire); }
+
+// **Why this exists.** `ui.scale` stopped having any effect above about 130 at
+// 2688x2880, which reads as a hard maximum but is not one: the fit loops were
+// shrinking the panel back until it sat inside 72 percent of the frustum the
+// runtime reports. This exposes that 72.
+//
+// Raising it is a real trade, not a free win. The reported frustum is already
+// wider than a Quest 3's lenses actually show, so at 100 percent the corners
+// are beyond what the wearer can see -- which is exactly why the inset was
+// there. It is reversible, and a wearer is the only instrument that can settle
+// where their own edge is.
+DWORD SetUiFitMarginPercent(unsigned int percent)
+{
+    if (percent < 30 || percent > 100) {
+        Log("result=refused detail=ui_margin_out_of_range");
+        return 1;
+    }
+    gUiFitMarginPercent.store(percent, std::memory_order_release);
+    gHost.menuPanel.reset();
+    gHost.guidePanel.reset();
+    Log("result=0 detail=ui_margin percent=" + std::to_string(percent));
+    return 0;
+}
+DWORD UiFitMarginPercent() { return gUiFitMarginPercent.load(std::memory_order_acquire); }
+
+// The onboarding card under the menu. Ours, not Prey's, and it is charged to
+// the same vertical budget as the menu -- so switching it off is also the
+// cheapest way to make the menu bigger.
+DWORD SetUiGuideEnabled(unsigned int enabled)
+{
+    const bool on = enabled != 0;
+    gUiGuide.store(on, std::memory_order_release);
+    gHost.menuPanel.reset();
+    gHost.guidePanel.reset();
+    Log(std::string("result=0 detail=ui_guide enabled=") + (on ? "1" : "0"));
+    return 0;
+}
+DWORD UiGuideEnabled() { return gUiGuide.load(std::memory_order_acquire) ? 1u : 0u; }
 
 DWORD SetXrTimingEnabled(unsigned int enabled, unsigned int displayHz)
 {

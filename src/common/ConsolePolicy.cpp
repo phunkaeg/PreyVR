@@ -62,7 +62,7 @@ namespace {
 // None reaches outside the game, all are reversible by setting them back, and
 // unlike the resolution entries none of them touches the swapchain, so there is
 // no latched-size hazard to guard.
-constexpr std::array<std::string_view, 34> kAllowlist{
+constexpr std::array<std::string_view, 41> kAllowlist{
     "g_reticleYPercentage",
     "hud_bobHud",
     "hud_canvas_width_adjustment",
@@ -108,6 +108,54 @@ constexpr std::array<std::string_view, 34> kAllowlist{
     "r_VSync",
     "sys_MaxFPS",
     "t_Scale",
+    // --- native HUD element toggles ---------------------------------------
+    //
+    // Added 2026-09-11, with a reason, as the policy requires. A wearer asked
+    // how to switch off a descriptive box under the inventory and the honest
+    // answer was "you cannot, from here" -- the engine has cvars for exactly
+    // that, and the only thing in the way was this list.
+    //
+    // Read from the engine's own registration help strings in the target:
+    //   hud_tutorials       "Tutorial mode. 0=Off, 1=Non-Tutorial Prompts
+    //                        Only, 2=All"   (registered default 2)
+    //   hud_showLegends     "Toggles visual state of input legends."
+    //   hud_showOptionalHud "Toggles visual state of all optional hud
+    //                        elements."
+    //   hud_showHudLog      "Toggles visual state of the pickup and combat
+    //                        notification log"
+    //
+    // Each is a display toggle, reversible by setting it back, and none
+    // touches gameplay, saves, the swapchain, or anything the landmark gate
+    // protects. They are named individually rather than by a `hud_` prefix
+    // rule, because a prefix rule would silently admit every future hud_ cvar.
+    "hud_showHudLog",
+    "hud_showLegends",
+    "hud_showOptionalHud",
+    "hud_tutorials",
+    // --- the engine's own console UI --------------------------------------
+    //
+    // Added 2026-09-11 at the wearer's request. Prey has no key bound to the
+    // console, and this project's notes concluded from that it "ships no
+    // developer console" and routed around it for months. The UI is in fact
+    // fully present in the retail binary: CXConsole::Init registers both of
+    // these with Crytek's own help text ("Opens the console" / "Closes the
+    // console"), and each is five instructions that load the console object
+    // and tail-call ShowConsole through vtable slot +0x68.
+    //
+    // These are COMMANDS, not cvars. Classify only inspects the first token,
+    // so a bare verb classifies as a query and executes; the name-based
+    // helper below reads "cvar" for historical reasons only.
+    //
+    // sys_DeactivateConsole is the engine's own gate ("0: normal console
+    // behavior / 1: hide the console"), so it has to be settable or opening
+    // the console may silently do nothing.
+    //
+    // Deliberately NOT added: con_restricted. Setting it to 0 lifts the
+    // engine's restriction on every other command at once, which is a
+    // different decision from three named entries and is the wearer's to make.
+    "ConsoleHide",
+    "ConsoleShow",
+    "sys_DeactivateConsole",
 };
 
 bool IsSpace(char c) {
