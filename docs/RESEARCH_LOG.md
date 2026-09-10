@@ -1944,6 +1944,70 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-10 — R-129: the jitter field verified, and R-026 confirmed by a stranger
+
+**One function verified a Luma lead and one of our own findings at the same
+time, on the same receiver.** `FUN_180F42C00` -- adjacent to `RT_RenderScene`
+and never examined by this project before -- contains both:
+
+```c
+lVar31 = (ulonglong)*(uint *)(param_1 + 0x499c) * 0x328;
+if ((~((byte)((uint)*(undefined4 *)(param_1 + 0x5484) >> 0x1b) |
+      *(byte *)(lVar31 + 0x49a2 + param_1)) & 1) != 0) {
+  *(float *)(param_1 + 0x190) = *(float *)(param_1 + 0xd70) + *(float *)(param_1 + 0x190);
+  *(float *)(param_1 + 0x194) = *(float *)(param_1 + 0xd74) + *(float *)(param_1 + 0x194);
+}
+```
+
+### Luma's `m_vProjMatrixSubPixoffset` at `+0xD70`: VERIFIED
+
+It is a `Vec2` at `+0xD70`/`+0xD74`, and the two components are added into the
+floats at `+0x190`/`+0x194`. Those sit inside the 4x4 matrix that begins at
+`+0x170` (sixteen floats, `+0x170`..`+0x1AC`): `+0x190` is element 8 and `+0x194`
+element 9, the third row's first two components -- exactly where a sub-pixel
+offset enters a projection matrix. Producer and consumer are both present:
+`RT_RenderScene` writes it (`MOVSS [RBP + 0xd70], XMM2` at `0x180F42299`) and
+this function reads it (`MOVSS XMM0, [RDI + 0xd70]` at `0x180F42D3B`).
+
+The add is **gated**, by bit `0x1B` of the dword at `+0x5484` and by a byte at
+`frameBlock + 0x49A2`. So jitter is conditional, and the condition is findable.
+
+### Our R-026 confirmed independently, and statically
+
+`*(uint *)(param_1 + 0x499c) * 0x328` is **our own frame-block arithmetic** --
+`frameSlotIndex = 0x499C`, `frameBlockStride = 0x328` -- appearing verbatim in a
+function this project had never opened. R-026 was recorded as "live-verified by
+ReGenny probe"; it now has a static receipt as well, from a direction nobody
+aimed at it.
+
+**And that is the stronger result of the two.** The same `param_1` carries our
+`+0x499C` frame index and Luma's `+0xD70` jitter, which proves the two projects'
+maps describe **one struct** rather than merely failing to contradict each other.
+R-128 established the absence of conflict; this establishes shared identity.
+
+### `m_pNativeZSurface` at `+0x9970`: NOT verified
+
+Searching `[reg + 0x9970]` returns only `MOVSS`/`MOVAPS` float traffic against
+`RSP`/`RBP` in unrelated functions with large stack frames. A depth-stencil-view
+pointer cannot be a float, so those hits are stack offsets that merely share the
+number. This needs a different route -- locating renderer code that passes it to
+`OMSetRenderTargets` -- and stays an unverified lead until then. It remains the
+most valuable one outstanding, since we have never had depth and
+`XR_KHR_composition_layer_depth` wants it.
+
+### The VR consequence, which is new and specific
+
+**Jitter is added per frame, and this mod alternates eyes per frame.** A jitter
+sequence designed to be sampled every frame by one camera is therefore split
+between two eyes, each seeing every other sample, and neither seeing the
+sequence the temporal pipeline expects.
+
+That is a concrete candidate for stereo artefacts and it was not previously
+recorded. It is consistent with the displaced weapon ghost that made this project
+abandon temporal AA, and it now has a named field and a gate rather than being a
+guess about "something temporal". Not yet tested: nobody has held `+0xD70` at
+zero and looked.
+
 ## 2026-09-10 — R-128: Luma's Prey renderer layout reconciled. Zero conflicts.
 
 **A second project has reverse-engineered the same binary, and the two maps do
