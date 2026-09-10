@@ -88,6 +88,22 @@ param(
     [int]$IkReachPercent = 65,
     # Moves Prey's own crosshair to where the controller points.
     [switch]$Reticle,
+    # **Codex's player bring-up, which this script otherwise bypasses entirely.**
+    # `vr.enable` owns the presentation half: it activates the UI panel so modal
+    # screens are drawn on a panel in space rather than at full frame extent,
+    # arms the pointer, and binds F11/F12. Without it `uiPanelFrames` stays at 0
+    # and the inventory is drawn flat across the whole view -- which is exactly
+    # what a wearer reported, and it was misdiagnosed as a render-aspect problem
+    # before the panel counter was read.
+    #
+    # Two bring-up paths existing side by side is the real defect here. This
+    # switch is the bridge until they are reconciled; the player package's own
+    # Start-PreyVR.ps1 sets PREYVR_UI_CURVE_DEGREES / PREYVR_POINTER_HAND in the
+    # environment and lets vr.enable read them, which this script cannot do
+    # because the game is already running by the time it is invoked.
+    [switch]$PlayerUi,
+    [int]$UiCurveDegrees = 35,
+    [int]$PointerHand = 1,
     # How much of the headset's view the flat mirror spans, as a percentage of
     # Prey's own declared field. The MENU measures at 41% of the view at 100 and
     # 83% at 200 (R-113), so this is the knob that makes menus readable. It only
@@ -263,6 +279,25 @@ if ($Controls -or $Reticle) {
         # which half was armed. The write alone moves nothing -- the engine's
         # own reset writes the field AND dispatches, and so must this (R-109).
         Step 'reticle dispatch' 'aim.reticledispatch 1'
+    }
+
+    # --- player presentation -------------------------------------------------
+    #
+    # Ordered after the session exists, because `vr.enable` checks the render
+    # hooks and the view hook and fails closed if they are not up yet.
+    if ($PlayerUi) {
+        Step 'UI curve'     ("ui.curve {0}" -f $UiCurveDegrees)
+        Step 'UI pointer'   ("ui.pointer {0}" -f $PointerHand)
+        Step 'native HUD layer' 'hud.layer 1'
+        Step 'VR mode'      'vr.enable'
+        # vr.enable reports a PHASE, not a result, and 'preparing' is the normal
+        # first answer -- it advances on the command worker's own tick. Reported
+        # rather than asserted, because failing on a phase that is expected to
+        # change would be the same mistake as passing a status that never will.
+        Start-Sleep -Seconds 5
+        $vr = Send-Cmd 'vr.status'
+        if ($vr -match 'vr=active') { Write-Host "  ok   VR mode active        $vr" }
+        else { Write-Host "  WARN VR mode not active yet  $vr" }
     }
 
     # --- arm rig ------------------------------------------------------------
