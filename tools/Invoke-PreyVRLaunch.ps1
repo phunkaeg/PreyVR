@@ -23,9 +23,12 @@
     FOCUSED sessions whose PIDs were long gone. A unique directory makes that
     impossible rather than guarded.
 
-    **It does not inject.** No Frida CLI is installed here, so injection runs
-    through the MCP tools against the PID this prints. The DLL's SHA-256 is
-    recorded so what actually got injected can be checked against what was meant.
+    **It injects, unless -NoInject.** This used to say it did not, because no
+    Frida CLI was installed; that reason expired when preyvr_injector.exe was
+    built for the player package. The launcher printing "next: inject" and then
+    not injecting is how a wearer came to press F11 into an unmodded process.
+    The DLL's SHA-256 is still recorded so what actually got injected can be
+    checked against what was meant.
 
 .PARAMETER DryRun
     Validate everything and print the plan without starting the game. Run this
@@ -45,6 +48,20 @@ param(
     [string]$XrTapeLayer = "$env:LOCALAPPDATA\xr-tape\layer-x64",
     [string]$RunRoot = "$env:LOCALAPPDATA\PreyVR\runs",
     [switch]$NoTape,
+    # **Inject the mod, which this launcher used to refuse to do.**
+    #
+    # Its documentation said injection had to go through MCP tools because no
+    # Frida CLI was installed. That reason expired when preyvr_injector.exe was
+    # built for the player package: it takes a PID and a DLL path and does the
+    # LoadLibraryW itself. Until this switch existed, the launcher printed
+    # "next: inject the DLL into that PID" and a wearer reasonably assumed it
+    # had -- then pressed F11 into a process with no mod in it and nothing
+    # happened, because the hotkey is polled by the DLL that was never loaded.
+    #
+    # On by default when the injector is present, because a launcher that starts
+    # the game and leaves it unmodded looks identical to one that worked.
+    [switch]$NoInject,
+    [string]$Injector = '',
     [int]$TapeMaxFrames = 20000,
     [int]$ReadyTimeoutSec = 120,
     # Passed through to the game verbatim. CryEngine treats a `+`-prefixed
@@ -306,11 +323,52 @@ $manifest = [ordered]@{
 $manifestPath = Join-Path $runDir 'run.json'
 $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
 
+# --- injection ---------------------------------------------------------------
+# After the renderer is up, never before: injecting earlier runs the landmark
+# gate against a process whose engine objects do not exist yet, which fails
+# closed and looks like a bad build.
+$injected = $false
+if (-not $NoInject) {
+    if (-not $Injector) {
+        $Injector = Join-Path (Split-Path -Parent $Dll) 'preyvr_injector.exe'
+    }
+    if (Test-Path -LiteralPath $Injector) {
+        Write-Host ''
+        Write-Host 'injecting:'
+        & $Injector $pid_ (Resolve-Path -LiteralPath $Dll).Path
+        if ($LASTEXITCODE -eq 0) {
+            $injected = $true
+            Write-Host '  ok   PreyVR.dll loaded'
+        } elseif ($LASTEXITCODE -eq 4) {
+            # The injector refuses to load a second copy and says so. On a fresh
+            # launch this cannot happen, but calling it a failure would print
+            # "the mod is NOT loaded" about a process that has it.
+            $injected = $true
+            Write-Host '  ok   PreyVR.dll already loaded'
+        } else {
+            # Reported, not thrown: the game is up and a wearer can still inject
+            # by hand. Silence here is what caused the F11 confusion.
+            Write-Warning ("  injector exited {0} -- the mod is NOT loaded" -f $LASTEXITCODE)
+        }
+    } else {
+        Write-Warning ("injector not found at {0} -- the mod is NOT loaded" -f $Injector)
+    }
+}
+
 Write-Host ''
 Write-Host "PID:      $pid_"
 Write-Host "manifest: $manifestPath"
 Write-Host ''
-Write-Host 'next: inject the DLL into that PID, then drive it through'
-Write-Host ("  {0}\commands.txt" -f $logDir)
-Write-Host 'and observe with'
+if ($injected) {
+    Write-Host 'the mod is loaded. Bring VR up with either:'
+    Write-Host '  F11 in the game window (F12 recenters, as do both grips), or'
+    Write-Host ("  echo vr.enable > '{0}\commands.txt'" -f $logDir)
+    Write-Host ''
+    Write-Host 'F11 needs the Prey DESKTOP window focused, which is awkward in a'
+    Write-Host 'headset -- the command channel is the reliable route while worn.'
+} else {
+    Write-Host 'next: inject the DLL into that PID, then drive it through'
+    Write-Host ("  {0}\commands.txt" -f $logDir)
+}
+Write-Host 'observe with'
 Write-Host ("  ./tools/Invoke-PreyVRControllerSweep.ps1 -StateDir '{0}'" -f $xrsimDir)
