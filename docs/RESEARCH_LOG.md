@@ -1944,6 +1944,79 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-10 - R-132: the scene depth located, and the AFR clock built pure
+
+### `$ZTarget` found: the depth we actually want
+
+R-131 proved `+0x9970` is the swapchain's native Z surface and the wrong buffer.
+The right one is CryEngine's scene depth target, and it is now located:
+
+```c
+DAT_182B3F688 = Create("$BackBuffer",  w, h, &clear, 1, 0x41000, 2,   0xd);
+DAT_182B3F738 = Create("$SceneTarget", w, h, &clear, 1, 0x41100, fmt, 0x26);
+DAT_182B3F778 = Create("$ZTarget",     w, h, &clear, 1, 0x51000, fmt, 0xffffffff);
+```
+
+**`DAT_182B3F778` (RVA `0x2B3F778`) holds the `CTexture*` for `$ZTarget`.** The
+creator is the scene-map generator at `FUN_180F564B0`, which builds all three
+targets together and re-sizes them in place when they already exist.
+
+The `CTexture` layout is partly known and partly corroborated by Luma, whose
+build matches ours: they assert `m_nFlags` at `+0x54`, and this function writes
+`+0x54 = 0x51000` for `$ZTarget` -- an independent confirmation of their one
+mapped field. The device texture is at **`+0x30`**, established by the engine's
+own guard `if (tex == 0 || *(longlong*)(tex + 0x30) == 0)`, which is exactly a
+"no texture object, or no device resource yet" test.
+
+**One hop remains**: `CDeviceTexture` to `ID3D11Texture2D`. That is deliberately
+left for a runtime check rather than another static chase -- the resource is
+queryable live, and a wrong offset there is immediately visible as a failed
+`QueryInterface` rather than as plausible-looking wrong pixels.
+
+Note also `$ZTargetScaled` exists (3 references). Which of the two the compositor
+should receive is not yet decided and depends on what the scene pass actually
+renders into at the submitted resolution.
+
+### The three-clock timeline, and per-eye history
+
+Both built as pure, tested layers with no hooks, so the policy can be argued with
+before it touches a frame.
+
+**`DecideEye`** takes engine, render and present counters and returns the eye
+from **the presenter's parity**, not from a counter of our own. The current lane
+uses `gEyeCounter.fetch_add(1) & 1`, which is inherited ban I-08 -- and with two
+decoupled threads measured in R-064 (game 44208, render 54600), something will
+eventually be skipped. The test that names the failure feeds a skipped present
+and asserts the eye stays correct across it, where a private counter would have
+advanced twice and mislabelled every eye from then on.
+
+It distinguishes two states that are tempting to conflate. **Drifted** is a
+recoverable lead beyond tolerance, and the caller should skip a present to let
+the clocks converge. **Invalid** is a clock that went backwards, which no number
+of skipped presents will fix. Both refuse to name an eye rather than guess,
+because a wrong eye label puts one eye's pixels in the other's slot -- which
+reads in a headset as inverted depth rather than as a dropped frame.
+
+**`EyeHistory<Camera>`** holds one previous-frame camera per eye. R-064 recorded
+that `CRenderView::SetPreviousFrameCamera` is called after every `SetCamera` and
+is load-bearing for motion vectors and temporal reprojection; with one eye per
+frame, the "previous frame" handed to eye 0 is **eye 1's**, a different
+viewpoint. That is the mechanism behind the displaced weapon ghost this project
+saw under temporal AA.
+
+It returns false rather than substituting when an eye has no history yet, since
+borrowing the other eye's is the entire defect. `Reset()` exists for recentre,
+reference change and level load -- keeping a stale history across one of those
+reprojects against a viewpoint that no longer exists.
+
+**Neither is wired into the render path.** They are the arguable half; adopting
+them changes eye selection and temporal state, which is a headset-visible change
+and wants its own session. The playbook records that a PreyVR wearer cycled all
+four AA modes and chose the temporal one, so per-eye history is a correctness fix
+for a mode that is actually in use rather than a theoretical one.
+
+37/37 tests pass.
+
 ## 2026-09-10 — R-131: the depth buffer is the WRONG one, and eye skew is now measured
 
 ### The depth target: proved, and it fails the test

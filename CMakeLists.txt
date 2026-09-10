@@ -94,6 +94,7 @@ add_library(preyvr_core STATIC
     src/common/StereoFrame.cpp
     src/common/VrMath.cpp
     src/common/DepthSubmission.cpp
+    src/common/FrameClock.cpp
     src/common/FrameTiming.cpp
     src/common/FrustumCoverage.cpp
     src/common/WeaponAim.cpp
@@ -362,6 +363,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_depth_submission_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_depth_submission_tests)
     add_test(NAME depth_submission COMMAND preyvr_depth_submission_tests)
+
+    add_executable(preyvr_frame_clock_tests tests/FrameClockTests.cpp)
+    target_link_libraries(preyvr_frame_clock_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_frame_clock_tests)
+    add_test(NAME frame_clock COMMAND preyvr_frame_clock_tests)
 
     add_executable(preyvr_frame_timing_tests tests/FrameTimingTests.cpp)
     target_link_libraries(preyvr_frame_timing_tests PRIVATE preyvr_core)
