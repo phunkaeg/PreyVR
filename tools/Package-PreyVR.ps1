@@ -23,6 +23,18 @@ if (-not $BuildDir)       { $BuildDir = Join-Path $here '../build/headless/Relea
 if (-not $OutputDir)      { $OutputDir = Join-Path $here '../build/packages/PreyVR-hologram-preview-20260910' }
 if (-not $GuidePath)      { $GuidePath = Join-Path $here '../docs/PLAYER-GUIDE-HOLOGRAM.md' }
 if (-not $ValidationPath) { $ValidationPath = Join-Path $here '../docs/HOLOGRAM-VALIDATION.md' }
+# **Refuse while Prey holds the binaries.** A package cannot be regenerated
+# under a running game: it has PreyVR.dll and openxr_loader.dll open, so they
+# survive a delete and everything around them does not -- which strips the
+# folder to two orphaned DLLs and takes the launcher and the wearer's settings
+# with it. That happened twice in one session, both times because the operator
+# ran a delete first and checked afterwards. Checked here instead, where it
+# cannot be forgotten, and before anything is removed.
+$holding=@(Get-Process -Name 'Prey' -ErrorAction SilentlyContinue)
+if ($holding.Count) {
+    throw ('Close Prey first (PID {0}) -- it has the package DLLs open, and packaging over them destroys the folder.' -f
+        (($holding | Select-Object -ExpandProperty Id) -join ', '))
+}
 $root=(Resolve-Path (Join-Path $here '..')).Path
 $destination=[System.IO.Path]::GetFullPath($OutputDir)
 if (!(Test-Path -LiteralPath $destination)) {[void](New-Item -ItemType Directory -Path $destination)}

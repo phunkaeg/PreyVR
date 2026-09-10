@@ -28,6 +28,15 @@ SetTargets originalTargets=nullptr;
 std::mutex installMutex;
 bool installed=false;
 std::atomic<bool> enabled{false};
+// **Off by default, and it must stay that way until a consumer exists.**
+//
+// This capture is not an observation: it REDIRECTS the movie's one draw away
+// from the native target into a private texture. The gameplay HUD has a
+// consumer that submits that texture as a layer. The PDA did not, so switching
+// its capture on rendered the inventory black -- drawn correctly, into a
+// texture nothing showed. Shipping it armed was my error and an entirely
+// predictable one; the flag is the guard against repeating it.
+std::atomic<bool> inventoryCapture{false};
 std::atomic<unsigned long long> refused{0};
 
 // **Generalised by purpose, not by widening a name check.**
@@ -154,7 +163,8 @@ bool EnsureTexture(ID3D11Device* device,ID3D11RenderTargetView* original,
 bool WantMovie(Movie movie) {
     switch(movie) {
         case Movie::hud: return HudGameplayInputAllowed();
-        case Movie::pda: return HudMenuStateKnown() && HudMenuIsOpen();
+        case Movie::pda: return inventoryCapture.load(std::memory_order_acquire) &&
+                                HudMenuStateKnown() && HudMenuIsOpen();
     }
     return false;
 }
@@ -238,13 +248,26 @@ DWORD SetHudLayerEnabled(unsigned value) {
     enabled.store(value!=0);return 0;
 }
 bool HudLayerEnabled(){return enabled.load();}
+DWORD SetInventoryCaptureEnabled(unsigned value) {
+    if(value>1)return 1;
+    // Arming this without something submitting InventoryLayerTexture() takes
+    // the inventory off the screen, so say so in the log rather than leaving a
+    // black panel to be diagnosed from scratch.
+    inventoryCapture.store(value!=0,std::memory_order_release);
+    lifecycle::Log(std::string("preyvr_hud_layer inventory_capture=")+(value?"1":"0")+
+                   (value?" note=the_inventory_is_redirected_and_needs_a_consumer":""));
+    return 0;
+}
+bool InventoryCaptureEnabled(){return inventoryCapture.load(std::memory_order_acquire);}
 void RefuseHudLayer(const char* reason){
     if(enabled.exchange(false))lifecycle::Log(std::string("preyvr_hud_layer disabled reason=")+reason);
 }
 std::string HudLayerReport(){
     // Per movie, because "captured=0" on its own never said which movie was
     // missing, nor whether identification or the gate was the reason.
-    std::string out="hudLayer="+std::to_string(enabled.load())+" refused="+std::to_string(refused.load());
+    std::string out="hudLayer="+std::to_string(enabled.load())+
+        " inventoryCapture="+std::to_string(inventoryCapture.load())+
+        " refused="+std::to_string(refused.load());
     for(unsigned i=0;i<kMovies;++i) {
         out+=std::string(" ")+kMovieNames[i]+"={identified="+std::to_string(identified[i].load())+
              " captured="+std::to_string(captured[i].load());

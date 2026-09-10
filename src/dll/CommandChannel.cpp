@@ -354,6 +354,11 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     } else if (verb == "hud.layer") {
         const auto result=args.size()>1?SetHudLayerEnabled(arg(1,0)):0;
         out << "hud.layer result=" << result << ' ' << HudLayerReport();
+    } else if (verb == "ui.inventory") {
+        // Off by default: arming it redirects the inventory's one draw into a
+        // private texture, and nothing submits that texture yet.
+        out << "ui.inventory result=" << (args.size()>1?SetInventoryCaptureEnabled(arg(1,0)):0)
+            << ' ' << HudLayerReport();
     } else if (verb == "ui.panel") {
         out << "ui.panel result=" << SetUiPanelMode(arg(1,1)) << ' ' << VrModeReport();
     } else if (verb == "ui.pointer") {

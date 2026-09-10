@@ -5,6 +5,11 @@
 namespace preyvr::dll {
 DWORD SetHudLayerEnabled(unsigned enabled);
 bool HudLayerEnabled();
+// The PDA capture, separate from the HUD one and OFF by default. Arming it
+// redirects the inventory's only draw into a private texture, so anything that
+// arms it must also submit InventoryLayerTexture() or the inventory disappears.
+DWORD SetInventoryCaptureEnabled(unsigned enabled);
+bool InventoryCaptureEnabled();
 void RefuseHudLayer(const char* reason);
 std::string HudLayerReport();
 // Render-thread calls only. The borrowed texture remains owned by the capture.
