@@ -1,0 +1,3 @@
+shot recentered-02
+grip l 0
+grip r 0

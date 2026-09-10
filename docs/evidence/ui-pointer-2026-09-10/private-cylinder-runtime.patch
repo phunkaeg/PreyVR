@@ -1,0 +1,145 @@
+--- baseline/src/xrsim_internal.h
++++ cylinder/src/xrsim_internal.h
+@@ -121,6 +121,7 @@
+     bool vulkanEnabled = false;
+     bool vulkan2Enabled = false;
+     bool headlessEnabled = false;
++    bool cylinderEnabled = false; // Private PreyVR validation instrument.
+     bool d3d9RequirementsCalled = false;
+     bool d3d10RequirementsCalled = false;
+     bool d3d11RequirementsCalled = false;
+@@ -260,6 +261,7 @@
+     XrCompositionLayerProjectionView views[2] = {};
+     XrPosef pose{};
+     XrExtent2Df size{};
++    float radius = 0, centralAngle = 0;
+     XrSwapchainSubImage sub{};
+ };
+ 
+--- baseline/src/xrsim_instance.cpp
++++ cylinder/src/xrsim_instance.cpp
+@@ -113,6 +113,7 @@
+ 
+     struct Extension { const char* name; uint32_t version; };
+     static const Extension kExts[] = {
++        {XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME, XR_KHR_composition_layer_cylinder_SPEC_VERSION},
+         {XR_KHR_D3D11_ENABLE_EXTENSION_NAME, XR_KHR_D3D11_enable_SPEC_VERSION},
+         {XR_KHR_D3D12_ENABLE_EXTENSION_NAME, XR_KHR_D3D12_enable_SPEC_VERSION},
+         {XR_KHR_OPENGL_ENABLE_EXTENSION_NAME, XR_KHR_opengl_enable_SPEC_VERSION},
+@@ -153,6 +154,7 @@
+ 
+     bool d3d9 = false, d3d10 = false, d3d11 = false, d3d12 = false;
+     bool opengl = false, vulkan = false, vulkan2 = false, headless = false;
++    bool cylinder = false;
+     for (uint32_t i = 0; i < info->enabledExtensionCount; ++i) {
+         const char* ext = info->enabledExtensionNames[i];
+         if (strcmp(ext, XR_KHR_D3D11_ENABLE_EXTENSION_NAME) == 0)
+@@ -162,6 +164,7 @@
+         else if (strcmp(ext, XR_KHR_VULKAN_ENABLE_EXTENSION_NAME) == 0) vulkan = true;
+         else if (strcmp(ext, XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME) == 0) vulkan2 = true;
+         else if (strcmp(ext, XR_MND_HEADLESS_EXTENSION_NAME) == 0) headless = true;
++        else if (strcmp(ext, XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME) == 0) cylinder = true;
+         else if (strcmp(ext, XR_XRSIM_D3D9_ENABLE_EXTENSION_NAME) == 0) d3d9 = true;
+         else if (strcmp(ext, XR_XRSIM_D3D10_ENABLE_EXTENSION_NAME) == 0) d3d10 = true;
+         else {
+@@ -181,6 +184,7 @@
+     g.vulkanEnabled = vulkan;
+     g.vulkan2Enabled = vulkan2;
+     g.headlessEnabled = headless;
++    g.cylinderEnabled = cylinder;
+     g.d3d9RequirementsCalled = false;
+     g.d3d10RequirementsCalled = false;
+     g.d3d11RequirementsCalled = false;
+--- baseline/src/xrsim_frame.cpp
++++ cylinder/src/xrsim_frame.cpp
+@@ -364,6 +364,21 @@
+             dst.pose = q->pose;
+             dst.size = q->size;
+             dst.sub = q->subImage;
++        } else if (base->type == XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR) {
++            if (!g.cylinderEnabled) return XR_ERROR_LAYER_INVALID;
++            const auto* c = reinterpret_cast<const XrCompositionLayerCylinderKHR*>(base);
++            const XrResult valid = validate_subimage(c->subImage);
++            if (XR_FAILED(valid)) return valid;
++            // This instrument supports finite cylinders, the case under test.
++            if (!std::isfinite(c->radius) || c->radius <= 0 ||
++                !std::isfinite(c->centralAngle) || c->centralAngle <= 0 || c->centralAngle > 6.283186f ||
++                !std::isfinite(c->aspectRatio) || c->aspectRatio <= 0) return XR_ERROR_LAYER_INVALID;
++            dst.eyeVisibility = c->eyeVisibility;
++            dst.pose = c->pose;
++            dst.radius = c->radius;
++            dst.centralAngle = c->centralAngle;
++            dst.size = {c->radius*c->centralAngle, c->radius*c->centralAngle/c->aspectRatio};
++            dst.sub = c->subImage;
+         } else {
+             XRSIM_LOG_ONCE("xrsim: unsupported composition layer type %d - skipped",
+                            static_cast<int>(base->type));
+--- baseline/src/xrsim_compositor.cpp
++++ cylinder/src/xrsim_compositor.cpp
+@@ -647,13 +647,30 @@
+         Pose base = pose_identity();
+         bool tracked = true;
+         if (space) space_pose(*space, sub.snap, base, tracked);
+-        const Pose quadWorld = pose_mul(base, from_xr(L.pose));
++        const Pose layerWorld = pose_mul(base, from_xr(L.pose));
++        const bool cylinder = L.type == XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR;
++        const int segments = cylinder ? 96 : 1;
++        // Independent compositor geometry: inscribed strips from arc endpoints.
++        // The submitted pose locates the axis; the visible centre is at -radius Z.
++        for (int segment = 0; segment < segments; ++segment) {
++        Pose quadWorld = layerWorld;
++        float stripWidth = L.size.width;
++        if (cylinder) {
++            const float step = L.centralAngle / segments;
++            const float theta = -L.centralAngle*.5f + (segment+.5f)*step;
++            const float chordRadius = L.radius*std::cos(step*.5f);
++            Pose strip = pose_identity();
++            strip.p = {chordRadius*std::sin(theta),0,-chordRadius*std::cos(theta)};
++            strip.q = {0,-std::sin(theta*.5f),0,std::cos(theta*.5f)};
++            quadWorld = pose_mul(layerWorld,strip);
++            stripWidth = 2*L.radius*std::sin(step*.5f);
++        }
+ 
+         // Corners are +/-1 in the shader, so scale by the HALF extent.
+         Mat4 model = mat4_identity();
+         {
+             const Quat q = quadWorld.q;
+-            const Vec3 rx = quat_rotate(q, Vec3{L.size.width * 0.5f, 0.0f, 0.0f});
++            const Vec3 rx = quat_rotate(q, Vec3{stripWidth * 0.5f, 0.0f, 0.0f});
+             const Vec3 ry = quat_rotate(q, Vec3{0.0f, L.size.height * 0.5f, 0.0f});
+             const Vec3 rz = quat_rotate(q, Vec3{0.0f, 0.0f, 1.0f});
+             model.m[0][0] = rx.x; model.m[0][1] = rx.y; model.m[0][2] = rx.z;
+@@ -669,6 +686,9 @@
+         Constants c{};
+         tangents(eyeFov, c.eyeTan);
+         uv_rect(L.sub, tw, th, c.rectMin, c.rectMax);
++        const float uStart = c.rectMin[0], uWidth = c.rectMax[0]-uStart;
++        c.rectMin[0] = uStart + uWidth*segment/segments;
++        c.rectMax[0] = uStart + uWidth*(segment+1)/segments;
+         memcpy(c.mvp, mvp.m, sizeof(c.mvp));
+         c.quadParams[0] = 1.0f;
+         set_constants(c);
+@@ -683,6 +703,7 @@
+         g_ctx->PSSetShaderResources(0, 1, &srv);
+         g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+         g_ctx->Draw(4, 0);
++        }
+         srv->Release();
+ 
+         // A coarse on-screen estimate. It only has to answer "is this layer in
+@@ -787,11 +808,12 @@
+                       rad2deg(L.views[0].fov.angleDown), st.pixelsCovered[0], st.pixelsCovered[1],
+                       (i + 1 < sub.layerCount) ? "," : "");
+         } else {
+-            sprintf_s(buf, "    {\"i\": %u, \"type\": \"quad\", \"space\": \"%s\", "
++            sprintf_s(buf, "    {\"i\": %u, \"type\": \"%s\", \"space\": \"%s\", "
+                            "\"sizeM\": [%.4f, %.4f], \"pose\": [%.4f, %.4f, %.4f], "
++                           "\"radius\": %.5f, \"centralAngle\": %.5f, "
+                            "\"premultiplied\": %s, \"pixelsCoveredL\": %u, \"pixelsCoveredR\": %u}%s\n",
+-                      i, spaceName, L.size.width, L.size.height, L.pose.position.x,
+-                      L.pose.position.y, L.pose.position.z,
++                      i, L.type == XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR ? "cylinder" : "quad", spaceName, L.size.width, L.size.height, L.pose.position.x,
++                      L.pose.position.y, L.pose.position.z, L.radius, L.centralAngle,
+                       (L.flags & XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT) ? "true"
+                                                                                       : "false",
+                       st.pixelsCovered[0], st.pixelsCovered[1],

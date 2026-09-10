@@ -1,0 +1,69 @@
+[01:27:48.510] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[01:27:48.517] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[01:27:48.517] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/vr-interface-2026-09-09/private-live-xrsim-04
+[01:27:48.591] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[01:27:48.611] xrsim: compositor ready
+[01:27:48.611] xrsim: session state -> IDLE
+[01:27:48.611] xrsim: session created with D3D11 graphics
+[01:27:48.611] xrsim: action set 'preyvr' created
+[01:27:48.611] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[01:27:48.611] xrsim: 15 binding(s) suggested on the index profile, 15 driven
+[01:27:48.611] xrsim: action set(s) attached to the session
+[01:27:48.612] xrsim: swapchain 0 created 2560x1440x2 fmt 29 (3 images)
+[01:27:48.844] xrsim: session state -> READY
+[01:27:48.844] xrsim: session state -> SYNCHRONIZED
+[01:27:48.844] xrsim: session running - the app is now paced by the simulated headset
+[01:27:48.860] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[01:27:48.860] xrsim: session state -> VISIBLE
+[01:27:48.868] xrsim: session state -> FOCUSED
+[01:29:56.416] xrsim: applied 2 command(s): btn a press 160 | hand r point 0 0
+[01:30:17.815] xrsim: applied 2 command(s): btn a press 160 | shot menu-04
+[01:30:17.898] xrsim: capture written menu-04 (1032x1104)
+[01:31:15.171] xrsim: applied 1 command(s): shot load-04
+[01:31:15.241] xrsim: capture written load-04 (1032x1104)
+[01:31:42.287] xrsim: applied 1 command(s): btn a press 160
+[01:31:42.347] xrsim: swapchain 2 created 2560x1440x1 fmt 28 (3 images)
+[01:32:07.451] xrsim: applied 1 command(s): shot gameplay-04
+[01:32:07.695] xrsim: capture written gameplay-04 (1032x1104)
+[01:32:22.880] xrsim: applied 1 command(s): btn x press 160
+[01:37:14.732] xrsim: applied 1 command(s): shot inventory-04
+[01:37:14.807] xrsim: capture written inventory-04 (1032x1104)
+[01:38:48.262] xrsim: applied 1 command(s): btn a press 160
+[01:39:05.492] xrsim: applied 1 command(s): shot inventory-action-04
+[01:39:05.594] xrsim: capture written inventory-action-04 (1032x1104)
+[01:39:28.876] xrsim: applied 1 command(s): btn b press 160
+[01:39:46.867] xrsim: applied 1 command(s): btn x press 160
+[01:39:59.624] xrsim: applied 1 command(s): shot inventory-x-04
+[01:39:59.709] xrsim: capture written inventory-x-04 (1032x1104)
+[01:41:11.315] xrsim: applied 1 command(s): btn b press 160
+[01:41:29.499] xrsim: applied 1 command(s): btn b press 160
+[01:41:43.746] xrsim: applied 2 command(s): btn b down | shot wheel-y-04
+[01:41:43.976] xrsim: capture written wheel-y-04 (1032x1104)
+[01:42:17.809] xrsim: applied 1 command(s): btn b up
+[01:42:19.608] xrsim: applied 1 command(s): btn x press 160
+[01:42:36.446] xrsim: applied 2 command(s): btn x press 160 | shot inventory-wrench-select-04
+[01:42:36.522] xrsim: capture written inventory-wrench-select-04 (1032x1104)
+[01:42:54.266] xrsim: applied 1 command(s): btn b press 160
+[01:43:34.360] xrsim: applied 1 command(s): btn x press 160
+[01:43:52.087] xrsim: applied 1 command(s): btn x press 160
+[01:44:00.485] xrsim: applied 1 command(s): btn b press 160
+[01:44:20.448] xrsim: applied 1 command(s): btn x press 160
+[01:44:53.828] xrsim: applied 1 command(s): btn x press 160
+[01:44:53.851] xrsim: applied 1 command(s): btn x press 160
+[01:44:59.901] xrsim: applied 1 command(s): btn b press 160
+[01:45:22.623] xrsim: applied 1 command(s): shot current-04
+[01:45:22.844] xrsim: capture written current-04 (1032x1104)
+[01:45:31.176] xrsim: applied 1 command(s): shot pistol-layout-04
+[01:45:31.406] xrsim: capture written pistol-layout-04 (1032x1104)
+[01:46:03.303] xrsim: applied 1 command(s): btn x press 160
+[01:46:12.384] xrsim: applied 1 command(s): shot inventory-stable-04
+[01:46:12.456] xrsim: capture written inventory-stable-04 (1032x1104)
+[01:47:00.997] xrsim: applied 1 command(s): btn x press 160
+[01:47:24.669] xrsim: applied 1 command(s): btn b press 160
+[01:48:53.445] xrsim: applied 1 command(s): btn x press 160
+[01:50:06.391] xrsim: applied 1 command(s): btn x press 160
+[01:50:33.483] xrsim: applied 1 command(s): btn b press 160
+[01:51:03.742] xrsim: session state -> LOSS_PENDING
+[01:51:03.743] xrsim: session torn down
+[01:51:03.743] xrsim: instance destroyed
+[01:51:03.743] xrsim: applied 1 command(s): state lost

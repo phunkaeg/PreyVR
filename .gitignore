@@ -37,8 +37,58 @@
 /tools/Chairloader-*/
 /tools/Chairloader-*.zip
 
+# Local IDA/Hex-Rays reference exports; keep evidence excerpts in docs instead.
+**/ida_decompile/
+
 # Frame dumps: 14.7 MB each at 2560x1440. Kept on disk for comparison across
 # sessions, never in the repo -- the numbers that matter are in the protocol docs.
 *.pvrframe
 captures/
 captures_archive/
+
+# ---------------------------------------------------------------------------
+# NEVER COMMIT: copies of the game itself.
+# A local copy of the Epic 2021-08-19 build lives here for symbol/reference
+# work. It is copyrighted commercial software, it is ~1.5 GB, and publishing it
+# would be both an infringement and a GitHub ToS violation.
+# Brackets are a glob character class in gitignore, so they are escaped:
+/\[WIN\]*/
+/\[WIN\]*.zip
+/Prey/
+/PreyDll.dll
+/*.pak
+
+# Marketing renders. PreyVR.mp4 is 143 MB, above GitHub's hard 100 MB per-file
+# limit, so a push containing it is rejected outright. Attach video to a Release
+# instead -- release assets allow up to 2 GB.
+/marketing/
+
+# Player packages produced by tools/Package-PreyVR.ps1. These are release
+# artifacts, uploaded to a Release rather than versioned in the tree.
+/build/packages/
+
+# --- Evidence: keep the text, drop the payloads ---------------------------
+# The decompiles, byte manifests and identity JSON stay: they are what make a
+# claim in ADDRESS_REGISTRY checkable instead of merely asserted, and they are
+# small. What goes is everything binary that only mattered on the machine that
+# produced it.
+
+# Crash dumps. 50 MB each, and a privacy problem as well as a size one: a
+# process minidump contains raw memory, which can carry paths, usernames and
+# environment values.
+*.dmp
+
+# xr-tape recordings: 15-32 MB of per-frame JSON each. The directories are
+# named "private-*" for a reason.
+*.ndjson
+**/private-live-tape*/
+
+# Evidence screenshots and eye dumps: 442 files, 168 MB. The measurements taken
+# from them live in the docs; the pixels do not need to travel.
+docs/evidence/**/*.png
+docs/evidence/**/*.jpg
+docs/evidence/**/*.zip
+
+# Raw texture/buffer dumps.
+*.bgra
+*.rgba

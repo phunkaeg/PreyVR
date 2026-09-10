@@ -1,0 +1,40 @@
+18124c210: MOV qword ptr [RSP + 0x8],RBX 
+18124c215: MOV qword ptr [RSP + 0x10],RBP 
+18124c21a: MOV qword ptr [RSP + 0x18],RSI 
+18124c21f: PUSH RDI 
+18124c220: SUB RSP,0x20 
+18124c224: MOV RBX,RDX 
+18124c227: MOV RDI,R8 
+18124c22a: XOR EDX,EDX 
+18124c22c: MOV RSI,R9 
+18124c22f: MOV RBP,RCX 
+18124c232: LEA R8D,[RDX + 0x70] 
+18124c236: CALL 0x181b9ae5c 
+18124c23b: MOV EAX,dword ptr [RBX + 0x8] 
+18124c23e: MOVSD XMM0,qword ptr [RBX] 
+18124c242: MOV RBX,qword ptr [RSP + 0x30] 
+18124c247: MOVSD qword ptr [RBP + 0x18],XMM0 
+18124c24c: MOVSD XMM0,qword ptr [RDI] 
+18124c250: MOV dword ptr [RBP + 0x20],EAX 
+18124c253: MOV EAX,dword ptr [RDI + 0x8] 
+18124c256: MOVSD qword ptr [RBP + 0x24],XMM0 
+18124c25b: MOV dword ptr [RBP + 0x2c],EAX 
+18124c25e: LEA RAX,[0x182be0a40] 
+18124c265: MOV qword ptr [RBP + 0x38],RAX 
+18124c269: MOV RAX,qword ptr [RSP + 0x50] 
+18124c26e: MOV qword ptr [RBP + 0x58],RAX 
+18124c272: MOV EAX,dword ptr [RSP + 0x58] 
+18124c276: BTS EAX,0x16 
+18124c27a: MOV dword ptr [RBP + 0x50],ESI 
+18124c27d: MOV RSI,qword ptr [RSP + 0x40] 
+18124c282: MOV dword ptr [RBP + 0x64],EAX 
+18124c285: MOV RAX,RBP 
+18124c288: MOV byte ptr [RBP + 0x68],0x0 
+18124c28c: MOV dword ptr [RBP + 0x30],0x11f 
+18124c293: MOV dword ptr [RBP + 0x34],0xf 
+18124c29a: MOV dword ptr [RBP + 0x40],0x1 
+18124c2a1: MOV dword ptr [RBP + 0x60],0x0 
+18124c2a8: MOV RBP,qword ptr [RSP + 0x38] 
+18124c2ad: ADD RSP,0x20 
+18124c2b1: POP RDI 
+18124c2b2: RET 

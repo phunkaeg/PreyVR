@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260909-build-takeover-near-fov",
+  "recorded_at": "2026-09-09T11:27:51.175845+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll and PreyVR source 5efd7c8f75923eec0f2553590d302e82743a2b37 with pinned takeover source edits",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Can the near-FOV override be ordered after the renderer latch using a verified receiver, rather than assumed game/render-thread ordering?",
+  "claim": "RT_BeginFrame writes the near-FOV cvar to renderer+0x95B4 before returning. The replacement detour calls that original before applying the requested value through its gated receiver. The compiled production-callback harness proves post-latch ordering, fallback-sentinel handling, next-frame disable, isolated writes and fail-closed disarming. Separate constructor/accessor bytes establish that the R-127 receiver slot is the environment physical-world member, and its weapon builder stores callerMask OR 0x400000 at +0x64.",
+  "evidence_grade": "STATIC",
+  "environment": "static",
+  "method": "Ghidra 12.1.2 /Prey/PreyDll.dll, x64 Windows, read-only tool calls plus schema-discovered localhost HTTP GET fallback. Ghidra import hash and seven byte spans compared against installed PE using Python 3.12/pefile; production prologue/latch gates independently compared to disk. MSVC 19.50, CMake Visual Studio 18 2026: build_verify.py compiles Release and runs 31 CTest checks, including the actual NearFovOverride.cpp callback with an emulated latch. Native constructor/accessor and params producer inspected; ancestor field names retained only as leads. Reproduce with collect_static.py, verify_static.py and build_verify.py in the evidence directory; native request addresses/sizes are retained in the JSON/ASM evidence.",
+  "validity": "VALID",
+  "mutation": "persistent",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Ghidra import/disk SHA-256 agree; target is x64 and seven native byte spans plus both compiled code gates match disk; source/output hashes pinned."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Native bytes, disassembly and decompilation agree; production callback compiled and executed with controlled native latch in offline harness."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Changed native FOV each frame, disable and sentinel controls; wrong slot, unreadable receiver/code, nonfinite value and mismatched opcode/displacement controls exercise refusal/disarm."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Static and offline test work; no game process used."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "Persistent version-controlled source edits; no game memory or runtime configuration mutated."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Release DLL build and 31/31 offline tests passed. This baseline verdict excludes game execution and headset quality."
+  },
+  "limits": "The harness never installs a hook in Prey. Actual level-load cadence, downstream per-view FOV agreement, renderer scheduling, performance and headset acceptance remain unmeasured. Physics output writer/filter/caller ownership still require target proof; no native query is shipped. FOV readback does not identify a competing writer. This does not fix equip-time rotation capture or the common reticle-origin anchor.",
+  "artifacts": [
+    {
+      "path": "docs/RE-BUILD-TAKEOVER-2026-09-09.md",
+      "sha256": "5ae54dfb45c2e09d208b53e704502b7cb3e7fcc449d04b9756410072256cfde1",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/build-manifest.json",
+      "sha256": "95cc50951928743983fcb8cf5310980daed46d599112578a033d7f38b1e1c3db",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/build.log",
+      "sha256": "f60cb17f7797627523c24ba8741338fa9cd29450083163792e0a2c3848676c26",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/build_verify.py",
+      "sha256": "76732a43d5d85f0a3c1718bfec2eeb0b1d6bfb491b7d33c45531d3b6fee383aa",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/collect_static.py",
+      "sha256": "6baae218d592d163772d90dde0d59fb9a1b5cc790ec07ada1bfc8ed8477fc3e2",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/ctest.log",
+      "sha256": "edbf4e9c458853263ce6698b189175e87605a6683b7fc02d5db7ca2e7c410017",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/environment-base-xrefs.txt",
+      "sha256": "a746afaacc953bb25ce1ceaaa50dea2d2501491ad0746b7e0b639e5aeef7370a",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/ghidra-options.json",
+      "sha256": "e438d3874ce0acc4c9bf47d8044f3d2e2ac2e168571d9517ded7bb2fa2e3ab0b",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/ghidra-program.json",
+      "sha256": "c4980bbb991e2ef3655627c6575d56d21ce37d814374870438b722d7f0e82181",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/ghidra-schema.json",
+      "sha256": "8d3631c85a2ab97bdd78744ef855508617ca25937390ee7464889f5b2f989849",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/melee-query-builder-bytes.json",
+      "sha256": "5f2ad096dba4c7ec80da21b15f075ba0542fd3055b6044ffc874486d75ffd073",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/melee-query-builder.c",
+      "sha256": "5722c7f6cc2e6265560e8886f1047f08fa6fb7dbd7795ea3405cfc36e5839eec",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/physics-accessor-bytes.json",
+      "sha256": "951630136b76a099bcbdb55cc5e223e9087e7c79be1a24571b2f52871cfb8fb3",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/physics-accessor-slot.json",
+      "sha256": "1c4269cb0437ab57ee7e3196990c13d11ab0c75ecd2ea3a5d78c301f4e1f8a70",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/renderer-begin-slot.json",
+      "sha256": "b11168d6c8825771d799e3cabd4dc254b5affafa1cbdc98d9f388f0f93d49fea",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/rt-begin-frame-bytes.json",
+      "sha256": "3516c9e489b026525ffbee8c21aa9b5f589ecbe7ec0ebeeb80e2c6ee62490693",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/rt-begin-frame.asm.txt",
+      "sha256": "a221f9bc61bb2a79207a2d8ec610d71344580bf3bab729dd12d35015b6bec852",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/rt-begin-frame.c",
+      "sha256": "2ff87632af93c2c4104de43d1e585ec4baebc2327f359cca6d01ad2f3f699ef7",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/source/CMakeLists.txt",
+      "sha256": "5bf34562cc64efdb09b3face79328da6abeda5eb5831fc1c067e7c48251da56d",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/source/src/dll/CameraEditHook.cpp",
+      "sha256": "3d376902f11046d677f804226394dc56c6816f1149a25430ec7f33bfd4925aa4",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/source/src/dll/CommandChannel.cpp",
+      "sha256": "0e919aa71af80c94e8242cde8ec2ff201d93000d3e265ecd2fc5b7d14d3e20b0",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/source/src/dll/NearFovOverride.cpp",
+      "sha256": "ce9f302b82649065b78eb1a3db01cb5c49abf00445650d03e11f22875055235d",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/source/src/dll/NearFovOverride.h",
+      "sha256": "1d35bcf9912297c6bb9b1c1537f41690a0f8389effcab36c6e77b80f621d7fe8",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/source/tests/NearFovOverrideTests.cpp",
+      "sha256": "cb2f79a5599c7c4ce782e0fdb335819d9bf19d26504774426ba325a64941dd28",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/source/tools/Invoke-PreyVRStartup.ps1",
+      "sha256": "8d5dba50cafc1753a3fc21a7390a367b5e356d3465cb7aea0307ecb9434a4a5b",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/static-verification.json",
+      "sha256": "339dfbc860c08aace7d1881aa948da5d574bc5633a1cc79d58a042524eda9a69",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/system-constructor-bytes.json",
+      "sha256": "3e9dce7f979d384ede06cc83e518bd943af32072e73a96c345760d5e36f490cb",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/system-constructor.asm.txt",
+      "sha256": "1dccd31f690d45fe32143a0f9ddfd59ca927618000b423bea4d57df69ff154e9",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/system-constructor.c",
+      "sha256": "e0516ca32d4199c261b80a07a755a2562b77c6b7b8cfa61bcb60eeb0bec136b1",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/verify_static.py",
+      "sha256": "28dce1177c2021b154c13b24e90968164f7e62b68e6317dc5c9b5a7f8e8ef7c2",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/weapon-firing-guard.c",
+      "sha256": "26d464c9d513d354a3afa77584b38675eb9f7e7da84be0474ef4e4a750dae289",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/weapon-query-builder-bytes.json",
+      "sha256": "0eff35779651954604bea8aab0654031c7e38f6b3bca35c9d6158437b2be7aae",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/weapon-query-builder.asm.txt",
+      "sha256": "547625121b1b070c34558638f5419557b3fdf8b1ad602275f803717bb44c02f9",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    },
+    {
+      "path": "docs/evidence/build-takeover-2026-09-09/weapon-query-builder.c",
+      "sha256": "47edef48248bdb309e8e09e097a844aa5b825dcbd35bfbae245ad5eae1ec848a",
+      "role": "Takeover evidence, source snapshot or verification record; see report for scope"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [
+    {
+      "approach": "Infer that a game-thread Render entry follows a render-thread frame latch just from frame labels.",
+      "reason": "Queued rendering requires actual ordering proof; the native frame-begin return gives a narrower verified placement.",
+      "reopen_when": "Producer/consumer scheduling evidence proves the proposed alternative call order."
+    },
+    {
+      "approach": "Treat equal pre-write FOV readback as proof no other writer exists.",
+      "reason": "The startup cvar and another writer may both equal the requested override.",
+      "reopen_when": "Writer-specific instrumentation with positive coverage controls is available."
+    }
+  ],
+  "next_action": "Runtime owner should test the gated FOV return hook through level load, zoom and disable using read-only status plus rendered evidence. Next feature build recovers authored weapon/barrel-to-wrist transforms and a coherent independent head anchor, then removes arbitrary controller-angle capture across equips. Resolve the concrete scene-query implementation/output/filter contract before collision. Queue this as an existing thread/order and receiver-provenance example for fleet review, without promoting headset acceptance."
+}

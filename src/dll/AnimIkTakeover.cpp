@@ -11,6 +11,7 @@
 #include "MinHookInit.h"
 #include "XrInput.h"
 #include "preyvr/AnimIk.h"
+#include "preyvr/WeaponRigAlignment.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/StereoCamera.h"
 #include "preyvr/VrMath.h"
@@ -75,6 +76,11 @@ std::atomic<unsigned int> gMode{0};
 std::atomic<int> gTestMm[3]{0, 0, 0};
 std::atomic<bool> gDrive{false};
 std::mutex gIkMutex;
+// Opt-in until authored-basis alignment has been checked across live assets.
+bool gAlignWeapon = false; // all alignment state is protected by gIkMutex
+weaponrig::Status gAlignStatus = weaponrig::Status::disabled;
+weaponrig::Basis gAlignBasis{};
+std::uint64_t gAlignGeneration = 0, gAlignSequence = 0, gAlignApplied = 0, gAlignRefused = 0;
 animik::CalibrationState gCalibration;
 std::atomic<std::uint64_t> gOwnerGeneration{0}, gOwnerCharacter{0}, gUsedSequence{0};
 std::atomic<unsigned long long> gNoOwner{0}, gBusy{0};
@@ -333,9 +339,9 @@ struct QuatT {
     float t[3];
 };
 
-bool ReadQuatT(std::uint8_t* array, int index, QuatT& out)
+bool ReadQuatT(std::uint8_t* array, unsigned count, int index, QuatT& out)
 {
-    if (!animik::ValidJoint(index, DynArrayCount(array)) ||
+    if (count>kMaxJoints || !animik::ValidJoint(index, count) ||
         !ReadFloats(array + static_cast<std::size_t>(index) * kQuatTStride, &out.q[0], 7)) { return false; }
     return animik::ValidLocation({{out.q[0], out.q[1], out.q[2], out.q[3]},
                                  {out.t[0], out.t[1], out.t[2]}, 1.0f});
@@ -366,23 +372,31 @@ bool WriteGoal(std::uint8_t* target, float* weight, const Vec3& position,
     }
 }
 
+bool ReadAlignmentMemory(void*, std::uintptr_t address, void* output, std::size_t size)
+{
+    __try { std::memcpy(output, reinterpret_cast<const void*>(address), size); return true; }
+    __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+
 void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute,
-               const animik::Location& location, const GameplayPoseFrame& frame)
+               unsigned poseCount, const animik::Location& location, const GameplayPoseFrame& frame,
+               const EquippedRig& owner)
 {
     const int target = gTargetJoint[hand].load(std::memory_order_relaxed);
     const int weight = gWeightJoint[hand].load(std::memory_order_relaxed);
     const int handJoint = gHandJoint[hand].load(std::memory_order_relaxed);
-    if (!animik::ValidJoint(target, DynArrayCount(absolute)) ||
-        !animik::ValidJoint(weight, DynArrayCount(relative)) ||
-        !animik::ValidJoint(handJoint, DynArrayCount(absolute))) { return; }
+    if (poseCount>kMaxJoints || !animik::ValidJoint(target, poseCount) ||
+        !animik::ValidJoint(weight, poseCount) ||
+        !animik::ValidJoint(handJoint, poseCount)) { return; }
 
     QuatT wrist{};
-    if (!ReadQuatT(absolute, handJoint, wrist)) { return; }
+    if (!ReadQuatT(absolute, poseCount, handJoint, wrist)) { return; }
 
     Vec3 goal{wrist.t[0], wrist.t[1], wrist.t[2]};
     Quaternion rotation{wrist.q[0], wrist.q[1], wrist.q[2], wrist.q[3]};
     bool writeRotation = false;
     bool calibrating = false;
+    bool aligned = false;
     Quaternion candidateOffset{};
 
     // Hoisted purely so the trace can see them: the controller values are built
@@ -407,13 +421,37 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
         traceGrip = state.gripPose.position;
         traceControllerWorld = world.position;
         goal = animik::WorldToModel(location, world.position);
-        const Quaternion controllerModel = animik::WorldToModel(location, world.orientation);
-        calibrating = gCalibration.Pending(hand);
-        candidateOffset = calibrating ? animik::CalibrateRotationOffset(controllerModel, rotation)
-                                      : gCalibration.offsets[hand];
-        if (calibrating || (gCalibration.calibrated & (1u << hand))) {
-            rotation = animik::ApplyRotationOffset(controllerModel, candidateOffset);
+        if (hand == 0 && gAlignWeapon) {
+            gAlignGeneration = owner.generation;
+            gAlignSequence = frame.tracking.sequence;
+            gAlignBasis = {};
+            if (!IsPoseUsable(state.aimPose, state.aimValidity, 200000000ull)) {
+                gAlignStatus = weaponrig::Status::staleAim;
+                ++gAlignRefused;
+                return;
+            }
+            gAlignStatus = weaponrig::ReadBasis({nullptr, ReadAlignmentMemory},
+                reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll")), owner,
+                reinterpret_cast<std::uintptr_t>(absolute), poseCount, handJoint, gAlignBasis);
+            if (gAlignStatus != weaponrig::Status::ready) { ++gAlignRefused; return; }
+            const Pose aimWorld = animik::ControllerWorldFromHead(frame.yaw, frame.nativeEye,
+                frame.tracking.head, state.aimPose);
+            if (!weaponrig::SolveWrist(location.q, aimWorld.orientation, gAlignBasis, rotation)) {
+                gAlignStatus = weaponrig::Status::invalidBasis;
+                ++gAlignRefused;
+                return;
+            }
+            aligned = true;
             writeRotation = true;
+        } else {
+            const Quaternion controllerModel = animik::WorldToModel(location, world.orientation);
+            calibrating = gCalibration.Pending(hand);
+            candidateOffset = calibrating ? animik::CalibrateRotationOffset(controllerModel, rotation)
+                                          : gCalibration.offsets[hand];
+            if (calibrating || (gCalibration.calibrated & (1u << hand))) {
+                rotation = animik::ApplyRotationOffset(controllerModel, candidateOffset);
+                writeRotation = true;
+            }
         }
     } else {
         const Vec3 test{gTestMm[0].load(std::memory_order_relaxed) * 0.001f,
@@ -431,8 +469,8 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
     if (upper < 0 || mid < 0 || end < 0) { return; }
     {
         QuatT upperAbs{}, midRel{}, endRel{};
-        if (ReadQuatT(absolute, upper, upperAbs) && ReadQuatT(relative, mid, midRel) &&
-            ReadQuatT(relative, end, endRel)) {
+        if (ReadQuatT(absolute, poseCount, upper, upperAbs) && ReadQuatT(relative, poseCount, mid, midRel) &&
+            ReadQuatT(relative, poseCount, end, endRel)) {
             const float reach = 0.995f * (std::sqrt(midRel.t[0]*midRel.t[0] + midRel.t[1]*midRel.t[1] + midRel.t[2]*midRel.t[2]) +
                                           std::sqrt(endRel.t[0]*endRel.t[0] + endRel.t[1]*endRel.t[1] + endRel.t[2]*endRel.t[2]));
             if (!std::isfinite(reach) || reach <= 1e-6f) { return; }
@@ -483,16 +521,33 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
     }
     if (!std::isfinite(goal.x) || !std::isfinite(goal.y) || !std::isfinite(goal.z)) { return; }
 
+    if (aligned) {
+        EquippedRig current{};
+        // Basis reads can straddle an equip/recenter/focus transition. Refuse
+        // the old goal if its ownership/reference sample is no longer current.
+        GameplayPoseFrame latest{};
+        if (!TryGetEquippedRig(frame.player, current) || current.generation != owner.generation ||
+            !SameRigBinding(owner, current, owner.itemId) || !TryGetGameplayPoseFrame(latest, true) ||
+            latest.player != frame.player || latest.referenceGeneration != frame.referenceGeneration ||
+            latest.tracking.epoch != frame.tracking.epoch) {
+            gAlignStatus = weaponrig::Status::invalidOwner;
+            ++gAlignRefused;
+            return;
+        }
+    }
+
     // Target: absolute position (and rotation once calibrated); weight: relative X = 1.
     auto* const targetAt = absolute + static_cast<std::size_t>(target) * kQuatTStride;
     auto* const weightAt = reinterpret_cast<float*>(relative + static_cast<std::size_t>(weight) * kQuatTStride + 0x10);
     if (!WriteGoal(targetAt, weightAt, goal, rotation, writeRotation)) {
+        if (aligned) { gAlignStatus = weaponrig::Status::writeFailed; ++gAlignRefused; }
         gMode.store(0);
         gCalibration = {};
         for (auto& flag : gCalibrated) { flag.store(false); }
         Log("result=fault detail=target_write_disarmed");
         return;
     }
+    if (aligned) { gAlignStatus = weaponrig::Status::applied; ++gAlignApplied; }
     if (calibrating) {
         gCalibration.Commit(hand, candidateOffset);
         gCalibrated[hand].store(true);
@@ -537,6 +592,12 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
     EquippedRig owner{};
     const bool haveOwner = stateLock.owns_lock() && TryGetGameplayPoseFrame(frame, gDrive.load()) &&
         TryGetEquippedRig(frame.player, owner);
+    if (stateLock.owns_lock() && gAlignWeapon) {
+        gAlignStatus = weaponrig::Status::noSample;
+        gAlignBasis = {};
+        gAlignGeneration = haveOwner ? owner.generation : 0;
+        gAlignSequence = haveOwner ? frame.tracking.sequence : 0;
+    }
     if (mode != 0 && !stateLock.owns_lock()) { gBusy.fetch_add(1); }
     if (mode != 0 && stateLock.owns_lock() && !haveOwner) { gNoOwner.fetch_add(1); }
     if (haveOwner && gCalibration.Bind(owner.generation, frame.referenceGeneration, frame.tracking.epoch)) {
@@ -583,18 +644,20 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
                 void* pose = nullptr;
                 void* relative = nullptr;
                 void* absolute = nullptr;
+                int poseCount=0;
                 if (ReadPointer(p + kParamsPose, &pose) && pose != nullptr &&
+                    ReadInt(static_cast<std::uint8_t*>(pose)+8,&poseCount) && poseCount>0 && poseCount<=kMaxJoints &&
                     ReadPointer(static_cast<std::uint8_t*>(pose) + kPoseRelative, &relative) &&
                     ReadPointer(static_cast<std::uint8_t*>(pose) + kPoseAbsolute, &absolute) &&
                     relative != nullptr && absolute != nullptr) {
                     const unsigned int hands = gHands.load(std::memory_order_relaxed);
                     if (hands & 1u) {
                         DriveHand(0, static_cast<std::uint8_t*>(relative), static_cast<std::uint8_t*>(absolute),
-                                  location, frame);
+                                  static_cast<unsigned>(poseCount), location, frame, owner);
                     }
                     if ((hands & 2u) && gMode.load() == 2) {
                         DriveHand(1, static_cast<std::uint8_t*>(relative), static_cast<std::uint8_t*>(absolute),
-                                  location, frame);
+                                  static_cast<unsigned>(poseCount), location, frame, owner);
                     }
                 }
             }
@@ -653,7 +716,13 @@ DWORD SetAnimIkMode(unsigned int mode)
     }
     if (mode == 2u && (WeaponRotationDriveArmed() || WeaponOffsetArmed())) { return 3; }
     std::lock_guard stateLock(gIkMutex);
-    if (mode == 0) { gCalibration = {}; for (auto& flag : gCalibrated) { flag.store(false); } }
+    if (mode == 0) {
+        gCalibration = {};
+        for (auto& flag : gCalibrated) { flag.store(false); }
+        gAlignStatus = gAlignWeapon ? weaponrig::Status::noSample : weaponrig::Status::disabled;
+        gAlignBasis = {};
+        gAlignGeneration = gAlignSequence = 0;
+    }
     gMode.store(mode, std::memory_order_release);
     Log("result=0 detail=mode value=" + std::to_string(mode));
     return 0;
@@ -673,7 +742,13 @@ DWORD SetAnimIkTestOffsetMillimetres(int x, int y, int z)
 DWORD SetAnimIkControllerDrive(unsigned int enabled)
 {
     std::lock_guard stateLock(gIkMutex);
-    if (!enabled) { gCalibration = {}; for (auto& flag : gCalibrated) { flag.store(false); } }
+    if (!enabled) {
+        gCalibration = {};
+        for (auto& flag : gCalibrated) { flag.store(false); }
+        gAlignStatus = gAlignWeapon ? weaponrig::Status::noSample : weaponrig::Status::disabled;
+        gAlignBasis = {};
+        gAlignGeneration = gAlignSequence = 0;
+    }
     gDrive.store(enabled != 0u, std::memory_order_release);
     Log(std::string("result=0 detail=controller_drive value=") + (enabled ? "1" : "0"));
     return 0;
@@ -686,9 +761,43 @@ DWORD CalibrateAnimIk()
         return 1;
     }
     std::lock_guard stateLock(gIkMutex);
-    gCalibration.Request(gHands.load());
+    // The authored right-hand path has no equip-angle zero to capture.
+    gCalibration.Request(gHands.load() & (gAlignWeapon ? 2u : 3u));
     Log("result=0 detail=calibration_requested");
     return 0;
+}
+
+DWORD SetAnimIkWeaponAlignment(unsigned int enabled)
+{
+    if (enabled > 1) { return 1; }
+    std::lock_guard stateLock(gIkMutex);
+    if (gAlignWeapon != (enabled != 0)) {
+        // A baseline comparison needs a fresh explicit calibration; an old
+        // grip offset must not survive a different orientation ownership mode.
+        gCalibration.pending &= ~1u;
+        gCalibration.autoPending &= ~1u;
+        gCalibration.calibrated &= ~1u;
+        gCalibrated[0].store(false);
+    }
+    gAlignWeapon = enabled != 0;
+    gAlignStatus = gAlignWeapon ? weaponrig::Status::noSample : weaponrig::Status::disabled;
+    gAlignBasis = {};
+    gAlignGeneration = gAlignSequence = 0;
+    return 0;
+}
+
+std::string AnimIkWeaponAlignmentReport()
+{
+    std::lock_guard stateLock(gIkMutex);
+    return " enabled=" + std::to_string(gAlignWeapon) +
+        " status=" + weaponrig::StatusName(gAlignStatus) +
+        " basis=" + weaponrig::SourceName(gAlignBasis.source) +
+        " helper=" + (gAlignBasis.helper[0] ? std::string(gAlignBasis.helper) : "none") +
+        " socket=" + std::to_string(gAlignBasis.socketJoint) +
+        " generation=" + std::to_string(gAlignGeneration) +
+        " sequence=" + std::to_string(gAlignSequence) +
+        " applied=" + std::to_string(gAlignApplied) +
+        " refused=" + std::to_string(gAlignRefused);
 }
 
 DWORD SetAnimIkJointSignature(unsigned int joints)

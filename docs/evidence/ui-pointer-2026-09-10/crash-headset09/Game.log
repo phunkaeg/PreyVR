@@ -1,0 +1,334 @@
+BuildInfo:
+BuildTool=[Incredibuild]
+ChangeList=[719851]
+CleanBuild=[true]
+Configuration=[Release]
+branch=[//danielle/cryengineMS/]
+buildid=[10965948]
+buildtime=[Jul  3 2019 08:43:12]
+platform=[x64]
+BackupNameAttachment=" Build(0) 10 Sep 26 (10 36 36)"  -- used by backup system
+Log Started at Thu Sep 10 10:36:36 2026
+Built on Jul  3 2019 08:43:12
+Running 64 bit Windows version
+Executable: D:\SteamLibrary\steamapps\common\Prey\Binaries\Danielle\x64\Release\Prey.exe
+Adding BuildInfo [Executable]=D:\SteamLibrary\steamapps\common\Prey\Binaries\Danielle\x64\Release\Prey.exe
+FileVersion: 1.0.1.0
+ProductVersion: 1.0.1.0
+Using Microsoft (tm) C++ Standard Library implementation
+
+Total number of logical processors: 32
+Number of available logical processors: 32
+Total number of system cores: 16
+Number of cores available to process: 16
+ 
+Processor 0:
+  CPU: AMD AMD Ryzen 9 7950X3D 16-Core Processor          
+  Family: 15, Model: 1, Stepping: 2
+  FPU: On-Chip
+  Features: FP16, SSE, SSE2, SSE3, SSE4.2, AVX, AVX2, FMA3
+  Serial number not present or disabled
+ 
+Processor 1:
+  CPU: AMD AMD Ryzen 9 7950X3D 16-Core Processor          
+  Family: 15, Model: 1, Stepping: 2
+  FPU: On-Chip
+  Features: FP16, SSE, SSE2, SSE3, SSE4.2, AVX, AVX2, FMA3
+  Serial number not present or disabled
+ 
+Processor 2:
+  CPU: AMD AMD Ryzen 9 7950X3D 16-Core Processor          
+  Family: 15, Model: 1, Stepping: 2
+  FPU: On-Chip
+  Features: FP16, SSE, SSE2, SSE3, SSE4.2, AVX, AVX2, FMA3
+  Serial number not present or disabled
+ 
+Processor 3:
+  CPU: AMD AMD Ryzen 9 7950X3D 16-Core Processor          
+  Family: 15, Model: 1, Stepping: 2
+  FPU: On-Chip
+  Features: FP16, SSE, SSE2, SSE3, SSE4.2, AVX, AVX2, FMA3
+  Serial number not present or disabled
+ 
+Processor 4:
+  CPU: AMD AMD Ryzen 9 7950X3D 16-Core Processor          
+  Family: 15, Model: 1, Stepping: 2
+  FPU: On-Chip
+  Features: FP16, SSE, SSE2, SSE3, SSE4.2, AVX, AVX2, FMA3
+  Serial number not present or disabled
+ 
+Processor 5:
+  CPU: AMD AMD Ryzen 9 7950X3D 16-Core Processor          
+  Family: 15, Model: 1, Stepping: 2
+  FPU: On-Chip
+  Features: FP16, SSE, SSE2, SSE3, SSE4.2, AVX, AVX2, FMA3
+  Serial number not present or disabled
+ 
+Processor 6:
+  CPU: AMD AMD Ryzen 9 7950X3D 16-Core Processor          
+  Family: 15, Model: 1, Stepping: 2
+  FPU: On-Chip
+  Features: FP16, SSE, SSE2, SSE3, SSE4.2, AVX, AVX2, FMA3
+  Serial number not present or disabled
+ 
+Processor 7:
+  CPU: AMD AMD Ryzen 9 7950X3D 16-Core Processor          
+  Family: 15, Model: 1, Stepping: 2
+  FPU: On-Chip
+  Features: FP16, SSE, SSE2, SSE3, SSE4.2, AVX, AVX2, FMA3
+  Serial number not present or disabled
+ 
+Processor 8:
+  CPU: AMD AMD Ryzen 9 7950X3D 16-Core Processor          
+  Family: 15, Model: 1, Stepping: 2
+  FPU: On-Chip
+  Features: FP16, SSE, SSE2, SSE3, SSE4.2, AVX, AVX2, FMA3
+  Serial number not present or disabled
+[LOGSPAM] rolling up future occurrences of [ ][count 10]
+Processor 9:
+[LOGSPAM] rolling up future occurrences of [  CPU: AMD AMD Ryzen 9 7950X3D 16-Core Processor          ][count 10]
+[LOGSPAM] rolling up future occurrences of [  Family: 15, Model: 1, Stepping: 2][count 10]
+[LOGSPAM] rolling up future occurrences of [  FPU: On-Chip][count 10]
+[LOGSPAM] rolling up future occurrences of [  Features: FP16, SSE, SSE2, SSE3, SSE4.2, AVX, AVX2, FMA3][count 10]
+[LOGSPAM] rolling up future occurrences of [  Serial number not present or disabled][count 10]
+Processor 10:
+Processor 11:
+Processor 12:
+Processor 13:
+Processor 14:
+Processor 15:
+GameDir: GameSDK
+Opening pak file engine\shadercachestartup_d3d11.pak
+Opening pak file gamesdk\animations.pak
+Opening pak file gamesdk\audio.pak
+Opening pak file gamesdk\gamedata.pak
+Opening pak file gamesdk\geomcaches.pak
+Opening pak file gamesdk\objects-part0.pak
+Opening pak file gamesdk\objects-part1.pak
+Opening pak file gamesdk\objects-part2.pak
+Opening pak file gamesdk\objects-part3.pak
+[LOGSPAM] filtered 6 instances of [  CPU: AMD AMD Ryzen 9 7950X3D 16-Core Processor          ]
+Opening pak file gamesdk\objects-part4.pak
+[LOGSPAM] filtered 6 instances of [  Family: 15, Model: 1, Stepping: 2]
+Opening pak file gamesdk\objects-part5.pak
+[LOGSPAM] filtered 6 instances of [  FPU: On-Chip]
+Opening pak file gamesdk\objects-part6.pak
+[LOGSPAM] filtered 6 instances of [  Features: FP16, SSE, SSE2, SSE3, SSE4.2, AVX, AVX2, FMA3]
+Opening pak file gamesdk\objects-part7.pak
+[LOGSPAM] filtered 6 instances of [  Serial number not present or disabled]
+Opening pak file gamesdk\scripts.pak
+[LOGSPAM] filtered 7 instances of [ ]
+Opening pak file gamesdk\textures.pak
+Opening pak file gamesdk\precache\patch.pak
+Opening pak file engine\engine.pak
+Opening pak file engine\shadercache_d3d11.pak
+Opening pak file engine\shaders.pak
+Opening pak file engine\shadersbin_d3d11.pak
+Adding BuildInfo [RCJobBuildID]=10966196
+Adding BuildInfo [RCJobDataChangelist]=719851
+Adding BuildInfo [RCJobToolsBuildID]=10965935
+Adding BuildInfo [MultiBuildID]=10966486
+Windows 10 64 bit (build 10.0.26200)
+User name: "meise"
+System language: English
+Windows Directory: "C:\WINDOWS"
+Local time is 10:36:36 09/10/26, system running for 12915 minutes
+97880MB physical memory installed, 51286MB available, 134217727MB virtual memory installed, 47 percent of memory in use
+PageFile usage: 55MB, Working Set: 52MB, Peak PageFile usage: 55MB,
+Current display mode is 3440x1440x32, (Unknown graphics card)
+IBM enhanced (101/102-key) keyboard and 8+ button mouse installed
+--------------------------------------------------------------------------------
+Stream Engine Initialization
+GameName: Prey
+BuildTime: Jul  3 2019 08:43:12
+Physics initialization
+Opening pak file localization\english_xml.pak
+Opening pak file localization\english_xml_patch.pak
+Opening pak file localization\english.pak
+Opening pak file localization\english_patch.pak
+Opening pak file localization\english_anim.pak
+Opening pak file localization\english_anim_patch.pak
+<Audio>: AudioSystem initialization
+Renderer initialization
+Initializing Direct3D and creating game window:
+D3DX_SDK_VERSION = <UNDEFINED>
+Direct3D driver is creating...
+Creating window called 'Prey' (2560x1440)
+NVIDIA Driver: 596.36
+NVAPI: Found 1 GPUs for rendering
+NVAPI: DepthBoundsTesting supported
+Active GPUs: 1
+ ****** D3D11 CryRender Stats ******
+ Driver description: NVIDIA GeForce RTX 5070 Ti
+ Feature level: DirectX 11.0
+ Full stats: 
+ Rasterizer: Hardware
+ Threading Features
+   Concurrent Creates: Supported
+   Command Lists: Supported
+ Current Resolution: 2560x1440x32 Windowed
+ HDR Rendering: FP16
+ Occlusion queries: Supported
+ Geometry instancing: Supported
+ NormalMaps compression : Supported
+ Gamma control: Software
+ Shader model usage: 'SM.5.0'
+ *****************************************
+ 
+ General shader quality: High
+ Metal shader quality: High
+ Glass shader quality: High
+ Vegetation shader quality: High
+ Ice shader quality: High
+ Terrain shader quality: High
+ Shadow shader quality: High
+ Water shader quality: High
+ FX shader quality: High
+ PostProcess shader quality: High
+ HDR shader quality: High
+ Sky shader quality: High
+Render quality: High
+[Renderer] A display device has been connected to the system
+Font initialization
+Network initialization
+[net] Socket IO management: External [iocp], Internal [iocp]
+Adding BuildInfo [hostName]=Evan-PC
+network hostname: Evan-PC
+  ip:172.22.240.1
+  ip:172.26.80.1
+  ip:192.168.0.124
+[Network Version]: RELEASE PURE CLIENT
+Online initialization
+Lobby initialization
+MovieSystem initialization
+Console initialization
+Time initialization
+Input initialization
+Initializing SteamController
+[SteamController] Failed to bind digital action handle 'game:sc_start'
+[SteamController] Failed to bind digital action handle 'game:sc_back'
+[SteamController] Failed to bind digital action handle 'game:sc_dpad_up'
+[SteamController] Failed to bind digital action handle 'game:sc_dpad_down'
+[SteamController] Failed to bind digital action handle 'game:sc_dpad_left'
+[SteamController] Failed to bind digital action handle 'game:sc_dpad_right'
+[SteamController] Failed to bind digital action handle 'game:sc_a'
+[SteamController] Failed to bind digital action handle 'game:sc_b'
+[SteamController] Failed to bind digital action handle 'game:sc_x'
+[SteamController] Failed to bind digital action handle 'game:sc_y'
+[SteamController] Failed to bind digital action handle 'game:sc_l1'
+[SteamController] Failed to bind digital action handle 'game:sc_r1'
+[SteamController] Failed to bind digital action handle 'game:sc_l2'
+[SteamController] Failed to bind digital action handle 'game:sc_r2'
+[SteamController] Failed to bind digital action handle 'game:sc_l3'
+[SteamController] Failed to bind digital action handle 'game:sc_r3'
+[SteamController] Failed to bind digital action handle 'menu:sc_start'
+[SteamController] Failed to bind digital action handle 'menu:sc_back'
+[SteamController] Failed to bind digital action handle 'menu:sc_dpad_up'
+[SteamController] Failed to bind digital action handle 'menu:sc_dpad_down'
+[SteamController] Failed to bind digital action handle 'menu:sc_dpad_left'
+[SteamController] Failed to bind digital action handle 'menu:sc_dpad_right'
+[SteamController] Failed to bind digital action handle 'menu:sc_a'
+[SteamController] Failed to bind digital action handle 'menu:sc_b'
+[SteamController] Failed to bind digital action handle 'menu:sc_x'
+[SteamController] Failed to bind digital action handle 'menu:sc_y'
+[SteamController] Failed to bind digital action handle 'menu:sc_l1'
+[SteamController] Failed to bind digital action handle 'menu:sc_r1'
+[SteamController] Failed to bind digital action handle 'menu:sc_l2'
+[SteamController] Failed to bind digital action handle 'menu:sc_r2'
+[SteamController] Failed to bind digital action handle 'menu:sc_l3'
+[SteamController] Failed to bind digital action handle 'menu:sc_r3'
+[SteamController] Failed to bind analog action handle 'game:sc_stickl'
+[SteamController] Failed to bind analog action handle 'game:sc_stickr'
+[SteamController] Failed to bind analog action handle 'game:sc_stickaim'
+[SteamController] Failed to bind analog action handle 'game:sc_triggerl'
+[SteamController] Failed to bind analog action handle 'game:sc_triggerr'
+[SteamController] Failed to bind analog action handle 'menu:sc_stickl'
+[SteamController] Failed to bind analog action handle 'menu:sc_stickr'
+[SteamController] Failed to bind analog action handle 'menu:sc_triggerl'
+[SteamController] Failed to bind analog action handle 'menu:sc_triggerr'
+[SteamController] Failed to initialize ActionSet game'
+[SteamController] Failed to initialize ActionSet menu'
+AI initialization
+Initializing Animation System
+Initializing 3D Engine
+Script System Initialization
+Entity system initialization
+Initializing AI System
+Initializing additional systems
+[TextureStreaming] RC_FlushTextureStreaming {ThreadId: 131104}
+[PlayerProfiles] Login of user 'meise' successful.
+[PlayerProfiles] Found 1 profiles.
+   Profile 0 : 'default'
+[PlayerProfiles] LoginUser (new) 'meise' {index: 0} {userId: 0} {xuid: }
+[GameProfiles]: Successfully activated profile 'default' for user 'meise'
+ActivateProfile profileName default
+[Game Version]: RELEASE PURE CLIENT
+Adding BuildInfo [hostName]=Evan-PC
+Initializing default materials...
+Closing pak file Engine/ShaderCacheStartup_D3D11.pak
+[Info] CGame::RemoveExclusiveController : deviceId: 0, deviceIndex: -1
+[TextureStreaming] CTexture::RT_FlushStreaming {abort: true} {threadId: 129724}
+    r_Fullscreen = 0 [DUMPTODISK]
+    r_Width = 2560 [DUMPTODISK]
+    r_Height = 1440 [DUMPTODISK]
+    r_MotionBlur = 0 []
+    r_AntialiasingMode = 1 []
+[ActiveUserManagerBase] SetListening(true)
+[ActiveUserManagerBase] SetListening(false)
+Closing pak file modes/menucommon_sp.pak
+Closing pak file modes/menucommon_sp.pak
+Opening pak file gamesdk\levels\campaign\research\lobby\level.pak
+[MFX] Loading FXLib 'col_sound' ...
+[MFX] Loading FXLib 'disc_rifle' ...
+[MFX] Loading FXLib 'foley' ...
+[MFX] Loading FXLib 'footstep_npc' ...
+[MFX] Loading FXLib 'footstep_player' ...
+[MFX] Loading FXLib 'footstep_player_bloody' ...
+[MFX] Loading FXLib 'footstep_player_crawling' ...
+[MFX] Loading FXLib 'footstep_player_sneaking' ...
+[MFX] Loading FXLib 'footstep_player_sprinting' ...
+[MFX] Loading FXLib 'footsteps' ...
+[MFX] Loading FXLib 'gloogun' ...
+[MFX] Loading FXLib 'laser' ...
+[MFX] Loading FXLib 'npc_shared' ...
+[MFX] Loading FXLib 'pistol' ...
+[MFX] Loading FXLib 'shotgun' ...
+[MFX] Loading FXLib 'stungun' ...
+[MFX] Loading FXLib 'toygun' ...
+[MFX] Loading FXLib 'turret' ...
+[MFX] Loading FXLib 'utilities' ...
+[MFX] Loading FXLib 'wrench' ...
+Registering TPS Extensions...
+[ArkRoomVolumeManager] Loading room volume data {filename: levels/campaign/research/lobby/datafile_audioPropagation}
+[ActiveUserManagerBase] SetListening(true)
+Begin handle Exception
+Notifying pending crash dump!
+Removing file "error.log"...
+File successfully removed.
+Removing file "error.dmp"...
+File successfully removed.
+Exception Thread: 0x00002780 (JobSystem_Worker_4(Regular))
+Exception Code: 0xC0000005
+Exception Addr: 0x0033:0x00007FFDE1C4EC40
+Exception Module: <Unknown>
+Exception Name  : EXCEPTION_ACCESS_VIOLATION
+Exception Description: Attempt to read from address 0x000000000000023C
+The memory could not be "read"
+|============================================================================
+10) function=0x00007FFDE1C4EC40
+ 9) function=0x00007FFDE1C4F820
+ 8) function=0x00007FFDE1C4CD4F
+ 7) function=0x00007FFDE27A6B72
+ 6) function=0x00007FFDE27A7565
+ 5) function=0x00007FFDE1EA7E8C
+ 4) function=0x00007FFEF26FCD30
+ 3) function=0x00007FFEF409CCB7
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+|============================================================================
+Error creating screenshot.
+<CRITICAL EXCEPTION>
+Exception: 0xC0000005, at Address: 0x0033:0x00007FFDE1C4EC40
+Virtual memory usage: 4964Mb
+Debug Status: 
+Open Handles: 5225

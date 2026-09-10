@@ -1,0 +1,5538 @@
+{
+  "modules": [
+    {
+      "name": "Prey.exe",
+      "base": "0x7ff69a800000",
+      "size": 581632
+    },
+    {
+      "name": "ntdll.dll",
+      "base": "0x7ffef4e80000",
+      "size": 2514944
+    },
+    {
+      "name": "KERNEL32.DLL",
+      "base": "0x7ffef4070000",
+      "size": 823296
+    },
+    {
+      "name": "KERNELBASE.dll",
+      "base": "0x7ffef2120000",
+      "size": 4190208
+    },
+    {
+      "name": "apphelp.dll",
+      "base": "0x7ffeedf20000",
+      "size": 651264
+    },
+    {
+      "name": "AcGenral.DLL",
+      "base": "0x7ffe74d80000",
+      "size": 512000
+    },
+    {
+      "name": "msvcrt.dll",
+      "base": "0x7ffef4ce0000",
+      "size": 692224
+    },
+    {
+      "name": "sechost.dll",
+      "base": "0x7ffef4d90000",
+      "size": 696320
+    },
+    {
+      "name": "SHLWAPI.dll",
+      "base": "0x7ffef34f0000",
+      "size": 417792
+    },
+    {
+      "name": "ucrtbase.dll",
+      "base": "0x7ffef26d0000",
+      "size": 1359872
+    },
+    {
+      "name": "USER32.dll",
+      "base": "0x7ffef4240000",
+      "size": 1859584
+    },
+    {
+      "name": "win32u.dll",
+      "base": "0x7ffef25e0000",
+      "size": 159744
+    },
+    {
+      "name": "GDI32.dll",
+      "base": "0x7ffef3700000",
+      "size": 176128
+    },
+    {
+      "name": "gdi32full.dll",
+      "base": "0x7ffef2830000",
+      "size": 1216512
+    },
+    {
+      "name": "msvcp_win.dll",
+      "base": "0x7ffef2530000",
+      "size": 667648
+    },
+    {
+      "name": "ole32.dll",
+      "base": "0x7ffef2bb0000",
+      "size": 1675264
+    },
+    {
+      "name": "combase.dll",
+      "base": "0x7ffef39d0000",
+      "size": 3690496
+    },
+    {
+      "name": "RPCRT4.dll",
+      "base": "0x7ffef3f50000",
+      "size": 1146880
+    },
+    {
+      "name": "advapi32.dll",
+      "base": "0x7ffef2e70000",
+      "size": 770048
+    },
+    {
+      "name": "shcore.dll",
+      "base": "0x7ffef4410000",
+      "size": 1019904
+    },
+    {
+      "name": "SHELL32.dll",
+      "base": "0x7ffef4510000",
+      "size": 7897088
+    },
+    {
+      "name": "VERSION.dll",
+      "base": "0x7ffeea8c0000",
+      "size": 45056
+    },
+    {
+      "name": "USERENV.dll",
+      "base": "0x7ffef1380000",
+      "size": 204800
+    },
+    {
+      "name": "MPR.dll",
+      "base": "0x7ffee4320000",
+      "size": 135168
+    },
+    {
+      "name": "SspiCli.dll",
+      "base": "0x7ffef0ff0000",
+      "size": 299008
+    },
+    {
+      "name": "IMM32.DLL",
+      "base": "0x7ffef4ca0000",
+      "size": 204800
+    },
+    {
+      "name": "VCRUNTIME140.dll",
+      "base": "0x7ffed5b80000",
+      "size": 180224
+    },
+    {
+      "name": "PreyDll.dll",
+      "base": "0x7ffde19d0000",
+      "size": 48353280
+    },
+    {
+      "name": "WS2_32.dll",
+      "base": "0x7ffef3560000",
+      "size": 532480
+    },
+    {
+      "name": "bink2w64.dll",
+      "base": "0x7ffe724a0000",
+      "size": 503808
+    },
+    {
+      "name": "WININET.dll",
+      "base": "0x7ffed4f60000",
+      "size": 2707456
+    },
+    {
+      "name": "D3DCOMPILER_47.dll",
+      "base": "0x7ffe4d440000",
+      "size": 4210688
+    },
+    {
+      "name": "DINPUT8.dll",
+      "base": "0x7ffeb5cc0000",
+      "size": 307200
+    },
+    {
+      "name": "OLEAUT32.dll",
+      "base": "0x7ffef3400000",
+      "size": 888832
+    },
+    {
+      "name": "MSWSOCK.dll",
+      "base": "0x7ffef12d0000",
+      "size": 442368
+    },
+    {
+      "name": "XINPUT9_1_0.dll",
+      "base": "0x7ffec6280000",
+      "size": 36864
+    },
+    {
+      "name": "WINMM.dll",
+      "base": "0x7ffee35c0000",
+      "size": 221184
+    },
+    {
+      "name": "steam_api64.dll",
+      "base": "0x6b570000",
+      "size": 262144
+    },
+    {
+      "name": "MSACM32.dll",
+      "base": "0x7ffe46fc0000",
+      "size": 135168
+    },
+    {
+      "name": "IPHLPAPI.DLL",
+      "base": "0x7ffef0740000",
+      "size": 208896
+    },
+    {
+      "name": "MSVCP140.dll",
+      "base": "0x7ffed5be0000",
+      "size": 643072
+    },
+    {
+      "name": "COMCTL32.dll",
+      "base": "0x7ffec5f80000",
+      "size": 741376
+    },
+    {
+      "name": "AVIFIL32.dll",
+      "base": "0x7ffea74a0000",
+      "size": 147456
+    },
+    {
+      "name": "dbghelp.dll",
+      "base": "0x7ffeef4d0000",
+      "size": 2367488
+    },
+    {
+      "name": "WINHTTP.dll",
+      "base": "0x7ffee9da0000",
+      "size": 1212416
+    },
+    {
+      "name": "VCRUNTIME140_1.dll",
+      "base": "0x7ffed6f60000",
+      "size": 49152
+    },
+    {
+      "name": "MSVFW32.dll",
+      "base": "0x7ffe8e7a0000",
+      "size": 180224
+    },
+    {
+      "name": "inputhost.dll",
+      "base": "0x7ffeb9330000",
+      "size": 1978368
+    },
+    {
+      "name": "CoreMessaging.dll",
+      "base": "0x7ffeedc30000",
+      "size": 1224704
+    },
+    {
+      "name": "bcryptPrimitives.dll",
+      "base": "0x7ffef2610000",
+      "size": 704512
+    },
+    {
+      "name": "CRYPTBASE.DLL",
+      "base": "0x7ffef1530000",
+      "size": 49152
+    },
+    {
+      "name": "kernel.appcore.dll",
+      "base": "0x7ffef0d40000",
+      "size": 110592
+    },
+    {
+      "name": "ntmarta.dll",
+      "base": "0x7ffef0e70000",
+      "size": 221184
+    },
+    {
+      "name": "CRYPTSP.dll",
+      "base": "0x7ffef16f0000",
+      "size": 110592
+    },
+    {
+      "name": "rsaenh.dll",
+      "base": "0x7ffef0ca0000",
+      "size": 233472
+    },
+    {
+      "name": "windows.storage.dll",
+      "base": "0x7ffeefb20000",
+      "size": 9023488
+    },
+    {
+      "name": "profapi.dll",
+      "base": "0x7ffef1fb0000",
+      "size": 167936
+    },
+    {
+      "name": "psapi.dll",
+      "base": "0x7ffef4140000",
+      "size": 32768
+    },
+    {
+      "name": "uxtheme.dll",
+      "base": "0x7ffeee290000",
+      "size": 688128
+    },
+    {
+      "name": "steamclient64.dll",
+      "base": "0x7ffb84cb0000",
+      "size": 26624000
+    },
+    {
+      "name": "CRYPT32.dll",
+      "base": "0x7ffef2960000",
+      "size": 1564672
+    },
+    {
+      "name": "imagehlp.dll",
+      "base": "0x7ffef33d0000",
+      "size": 131072
+    },
+    {
+      "name": "SETUPAPI.dll",
+      "base": "0x7ffef2f40000",
+      "size": 4747264
+    },
+    {
+      "name": "vstdlib_s64.dll",
+      "base": "0x7ffd33b70000",
+      "size": 798720
+    },
+    {
+      "name": "tier0_s64.dll",
+      "base": "0x7ffd23050000",
+      "size": 3203072
+    },
+    {
+      "name": "Secur32.dll",
+      "base": "0x7ffeedf00000",
+      "size": 53248
+    },
+    {
+      "name": "bcrypt.dll",
+      "base": "0x7ffef1f80000",
+      "size": 172032
+    },
+    {
+      "name": "cfgmgr32.DLL",
+      "base": "0x7ffef1c20000",
+      "size": 335872
+    },
+    {
+      "name": "gameoverlayrenderer64.dll",
+      "base": "0x7ffe68740000",
+      "size": 1798144
+    },
+    {
+      "name": "XAudio2_7.dll",
+      "base": "0x7ffe71c40000",
+      "size": 569344
+    },
+    {
+      "name": "MMDevAPI.dll",
+      "base": "0x7ffee4cd0000",
+      "size": 679936
+    },
+    {
+      "name": "clbcatq.dll",
+      "base": "0x7ffef3640000",
+      "size": 712704
+    },
+    {
+      "name": "DEVOBJ.dll",
+      "base": "0x7ffef1c80000",
+      "size": 192512
+    },
+    {
+      "name": "resourcepolicyclient.dll",
+      "base": "0x7ffeee730000",
+      "size": 81920
+    },
+    {
+      "name": "AUDIOSES.DLL",
+      "base": "0x7ffed98e0000",
+      "size": 1798144
+    },
+    {
+      "name": "powrprof.dll",
+      "base": "0x7ffef1e40000",
+      "size": 385024
+    },
+    {
+      "name": "UMPDC.dll",
+      "base": "0x7ffef1d10000",
+      "size": 86016
+    },
+    {
+      "name": "Windows.UI.dll",
+      "base": "0x7ffed1c90000",
+      "size": 1413120
+    },
+    {
+      "name": "avrt.dll",
+      "base": "0x7ffeef720000",
+      "size": 45056
+    },
+    {
+      "name": "atiadlxx.dll",
+      "base": "0x7ffedb2b0000",
+      "size": 2236416
+    },
+    {
+      "name": "WTSAPI32.dll",
+      "base": "0x7ffeee000000",
+      "size": 167936
+    },
+    {
+      "name": "PROPSYS.dll",
+      "base": "0x7ffeeca30000",
+      "size": 999424
+    },
+    {
+      "name": "dxcore.dll",
+      "base": "0x7ffeeea80000",
+      "size": 282624
+    },
+    {
+      "name": "WINTRUST.dll",
+      "base": "0x7ffef2090000",
+      "size": 536576
+    },
+    {
+      "name": "MSASN1.dll",
+      "base": "0x7ffef1760000",
+      "size": 77824
+    },
+    {
+      "name": "pdh.dll",
+      "base": "0x7ffedb7f0000",
+      "size": 360448
+    },
+    {
+      "name": "nvapi64.dll",
+      "base": "0x7ffed7570000",
+      "size": 5681152
+    },
+    {
+      "name": "cryptnet.dll",
+      "base": "0x7ffeea370000",
+      "size": 241664
+    },
+    {
+      "name": "wldp.dll",
+      "base": "0x7ffef15f0000",
+      "size": 434176
+    },
+    {
+      "name": "drvstore.dll",
+      "base": "0x7ffeea170000",
+      "size": 1548288
+    },
+    {
+      "name": "dxgi.dll",
+      "base": "0x7ffeef9c0000",
+      "size": 1286144
+    },
+    {
+      "name": "directxdatabasehelper.dll",
+      "base": "0x7ffeec150000",
+      "size": 389120
+    },
+    {
+      "name": "d3d11.dll",
+      "base": "0x7ffeef730000",
+      "size": 2490368
+    },
+    {
+      "name": "nvldumdx.dll",
+      "base": "0x7ffeea7c0000",
+      "size": 806912
+    },
+    {
+      "name": "nvgpucomp64.dll",
+      "base": "0x7ffee4e10000",
+      "size": 83193856
+    },
+    {
+      "name": "NvMemMapStoragex.dll",
+      "base": "0x7ffee3600000",
+      "size": 1290240
+    },
+    {
+      "name": "nvwgf2umx.dll",
+      "base": "0x7ffedc780000",
+      "size": 87719936
+    },
+    {
+      "name": "nvppex.dll",
+      "base": "0x7ffe6ff20000",
+      "size": 7491584
+    },
+    {
+      "name": "mscms.dll",
+      "base": "0x7ffed1a90000",
+      "size": 782336
+    },
+    {
+      "name": "MSCTF.dll",
+      "base": "0x7ffef3d60000",
+      "size": 1429504
+    },
+    {
+      "name": "xaudio2_8.dll",
+      "base": "0x29302090000",
+      "size": 12288
+    },
+    {
+      "name": "xaudio2_9.DLL",
+      "base": "0x7ffe68310000",
+      "size": 593920
+    },
+    {
+      "name": "dwmapi.dll",
+      "base": "0x7ffeee390000",
+      "size": 192512
+    },
+    {
+      "name": "napinsp.dll",
+      "base": "0x7ffec8590000",
+      "size": 98304
+    },
+    {
+      "name": "DNSAPI.dll",
+      "base": "0x7ffef07e0000",
+      "size": 1409024
+    },
+    {
+      "name": "DSPARSE.dll",
+      "base": "0x7ffef1080000",
+      "size": 53248
+    },
+    {
+      "name": "NSI.dll",
+      "base": "0x7ffef34e0000",
+      "size": 40960
+    },
+    {
+      "name": "winrnr.dll",
+      "base": "0x7ffec8570000",
+      "size": 77824
+    },
+    {
+      "name": "nlansp_c.dll",
+      "base": "0x7ffec69e0000",
+      "size": 139264
+    },
+    {
+      "name": "wshbth.dll",
+      "base": "0x7ffeea080000",
+      "size": 90112
+    },
+    {
+      "name": "fwpuclnt.dll",
+      "base": "0x7ffee4520000",
+      "size": 548864
+    },
+    {
+      "name": "rasadhlp.dll",
+      "base": "0x7ffeea7b0000",
+      "size": 45056
+    },
+    {
+      "name": "HID.DLL",
+      "base": "0x7ffef03c0000",
+      "size": 61440
+    },
+    {
+      "name": "wbemprox.dll",
+      "base": "0x7ffee3550000",
+      "size": 73728
+    },
+    {
+      "name": "wbemcomn.dll",
+      "base": "0x7ffee4680000",
+      "size": 499712
+    },
+    {
+      "name": "wbemsvc.dll",
+      "base": "0x7ffedc760000",
+      "size": 86016
+    },
+    {
+      "name": "fastprox.dll",
+      "base": "0x7ffee1b30000",
+      "size": 999424
+    },
+    {
+      "name": "amsi.dll",
+      "base": "0x7ffedc020000",
+      "size": 118784
+    },
+    {
+      "name": "MpOav.dll",
+      "base": "0x7ffeb14d0000",
+      "size": 671744
+    },
+    {
+      "name": "dhcpcsvc6.DLL",
+      "base": "0x7ffee9f50000",
+      "size": 118784
+    },
+    {
+      "name": "dhcpcsvc.DLL",
+      "base": "0x7ffee9d70000",
+      "size": 151552
+    },
+    {
+      "name": "PreyVR.dll",
+      "base": "0x7ffe66d60000",
+      "size": 974848
+    },
+    {
+      "name": "webio.dll",
+      "base": "0x7ffed4e80000",
+      "size": 876544
+    },
+    {
+      "name": "WINNSI.DLL",
+      "base": "0x7ffeec9a0000",
+      "size": 57344
+    },
+    {
+      "name": "schannel.DLL",
+      "base": "0x7ffef0b70000",
+      "size": 806912
+    },
+    {
+      "name": "ncrypt.dll",
+      "base": "0x7ffef1860000",
+      "size": 196608
+    },
+    {
+      "name": "NTASN1.dll",
+      "base": "0x7ffef1810000",
+      "size": 258048
+    },
+    {
+      "name": "ncryptsslp.dll",
+      "base": "0x7ffecf480000",
+      "size": 294912
+    },
+    {
+      "name": "DPAPI.DLL",
+      "base": "0x7ffef1ce0000",
+      "size": 40960
+    },
+    {
+      "name": "openxr_loader.dll",
+      "base": "0x7ffe68260000",
+      "size": 675840
+    },
+    {
+      "name": "xrsim.dll",
+      "base": "0x7ffe68610000",
+      "size": 512000
+    },
+    {
+      "name": "OPENGL32.dll",
+      "base": "0x7ffe62a70000",
+      "size": 1097728
+    },
+    {
+      "name": "GLU32.dll",
+      "base": "0x7ffe62a30000",
+      "size": 184320
+    },
+    {
+      "name": "openxr-oculus-compatibility.dll",
+      "base": "0x7ffe8ca50000",
+      "size": 229376
+    },
+    {
+      "name": "DiscordHook64.dll",
+      "base": "0x7ffe6b150000",
+      "size": 4005888
+    },
+    {
+      "name": "windowscodecs.dll",
+      "base": "0x7ffeeced0000",
+      "size": 2281472
+    }
+  ],
+  "threads": [
+    {
+      "id": 128596,
+      "state": "running",
+      "pc": "0x7ffde25d02ed",
+      "stack": []
+    },
+    {
+      "id": 140220,
+      "state": "running",
+      "pc": "0x7ffef4fe4034",
+      "stack": [
+        {
+          "a": "0x7ffef4ed064e",
+          "s": "0x7ffef4ed064e Prey.exe!RtlSetThreadSubProcessTag"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 90760,
+      "state": "running",
+      "pc": "0x7ffef4fe0ed4",
+      "stack": [
+        {
+          "a": "0x7ffef21429f3",
+          "s": "0x7ffef21429f3 Prey.exe!WaitForMultipleObjectsEx"
+        },
+        {
+          "a": "0x7ffeedc536b8",
+          "s": "0x7ffeedc536b8 Prey.exe!CoreUICallSend"
+        },
+        {
+          "a": "0x7ffeedc53393",
+          "s": "0x7ffeedc53393 Prey.exe!CoreUICallSend"
+        },
+        {
+          "a": "0x7ffeedc52fee",
+          "s": "0x7ffeedc52fee Prey.exe!CoreUICallSend"
+        },
+        {
+          "a": "0x7ffeedc60fac",
+          "s": "0x7ffeedc60fac Prey.exe!CoreUICallSend"
+        },
+        {
+          "a": "0x7ffeedc60537",
+          "s": "0x7ffeedc60537 Prey.exe!CoreUICallSend"
+        },
+        {
+          "a": "0x7ffeedc58884",
+          "s": "0x7ffeedc58884 Prey.exe!CoreUICallSend"
+        },
+        {
+          "a": "0x7ffeedc5841d",
+          "s": "0x7ffeedc5841d Prey.exe!CoreUICallSend"
+        },
+        {
+          "a": "0x7ffeedc59288",
+          "s": "0x7ffeedc59288 Prey.exe!CoreUICallSend"
+        },
+        {
+          "a": "0x7ffeedcbb696",
+          "s": "0x7ffeedcbb696 Prey.exe!CoreUICallCreateEndpointHost"
+        },
+        {
+          "a": "0x7ffeedcb47ef",
+          "s": "0x7ffeedcb47ef Prey.exe!CoreUICreate"
+        },
+        {
+          "a": "0x7ffeedc90a5b",
+          "s": "0x7ffeedc90a5b Prey.exe!CoreUICreateEx"
+        },
+        {
+          "a": "0x7ffeb938a77d",
+          "s": "0x7ffeb938a77d Prey.exe!SetInputFocus"
+        },
+        {
+          "a": "0x7ffeb9381089",
+          "s": "0x7ffeb9381089 Prey.exe!CreateInputDeviceWatcher"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 135280,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde27a65bf",
+          "s": "0x7ffde27a65bf Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde27a7565",
+          "s": "0x7ffde27a7565 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 153272,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x293ffffffff",
+          "s": "0x293ffffffff"
+        },
+        {
+          "a": "0x29318d51f00",
+          "s": "0x29318d51f00"
+        },
+        {
+          "a": "0x5a100000000",
+          "s": "0x5a100000000"
+        }
+      ]
+    },
+    {
+      "id": 85264,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x293ffffffff",
+          "s": "0x293ffffffff"
+        },
+        {
+          "a": "0x29318d51f00",
+          "s": "0x29318d51f00"
+        },
+        {
+          "a": "0x5da0000000f",
+          "s": "0x5da0000000f"
+        },
+        {
+          "a": "0x900",
+          "s": "0x900"
+        },
+        {
+          "a": "0x294610fb1f0",
+          "s": "0x294610fb1f0"
+        },
+        {
+          "a": "0x9a1",
+          "s": "0x9a1"
+        },
+        {
+          "a": "0x293a977de38",
+          "s": "0x293a977de38"
+        },
+        {
+          "a": "0xb71",
+          "s": "0xb71"
+        },
+        {
+          "a": "0x7ffde28a9cf5",
+          "s": "0x7ffde28a9cf5 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde27a6b72",
+          "s": "0x7ffde27a6b72 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde27a7565",
+          "s": "0x7ffde27a7565 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 153328,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde27a65bf",
+          "s": "0x7ffde27a65bf Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde27a7565",
+          "s": "0x7ffde27a7565 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 150400,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde27a65bf",
+          "s": "0x7ffde27a65bf Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde27a7565",
+          "s": "0x7ffde27a7565 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 129180,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde27a65bf",
+          "s": "0x7ffde27a65bf Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde27a7565",
+          "s": "0x7ffde27a7565 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 126504,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde27a65bf",
+          "s": "0x7ffde27a65bf Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde27a7565",
+          "s": "0x7ffde27a7565 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 134224,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde27a65bf",
+          "s": "0x7ffde27a65bf Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde27a7565",
+          "s": "0x7ffde27a7565 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 131900,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde27a29ee",
+          "s": "0x7ffde27a29ee Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde27a3cb7",
+          "s": "0x7ffde27a3cb7 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 95880,
+      "state": "running",
+      "pc": "0x7ffef4fe0444",
+      "stack": [
+        {
+          "a": "0x7ffef2142d9d",
+          "s": "0x7ffef2142d9d Prey.exe!ReadFile"
+        },
+        {
+          "a": "0x7ffde283d6f0",
+          "s": "0x7ffde283d6f0 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde27fc8f3",
+          "s": "0x7ffde27fc8f3 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde27fc584",
+          "s": "0x7ffde27fc584 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde28025ec",
+          "s": "0x7ffde28025ec Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 129756,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde2802367",
+          "s": "0x7ffde2802367 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 101220,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde280285d",
+          "s": "0x7ffde280285d Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 7292,
+      "state": "running",
+      "pc": "0x7ffef4fe3fd4",
+      "stack": [
+        {
+          "a": "0x7ffef4edfc6e",
+          "s": "0x7ffef4edfc6e Prey.exe!RtlSleepConditionVariableSRW"
+        },
+        {
+          "a": "0x7ffef2142cd8",
+          "s": "0x7ffef2142cd8 Prey.exe!SleepConditionVariableSRW"
+        },
+        {
+          "a": "0x7ffed5bf76ea",
+          "s": "0x7ffed5bf76ea Prey.exe!Cnd_wait"
+        },
+        {
+          "a": "0x7ffde1a7760c",
+          "s": "0x7ffde1a7760c"
+        },
+        {
+          "a": "0x7ffde2755e9d",
+          "s": "0x7ffde2755e9d Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 119460,
+      "state": "running",
+      "pc": "0x7ffef4fe0a04",
+      "stack": [
+        {
+          "a": "0x7ffef4f4fa44",
+          "s": "0x7ffef4f4fa44 Prey.exe!RtlDelayExecution"
+        },
+        {
+          "a": "0x7ffef21628d1",
+          "s": "0x7ffef21628d1 Prey.exe!SleepEx"
+        },
+        {
+          "a": "0x7ffde27436e9",
+          "s": "0x7ffde27436e9 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 13236,
+      "state": "running",
+      "pc": "0x7ffef4fe0ed4",
+      "stack": [
+        {
+          "a": "0x7ffef21429f3",
+          "s": "0x7ffef21429f3 Prey.exe!WaitForMultipleObjectsEx"
+        },
+        {
+          "a": "0x7ffde343eae0",
+          "s": "0x7ffde343eae0 Prey.exe!AK::StreamMgr::SetFileLocationResolver"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 50720,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde33f0ea1",
+          "s": "0x7ffde33f0ea1 Prey.exe!AK::GetWwiseXAudio2Interface"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 112288,
+      "state": "running",
+      "pc": "0x7ffef4fe0ed4",
+      "stack": [
+        {
+          "a": "0x7ffef21429f3",
+          "s": "0x7ffef21429f3 Prey.exe!WaitForMultipleObjectsEx"
+        },
+        {
+          "a": "0x7ffef21428c1",
+          "s": "0x7ffef21428c1 Prey.exe!WaitForMultipleObjects"
+        },
+        {
+          "a": "0x7ffe71c72891",
+          "s": "0x7ffe71c72891 Prey.exe!DllUnregisterServer"
+        },
+        {
+          "a": "0x7ffe71c72b8a",
+          "s": "0x7ffe71c72b8a Prey.exe!DllUnregisterServer"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 88224,
+      "state": "running",
+      "pc": "0x7ffef4fe4034",
+      "stack": [
+        {
+          "a": "0x7ffef4ed064e",
+          "s": "0x7ffef4ed064e Prey.exe!RtlSetThreadSubProcessTag"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 129544,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde33ff171",
+          "s": "0x7ffde33ff171 Prey.exe!AK::GetWwiseXAudio2Interface"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 130352,
+      "state": "running",
+      "pc": "0x7ffedcbeabfb",
+      "stack": [
+        {
+          "a": "0x293280a5f30",
+          "s": "0x293280a5f30"
+        }
+      ]
+    },
+    {
+      "id": 79752,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd0a9030",
+          "s": "0x7ffedd0a9030 Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 123532,
+      "state": "running",
+      "pc": "0x7ffef4fe0ed4",
+      "stack": [
+        {
+          "a": "0x7ffef21429f3",
+          "s": "0x7ffef21429f3 Prey.exe!WaitForMultipleObjectsEx"
+        },
+        {
+          "a": "0x7ffef21428c1",
+          "s": "0x7ffef21428c1 Prey.exe!WaitForMultipleObjects"
+        },
+        {
+          "a": "0x7ffedc8a0456",
+          "s": "0x7ffedc8a0456 Prey.exe!NVAPI_DirectMethods"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 116128,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd10bc8f",
+          "s": "0x7ffedd10bc8f Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 44696,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 118368,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 125148,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 68844,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 127860,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 75924,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 28104,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 129120,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 60280,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 74836,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 68980,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 123028,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 98640,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 73096,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 59228,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 125936,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 66880,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 99164,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 128384,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 62288,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 127404,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 62296,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 65680,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 99408,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 8712,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 112656,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 24944,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 101888,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 16028,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 48980,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 120180,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 49680,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 44884,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedccdcade",
+          "s": "0x7ffedccdcade Prey.exe!SetDependencyInfo"
+        },
+        {
+          "a": "0x7ffedccdc455",
+          "s": "0x7ffedccdc455 Prey.exe!SetDependencyInfo"
+        },
+        {
+          "a": "0x7ffedccd0fbd",
+          "s": "0x7ffedccd0fbd Prey.exe!SetDependencyInfo"
+        },
+        {
+          "a": "0x7ffedd1e1d2a",
+          "s": "0x7ffedd1e1d2a Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 93888,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 84840,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 6596,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 127048,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 26916,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 114132,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 64212,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 114356,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 75320,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 62208,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 26552,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 16788,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 125152,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 32004,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 100808,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 892,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 25672,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 130956,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 97988,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 124692,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 104568,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 8008,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 99592,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 11136,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 12496,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 150260,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 22204,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 114564,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 112536,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 71056,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 49700,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 118688,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 117660,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 126012,
+      "state": "running",
+      "pc": "0x7ffef4fe3fd4",
+      "stack": [
+        {
+          "a": "0x7ffef4ebfe7b",
+          "s": "0x7ffef4ebfe7b Prey.exe!RtlSleepConditionVariableCS"
+        },
+        {
+          "a": "0x7ffef2143d48",
+          "s": "0x7ffef2143d48 Prey.exe!SleepConditionVariableCS"
+        },
+        {
+          "a": "0x7ffe724d09d5",
+          "s": "0x7ffe724d09d5 Prey.exe!BinkOpenXAudio28"
+        },
+        {
+          "a": "0x7ffe724af19a",
+          "s": "0x7ffe724af19a Prey.exe!BinkDoFrameAsyncWait"
+        },
+        {
+          "a": "0x7ffe724ae571",
+          "s": "0x7ffe724ae571 Prey.exe!BinkWaitStopAsyncThreadsMulti"
+        },
+        {
+          "a": "0x7ffe724aef59",
+          "s": "0x7ffe724aef59 Prey.exe!BinkDoFrameAsyncWait"
+        },
+        {
+          "a": "0x7ffe724d0612",
+          "s": "0x7ffe724d0612 Prey.exe!BinkOpenXAudio28"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 27160,
+      "state": "running",
+      "pc": "0x7ffef4fe3fd4",
+      "stack": [
+        {
+          "a": "0x7ffef4ebfe7b",
+          "s": "0x7ffef4ebfe7b Prey.exe!RtlSleepConditionVariableCS"
+        },
+        {
+          "a": "0x7ffef2143d48",
+          "s": "0x7ffef2143d48 Prey.exe!SleepConditionVariableCS"
+        },
+        {
+          "a": "0x7ffe724d09d5",
+          "s": "0x7ffe724d09d5 Prey.exe!BinkOpenXAudio28"
+        },
+        {
+          "a": "0x7ffe724af19a",
+          "s": "0x7ffe724af19a Prey.exe!BinkDoFrameAsyncWait"
+        },
+        {
+          "a": "0x7ffe724ae571",
+          "s": "0x7ffe724ae571 Prey.exe!BinkWaitStopAsyncThreadsMulti"
+        },
+        {
+          "a": "0x7ffe724aef59",
+          "s": "0x7ffe724aef59 Prey.exe!BinkDoFrameAsyncWait"
+        },
+        {
+          "a": "0x7ffe724d0612",
+          "s": "0x7ffe724d0612 Prey.exe!BinkOpenXAudio28"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 35476,
+      "state": "running",
+      "pc": "0x7ffef4fe0ed4",
+      "stack": [
+        {
+          "a": "0x7ffef21429f3",
+          "s": "0x7ffef21429f3 Prey.exe!WaitForMultipleObjectsEx"
+        },
+        {
+          "a": "0x7ffef21428c1",
+          "s": "0x7ffef21428c1 Prey.exe!WaitForMultipleObjects"
+        },
+        {
+          "a": "0x7ffed993f22a",
+          "s": "0x7ffed993f22a Prey.exe!Ordinal4"
+        },
+        {
+          "a": "0x7ffed993f1de",
+          "s": "0x7ffed993f1de Prey.exe!Ordinal4"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 118040,
+      "state": "running",
+      "pc": "0x7ffef4fe0ed4",
+      "stack": [
+        {
+          "a": "0x7ffef21429f3",
+          "s": "0x7ffef21429f3 Prey.exe!WaitForMultipleObjectsEx"
+        },
+        {
+          "a": "0x7ffe683182ad",
+          "s": "0x7ffe683182ad"
+        },
+        {
+          "a": "0x7ffe683441f7",
+          "s": "0x7ffe683441f7 Prey.exe!X3DAudioCalculate"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 141912,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 74788,
+      "state": "running",
+      "pc": "0x7ffef4fe4034",
+      "stack": [
+        {
+          "a": "0x7ffef4ed064e",
+          "s": "0x7ffef4ed064e Prey.exe!RtlSetThreadSubProcessTag"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 117772,
+      "state": "running",
+      "pc": "0x7ffef4fe0ed4",
+      "stack": [
+        {
+          "a": "0x7ffef21429f3",
+          "s": "0x7ffef21429f3 Prey.exe!WaitForMultipleObjectsEx"
+        },
+        {
+          "a": "0x7ffef21428c1",
+          "s": "0x7ffef21428c1 Prey.exe!WaitForMultipleObjects"
+        },
+        {
+          "a": "0x7ffedd107bb7",
+          "s": "0x7ffedd107bb7 Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffedd1e1d2a",
+          "s": "0x7ffedd1e1d2a Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 62300,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde285c969",
+          "s": "0x7ffde285c969 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 98664,
+      "state": "running",
+      "pc": "0x7ffef4fe3fd4",
+      "stack": [
+        {
+          "a": "0x7ffef4edfc6e",
+          "s": "0x7ffef4edfc6e Prey.exe!RtlSleepConditionVariableSRW"
+        },
+        {
+          "a": "0x7ffef2142cd8",
+          "s": "0x7ffef2142cd8 Prey.exe!SleepConditionVariableSRW"
+        },
+        {
+          "a": "0x7ffed5bf76ea",
+          "s": "0x7ffed5bf76ea Prey.exe!Cnd_wait"
+        },
+        {
+          "a": "0x7ffde1a7760c",
+          "s": "0x7ffde1a7760c"
+        },
+        {
+          "a": "0x7ffde24bc4a9",
+          "s": "0x7ffde24bc4a9 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 62492,
+      "state": "running",
+      "pc": "0x7ffef4fe0a04",
+      "stack": [
+        {
+          "a": "0x7ffef4f4fa44",
+          "s": "0x7ffef4f4fa44 Prey.exe!RtlDelayExecution"
+        },
+        {
+          "a": "0x7ffef21628d1",
+          "s": "0x7ffef21628d1 Prey.exe!SleepEx"
+        },
+        {
+          "a": "0x7ffde279a3f0",
+          "s": "0x7ffde279a3f0 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde279a5a1",
+          "s": "0x7ffde279a5a1 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 19636,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde2868457",
+          "s": "0x7ffde2868457 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 105380,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde2868457",
+          "s": "0x7ffde2868457 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 15492,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde2868457",
+          "s": "0x7ffde2868457 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 100148,
+      "state": "running",
+      "pc": "0x7ffef4fe0a04",
+      "stack": [
+        {
+          "a": "0x7ffef4f4fa44",
+          "s": "0x7ffef4f4fa44 Prey.exe!RtlDelayExecution"
+        },
+        {
+          "a": "0x7ffef21628d1",
+          "s": "0x7ffef21628d1 Prey.exe!SleepEx"
+        },
+        {
+          "a": "0x7ffed5bf7bd7",
+          "s": "0x7ffed5bf7bd7 Prey.exe!Thrd_sleep"
+        },
+        {
+          "a": "0x7ffde351b256",
+          "s": "0x7ffde351b256 Prey.exe!SetAudioInputCallbacks"
+        },
+        {
+          "a": "0x7ffde351817d",
+          "s": "0x7ffde351817d Prey.exe!SetAudioInputCallbacks"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 59044,
+      "state": "running",
+      "pc": "0x7ffef4fe0a04",
+      "stack": [
+        {
+          "a": "0x7ffef4f4fa44",
+          "s": "0x7ffef4f4fa44 Prey.exe!RtlDelayExecution"
+        },
+        {
+          "a": "0x7ffef21628d1",
+          "s": "0x7ffef21628d1 Prey.exe!SleepEx"
+        },
+        {
+          "a": "0x7ffed5bf7bd7",
+          "s": "0x7ffed5bf7bd7 Prey.exe!Thrd_sleep"
+        },
+        {
+          "a": "0x7ffde351b256",
+          "s": "0x7ffde351b256 Prey.exe!SetAudioInputCallbacks"
+        },
+        {
+          "a": "0x7ffde351817d",
+          "s": "0x7ffde351817d Prey.exe!SetAudioInputCallbacks"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 54276,
+      "state": "running",
+      "pc": "0x7ffef4fe0a04",
+      "stack": [
+        {
+          "a": "0x7ffef4f4fa44",
+          "s": "0x7ffef4f4fa44 Prey.exe!RtlDelayExecution"
+        },
+        {
+          "a": "0x7ffef21628d1",
+          "s": "0x7ffef21628d1 Prey.exe!SleepEx"
+        },
+        {
+          "a": "0x7ffed5bf7bd7",
+          "s": "0x7ffed5bf7bd7 Prey.exe!Thrd_sleep"
+        },
+        {
+          "a": "0x7ffde351e596",
+          "s": "0x7ffde351e596 Prey.exe!SetAudioInputCallbacks"
+        },
+        {
+          "a": "0x7ffde351817d",
+          "s": "0x7ffde351817d Prey.exe!SetAudioInputCallbacks"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 76264,
+      "state": "running",
+      "pc": "0x7ffef4fe4034",
+      "stack": [
+        {
+          "a": "0x7ffef4ed064e",
+          "s": "0x7ffef4ed064e Prey.exe!RtlSetThreadSubProcessTag"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 57992,
+      "state": "running",
+      "pc": "0x7ffef4fe0ed4",
+      "stack": [
+        {
+          "a": "0x7ffef21429f3",
+          "s": "0x7ffef21429f3 Prey.exe!WaitForMultipleObjectsEx"
+        },
+        {
+          "a": "0x7ffef3a1860e",
+          "s": "0x7ffef3a1860e Prey.exe!CoCreateInstance"
+        },
+        {
+          "a": "0x7ffef3ae4baf",
+          "s": "0x7ffef3ae4baf Prey.exe!RoParameterizedTypeExtraGetTypeSignature"
+        },
+        {
+          "a": "0x7ffef3ae4abf",
+          "s": "0x7ffef3ae4abf Prey.exe!RoParameterizedTypeExtraGetTypeSignature"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 88148,
+      "state": "running",
+      "pc": "0x7ffef4fe4034",
+      "stack": [
+        {
+          "a": "0x7ffef4ed064e",
+          "s": "0x7ffef4ed064e Prey.exe!RtlSetThreadSubProcessTag"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 45912,
+      "state": "running",
+      "pc": "0x7ffef4fe4034",
+      "stack": [
+        {
+          "a": "0x7ffef4ed064e",
+          "s": "0x7ffef4ed064e Prey.exe!RtlSetThreadSubProcessTag"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 138132,
+      "state": "running",
+      "pc": "0x7ffef4fe0a04",
+      "stack": [
+        {
+          "a": "0x7ffef4f4fa44",
+          "s": "0x7ffef4f4fa44 Prey.exe!RtlDelayExecution"
+        },
+        {
+          "a": "0x7ffef21628d1",
+          "s": "0x7ffef21628d1 Prey.exe!SleepEx"
+        },
+        {
+          "a": "0x7ffed5bf7bd7",
+          "s": "0x7ffed5bf7bd7 Prey.exe!Thrd_sleep"
+        },
+        {
+          "a": "0x7ffde351e4a6",
+          "s": "0x7ffde351e4a6 Prey.exe!SetAudioInputCallbacks"
+        },
+        {
+          "a": "0x7ffde351817d",
+          "s": "0x7ffde351817d Prey.exe!SetAudioInputCallbacks"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 126668,
+      "state": "running",
+      "pc": "0x7ffef4fe0a04",
+      "stack": [
+        {
+          "a": "0x7ffef4f4fa44",
+          "s": "0x7ffef4f4fa44 Prey.exe!RtlDelayExecution"
+        },
+        {
+          "a": "0x7ffef21628d1",
+          "s": "0x7ffef21628d1 Prey.exe!SleepEx"
+        },
+        {
+          "a": "0x7ffe66d9c8d9",
+          "s": "0x7ffe66d9c8d9 Prey.exe!PreyVR_StopXrSession"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 94004,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde1ea7466",
+          "s": "0x7ffde1ea7466 Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 10464,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde1a776ad",
+          "s": "0x7ffde1a776ad"
+        },
+        {
+          "a": "0x7ffde2464493",
+          "s": "0x7ffde2464493 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 67952,
+      "state": "running",
+      "pc": "0x7ffef4fe4034",
+      "stack": [
+        {
+          "a": "0x7ffef4ed064e",
+          "s": "0x7ffef4ed064e Prey.exe!RtlSetThreadSubProcessTag"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 74508,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde27c41f6",
+          "s": "0x7ffde27c41f6 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde27c380f",
+          "s": "0x7ffde27c380f Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde2868cb9",
+          "s": "0x7ffde2868cb9 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde286849a",
+          "s": "0x7ffde286849a Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 65872,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffde2589989",
+          "s": "0x7ffde2589989 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde2868cb9",
+          "s": "0x7ffde2868cb9 Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde286849a",
+          "s": "0x7ffde286849a Prey.exe!AK::MemoryMgr::GetPoolName"
+        },
+        {
+          "a": "0x7ffde1ea7e8c",
+          "s": "0x7ffde1ea7e8c Prey.exe!AK::Monitor::SetLocalOutput"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 107648,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 114852,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 15908,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 116772,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 49300,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 82496,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 49900,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 20108,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 71080,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 30336,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 127824,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 67552,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 155096,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 108128,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 129768,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 124908,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 52644,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 114772,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 130688,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 44468,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 59924,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 36056,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 8924,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 55136,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 3840,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 49632,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 59200,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 101448,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 154872,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 86000,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 88928,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 155100,
+      "state": "running",
+      "pc": "0x7ffef4fe0404",
+      "stack": [
+        {
+          "a": "0x7ffef213c11f",
+          "s": "0x7ffef213c11f Prey.exe!WaitForSingleObjectEx"
+        },
+        {
+          "a": "0x7ffedd085058",
+          "s": "0x7ffedd085058 Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd084f7f",
+          "s": "0x7ffedd084f7f Prey.exe!OpenAdapter12"
+        },
+        {
+          "a": "0x7ffedd5f00da",
+          "s": "0x7ffedd5f00da Prey.exe!NVDEV_Thunk"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 32308,
+      "state": "running",
+      "pc": "0x7ffef4fe0a04",
+      "stack": [
+        {
+          "a": "0x7ffef4f4fa44",
+          "s": "0x7ffef4f4fa44 Prey.exe!RtlDelayExecution"
+        },
+        {
+          "a": "0x7ffef21628d1",
+          "s": "0x7ffef21628d1 Prey.exe!SleepEx"
+        },
+        {
+          "a": "0x7ffe6861e340",
+          "s": "0x7ffe6861e340"
+        },
+        {
+          "a": "0x7ffe68612b70",
+          "s": "0x7ffe68612b70"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 80400,
+      "state": "running",
+      "pc": "0x7ffef4fe3fd4",
+      "stack": [
+        {
+          "a": "0x7ffef4edfc6e",
+          "s": "0x7ffef4edfc6e Prey.exe!RtlSleepConditionVariableSRW"
+        },
+        {
+          "a": "0x7ffef2142cd8",
+          "s": "0x7ffef2142cd8 Prey.exe!SleepConditionVariableSRW"
+        },
+        {
+          "a": "0x7ffe6862d35c",
+          "s": "0x7ffe6862d35c Prey.exe!xrNegotiateLoaderRuntimeInterface"
+        },
+        {
+          "a": "0x7ffe68617e4c",
+          "s": "0x7ffe68617e4c"
+        },
+        {
+          "a": "0x7ffe68612b70",
+          "s": "0x7ffe68612b70"
+        },
+        {
+          "a": "0x7ffef26fcd30",
+          "s": "0x7ffef26fcd30 Prey.exe!wcsrchr"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 153056,
+      "state": "running",
+      "pc": "0x7ffef25eae84",
+      "stack": [
+        {
+          "a": "0x7ffeb5cce1b1",
+          "s": "0x7ffeb5cce1b1"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    },
+    {
+      "id": 83392,
+      "state": "running",
+      "pc": "0x7ffef4fe3354",
+      "stack": [
+        {
+          "a": "0x7ffef21deb2f",
+          "s": "0x7ffef21deb2f Prey.exe!GetQueuedCompletionStatusEx"
+        },
+        {
+          "a": "0x7ffe6b1f7333",
+          "s": "0x7ffe6b1f7333 Prey.exe!dummy_debug_proc"
+        },
+        {
+          "a": "0x7ffe6b1ef7a0",
+          "s": "0x7ffe6b1ef7a0 Prey.exe!dummy_debug_proc"
+        },
+        {
+          "a": "0x7ffe6b1f116a",
+          "s": "0x7ffe6b1f116a Prey.exe!dummy_debug_proc"
+        },
+        {
+          "a": "0x7ffe6b23032f",
+          "s": "0x7ffe6b23032f Prey.exe!dummy_debug_proc"
+        },
+        {
+          "a": "0x7ffef409ccb7",
+          "s": "0x7ffef409ccb7 Prey.exe!BaseThreadInitThunk"
+        },
+        {
+          "a": "0x7ffef4f2ad6c",
+          "s": "0x7ffef4f2ad6c Prey.exe!RtlUserThreadStart"
+        }
+      ]
+    }
+  ]
+}

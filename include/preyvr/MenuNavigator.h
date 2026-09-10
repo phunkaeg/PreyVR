@@ -72,4 +72,24 @@ private:
     bool startWas_ = false;
 };
 
+struct ModalMenuState : ControllerMenuState {
+    bool previousTab = false, nextTab = false, secondary = false, tertiary = false;
+    bool previousPage = false, nextPage = false;
+};
+
+// Start can open a menu from gameplay. Navigation and inventory actions belong
+// only to a visible modal; controls held during entry must first return neutral.
+// Owned exclusively by the XR input service, including Reset.
+class ModalMenuRouter {
+public:
+    unsigned int Update(const ModalMenuState& state, bool modal, float seconds,
+                        MenuAction* out, unsigned int capacity);
+    void Reset();
+private:
+    MenuNavigator navigator_;
+    bool modal_ = false, startWas_ = false, blockStick_ = false;
+    bool blocked_[8]{}, was_[6]{};
+    bool tabPending_[2]{}, tabChord_=false;
+};
+
 } // namespace preyvr::input

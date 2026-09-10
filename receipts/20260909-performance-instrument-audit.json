@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260909-performance-instrument-audit",
+  "recorded_at": "2026-09-09T04:12:53.636592+00:00",
+  "target": {
+    "name": "PreyVR FrameTiming implementation compiled in an offline audit harness",
+    "identity_kind": "git_commit",
+    "identity": "d0a64f12ff84162a1ecb1fd0be5809ac8ac240e5"
+  },
+  "question": "Do the reviewed timing counters summarize the complete collection period and measure compositor drops?",
+  "claim": "The committed counter implementation retains only 512 duration samples while counting over-budget intervals since reset. The compiled control reported a clean 512-interval window and 2000 earlier over-budget intervals. A second control counted 500 threshold overruns without any compositor. These report populations and semantics cannot establish actual compositor drops or a GPU bottleneck verdict.",
+  "evidence_grade": "LIVE",
+  "environment": "harness",
+  "method": "Read the supplied handover and pinned source using git show d0a64f12ff84162a1ecb1fd0be5809ac8ac240e5:<path>; copy exact FrameTiming sources into project evidence. Compile the separate audit with CMake/Visual Studio 18 2026, MSVC 19.50.35729.0. Run empty-data, slow-prefix/fast-tail, quiescent-reset and alternating-threshold controls. Exact configure/build/run commands and output are in verification.txt. Read only the named saved run manifests and logs to corroborate build/runtime/dimensions; did not interact with any process. Author timing tables were not promoted to raw benchmark evidence.",
+  "validity": "VALID",
+  "mutation": "none",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Exact FrameTiming source/header copied from full git commit and compiled; files retained with the audit."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "MSVC-compiled audit passed assertions against known injected durations; exact output and commands retained."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Empty input stays invalid; slow prefix and clean recent tail separate populations; reset clears counters; interval jitter illustrates threshold semantics."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Offline counter harness; no in-game scene or headset claim."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "No game, runtime, command channel or target binary was modified."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "NOT_MEASURED",
+    "reason": "No vanilla game, real GPU, runtime presentation or headset baseline was measured. Offline instrument controls passed; they do not approve a performance build."
+  },
+  "limits": "Confirms counter semantics in a synthetic harness and source-level report wiring. Does not confirm or refute whether Prey is CPU-bound, GPU-bound or paced; does not quantify a performance improvement. Re-arm concurrency is a source-proven possible interleaving, not reproduced at runtime. Saved timing responses were absent only from the explicitly inspected log/current-result files. Source identities may be superseded by later edits.",
+  "artifacts": [
+    {
+      "path": "docs/RE-PERFORMANCE-HANDOVER-AUDIT-2026-09-09.md",
+      "sha256": "c54ee8f1120fe73bc487268aed9fff288ed2c954cb5a88b2c78de258b31882a2",
+      "role": "Scoped review and next experiment; distinguishes source, harness, author and runtime evidence"
+    },
+    {
+      "path": "docs/evidence/performance-handover-audit-2026-09-09/FrameTiming.cpp",
+      "sha256": "c67a560ec0483830634e24b75e8cf0798b103eb288ee7246e2d54c789b691f3f",
+      "role": "Unmodified implementation from pinned commit"
+    },
+    {
+      "path": "docs/evidence/performance-handover-audit-2026-09-09/include/preyvr/FrameTiming.h",
+      "sha256": "777f04390686071ae4c347030a9d8ace38a3e3b0f6a885319e8edefc358446c2",
+      "role": "Unmodified header from pinned commit"
+    },
+    {
+      "path": "docs/evidence/performance-handover-audit-2026-09-09/FrameTimingAudit.cpp",
+      "sha256": "b17ad8497071a141dc93cca8f6db2e2e0aa329383e1d28fcbbff5e3755d56018",
+      "role": "Offline known-input positive/negative controls"
+    },
+    {
+      "path": "docs/evidence/performance-handover-audit-2026-09-09/CMakeLists.txt",
+      "sha256": "0f8e0526d908c7d76003af836f75214b79341f9d02a176b71aa2d88efcf7be71",
+      "role": "Separate harness build definition"
+    },
+    {
+      "path": "docs/evidence/performance-handover-audit-2026-09-09/verification.txt",
+      "sha256": "ad575506d7e493ead70be136fc72a2c07e3a62c7a11c94fed8b2a8cdc3672be1",
+      "role": "Compiler identity and successful control output with reproduction commands"
+    },
+    {
+      "path": "docs/evidence/performance-handover-audit-2026-09-09/source-excerpts.txt",
+      "sha256": "f07b06bf2ded11d3c77f72b728480b07b6ec04d4cb4a2cdf74c92bb9774823c4",
+      "role": "Pinned report, timing and command wiring excerpts with source line numbers"
+    },
+    {
+      "path": "docs/evidence/performance-handover-audit-2026-09-09/run-identity-checks.json",
+      "sha256": "57844c465f6e57def4c272c49dc8cf47419b9b003b3189ec8392fbd55e964eb7",
+      "role": "Read-only saved run identity and scoped timing-retention checks"
+    },
+    {
+      "path": "docs/evidence/performance-handover-audit-2026-09-09/handover-author-original.md",
+      "sha256": "38539d6c951a96f67c5f33ae377f0a0693a086833bc605fe3761e82ed4cbf29f",
+      "role": "Original user-supplied handover; tables are AUTHOR evidence, not raw timing samples"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [
+    {
+      "approach": "Treat rolling-window percentiles plus a cumulative threshold counter as whole-run compositor miss statistics or use ratios of CPU medians to clear GPU/pacing costs.",
+      "reason": "Different populations, no compositor observation, no GPU timestamp measurement, and no per-frame stage pairing.",
+      "reopen_when": "Capture fixed-view repeated controls with consistent epochs/denominators, durable paired CPU/GPU samples and runtime presentation evidence."
+    }
+  ],
+  "next_action": "Fix timing epoch synchronization, retention and explicit window/total/period reporting; add asynchronous GPU query spans and compatible vanilla/injected-lanes-off controls. Candidate for the existing playbook profiling/measurement guidance (docs/06-debugging-methodology.md and docs/19-d3d12-and-performance.md); do not promote a Prey bottleneck conclusion or clear a gate."
+}

@@ -42,6 +42,9 @@
 // return proves the ABI and the element -- never the name. Only names read from
 // a native call site are known to exist.
 namespace preyvr::dll {
+// Main thread only. Target hardware-mouse callback, screen pixels; 0 move,
+// 1 left down, 2 left up. The engine owns canvas conversion and drag capture.
+DWORD HudDispatchPointer(int event,int x,int y);
 
 // Dispatches `function` on the DanielleHUD element with two floats (0x11797C0).
 // Fails closed at every step: no UI singleton, no element, a prologue that does
@@ -182,6 +185,8 @@ std::string HudLastProbe();
 // read as gameplay and re-arm the very taps this suppresses.
 DWORD HudRefreshMenuOpenState();
 bool HudMenuIsOpen();
+bool HudMenuStateKnown();
+bool HudGameplayInputAllowed();
 unsigned long long HudMenuStateSampleCount();
 
 unsigned long long HudElementPointer();

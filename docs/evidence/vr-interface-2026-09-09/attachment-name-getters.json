@@ -1,0 +1,12 @@
+[
+  {
+    "vtable": "0x1d1eda8",
+    "nameGetter": "0xe92610",
+    "bytes": "488b4118c3cccccccccccccccccccccc4883ec38488b0d15b43b014885c97429"
+  },
+  {
+    "vtable": "0x1d212b8",
+    "nameGetter": "0x8ce820",
+    "bytes": "488b4110c3cccccccccccccccccccccc8b41300fbaf01fc3cccccccccccccccc"
+  }
+]

@@ -1,4 +1,5 @@
 #include "XrInput.h"
+#include "UiPointer.h"
 #include "preyvr/LatestSnapshot.h"
 
 #include "InputPost.h"
@@ -44,6 +45,7 @@ XrActionSet gActionSet = XR_NULL_HANDLE;
 XrAction gGripPose = XR_NULL_HANDLE;
 XrAction gAimPose = XR_NULL_HANDLE;
 XrAction gThumbstick = XR_NULL_HANDLE;
+XrAction gWeaponWheel = XR_NULL_HANDLE;
 XrAction gMenuAccept = XR_NULL_HANDLE;
 XrAction gMenuCancel = XR_NULL_HANDLE;
 XrAction gMenuStart = XR_NULL_HANDLE;
@@ -64,7 +66,8 @@ std::atomic<unsigned long long> gMenuSuppressed{0};
 std::atomic<long long> gLastDisplayTime{0};
 std::atomic<unsigned long long> gMenuActions{0};
 // One navigator, touched only from the frame service that owns UpdateXrInput.
-input::MenuNavigator gNavigator;
+input::ModalMenuRouter gNavigator;
+std::atomic<bool> gResetNavigator{false};
 std::atomic<unsigned long long> gSyncs{0};
 // Counted separately, because "the session is not focused" and "the controllers
 // are not tracking" have different fixes -- put the headset on, versus pick the
@@ -152,26 +155,29 @@ bool CreateXrInput(void* instanceHandle, void* sessionHandle)
     gGripPose = CreateAction(XR_ACTION_TYPE_POSE_INPUT, "grip_pose", "Grip Pose", subactions);
     gAimPose = CreateAction(XR_ACTION_TYPE_POSE_INPUT, "aim_pose", "Aim Pose", subactions);
     gThumbstick = CreateAction(XR_ACTION_TYPE_VECTOR2F_INPUT, "thumbstick", "Thumbstick", subactions);
+    gWeaponWheel = CreateAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "weapon_wheel", "Weapon Wheel", subactions);
     gTrigger = CreateAction(XR_ACTION_TYPE_FLOAT_INPUT, "trigger", "Trigger", subactions);
-    gSqueeze = CreateAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "squeeze", "Squeeze", subactions);
+    gSqueeze = CreateAction(XR_ACTION_TYPE_FLOAT_INPUT, "squeeze", "Squeeze", subactions);
     gMenuAccept = CreateAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "menu_accept", "Menu Accept",
                                subactions);
     gMenuCancel = CreateAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "menu_cancel", "Menu Cancel",
                                subactions);
     gMenuStart = CreateAction(XR_ACTION_TYPE_BOOLEAN_INPUT, "menu_start", "Menu Start",
                               subactions);
-    if (gGripPose == XR_NULL_HANDLE || gAimPose == XR_NULL_HANDLE) {
+    if (gGripPose == XR_NULL_HANDLE || gAimPose == XR_NULL_HANDLE ||
+        gThumbstick == XR_NULL_HANDLE || gWeaponWheel == XR_NULL_HANDLE || gTrigger == XR_NULL_HANDLE ||
+        gSqueeze == XR_NULL_HANDLE || gMenuAccept == XR_NULL_HANDLE ||
+        gMenuCancel == XR_NULL_HANDLE || gMenuStart == XR_NULL_HANDLE) {
         Log("result=failed step=create_pose_actions");
         return false;
     }
 
-    // Oculus Touch: the Quest 3's profile. Other profiles can be suggested
-    // alongside later; a runtime simply ignores bindings for hardware it does
-    // not have, so adding them costs nothing but is not needed to test here.
+    // Core Touch and Index profiles. Component paths are checked against the
+    // bundled Khronos xr.xml registry; runtime acceptance is logged separately.
     // A/B are right-hand only on Touch and X/Y are left-hand only, so accept and
     // cancel bind to one controller rather than both. The menu button is the
     // left one; its right-hand counterpart is reserved by the runtime.
-    const std::array<XrActionSuggestedBinding, 13> bindings = {{
+    const std::array<XrActionSuggestedBinding, 16> bindings = {{
         {gGripPose, StringToPath(instance, "/user/hand/left/input/grip/pose")},
         {gGripPose, StringToPath(instance, "/user/hand/right/input/grip/pose")},
         {gAimPose, StringToPath(instance, "/user/hand/left/input/aim/pose")},
@@ -184,7 +190,10 @@ bool CreateXrInput(void* instanceHandle, void* sessionHandle)
         {gSqueeze, StringToPath(instance, "/user/hand/right/input/squeeze/value")},
         {gMenuAccept, StringToPath(instance, "/user/hand/right/input/a/click")},
         {gMenuCancel, StringToPath(instance, "/user/hand/right/input/b/click")},
+        {gMenuAccept, StringToPath(instance, "/user/hand/left/input/x/click")},
+        {gMenuCancel, StringToPath(instance, "/user/hand/left/input/y/click")},
         {gMenuStart, StringToPath(instance, "/user/hand/left/input/menu/click")},
+        {gWeaponWheel, StringToPath(instance, "/user/hand/right/input/thumbstick/click")},
     }};
     XrInteractionProfileSuggestedBinding suggested{
         XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
@@ -193,10 +202,19 @@ bool CreateXrInput(void* instanceHandle, void* sessionHandle)
     suggested.suggestedBindings = bindings.data();
     suggested.countSuggestedBindings = static_cast<std::uint32_t>(bindings.size());
     result = xrSuggestInteractionProfileBindings(instance, &suggested);
-    if (XR_FAILED(result)) {
-        LogResult("suggest_bindings", result);
-        return false;
-    }
+    bool haveProfile=XR_SUCCEEDED(result);
+    if (XR_FAILED(result)) LogResult("touch_bindings",result);
+    auto indexBindings=bindings;
+    indexBindings[12].binding=StringToPath(instance,"/user/hand/left/input/a/click");
+    indexBindings[13].binding=StringToPath(instance,"/user/hand/left/input/b/click");
+    // Index's system button belongs to the runtime. Left stick click opens pause.
+    indexBindings[14].binding=StringToPath(instance,"/user/hand/left/input/thumbstick/click");
+    suggested.interactionProfile=StringToPath(instance,"/interaction_profiles/valve/index_controller");
+    suggested.suggestedBindings=indexBindings.data();
+    result=xrSuggestInteractionProfileBindings(instance,&suggested);
+    haveProfile=haveProfile || XR_SUCCEEDED(result);
+    if(XR_FAILED(result))LogResult("index_bindings",result);
+    if(!haveProfile)return false;
 
     for (std::size_t hand = 0; hand < 2; ++hand) {
         XrActionSpaceCreateInfo spaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
@@ -311,8 +329,9 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
         }
         XrActionStateBoolean button{XR_TYPE_ACTION_STATE_BOOLEAN};
         get.action = gSqueeze;
-        if (XR_SUCCEEDED(xrGetActionStateBoolean(session, &get, &button)) && button.isActive) {
-            state.gripPressed = button.currentState == XR_TRUE;
+        XrActionStateFloat squeeze{XR_TYPE_ACTION_STATE_FLOAT};
+        if (XR_SUCCEEDED(xrGetActionStateFloat(session, &get, &squeeze)) && squeeze.isActive) {
+            state.gripPressed = std::isfinite(squeeze.currentState) && squeeze.currentState >= .55f;
         }
         get.action = gMenuAccept;
         if (XR_SUCCEEDED(xrGetActionStateBoolean(session, &get, &button)) && button.isActive) {
@@ -325,6 +344,10 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
         get.action = gMenuStart;
         if (XR_SUCCEEDED(xrGetActionStateBoolean(session, &get, &button)) && button.isActive) {
             state.menuStart = button.currentState == XR_TRUE;
+        }
+        get.action = gWeaponWheel;
+        if (XR_SUCCEEDED(xrGetActionStateBoolean(session, &get, &button)) && button.isActive) {
+            state.weaponWheelPressed = button.currentState == XR_TRUE;
         }
 
         if (state.gripValidity.orientationValid || state.aimValidity.orientationValid) {
@@ -352,15 +375,10 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
     if (gMenuNavigation.load(std::memory_order_acquire)) {
         // Read as a value sampled by the main thread; this runs on the frame
         // service and must not enter Scaleform to ask.
-        if (gMenuNavGate.load(std::memory_order_acquire) && !HudMenuIsOpen()) {
-            // Reset so the stick's current deflection is not treated as a fresh
-            // push the moment a menu does open -- otherwise stepping into a menu
-            // with the stick already held would fire an immediate action.
-            gNavigator.Reset();
-            gLastDisplayTime.store(predictedDisplayTime, std::memory_order_release);
-            gMenuSuppressed.fetch_add(1, std::memory_order_relaxed);
-            return;
-        }
+        if (gResetNavigator.exchange(false)) { gNavigator.Reset(); }
+        const bool modal = !gMenuNavGate.load(std::memory_order_acquire) ||
+                           (HudMenuStateKnown() && HudMenuIsOpen());
+        if (!modal) { gMenuSuppressed.fetch_add(1, std::memory_order_relaxed); }
         float delta = 0.0f;
         const long long previous = gLastDisplayTime.exchange(predictedDisplayTime,
                                                              std::memory_order_acq_rel);
@@ -371,15 +389,23 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
             }
         }
 
-        input::ControllerMenuState menu;
+        input::ModalMenuState menu;
         menu.stickX = rightState.thumbstickX;
         menu.stickY = rightState.thumbstickY;
         menu.accept = rightState.menuAccept;
         menu.cancel = rightState.menuCancel;
         menu.start = rightState.menuStart || leftStart;
+        const auto& left = frame.hands[0];
+        // The two-grip recenter chord owns both squeezes. Tabs use either grip.
+        menu.previousTab = left.gripPressed;
+        menu.nextTab = rightState.gripPressed;
+        menu.secondary = left.menuAccept;
+        menu.tertiary = left.menuCancel;
+        menu.previousPage=left.triggerPressed && UiPointerHand()!=0;
+        menu.nextPage=rightState.triggerPressed && UiPointerHand()!=1;
 
-        input::MenuAction actions[4];
-        const unsigned int count = gNavigator.Update(menu, delta, actions, 4);
+        input::MenuAction actions[12];
+        const unsigned int count = gNavigator.Update(menu, modal, delta, actions, 12);
         for (unsigned int i = 0; i < count; ++i) {
             // Enqueued, not posted: the engine's input walk belongs to the main
             // thread and this runs on the frame service.
@@ -404,9 +430,7 @@ void SetMenuNavigation(unsigned int enabled)
 {
     const bool on = enabled != 0u;
     gMenuNavigation.store(on, std::memory_order_release);
-    if (!on) {
-        gNavigator.Reset();
-    }
+    gResetNavigator.store(true);
     Log(std::string("result=0 detail=menu_navigation value=") + (on ? "1" : "0"));
 }
 
@@ -427,6 +451,7 @@ void DestroyXrInput()
         gActionSet = XR_NULL_HANDLE;
     }
     gGripPose = gAimPose = gThumbstick = gTrigger = gSqueeze = XR_NULL_HANDLE;
+    gWeaponWheel = XR_NULL_HANDLE;
     gMenuAccept = gMenuCancel = gMenuStart = XR_NULL_HANDLE;
     gCreated.store(false, std::memory_order_release);
     gSyncs.store(0, std::memory_order_relaxed);

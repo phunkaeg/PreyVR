@@ -1,0 +1,119 @@
+{
+  "source_head": "5efd7c8f75923eec0f2553590d302e82743a2b37",
+  "local_source_changes": [
+    {
+      "path": "CMakeLists.txt",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/CMakeLists.txt",
+      "sha256": "4afd970dc09b93af0da146ed770925c477d91feaf175a9f4a5ce490eed393df3"
+    },
+    {
+      "path": "include/preyvr/WeaponRigAlignment.h",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/include/preyvr/WeaponRigAlignment.h",
+      "sha256": "6b230d1b9933b96d4a8ecfe3fdadf320e66514ba6754c8754bf5e364f941c961"
+    },
+    {
+      "path": "src/common/WeaponRigAlignment.cpp",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/common/WeaponRigAlignment.cpp",
+      "sha256": "9e1e49256c0aaddba9dede1bed88b8a6187c87df2c6cd20f83c06e81a91db715"
+    },
+    {
+      "path": "tests/WeaponRigAlignmentTests.cpp",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/tests/WeaponRigAlignmentTests.cpp",
+      "sha256": "6e539a8b92152c5af3e78d1eaf5cfc323e11b0624a0223e540d2624f9cec1327"
+    },
+    {
+      "path": "src/dll/AnimIkTakeover.cpp",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/AnimIkTakeover.cpp",
+      "sha256": "5c5c1842e1035192cfd6af5a3ec943f934f4a984f88ec82af92f6b57064ea2e1"
+    },
+    {
+      "path": "src/dll/AnimIkTakeover.h",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/AnimIkTakeover.h",
+      "sha256": "9c1b7c5c8cb956137f61f675c8b8163d9655717fee65aaae38f6b56dfab5fdf7"
+    },
+    {
+      "path": "src/dll/CommandChannel.cpp",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/CommandChannel.cpp",
+      "sha256": "71402baed3aef341835bd43bdc492e86cde9cadea1f3a3a9ce0db06c5c28d1f5"
+    },
+    {
+      "path": "tools/Invoke-PreyVRStartup.ps1",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/tools/Invoke-PreyVRStartup.ps1",
+      "sha256": "fc9e0b9111027727b854319c738ad9e6ae85e53c17f5c65fc8c20c3052576e1e"
+    },
+    {
+      "path": "include/preyvr/AnimIk.h",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/include/preyvr/AnimIk.h",
+      "sha256": "2c1ef9380920a9686e687d29eed73f092c9d6ce8db5221962b2a17f88dcf28f7"
+    },
+    {
+      "path": "src/common/AnimIk.cpp",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/common/AnimIk.cpp",
+      "sha256": "7214c7eccef7dd34cf88fdb1a6819c39a8d49607b39fe8d85a59d979a3cbf144"
+    },
+    {
+      "path": "include/preyvr/RigOwnership.h",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/include/preyvr/RigOwnership.h",
+      "sha256": "c3dec948491cb5f9befe326d8750712454549ba0d24459f15f646df817b07a98"
+    },
+    {
+      "path": "src/common/MotionController.cpp",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/common/MotionController.cpp",
+      "sha256": "1a3f2542d6dc4f62dcfe92bf7fe3a6ac9fd833a0491326f03f30c90c1e95e8c9"
+    },
+    {
+      "path": "src/common/StereoCamera.cpp",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/common/StereoCamera.cpp",
+      "sha256": "b0c0093c561dbc589dc5b5b73052241eccc88d484a76a277071ae9143559df99"
+    },
+    {
+      "path": "src/common/VrMath.cpp",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/common/VrMath.cpp",
+      "sha256": "58a0956a1657bdf5babbe4d9bdea99828bf55498e70592bf0bc7962218e8c781"
+    },
+    {
+      "path": "src/dll/AimTakeover.cpp",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/AimTakeover.cpp",
+      "sha256": "02f83efbbfddb5ceb5589da9b6705a3f31b3f557cc6fbf57092c510eaad8db40"
+    },
+    {
+      "path": "src/dll/AimTakeover.h",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/AimTakeover.h",
+      "sha256": "818f54adc1e405bdf4ea285a90c46b87d114952932eec1dce3ef74848c4db8aa"
+    },
+    {
+      "path": "src/dll/WeaponAttachment.cpp",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/WeaponAttachment.cpp",
+      "sha256": "9381b137d70942df16bc89138ffa95c45d5ce79f84181ecd41ca4e2ae104b61e"
+    },
+    {
+      "path": "src/dll/WeaponAttachment.h",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/WeaponAttachment.h",
+      "sha256": "4cb513457c644302d0d24cdc103e9ebc21a69c64010cff16f4dc1a3c2ac1771d"
+    },
+    {
+      "path": "src/dll/NearFovOverride.cpp",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/NearFovOverride.cpp",
+      "sha256": "ce9f302b82649065b78eb1a3db01cb5c49abf00445650d03e11f22875055235d"
+    },
+    {
+      "path": "src/dll/NearFovOverride.h",
+      "snapshot": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/NearFovOverride.h",
+      "sha256": "1d35bcf9912297c6bb9b1c1537f41690a0f8389effcab36c6e77b80f621d7fe8"
+    }
+  ],
+  "recorded_at": "2026-09-09T13:07:00.830613+00:00",
+  "binaries": [
+    {
+      "path": "build/packages/20260909-weapon-basis/PreyVR.dll",
+      "bytes": 831488,
+      "sha256": "983ff48a4914751c3be4a86b4625b0a3bc2506834201ac3ae624e8d53c95fae0"
+    },
+    {
+      "path": "build/packages/20260909-weapon-basis/openxr_loader.dll",
+      "bytes": 655360,
+      "sha256": "cd5b35fed75714c68a0910e9f94fc2140cf2d564493185f147890c5647f0f1c5"
+    }
+  ],
+  "validation": "Release build; 32/32 offline CTest tests; 108 alignment comparisons plus bounded layout/negative fixtures; no Prey execution"
+}

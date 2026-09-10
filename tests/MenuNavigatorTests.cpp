@@ -148,6 +148,35 @@ void TestResetTreatsAHeldButtonAsFresh()
 
 int main()
 {
+    {
+        ModalMenuRouter router;
+        ModalMenuState s{};
+        MenuAction out[8]{};
+        s.start = true; s.stickY = 1; s.accept = true;
+        Require(router.Update(s, false, .016f, out, 8) == 1 && out[0] == MenuAction::Start,
+                "Start opens pause from gameplay without D-pad or A leaking");
+        Require(router.Update(s, true, .016f, out, 8) == 0,
+                "opening a menu with a held gameplay stick/button must not select");
+        s = {}; router.Update(s, true, .016f, out, 8);
+        s.accept = true; s.previousTab = true; s.tertiary = true;
+        Require(router.Update(s, true, .016f, out, 8) == 2,
+                "confirm and secondary act on press; tab waits for release to distinguish recenter");
+        Require(router.Update(s, true, .016f, out, 8) == 0, "held buttons do not repeat");
+        s.previousTab=false;
+        Require(router.Update(s,true,.016f,out,8)==1 && out[0]==MenuAction::PreviousTab,"single grip release changes tab");
+        s.previousTab=true;router.Update(s,true,.016f,out,8);
+        s.nextTab=true;
+        Require(router.Update(s,true,.016f,out,8)==0,"staggered recenter chord never changes tabs");
+        s.previousTab=false;router.Update(s,true,.016f,out,8);
+        s.nextTab=false;
+        Require(router.Update(s,true,.016f,out,8)==0,"chord releases never change tabs");
+        s.previousPage=true;s.nextPage=true;
+        Require(router.Update(s,true,.016f,out,8)==2,"both trigger page actions are available inside a modal");
+        Require(router.Update(s,true,.016f,out,8)==0,"held page triggers do not repeat");
+        s.stickX = 1;
+        Require(router.Update(s, false, .016f, out, 8) == 0, "closing stops modal input");
+        Require(router.Update(s, true, .016f, out, 8) == 0, "reopening requires neutral");
+    }
     TestOneFlickIsOneAction();
     TestHoldingRepeatsAfterTheDelay();
     TestHysteresisStopsChatter();

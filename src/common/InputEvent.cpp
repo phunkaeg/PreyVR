@@ -25,6 +25,8 @@ struct NamedKey {
 };
 
 constexpr NamedKey kNames[] = {
+    {kMouseX, "maxis_x"},
+    {kMouse3, "mouse3"},
     {kDPadUp, "xi_dpad_up"},
     {kDPadDown, "xi_dpad_down"},
     {kDPadLeft, "xi_dpad_left"},
@@ -156,6 +158,12 @@ int MenuActionKeyId(MenuAction action)
         case MenuAction::Accept: return kButtonA;
         case MenuAction::Cancel: return kButtonB;
         case MenuAction::Start: return kStart;
+        case MenuAction::PreviousTab: return kShoulderL;
+        case MenuAction::NextTab: return kShoulderR;
+        case MenuAction::Secondary: return kButtonX;
+        case MenuAction::Tertiary: return kButtonY;
+        case MenuAction::PreviousPage: return kTriggerLButton;
+        case MenuAction::NextPage: return kTriggerRButton;
     }
     return -1;
 }

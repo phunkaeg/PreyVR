@@ -1,0 +1,39 @@
+[
+  {
+    "type": "send",
+    "payload": {
+      "ready": true,
+      "base": "0x7ffde19d0000"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2cef30",
+      "ms": 1788997044383,
+      "thread": 33404,
+      "from": "PreyDll.dll+0x2cfd60",
+      "event": [
+        0,
+        -100,
+        -100,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2cef30",
+      "ms": 1788997044386,
+      "thread": 33404,
+      "from": "PreyDll.dll+0x2cfd60",
+      "event": [
+        0,
+        921,
+        436,
+        0
+      ]
+    }
+  }
+]

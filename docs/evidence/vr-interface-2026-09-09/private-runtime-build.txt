@@ -1,0 +1,19 @@
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/Dev Debug/PreyVR/build/validation-runtime/source/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/validation-runtime/source/CMakeLists.txt
+  xrsim_actions.cpp
+  xrsim_probe.cpp
+  xrsim_compositor.cpp
+  xrsim_probe.vcxproj -> D:\Dev Debug\PreyVR\build\validation-runtime\build\bin\Release\xrsim_probe.exe
+  xrsim_control.cpp
+  xrsim_frame.cpp
+  xrsim_graphics.cpp
+  xrsim_instance.cpp
+  xrsim_log.cpp
+  xrsim_session.cpp
+  Generating Code...
+     Creating library D:/Dev Debug/PreyVR/build/validation-runtime/build/lib/Release/xrsim.lib and object D:/Dev Debug/PreyVR/build/validation-runtime/build/lib/Release/xrsim.exp
+  xrsim.vcxproj -> D:\Dev Debug\PreyVR\build\validation-runtime\build\bin\Release\xrsim.dll
+  Building Custom Rule D:/Dev Debug/PreyVR/build/validation-runtime/source/CMakeLists.txt

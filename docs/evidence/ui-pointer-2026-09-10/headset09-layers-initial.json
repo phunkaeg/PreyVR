@@ -1,0 +1,113 @@
+[
+  {
+    "type": "send",
+    "payload": {
+      "module": "D:\\Dev Debug\\PreyVR\\build\\ui-pointer-09\\PreyVR.dll"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "name": "PreyVR_GetEyeHandoffLag",
+      "value": "1"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "name": "PreyVR_GetEyeHandoffStarvedCount",
+      "value": "1"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "name": "PreyVR_GetEyeHandoffDroppedCount",
+      "value": "0"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "frame": 1,
+      "layers": [
+        {
+          "type": 35
+        },
+        {
+          "type": 36
+        }
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "frame": 2,
+      "layers": [
+        {
+          "type": 35
+        },
+        {
+          "type": 36
+        }
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "frame": 3,
+      "layers": [
+        {
+          "type": 35
+        },
+        {
+          "type": 36
+        }
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "frame": 4,
+      "layers": [
+        {
+          "type": 35
+        },
+        {
+          "type": 36
+        }
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "frame": 5,
+      "layers": [
+        {
+          "type": 35
+        },
+        {
+          "type": 36
+        }
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "frame": 6,
+      "layers": [
+        {
+          "type": 35
+        },
+        {
+          "type": 36
+        }
+      ]
+    }
+  }
+]

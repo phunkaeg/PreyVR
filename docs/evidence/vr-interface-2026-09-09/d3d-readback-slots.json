@@ -1,0 +1,24 @@
+{
+  "ID3D11DeviceContext": {
+    "Release": 2,
+    "PSSetShaderResources": 8,
+    "Draw": 13,
+    "Map": 14,
+    "Unmap": 15,
+    "CopyResource": 47
+  },
+  "ID3D11Device": {
+    "Release": 2,
+    "CreateTexture2D": 5,
+    "GetImmediateContext": 40
+  },
+  "ID3D11Texture2D": {
+    "Release": 2,
+    "GetDesc": 10
+  },
+  "ID3D11ShaderResourceView": {
+    "Release": 2,
+    "GetResource": 7,
+    "GetDesc": 8
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260909-equip-alignment-hud-scale",
+  "recorded_at": "2026-09-09T07:21:56.321948+00:00",
+  "target": {
+    "name": "PreyVR source da1ad4e8355fb4ef3851bd5a7ce3f10e74d72173; Steam PreyDll.dll UI static leads",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Does automatic equip-time wrist rotation capture preserve an arbitrary controller/native-wrist mismatch, and what contract removes it?",
+  "claim": "CalibrationState requeues completed hand calibration after equip/reference/tracking changes. DriveHand captures inverse(controllerModel)*animatedWrist, preserving any initial mismatch instead of aligning the barrel with the independently computed aim-pose ray. The compiled pinned-source fixture preserves a 45-degree mismatch both at capture and after return to neutral. A full authored barrel/mount basis solve closes algebraically across synthetic assets and noncommuting pose/root rotations. Independent HUD sizing remains an unimplemented movie-subelement contract, not an established existing control.",
+  "evidence_grade": "STATIC",
+  "environment": "static",
+  "method": "Read pinned source and existing R-118/F-017 UI evidence; compile EquipAlignmentAudit.cpp against exact source snapshots with MSVC 19.50.35729.0 and CMake Visual Studio 18 2026 in build/equip-alignment-audit. Run the executable (exact commands/output in verification.txt). Read-only Ghidra program info/options/string searches/decompiles and schema-documented local GET xrefs inspect /Prey/PreyDll.dll; imported SHA matches disk 7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7. No native calls or runtime tests performed.",
+  "validity": "VALID",
+  "mutation": "none",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Full source revision and exact snapshots retained; native UI import/disk hashes agree."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Compiled actual project calibration math/lifecycle reproduces observed-class dependency; native UI results retained as static leads only."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Identity wrist and 45-degree capture sweep demonstrate retained mismatch; 2 synthetic asset mappings across 16 noncommuting pose/root cases close proposed barrel orientation; mathematical design control is not a Prey asset acceptance result."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Static source and offline harness; no new game observation."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "No game process, runtime configuration, native binary or production behavior changed."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "NOT_MEASURED",
+    "reason": "No shipped correction or runtime/headset acceptance; isolated harness build passed."
+  },
+  "limits": "The fixture proves the calibration dependency, not the exact wearer angle or absence of downstream animation. Authored Prey weapon/barrel bases were not recovered here. UI size implementation requires actual movie object paths and verified scale ownership/API; defined DLL string search is not exhaustive ActionScript coverage. Standard ZIP checks did not decode GameData/Scripts PAK assets. Prior F-017 runtime observations are attributed, not remeasured.",
+  "artifacts": [
+    {
+      "path": "docs/RE-EQUIP-ALIGNMENT-AND-HUD-SCALE-2026-09-09.md",
+      "sha256": "de22b4e8281df3ae1a7c32b29d6723839d9388fb9ff9c6e671ee3758587752f3",
+      "role": "Scoped source findings, test results, authored-transform fix contract and unresolved UI scale route"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/CMakeLists.txt",
+      "sha256": "753ad360b80e2dc9f7f052eaee9dad5bba6ef92200490ead66ef4fd2e06acea7",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/cvar-name-list-decompile.txt",
+      "sha256": "9fc75a6513f204b34241486bd51dd7d910ce4e7991c264a463ec41a986912b66",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/EquipAlignmentAudit.cpp",
+      "sha256": "718ec09210ed384a4d72fe075720d6e9258f728c332654d38b72e722bbf6cf6d",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/ghidra-program-info.json",
+      "sha256": "61504e70bca46d01d1487e48de0b396e8f4f1df2ec195ab74ffcce635be3d058",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/ghidra-program-options.json",
+      "sha256": "eac1eb89aa40dc7f30aacffe058d95c7660425e118cf7afeb6109790e65302bb",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/hud-function-string-search.json",
+      "sha256": "d5a94e1ef17fc174160f4ce1bdaaccb0444decce5b2206a71bdf47c36cd57918",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/hud-size-string-search.json",
+      "sha256": "9fc49023908c8693de287f9d4b5812c38f74a25f09b19f75e3af3ddbfdc83113",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/hud-string-xrefs.json",
+      "sha256": "c6b0efff6c8cbca13e6afd609e267672e2e2cbfedbd9aef502fc6895b52ffa3f",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/interact-display-decompile.txt",
+      "sha256": "3a0bdaf4bc0cc9792d01eded947e5d160e6fc390fa15374031f2a332493663e1",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/interaction-update-decompile.txt",
+      "sha256": "2ecd141bb5b01cf14a0e4156f6590baef2f181d09a461ca4514f1251b3535286",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/psi-targeting-config-decompile.txt",
+      "sha256": "8bfb7e94aa1cb9908c7e71e6333b581fd9e502bc7be66b57ac3e9be0fb91681b",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/snapshot/include/preyvr/AnimIk.h",
+      "sha256": "eea4a253d765f3fbfdb729ef98267127158fb4781afe2f374d27f7fd17e3feaa",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/snapshot/include/preyvr/StereoCamera.h",
+      "sha256": "f7ef34cfe3abc352d91ee56a067ffc543d89b9c0634aaafa402d95c4c5e52ba0",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/snapshot/include/preyvr/VrMath.h",
+      "sha256": "d43e7c676f15e6c092bb1f6e048d3b58060e1006c530b6edfc5d7113c58e6881",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/snapshot/src/common/AnimIk.cpp",
+      "sha256": "eaa77d9fa25c79760d76dbdd8841311a2be1b2b2abcfb5007eb04cc82fb7c7ce",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/snapshot/src/common/StereoCamera.cpp",
+      "sha256": "b0c0093c561dbc589dc5b5b73052241eccc88d484a76a277071ae9143559df99",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/snapshot/src/common/VrMath.cpp",
+      "sha256": "58a0956a1657bdf5babbe4d9bdea99828bf55498e70592bf0bc7962218e8c781",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/source-excerpts.txt",
+      "sha256": "5b349433d9c3cfd3c4a603b49117ef15ec6f47eb941fd89f1add93bdd5b5e32a",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/source-revision.txt",
+      "sha256": "01ee1aec905cff18d3383b6d04e5f3078cec0ab3089449c04335b6a49707bfa1",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    },
+    {
+      "path": "docs/evidence/equip-alignment-hud-2026-09-09/verification.txt",
+      "sha256": "1d2b1d071f3d9096c248f4f8316c0cca7623bb318241ae57a0975e3c8b44bd98",
+      "role": "Pinned source, harness or read-only native static evidence as identified by filename"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [
+    {
+      "approach": "Retake controller-to-animated-wrist offset automatically after an arbitrary settling delay and treat it as guaranteed barrel/ray alignment.",
+      "reason": "At recapture the controller cancels from the product, preserving the animated wrist and any initial aiming mismatch. More delay does not establish geometric alignment.",
+      "reopen_when": "A verified neutral-frame/asset transform independent of the players equip-time angle replaces the capture contract."
+    },
+    {
+      "approach": "Use hud.fit or a guessed function/member name as a working reticle/prompt scale setting.",
+      "reason": "Prior F-017 reports unchanged visible HUD after constraint change; current named dispatches do not establish scale parameters or movie paths.",
+      "reopen_when": "Correct movie subelements and API/animation ownership are identified and visual size/anchor/restore controls pass."
+    }
+  ],
+  "next_action": "Runtime owner should replace equip-time arbitrary-angle recapture with validated authored weapon/barrel/wrist data and one coherent aim solution, retaining independent head anchor and rig ownership. Recover DanielleHUD reticle/interaction display objects for independent visual scale preferences. Add these examples to existing viewmodel/hand frame-ownership and HUD evidence guidance, without promoting a shipped or headset-accepted fix."
+}

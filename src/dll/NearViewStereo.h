@@ -47,6 +47,7 @@ DWORD SetNearViewStereo(unsigned int enabled);
 // Half-IPD in **millimetres**, so it crosses as an integer. 32 is half of a 64 mm
 // IPD, the value a wearer chose for the world stereo.
 DWORD SetNearViewHalfIpdMillimetres(unsigned int millimetres);
+DWORD SetNearViewIpdMetres(float metres);
 
 // **The zero-delta control.** Arms every code path -- hook, snapshot, matrix
 // arithmetic, restore -- with a displacement of zero, so a *correct*

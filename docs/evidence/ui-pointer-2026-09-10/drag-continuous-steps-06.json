@@ -1,0 +1,11 @@
+[
+  {"command":"hand r point 33.446199 22.845186","wait":0.25},
+  {"command":"trigger r 1","wait":0.25},
+  {"command":"hand r point 33 22","wait":0.25},
+  {"command":"hand r point 32 21","wait":0.25},
+  {"command":"hand r point 31 20","wait":0.25},
+  {"command":"hand r point 30.690750 18.163052","wait":1},
+  {"command":"shot continuous-drag-held-06","wait":1},
+  {"command":"trigger r 0","wait":1},
+  {"command":"shot continuous-drag-release-06","wait":1}
+]

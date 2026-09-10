@@ -174,7 +174,7 @@ DWORD SetInputPostEnabled(unsigned int enabled)
 
 DWORD PostMenuAction(unsigned int action)
 {
-    if (action > static_cast<unsigned int>(input::MenuAction::Start)) {
+    if (action > static_cast<unsigned int>(input::MenuAction::NextPage)) {
         return 2;
     }
     std::array<std::uint8_t, input::kEventSize * 2> buffer{};
@@ -185,13 +185,8 @@ DWORD PostMenuAction(unsigned int action)
     }
     // Both or neither. A press queued without its release would leave the engine
     // believing the button is held for as long as the queue stays short.
-    if (!Enqueue(buffer.data())) {
+    if (!gEnabled.load(std::memory_order_acquire) || !gQueue.PushPair(buffer.data())) {
         return 4;
-    }
-    if (!Enqueue(buffer.data() + input::kEventSize)) {
-        Log("result=failed detail=release_not_queued keyid=" +
-            std::to_string(input::MenuActionKeyId(static_cast<input::MenuAction>(action))));
-        return 5;
     }
     return 0;
 }

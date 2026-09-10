@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260909-vee-weapon-collision-review",
+  "recorded_at": "2026-09-09T10:28:13.716617+00:00",
+  "target": {
+    "name": "Vee.ViewmodelTweaks upstream ModMain.cpp; PreyVR comparison at 1f5a02851257a1f8a339e924db7ad6bf3e6a2e51",
+    "identity_kind": "git_commit",
+    "identity": "88d62d85b2adcdd810815390ccdf6ec154c8a734"
+  },
+  "question": "What collision and alignment behavior does the linked Vee.ViewmodelTweaks source implement, and which parts transfer to freely tracked VR weapons?",
+  "claim": "At the pinned upstream revision, UpdateConvergence uses one forward camera ray to derive smoothed view-axis pullback and a hysteretic ironsight-block state. The inspected path is not a swept full-weapon volume and the ADS predicate does not itself block firing. Source also exposes internal IK-to-weapon/weapon-bone-to-attachment transforms and camera-relative stock weapon profiles. These are useful porting leads; the camera ray and proximity-based free-left-hand coupling do not establish appropriate VR behavior.",
+  "evidence_grade": "SOURCE",
+  "environment": "source",
+  "method": "Read GitHub README with web tool; raw rendering unavailable, so download exact public commit metadata and four source/license files using Python 3.14 urllib into project evidence. Read scoped source for UpdateConvergence, pullback application, ADS predicate, shot hook, PushAimLock, attachment transform capture and built-in profiles. Compare with existing PreyVR source/target reports and fleet world-collision pose-order guidance. Hashes and source lines are retained; upstream code was not built, executed or installed.",
+  "validity": "VALID",
+  "mutation": "none",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Full public upstream commit, immutable URLs and SHA256 of all four downloaded files retained and reread."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Actual C++ implementations and consumers inspected, not only README claims; source review needs no native call or game attachment."
+    },
+    "control": {
+      "status": "NA",
+      "reason": "Descriptive bounded source review; geometric VR counterexamples are explicitly reasoning, not executed collision fixtures."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "No game or headset observation performed."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "No running process, runtime settings or production behavior modified."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "NOT_MEASURED",
+    "reason": "No upstream/PreyVR runtime collision or wearer acceptance. No shipping port produced."
+  },
+  "limits": "SOURCE evidence only. Camera-ray filter constants, physics ABI/output layout and EGS hook addresses are not transferred to the Steam target. Upstream profiles are camera-relative sight poses, not measured barrel hulls or OpenXR grip data. No new collision harness, native execution or headset checks. The absence of a swept volume claim is scoped to the inspected UpdateConvergence path.",
+  "artifacts": [
+    {
+      "path": "docs/RE-VEE-WEAPON-COLLISION-2026-09-09.md",
+      "sha256": "68a16cc4a110c20b22b9da1d4f1a41ea061ac4d158e203c6f982a3ac82abca7a",
+      "role": "Scoped upstream review, VR adaptation contract and remaining validation"
+    },
+    {
+      "path": "docs/evidence/vee-viewmodel-review-2026-09-09/upstream/DEVNOTES.md",
+      "sha256": "dd7f75dabf9aa45b5905d0d62e5184ab6326a775ac9aadd74c7d09ae72e85a40",
+      "role": "Pinned upstream source/license or identity metadata"
+    },
+    {
+      "path": "docs/evidence/vee-viewmodel-review-2026-09-09/upstream/LICENSE",
+      "sha256": "c0409d072e0586d39f3cd350933ebcdcd6b53a1fa55f08434750cd85f2375333",
+      "role": "Pinned upstream source/license or identity metadata"
+    },
+    {
+      "path": "docs/evidence/vee-viewmodel-review-2026-09-09/upstream/README.md",
+      "sha256": "c8cdb3649d18a410f5a7852c39ba3d84966fadfe7562c3d5e3ebb21b370ef56a",
+      "role": "Pinned upstream source/license or identity metadata"
+    },
+    {
+      "path": "docs/evidence/vee-viewmodel-review-2026-09-09/upstream/Src/ModMain.cpp",
+      "sha256": "f60d5417f7ca91df40abe169f01d6845b90347eb665890c03b5e0e5389198f39",
+      "role": "Pinned upstream source/license or identity metadata"
+    },
+    {
+      "path": "docs/evidence/vee-viewmodel-review-2026-09-09/upstream-identity.json",
+      "sha256": "7d30056b3558e4fc3af1b81f2d799b2e727802d52e7a4ea706963190b6d6b63e",
+      "role": "Pinned upstream source/license or identity metadata"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [
+    {
+      "approach": "Treat a camera-forward ray as full collision coverage for a freely positioned VR weapon.",
+      "reason": "The weapon can enter a doorframe sideways outside that ray, while a camera-ray hit can occur with a clear weapon. The inspected response retracts along the view axis.",
+      "reopen_when": "Weapon-space query coverage and final constrained pose are proven for arbitrary controller translation/rotation."
+    },
+    {
+      "approach": "Copy the upstream support-hand proximity correction as the independent left-controller policy.",
+      "reason": "The code intentionally applies the weapon delta to the support-hand subtree within 35 cm, creating coupling by design.",
+      "reopen_when": "An explicit two-hand-grip state authorizes coupling and the free-hand case remains independent."
+    }
+  ],
+  "next_action": "Use internal weapon/IK/attachment transform extraction and stock profiles as leads to close PreyVR equip alignment first. Then validate a Steam scene query for a weapon-space collision volume and feed the constrained pose into existing owning IK, native muzzle/firing policy and reticle. Consider this example under existing fleet pose-order and held-object collision guidance; no canonical promotion or shipped-fix claim."
+}

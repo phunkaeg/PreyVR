@@ -1,0 +1,53 @@
+{
+  "base_commit": "5efd7c8f75923eec0f2553590d302e82743a2b37",
+  "scope": "uncommitted takeover correction; existing unrelated dirty files preserved",
+  "sources": [
+    {
+      "path": "CMakeLists.txt",
+      "sha256": "5bf34562cc64efdb09b3face79328da6abeda5eb5831fc1c067e7c48251da56d"
+    },
+    {
+      "path": "src/dll/NearFovOverride.cpp",
+      "sha256": "ce9f302b82649065b78eb1a3db01cb5c49abf00445650d03e11f22875055235d"
+    },
+    {
+      "path": "src/dll/NearFovOverride.h",
+      "sha256": "1d35bcf9912297c6bb9b1c1537f41690a0f8389effcab36c6e77b80f621d7fe8"
+    },
+    {
+      "path": "src/dll/CameraEditHook.cpp",
+      "sha256": "3d376902f11046d677f804226394dc56c6816f1149a25430ec7f33bfd4925aa4"
+    },
+    {
+      "path": "src/dll/CommandChannel.cpp",
+      "sha256": "0e919aa71af80c94e8242cde8ec2ff201d93000d3e265ecd2fc5b7d14d3e20b0"
+    },
+    {
+      "path": "tools/Invoke-PreyVRStartup.ps1",
+      "sha256": "8d5dba50cafc1753a3fc21a7390a367b5e356d3465cb7aea0307ecb9434a4a5b"
+    },
+    {
+      "path": "tests/NearFovOverrideTests.cpp",
+      "sha256": "cb2f79a5599c7c4ce782e0fdb335819d9bf19d26504774426ba325a64941dd28"
+    }
+  ],
+  "build_outputs": [
+    {
+      "path": "build/headless/Release/PreyVR.dll",
+      "bytes": 816640,
+      "sha256": "8e55cfa3f18d1ed11e31ae5e7b3eff819c1929c22584113ed524d24084c17c84"
+    },
+    {
+      "path": "build/headless/Release/openxr_loader.dll",
+      "bytes": 655360,
+      "sha256": "cd5b35fed75714c68a0910e9f94fc2140cf2d564493185f147890c5647f0f1c5"
+    },
+    {
+      "path": "build/headless/Release/preyvr_near_fov_tests.exe",
+      "bytes": 220160,
+      "sha256": "e91efc6e5829e599efda2460b7aad701d688a01e52e98b46a2f4e7a23b20b64e"
+    }
+  ],
+  "tests": "31/31 CTest passed; see ctest.log",
+  "runtime": "not launched, deployed or injected"
+}

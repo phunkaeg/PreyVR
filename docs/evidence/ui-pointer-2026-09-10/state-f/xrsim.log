@@ -1,0 +1,70 @@
+[10:16:24.587] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[10:16:24.591] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[10:16:24.591] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/ui-pointer-2026-09-10/state-f
+[10:16:24.656] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[10:16:24.689] xrsim: compositor ready
+[10:16:24.690] xrsim: session state -> IDLE
+[10:16:24.690] xrsim: session created with D3D11 graphics
+[10:16:24.690] xrsim: action set 'preyvr' created
+[10:16:24.690] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[10:16:24.690] xrsim: 15 binding(s) suggested on the index profile, 15 driven
+[10:16:24.690] xrsim: action set(s) attached to the session
+[10:16:24.691] xrsim: swapchain 0 created 2560x1440x2 fmt 29 (3 images)
+[10:16:24.920] xrsim: session state -> READY
+[10:16:24.920] xrsim: session state -> SYNCHRONIZED
+[10:16:24.920] xrsim: session running - the app is now paced by the simulated headset
+[10:16:24.923] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[10:16:24.923] xrsim: swapchain 2 created 32x32x1 fmt 29 (3 images)
+[10:16:24.923] xrsim: session state -> VISIBLE
+[10:16:24.960] xrsim: session state -> FOCUSED
+[10:16:31.835] xrsim: applied 1 command(s): btn a press 180
+[10:16:33.974] xrsim: applied 1 command(s): shot menu08
+[10:17:06.687] xrsim: capture written menu08 (1032x1104)
+[10:17:26.490] xrsim: swapchain 3 created 2560x1440x1 fmt 28 (3 images)
+[10:17:37.836] xrsim: applied 2 command(s): hand r point 16.799408 20.989710 | shot menu08b
+[10:17:38.066] xrsim: capture written menu08b (1032x1104)
+[10:17:48.934] xrsim: applied 1 command(s): btn x press 180
+[10:17:49.862] xrsim: applied 1 command(s): shot inventory08
+[10:17:49.934] xrsim: capture written inventory08 (1032x1104)
+[10:18:10.330] xrsim: applied 1 command(s): hand r point 30.690750 18.163052
+[10:18:11.791] xrsim: applied 1 command(s): trigger r 1
+[10:18:13.192] xrsim: applied 1 command(s): hand r point 30.690750 17
+[10:18:14.576] xrsim: applied 1 command(s): hand r point 30.690750 15
+[10:18:15.996] xrsim: applied 1 command(s): hand r point 30.690750 12.617923
+[10:18:18.077] xrsim: applied 1 command(s): shot dragging-inventory-offpanel-08
+[10:18:18.149] xrsim: capture written dragging-inventory-offpanel-08 (1032x1104)
+[10:18:19.643] xrsim: applied 1 command(s): hand r point 85 15
+[10:18:21.701] xrsim: applied 1 command(s): hand r point 30.690750 12.617923
+[10:18:23.780] xrsim: applied 1 command(s): shot returned-held-inventory-offpanel-08
+[10:18:23.865] xrsim: capture written returned-held-inventory-offpanel-08 (1032x1104)
+[10:18:25.369] xrsim: applied 1 command(s): trigger r 0
+[10:18:26.957] xrsim: applied 1 command(s): shot cancelled-inventory-offpanel-08
+[10:18:27.045] xrsim: capture written cancelled-inventory-offpanel-08 (1032x1104)
+[10:19:03.717] xrsim: applied 1 command(s): hand r point 33.446199 22.845186
+[10:19:03.740] xrsim: applied 1 command(s): hand r point 33.446199 22.845186
+[10:19:05.059] xrsim: applied 1 command(s): trigger r 1
+[10:19:06.377] xrsim: applied 1 command(s): hand r point 33 22
+[10:19:07.696] xrsim: applied 1 command(s): hand r point 32 21
+[10:19:09.035] xrsim: applied 1 command(s): hand r point 31 20
+[10:19:10.354] xrsim: applied 1 command(s): hand r point 30.690750 18.163052
+[10:19:12.433] xrsim: applied 1 command(s): shot continuous-drag-held-06-inventory-normal-08
+[10:19:12.527] xrsim: capture written continuous-drag-held-06-inventory-normal-08 (1032x1104)
+[10:19:14.513] xrsim: applied 1 command(s): trigger r 0
+[10:19:16.617] xrsim: applied 1 command(s): shot continuous-drag-release-06-inventory-normal-08
+[10:19:16.693] xrsim: capture written continuous-drag-release-06-inventory-normal-08 (1032x1104)
+[10:19:53.751] xrsim: applied 1 command(s): hand r point 30.690750 18.163052
+[10:19:55.154] xrsim: applied 1 command(s): trigger r 1
+[10:19:56.516] xrsim: applied 1 command(s): hand r point 30.690750 17
+[10:19:57.896] xrsim: applied 1 command(s): hand r point 30.690750 15
+[10:19:59.296] xrsim: applied 1 command(s): hand r point 30.690750 12.617923
+[10:20:01.395] xrsim: applied 1 command(s): shot dragging-inventory-cancel-08
+[10:20:01.485] xrsim: capture written dragging-inventory-cancel-08 (1032x1104)
+[10:20:03.001] xrsim: applied 1 command(s): hand r point 85 15
+[10:20:05.060] xrsim: applied 1 command(s): hand r point 30.690750 12.617923
+[10:20:07.161] xrsim: applied 1 command(s): shot returned-held-inventory-cancel-08
+[10:20:07.242] xrsim: capture written returned-held-inventory-cancel-08 (1032x1104)
+[10:20:09.385] xrsim: applied 1 command(s): trigger r 0
+[10:20:11.032] xrsim: applied 1 command(s): shot cancelled-inventory-cancel-08
+[10:20:11.113] xrsim: capture written cancelled-inventory-cancel-08 (1032x1104)
+[10:20:45.591] xrsim: session torn down
+[10:20:45.591] xrsim: instance destroyed

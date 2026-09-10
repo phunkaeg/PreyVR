@@ -1,0 +1,35 @@
+[01:01:24.897] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[01:01:24.903] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[01:01:24.903] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/vr-interface-2026-09-09/private-live-xrsim-02
+[01:01:24.975] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[01:01:24.996] xrsim: compositor ready
+[01:01:24.996] xrsim: session state -> IDLE
+[01:01:24.996] xrsim: session created with D3D11 graphics
+[01:01:24.997] xrsim: action set 'preyvr' created
+[01:01:24.997] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[01:01:24.997] xrsim: action set(s) attached to the session
+[01:01:24.997] xrsim: swapchain 0 created 2560x1440x2 fmt 29 (3 images)
+[01:01:25.227] xrsim: session state -> READY
+[01:01:25.227] xrsim: session state -> SYNCHRONIZED
+[01:01:25.227] xrsim: session running - the app is now paced by the simulated headset
+[01:01:25.242] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[01:01:25.242] xrsim: session state -> VISIBLE
+[01:01:25.252] xrsim: session state -> FOCUSED
+[01:02:09.304] xrsim: applied 2 command(s): btn a press 160 | shot cold-boot-02
+[01:02:09.384] xrsim: capture written cold-boot-02 (1032x1104)
+[01:02:27.274] xrsim: applied 1 command(s): btn a press 160
+[01:02:51.116] xrsim: applied 1 command(s): shot load-02
+[01:03:01.757] xrsim: capture written load-02 (1032x1104)
+[01:03:21.028] xrsim: applied 1 command(s): btn a press 160
+[01:03:21.338] xrsim: swapchain 2 created 2560x1440x1 fmt 28 (3 images)
+[01:04:22.696] xrsim: applied 1 command(s): shot hud-layer-first
+[01:04:22.920] xrsim: capture written hud-layer-first (1032x1104)
+[01:05:13.273] xrsim: applied 2 command(s): shot hud-off-control | btn x press 160
+[01:05:13.497] xrsim: capture written hud-off-control (1032x1104)
+[01:05:48.528] xrsim: applied 1 command(s): grip r 1
+[01:07:05.569] xrsim: applied 2 command(s): grip r 0 | shot tabs-02
+[01:07:05.647] xrsim: capture written tabs-02 (1032x1104)
+[01:07:29.146] xrsim: applied 2 command(s): head pos 0.45 1.8 0.3 | head rot 25 0 0
+[01:07:56.260] xrsim: applied 2 command(s): grip l 1 | grip r 1
+[01:08:37.327] xrsim: applied 3 command(s): shot recentered-02 | grip l 0 | grip r 0
+[01:08:37.413] xrsim: capture written recentered-02 (1032x1104)

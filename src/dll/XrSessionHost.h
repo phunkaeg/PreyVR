@@ -33,6 +33,7 @@
 // Never starts on load. Like every other capability here, it is reached only
 // through an explicit export.
 namespace preyvr::dll {
+DWORD SetUiCurveDegrees(unsigned int degrees);
 
 enum class XrSessionStatus : DWORD {
     idle = 0,             // never started
@@ -76,8 +77,17 @@ DWORD StartXrSession();
 // frame boundary rather than here, because the D3D resources it holds belong to
 // that thread.
 DWORD StopXrSession();
+// Runtime loss waits for native feature shutdown before render-thread destruction.
+bool XrSessionLossPending();
 
 DWORD XrSessionStatusValue();
+// 0=scene only, 1=automatic modal screen, 2=force screen (diagnostic).
+DWORD SetUiPanelMode(unsigned int mode);
+unsigned int UiPanelMode();
+unsigned long long UiPanelFrameCount();
+float XrRuntimeIpdMetres();
+void ObserveXrBackbuffer(void* renderer);
+bool XrBackbufferReady(unsigned int width=0,unsigned int height=0);
 unsigned long long XrSubmittedFrameCount();
 
 // Arms stereo submission: a real image per eye, and Prey's own frustum declared

@@ -1,0 +1,1 @@
+vr=off vrFailure=none uiPanel=1 uiPanelFrames=32057

@@ -1,0 +1,33 @@
+[09:08:57.357] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[09:08:57.362] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[09:08:57.362] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/ui-pointer-2026-09-10/state-c
+[09:08:57.779] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[09:08:57.837] xrsim: compositor ready
+[09:08:57.837] xrsim: session state -> IDLE
+[09:08:57.837] xrsim: session created with D3D11 graphics
+[09:08:57.837] xrsim: action set 'preyvr' created
+[09:08:57.837] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[09:08:57.838] xrsim: 15 binding(s) suggested on the index profile, 15 driven
+[09:08:57.838] xrsim: action set(s) attached to the session
+[09:08:57.848] xrsim: swapchain 0 created 2560x1440x2 fmt 29 (3 images)
+[09:08:58.051] xrsim: session state -> READY
+[09:08:58.052] xrsim: session state -> SYNCHRONIZED
+[09:08:58.052] xrsim: session running - the app is now paced by the simulated headset
+[09:08:58.060] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[09:08:58.060] xrsim: swapchain 2 created 32x32x1 fmt 29 (3 images)
+[09:08:58.060] xrsim: session state -> VISIBLE
+[09:08:58.126] xrsim: session state -> FOCUSED
+[09:09:50.936] xrsim: applied 1 command(s): shot title-05
+[09:09:51.022] xrsim: capture written title-05 (1032x1104)
+[09:10:58.943] xrsim: applied 2 command(s): btn a press 180 | hand r point 16 13
+[09:11:26.056] xrsim: applied 1 command(s): shot mainmenu-05
+[09:11:26.159] xrsim: capture written mainmenu-05 (1032x1104)
+[09:11:47.733] xrsim: applied 1 command(s): trigger r pull 250
+[09:11:47.756] xrsim: applied 1 command(s): trigger r pull 250
+[09:12:19.139] xrsim: applied 1 command(s): shot options-auto-05
+[09:12:19.226] xrsim: capture written options-auto-05 (1032x1104)
+[09:12:59.378] xrsim: applied 1 command(s): btn b press 180
+[09:13:39.296] xrsim: applied 1 command(s): shot curve-main-05
+[09:13:39.378] xrsim: capture written curve-main-05 (1032x1104)
+[09:13:54.146] xrsim: session torn down
+[09:13:54.146] xrsim: instance destroyed

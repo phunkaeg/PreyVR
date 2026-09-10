@@ -1,0 +1,15 @@
+[
+  {"command":"hand r point 30.690750 18.163052","wait":0.3},
+  {"command":"trigger r 1","wait":0.3},
+  {"command":"hand r point 30.690750 17","wait":0.3},
+  {"command":"hand r point 30.690750 15","wait":0.3},
+  {"command":"hand r point 30.690750 12.617923","wait":0.5},
+  {"command":"trigger r 0","wait":0.5},
+  {"command":"shot placed","wait":0.5},
+  {"command":"trigger r 1","wait":0.3},
+  {"command":"hand r point 30.690750 14","wait":0.3},
+  {"command":"hand r point 30.690750 16","wait":0.3},
+  {"command":"hand r point 30.690750 18.163052","wait":0.5},
+  {"command":"trigger r 0","wait":0.5},
+  {"command":"shot restored","wait":0.5}
+]

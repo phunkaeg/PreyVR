@@ -19,6 +19,7 @@ struct ControllerState {
     PoseValidity aimValidity{};
     float thumbstickX = 0.0f;
     float thumbstickY = 0.0f;
+    bool weaponWheelPressed = false;
     // **The trigger is read as a FLOAT, and the press is derived from it.**
     // Binding a boolean action to `/input/trigger/value` leans on the runtime
     // performing the spec's bool-from-float conversion, and it throws away the

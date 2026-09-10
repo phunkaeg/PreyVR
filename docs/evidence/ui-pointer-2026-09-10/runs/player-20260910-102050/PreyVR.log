@@ -1,0 +1,199 @@
+2026-09-10T00:21:03.491Z preyvr_smoke_start version=0.3.1-static-ik-integration dll="D:\Dev Debug\PreyVR\build\ui-pointer-08\PreyVR.dll" dllSha256=BF9CBF3C14C2FA04D3B997B26811EE72C045D4D9D1DF583732FC6CC073E121D0 host="D:\SteamLibrary\steamapps\common\Prey\Binaries\Danielle\x64\Release\Prey.exe" expectedLandmarks=34 hooks=compiled_default_off openxr=preflight_only
+2026-09-10T00:21:03.491Z preyvr_landmark id=renderer.begin rva=0xF7D710 status=match
+2026-09-10T00:21:03.491Z preyvr_landmark id=renderer.end rva=0xF7E210 status=match
+2026-09-10T00:21:03.491Z preyvr_landmark id=renderer.present rva=0xF7E48A status=match
+2026-09-10T00:21:03.491Z preyvr_landmark id=renderer.device_removed rva=0xF7E4DA status=match
+2026-09-10T00:21:03.491Z preyvr_landmark id=renderer.dispatch rva=0xFE9D14 status=match
+2026-09-10T00:21:03.492Z preyvr_landmark id=renderer.device_init rva=0xF50000 status=match
+2026-09-10T00:21:03.492Z preyvr_landmark id=camera.update_view rva=0x148B820 status=match
+2026-09-10T00:21:03.492Z preyvr_landmark id=camera.set_custom_view rva=0x1456460 status=match
+2026-09-10T00:21:03.492Z preyvr_landmark id=camera.custom_view rva=0x15CA580 status=match
+2026-09-10T00:21:03.492Z preyvr_landmark id=player.get_instance rva=0x157C990 status=match
+2026-09-10T00:21:03.492Z preyvr_landmark id=aim.update_cached_ray rva=0x1585320 status=match
+2026-09-10T00:21:03.492Z preyvr_landmark id=aim.get_cached_ray rva=0x157CBB0 status=match
+2026-09-10T00:21:03.492Z preyvr_landmark id=aim.weapon_firing_query rva=0x1694890 status=match
+2026-09-10T00:21:03.492Z preyvr_landmark id=aim.weapon_reticle_position rva=0x1694A20 status=match
+2026-09-10T00:21:03.492Z preyvr_landmark id=anim.process_adik rva=0x877B50 status=match
+2026-09-10T00:21:03.492Z preyvr_landmark id=movement.get_state rva=0x159AF10 status=match
+2026-09-10T00:21:03.493Z preyvr_landmark id=wrench.attack_primary rva=0x16B1FD0 status=match
+2026-09-10T00:21:03.493Z preyvr_landmark id=wrench.weapon_hit rva=0x16B2BC0 status=match
+2026-09-10T00:21:03.493Z preyvr_landmark id=wrench.component_hit rva=0x13BF730 status=match
+2026-09-10T00:21:03.493Z preyvr_landmark id=wrench.get_hits rva=0x13BD620 status=match
+2026-09-10T00:21:03.493Z preyvr_landmark id=interaction.player_dispatch rva=0x15850DC status=match
+2026-09-10T00:21:03.493Z preyvr_landmark id=interaction.select_candidates rva=0x159A660 status=match
+2026-09-10T00:21:03.493Z preyvr_landmark id=interaction.interact rva=0x1593690 status=match
+2026-09-10T00:21:03.493Z preyvr_landmark id=view.set_camera rva=0xEE7E80 status=match
+2026-09-10T00:21:03.493Z preyvr_landmark id=view.ctor rva=0xEDF390 status=match
+2026-09-10T00:21:03.493Z preyvr_landmark id=view.get_for_thread rva=0xFE5620 status=match
+2026-09-10T00:21:03.494Z preyvr_landmark id=view.collect_looking_glass rva=0xEE44D0 status=match
+2026-09-10T00:21:03.494Z preyvr_landmark id=view.enable_looking_glass rva=0xEE4B00 status=match
+2026-09-10T00:21:03.494Z preyvr_landmark id=view.job_post_write rva=0xEE63C0 status=match
+2026-09-10T00:21:03.494Z preyvr_landmark id=pass.create_general rva=0x1E5B30 status=match
+2026-09-10T00:21:03.494Z preyvr_landmark id=world.render_world rva=0x21F520 status=match
+2026-09-10T00:21:03.494Z preyvr_landmark id=system.render_begin rva=0xE0BD80 status=match
+2026-09-10T00:21:03.494Z preyvr_landmark id=system.get_view_camera rva=0xDF2BB0 status=match
+2026-09-10T00:21:03.494Z preyvr_landmark id=system.set_view_camera rva=0xDF4560 status=match
+2026-09-10T00:21:03.494Z preyvr_frame_observer_plan status=ready targetRva=0xF7E210 target=0x7FFDE294E210 enabled=0
+2026-09-10T00:21:03.494Z preyvr_snapshot module_base=0x7FFDE19D0000 gEnv=0x7FFDE3C1D980
+2026-09-10T00:21:03.494Z preyvr_snapshot ptr=gEnv.pSystem value=0x26572F0AF90 read=yes plausible=yes
+2026-09-10T00:21:03.495Z preyvr_snapshot ptr=gEnv.pRenderer value=0x7FFDE44F4E80 read=yes plausible=yes
+2026-09-10T00:21:03.495Z preyvr_snapshot ptr=gEnv.p3DEngine value=0x265A9719900 read=yes plausible=yes
+2026-09-10T00:21:03.495Z preyvr_snapshot ptr=renderer.singleton value=0x7FFDE44F4E80 read=yes plausible=yes
+2026-09-10T00:21:03.495Z preyvr_snapshot identity system_vtable=yes engine_vtable=yes render_world_slot=yes renderer_agrees=yes
+2026-09-10T00:21:03.495Z preyvr_snapshot view_camera pos=0.0000,0.0000,0.0000 fov=0.959931 res=640x480 ratio=1.333333 near=0.1000 far=8000.00
+2026-09-10T00:21:03.495Z preyvr_snapshot view_camera_asym l=0.000000 r=0.000000 b=0.000000 t=0.000000 plausible=yes
+2026-09-10T00:21:03.495Z preyvr_snapshot result=complete
+2026-09-10T00:21:03.496Z preyvr_openxr_preflight status=ready runtimeSource=environment runtimeManifest="C:\Program Files\Virtual Desktop Streamer\OpenXR\virtualdesktop-openxr.json" loader="D:\Dev Debug\PreyVR\build\ui-pointer-08\openxr_loader.dll" action=none
+2026-09-10T00:21:03.496Z preyvr_channel result=0 detail=armed
+2026-09-10T00:21:03.496Z preyvr_lifecycle module=pinned unload=process_exit_only
+2026-09-10T00:21:03.496Z preyvr_smoke_result status=verified landmarks=34 hooks=compiled_default_off observer=ready module=pinned openxr=preflight_only openxrStatus=ready next=supported_host_smoke
+2026-09-10T00:21:03.496Z preyvr_channel result=0 detail=started commands="D:\Dev Debug\PreyVR\docs\evidence\ui-pointer-2026-09-10\runs\player-20260910-102050\commands.txt" results="D:\Dev Debug\PreyVR\docs\evidence\ui-pointer-2026-09-10\runs\player-20260910-102050\results.txt"
+2026-09-10T00:21:03.681Z preyvr_minhook result=0 detail=initialised
+2026-09-10T00:21:03.826Z preyvr_frame_observer_result status=enabled mutation=none telemetry=bounded
+2026-09-10T00:21:03.975Z preyvr_camera_edit result=ready targetRva=0xE0BA30 target=0x7FFDE27DBA30
+2026-09-10T00:21:03.975Z preyvr_camera_edit result=0 detail=native_projection enabled=1
+2026-09-10T00:21:04.118Z preyvr_head_tracking result=0 detail=view_hook_installed target=ArkPlayerCamera::UpdateView
+2026-09-10T00:21:04.118Z preyvr_head_tracking result=0 detail=view_observing value=1
+2026-09-10T00:21:04.118Z preyvr_vr state=waiting_for_renderer controls=F11_enable,F12_recenter
+2026-09-10T00:21:10.112Z preyvr_input_path result=0 detail=resolved gEnv=0x7ffde3c1d980 pInput=0x2658193a7b0 vtable=0x7ffde372c4f0 alignment_pair_slot=10 confirmed=1 post_input_event_slot=12 post_input_event_rva=0x9d6d30
+2026-09-10T00:21:10.112Z preyvr_input_path result=0 detail=vtable_slots 0=0x9d1860 1=0x9d5d20 2=0x9d7160 3=0x9d5c40 4=0x9826f0 5=0x9d5e60 6=0x9d71b0 7=0x9843b0 8=0x16fe0d0 9=0x9d5e00 10=0x9d6310 11=0x9d6a60 12=0x9d6d30 13=0x9d6fd0 14=0x1706520 15=0x9d6350 16=0x9d6480 17=0x9d1940 18=0x9d6ce0 19=0x9d1b70
+2026-09-10T00:21:10.112Z preyvr_input_path result=0 detail=resolved gEnv=0x7ffde3c1d980 pInput=0x2658193a7b0 vtable=0x7ffde372c4f0 alignment_pair_slot=10 confirmed=1 post_input_event_slot=12 post_input_event_rva=0x9d6d30
+2026-09-10T00:21:10.112Z preyvr_input_path result=0 detail=vtable_slots 0=0x9d1860 1=0x9d5d20 2=0x9d7160 3=0x9d5c40 4=0x9826f0 5=0x9d5e60 6=0x9d71b0 7=0x9843b0 8=0x16fe0d0 9=0x9d5e00 10=0x9d6310 11=0x9d6a60 12=0x9d6d30 13=0x9d6fd0 14=0x1706520 15=0x9d6350 16=0x9d6480 17=0x9d1940 18=0x9d6ce0 19=0x9d1b70
+2026-09-10T00:21:10.112Z preyvr_input_post result=0 detail=resolved slot=10
+2026-09-10T00:21:10.112Z preyvr_input_post result=0 detail=enabled value=1
+2026-09-10T00:21:10.112Z preyvr_xr_session result=0 detail=prefer_srgb enabled=1
+2026-09-10T00:21:10.115Z preyvr_input_post result=0 detail=drain_thread id=71796
+2026-09-10T00:21:10.190Z preyvr_xr_session ui_cylinder supported=1
+2026-09-10T00:21:10.288Z preyvr_xr_session instance created api_version=1.0.60
+2026-09-10T00:21:10.320Z preyvr_xr_session runtime name="VirtualDesktopXR"
+2026-09-10T00:21:10.369Z preyvr_xr_session adapter prey_luid=0x0:155a0 required_luid=0x0:155a0 prey_index=0 required_index=0
+2026-09-10T00:21:10.369Z preyvr_xr_session adapter result=agree
+2026-09-10T00:21:10.416Z preyvr_xr_input result=0 detail=input_created profile=oculus/touch_controller
+2026-09-10T00:21:10.416Z preyvr_xr_session result=0 detail=view_configuration views=2 recommended=2688x2880 max=16384x16384 recommendedSamples=1 maxSamples=4 viewsDiffer=0 submitting=2560x1440 note=submitted_size_is_preys_backbuffer_not_the_recommendation
+2026-09-10T00:21:10.551Z preyvr_xr_session swapchain created 2560x1440 format=29 arraySize=2 images=3 colour_conversion=yes
+2026-09-10T00:21:10.551Z preyvr_xr_session result=0 detail=started
+2026-09-10T00:21:10.551Z preyvr_xr_input result=0 detail=menu_nav_gate value=1
+2026-09-10T00:21:10.551Z preyvr_xr_input result=0 detail=menu_navigation value=1
+2026-09-10T00:21:10.551Z preyvr_vr state=starting renderer=settled
+2026-09-10T00:21:10.551Z preyvr_xr_session session begun
+2026-09-10T00:21:10.552Z preyvr_xr_session result=0 detail=ui_panel active=1
+2026-09-10T00:21:10.552Z preyvr_xr_session ui_surface angle_degrees=35.000000
+2026-09-10T00:21:10.553Z preyvr_xr_session ui_pointer texture_ready=1
+2026-09-10T00:21:10.554Z preyvr_xr_session result=0 detail=first_frame_submitted
+2026-09-10T00:21:10.573Z preyvr_console result=0 detail=queued_to_engine command="r_MotionBlur 0"
+2026-09-10T00:21:10.603Z preyvr_console result=0 detail=queued_to_engine command="r_AntialiasingMode 1"
+2026-09-10T00:21:10.613Z preyvr_vr state=waiting_for_headset put_on_headset=1
+2026-09-10T00:21:10.613Z preyvr_head_tracking result=0 detail=recentered yawRadians=0.468258 origin=0.920292,-0.544118,-0.12922
+2026-09-10T00:21:10.613Z preyvr_head_tracking result=0 detail=view_applying value=1
+2026-09-10T00:21:10.613Z preyvr_view_hook result=0 detail=position_applying value=1
+2026-09-10T00:21:10.613Z preyvr_camera_edit result=0 detail=stereo_armed ipd=0.06326 halfFovDegrees=50 projectionPolicy=prey_native
+2026-09-10T00:21:10.613Z preyvr_xr_session result=0 detail=stereo_submission enabled=1
+2026-09-10T00:21:10.630Z preyvr_xr_session ui_surface angle_degrees=35.000000
+2026-09-10T00:21:10.630Z preyvr_camera_edit result=0 detail=first_application mode=stereo ipd=0.06326 eye=0 originalPos=0,0,0 applied=1
+2026-09-10T00:21:10.756Z preyvr_near_stereo result=0 detail=hook_installed target=PackViewInfo rva=0xFB57A0
+2026-09-10T00:21:10.756Z preyvr_near_stereo result=0 detail=enabled value=1
+2026-09-10T00:21:10.898Z preyvr_near_fov result=0 detail=hook_installed seam=RT_BeginFrame_return
+2026-09-10T00:21:10.898Z preyvr_near_fov result=0 detail=setting_accepted
+2026-09-10T00:21:11.183Z preyvr_move result=0 detail=hooks_installed x=0x158FD20 y=0x158FD80
+2026-09-10T00:21:11.183Z preyvr_input_post result=0 detail=enabled value=1
+2026-09-10T00:21:11.183Z preyvr_move result=0 detail=mode value=2
+2026-09-10T00:21:11.183Z preyvr_input_post result=0 detail=enabled value=1
+2026-09-10T00:21:11.183Z preyvr_move result=0 detail=turn value=1
+2026-09-10T00:21:11.183Z preyvr_input_post result=0 detail=enabled value=1
+2026-09-10T00:21:11.183Z preyvr_move result=0 detail=fire value=1
+2026-09-10T00:21:11.333Z preyvr_aim_takeover result=0 detail=hook_installed target=ArkPlayer::UpdateCachedReticleViewPosAndDir
+2026-09-10T00:21:11.333Z preyvr_aim_takeover result=0 detail=enabled value=1
+2026-09-10T00:21:11.333Z preyvr_reticle result=0 detail=enabled value=1
+2026-09-10T00:21:11.333Z preyvr_reticle result=0 detail=dispatch value=1
+2026-09-10T00:21:11.485Z preyvr_weapon_attach result=0 detail=hook_installed target=CArkWeapon::AttachToHand
+2026-09-10T00:21:11.632Z preyvr_weapon_attach result=0 detail=observing value=1 note=re-equip a weapon to capture
+2026-09-10T00:21:11.781Z preyvr_anim_ik result=0 detail=hook_installed target=ProcessAnimationDrivenIK rva=0x877B50
+2026-09-10T00:21:11.781Z preyvr_anim_ik result=0 detail=mode value=2
+2026-09-10T00:21:11.781Z preyvr_anim_ik result=0 detail=controller_drive value=1
+2026-09-10T00:21:11.781Z preyvr_anim_ik result=0 detail=hands mask=3
+2026-09-10T00:21:11.781Z preyvr_anim_ik result=0 detail=reach_percent value=65
+2026-09-10T00:21:11.925Z preyvr_vr state=active panel=automatic recenter=F12_or_both_grips
+2026-09-10T00:24:59.895Z preyvr_pointer inventory_capture_hook=installed
+2026-09-10T00:25:10.390Z preyvr_head_tracking result=0 detail=recentered yawRadians=0.0709175 origin=-0.00774446,-0.0128154,-0.0166959
+2026-09-10T00:25:10.403Z preyvr_xr_session ui_surface angle_degrees=35.000000
+2026-09-10T00:25:11.848Z preyvr_pointer event=1 x=847 y=486
+2026-09-10T00:25:11.974Z preyvr_pointer event=2 x=842 y=496
+2026-09-10T00:26:07.998Z preyvr_xr_session result=0 detail=ui_panel active=0
+2026-09-10T00:26:08.090Z preyvr_anim_ik result=0 detail=calibration_requested
+2026-09-10T00:26:08.159Z preyvr_xr_session result=0 detail=ui_panel active=1
+2026-09-10T00:26:08.159Z preyvr_xr_session ui_surface angle_degrees=35.000000
+2026-09-10T00:26:28.773Z preyvr_head_tracking result=0 detail=recentered yawRadians=-0.0123769 origin=0.0153538,-0.00332272,-0.0247301
+2026-09-10T00:26:28.779Z preyvr_xr_session ui_surface angle_degrees=35.000000
+2026-09-10T00:26:28.791Z preyvr_anim_ik result=0 detail=calibration_requested
+2026-09-10T00:26:33.032Z preyvr_pointer event=1 x=1859 y=1202
+2026-09-10T00:26:33.222Z preyvr_pointer event=2 x=1930 y=1221
+2026-09-10T00:26:34.695Z preyvr_anim_ik result=0 detail=rig_identified skeleton=0x265fbac0190 joints=101 adik=2 rTarget=38 rWeight=4 rHand=45 rLimb=40/41/45 lTarget=39 lWeight=5 lHand=72 lLimb=67/68/72
+2026-09-10T00:26:34.713Z preyvr_xr_session result=0 detail=ui_panel active=0
+2026-09-10T00:27:19.851Z preyvr_xr_session result=0 detail=ui_panel active=1
+2026-09-10T00:27:19.851Z preyvr_xr_session ui_surface angle_degrees=35.000000
+2026-09-10T00:27:23.665Z preyvr_pointer event=1 x=1427 y=118
+2026-09-10T00:27:23.789Z preyvr_pointer event=2 x=1421 y=117
+2026-09-10T00:27:24.755Z preyvr_pointer event=1 x=1135 y=103
+2026-09-10T00:27:24.885Z preyvr_pointer event=2 x=1132 y=110
+2026-09-10T00:27:25.326Z preyvr_pointer event=1 x=728 y=147
+2026-09-10T00:27:25.414Z preyvr_pointer event=2 x=737 y=150
+2026-09-10T00:27:26.153Z preyvr_pointer event=1 x=788 y=140
+2026-09-10T00:27:26.330Z preyvr_pointer event=2 x=803 y=139
+2026-09-10T00:27:26.772Z preyvr_pointer event=1 x=440 y=134
+2026-09-10T00:27:26.920Z preyvr_pointer event=2 x=444 y=149
+2026-09-10T00:27:27.305Z preyvr_pointer event=1 x=423 y=116
+2026-09-10T00:27:27.425Z preyvr_pointer event=2 x=435 y=115
+2026-09-10T00:27:33.501Z preyvr_pointer event=1 x=747 y=111
+2026-09-10T00:27:33.563Z preyvr_pointer event=2 x=755 y=119
+2026-09-10T00:27:35.014Z preyvr_pointer event=1 x=490 y=129
+2026-09-10T00:27:35.128Z preyvr_pointer event=2 x=612 y=146
+2026-09-10T00:27:38.672Z preyvr_pointer event=1 x=130 y=99
+2026-09-10T00:27:38.819Z preyvr_pointer event=2 x=155 y=108
+2026-09-10T00:27:42.462Z preyvr_xr_session result=0 detail=ui_panel active=0
+2026-09-10T00:27:43.164Z preyvr_anim_ik result=0 detail=calibration_requested
+2026-09-10T00:27:43.192Z preyvr_anim_ik result=0 detail=rig_identified skeleton=0x265fbac0190 joints=101 adik=2 rTarget=38 rWeight=4 rHand=45 rLimb=40/41/45 lTarget=39 lWeight=5 lHand=72 lLimb=67/68/72
+2026-09-10T00:27:43.192Z preyvr_anim_ik result=0 detail=calibrated hand=1
+2026-09-10T00:27:54.931Z preyvr_head_tracking result=0 detail=recentered yawRadians=-0.136963 origin=0.0291997,-0.0128831,-0.0312114
+2026-09-10T00:27:54.938Z preyvr_anim_ik result=0 detail=calibration_requested
+2026-09-10T00:27:54.990Z preyvr_anim_ik result=0 detail=rig_identified skeleton=0x265fbac0190 joints=101 adik=2 rTarget=38 rWeight=4 rHand=45 rLimb=40/41/45 lTarget=39 lWeight=5 lHand=72 lLimb=67/68/72
+2026-09-10T00:27:57.777Z preyvr_anim_ik result=0 detail=calibrated hand=1
+2026-09-10T00:31:33.412Z preyvr_head_tracking result=0 detail=recentered yawRadians=0.0122995 origin=0.00751208,0.00858581,0.0559202
+2026-09-10T00:31:33.428Z preyvr_anim_ik result=0 detail=calibration_requested
+2026-09-10T00:31:33.440Z preyvr_anim_ik result=0 detail=rig_identified skeleton=0x265fbac0190 joints=101 adik=2 rTarget=38 rWeight=4 rHand=45 rLimb=40/41/45 lTarget=39 lWeight=5 lHand=72 lLimb=67/68/72
+2026-09-10T00:31:34.661Z preyvr_anim_ik result=0 detail=calibrated hand=1
+2026-09-10T00:32:01.730Z preyvr_anim_ik result=0 detail=calibration_requested
+2026-09-10T00:32:01.735Z preyvr_anim_ik result=0 detail=rig_identified skeleton=0x265fbac0190 joints=101 adik=2 rTarget=38 rWeight=4 rHand=45 rLimb=40/41/45 lTarget=39 lWeight=5 lHand=72 lLimb=67/68/72
+2026-09-10T00:32:03.454Z preyvr_anim_ik result=0 detail=calibrated hand=1
+2026-09-10T00:32:42.895Z preyvr_xr_session result=0 detail=ui_panel active=1
+2026-09-10T00:32:42.895Z preyvr_xr_session ui_surface angle_degrees=35.000000
+2026-09-10T00:32:46.432Z preyvr_xr_session result=0 detail=ui_panel active=0
+2026-09-10T00:32:47.068Z preyvr_anim_ik result=0 detail=calibration_requested
+2026-09-10T00:32:47.071Z preyvr_anim_ik result=0 detail=rig_identified skeleton=0x265fbac0190 joints=101 adik=2 rTarget=38 rWeight=4 rHand=45 rLimb=40/41/45 lTarget=39 lWeight=5 lHand=72 lLimb=67/68/72
+2026-09-10T00:32:47.071Z preyvr_anim_ik result=0 detail=calibrated hand=1
+2026-09-10T00:32:57.644Z preyvr_anim_ik result=0 detail=calibration_requested
+2026-09-10T00:32:57.655Z preyvr_anim_ik result=0 detail=rig_identified skeleton=0x265fbac0190 joints=101 adik=2 rTarget=38 rWeight=4 rHand=45 rLimb=40/41/45 lTarget=39 lWeight=5 lHand=72 lLimb=67/68/72
+2026-09-10T00:32:57.655Z preyvr_anim_ik result=0 detail=calibrated hand=1
+2026-09-10T00:33:02.110Z preyvr_anim_ik result=0 detail=rig_identified skeleton=0x265fbac0190 joints=101 adik=2 rTarget=38 rWeight=4 rHand=45 rLimb=40/41/45 lTarget=39 lWeight=5 lHand=72 lLimb=67/68/72
+2026-09-10T00:33:02.113Z preyvr_anim_ik result=0 detail=calibration_requested
+2026-09-10T00:33:02.133Z preyvr_anim_ik result=0 detail=calibrated hand=1
+2026-09-10T00:33:20.977Z preyvr_xr_session result=0 detail=ui_panel active=1
+2026-09-10T00:33:20.977Z preyvr_xr_session ui_surface angle_degrees=35.000000
+2026-09-10T00:33:26.438Z preyvr_xr_session result=0 detail=ui_panel active=0
+2026-09-10T00:33:49.520Z preyvr_xr_session result=0 detail=ui_panel active=1
+2026-09-10T00:33:49.520Z preyvr_xr_session ui_surface angle_degrees=35.000000
+2026-09-10T00:35:34.751Z preyvr_report smoke=n/a observerFrames=38375 xrSession=1 xrFrames=26619 fovAgreed=18057 fovDiverged=0 projectionPolicy=prey_native cameraEdit=2 lastEye=1 viewObserved=23961 viewApplied=23961 viewPoseFallback=1 posApplied=23961 posRefused=0 posOffsetMm=155 nearApplied=2724945 nearRefused=0 nearNoEye=0 nearReentered=0 nearAlreadyOffset=0 nearNoProvenance=71068 eyeLookupMiss=71068 nearDeltaUm=31629 handMatched=0 handSkipped=0 handApplied=0 handRefused=0 handSubtree=0 handRightMm=0 handLeftMm=0 handNoPose=0 handJoints=0 handMode=0 handDriveArmed=0 handCalibrated=0 handRightJoint=-1 handLeftJoint=-1 handWristArmed=0 handWristApplied=0 handTurnYaw=0 ikMode=2 ikHooked=1 ikOwner=0x26614c32500 ikEquipGen=9 ikPoseSeq=22996 ikNoOwner=331 ikBusy=1 ikCalls=156330 ikMatched=17378 ikRig=0x265fbac0190 ikJoints=101 ikGate=1 ikCvar=1 ikTargetR=38 ikWeightR=4 ikLimbEndR=45 ikLimbTagR=0x4b494232 ikTargetL=39 ikWeightL=5 ikLimbEndL=72 ikWrittenR=11678 ikWrittenL=11071 ikNoPose=12007 ikClamped=2796 ikReach=65 ikCalR=0 ikCalL=1 ikLocMm=321263,740924,480000 ikLocYawMdeg=-171484 ikGoalMm=241,255,1400 handZeroRightMm=0,0,0 handWorldRightMm=0,0,0 handCalibYawMdeg=0 handLastYawMdeg=0 handLastCharacter=0x0 weaponAttachment=0x266068764f0 weaponBone=47 weaponSim=0x0 muzzleHooked=1 muzzleSamples=3 muzzleSampleOwnerCurrent=0 muzzleAgeMs=165334 muzzleEquipGen=7 muzzlePoseSeq=19387 muzzlePoseAgeMs=37 muzzleFallback=0 muzzleWorld=314.507,743.737,480.285 muzzleAimGapMm=352.161 muzzleGripGapMm=440.876 aimOriginApplied=0 aimSamples=13232 aimOriginMode=0 aimMuzzleApplied=0 aimMuzzleUnavailable=0 barrelCalibrations=0 barrelOffsetMm=0,0,0 reticleApplied=13201 reticleOffScreen=513 reticleXY=526,770 reticleCanvasXY=578,1309 reticleCanvasMode=1 reticleNativeCanvas=0 reticleNativeCanvasFailed=0 reticleDispatched=13201 reticleDispatchFailed=0 reticleProjection=stale rpIndex=13201 rpStampNs=774784185496700 rpAgeNs=108258051500 rpContext=1 rpSeq=22996 rpEpoch=11650 rpRef=10 rpDisplayTime=774784211680977 rpPlayYaw=3.09973001 rpHeadPos=-0.0347587839,0.0310298204,-0.119853951 rpHeadQ=-0.198147431,0.0201718453,-0.0679251105,-0.977607787 rpRawPos=0.0956901163,-0.41203177,-0.603812635 rpRawQ=-0.0664841905,-0.0550672375,0.450148314,0.888771057 rpOrigin=321.274109,740.560486,481.718933 rpDir=-0.19882825,-0.977630377,-0.0686015934 rpCamera=-0.986314297,-0.0510410368,0.156777903,321.26532,0.107730702,-0.919330955,0.378450781,740.672974,0.124814235,0.390161127,0.912247598,481.72641 rpTans=-1.73205078,1.73205078,-0.974278569,0.974278569 rpDistance=10 rpRawXY=0.52590251,0.769521773 rpXY=0.52590251,0.769521773 rpClamped=0 rpDispatch=1 rpDispatchResults=0,0 aimDirMilli=-198,-977,-68 aimRawQMilli=-66,-55,450 recenters=4 reticleOriginMm=113 reticleConvergeMm=10000 hudElement=0x26581d27920 hudCalls=26402 hudRefused=0 captures=0 aimBodyYaw=1 camYawMdeg=166575 headYawMdeg=-21493 playYawMdeg=188068 eyeMm=321281,740429,481763 headMm=12,69,-86 yawHeld=1 yawUnavailable=0 weaponMountMm=551,89,1058 weaponApplied=0 weaponRefused=0 weaponRotApplied=0 weaponRotNoPose=0 weaponRotDrive=0 weaponRotCalib=0 weaponBaseline=1 weaponAimUsable=0 aimApplied=13232 aimNoPose=10734 aimNoPlayer=0 aimCompose=0 aimNativeMagMilli=1000 frameCaptures=0 frameTracked=0 frameOverrideApplied=0 frameOverrideRefused=0 menuActions=14 inputPosted=4142 moveMode=2 moveHooked=1 moveOursX=972 moveOursY=828 moveNative=0 movePosted=1802 moveDropped=0 moveInputObj=0x265819d7e10 moveAxisMilli=0,0 moveCinematic=0 turnEnabled=1 turnPosted=339 turnRefused=0 fireEnabled=1 firePressed=9 fireReleased=9 fireRefused=0 mirrorFovPct=100 xrSyncs=26624 xrNotFocused=11649 xrLocatedL=15144 xrLocatedR=15479 stickL=0,0 trigL=0 gripL=0,0,0 gripLok=0 stickR=0,0 trigR=0 gripR=0,0,0 gripRok=0 inputDropped=0 inputDrainThread=71796 channelProcessed=1 channelRejected=0
+2026-09-10T00:36:31.025Z preyvr_camera_edit result=0 detail=stereo_disarmed
+2026-09-10T00:36:31.025Z preyvr_head_tracking result=0 detail=view_applying value=0
+2026-09-10T00:36:31.025Z preyvr_view_hook result=0 detail=position_applying value=0
+2026-09-10T00:36:31.025Z preyvr_near_stereo result=0 detail=enabled value=0
+2026-09-10T00:36:31.025Z preyvr_near_fov result=0 detail=setting_accepted
+2026-09-10T00:36:31.025Z preyvr_reticle result=0 detail=enabled value=0
+2026-09-10T00:36:31.025Z preyvr_aim_takeover result=0 detail=enabled value=0
+2026-09-10T00:36:31.025Z preyvr_anim_ik result=0 detail=controller_drive value=0
+2026-09-10T00:36:31.025Z preyvr_anim_ik result=0 detail=mode value=0
+2026-09-10T00:36:31.025Z preyvr_xr_input result=0 detail=menu_navigation value=0
+2026-09-10T00:36:31.025Z preyvr_move result=0 detail=mode value=0
+2026-09-10T00:36:31.025Z preyvr_move result=0 detail=turn value=0
+2026-09-10T00:36:31.025Z preyvr_move result=0 detail=fire value=0
+2026-09-10T00:36:31.025Z preyvr_vr state=off
+2026-09-10T00:36:31.051Z preyvr_xr_session result=0 detail=torn_down

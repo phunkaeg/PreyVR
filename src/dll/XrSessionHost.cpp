@@ -9,6 +9,12 @@
 #include "CameraEditHook.h"
 #include "HeadTrackingHook.h"
 #include "XrInput.h"
+#include "HudBridge.h"
+#include "UiGuide.h"
+#include "UiPointer.h"
+#include "HudLayer.h"
+#include "preyvr/UiPanel.h"
+#include "preyvr/LatestSnapshot.h"
 #include "preyvr/StereoCamera.h"
 #include "preyvr/StereoFrame.h"
 #include "preyvr/XrSwapchainFormat.h"
@@ -28,6 +34,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstring>
 #include <optional>
 #include <span>
 #include <chrono>
@@ -54,7 +61,14 @@ std::timed_mutex gMutex;
 constexpr auto kControlLockTimeout = std::chrono::milliseconds(250);
 std::atomic<DWORD> gStatus{static_cast<DWORD>(XrSessionStatus::idle)};
 std::atomic<bool> gStopRequested{false};
+std::atomic<bool> gStopAcknowledged{false};
 std::atomic<unsigned long long> gSubmitted{0};
+std::atomic<unsigned int> gUiPanelMode{0};
+std::atomic<unsigned long long> gUiPanelFrames{0};
+std::atomic<unsigned int> gUiCurveDegrees{35};
+std::atomic<float> gRuntimeIpd{0};
+struct BackbufferSample { unsigned width=0,height=0; std::uint64_t changed=0,stamp=0; unsigned frames=0; };
+LatestSnapshot<BackbufferSample> gBackbufferSample;
 
 struct Host {
     XrInstance instance = XR_NULL_HANDLE;
@@ -62,6 +76,13 @@ struct Host {
     XrSession session = XR_NULL_HANDLE;
     XrSpace space = XR_NULL_HANDLE;
     XrSwapchain swapchain = XR_NULL_HANDLE;
+    XrSwapchain guideSwapchain = XR_NULL_HANDLE;
+    XrSwapchain pointerSwapchain = XR_NULL_HANDLE;
+    bool pointerReady=false,pointerAttempted=false,cylinderSupported=false;
+    XrSwapchain hudSwapchain = XR_NULL_HANDLE;
+    std::vector<XrSwapchainImageD3D11KHR> hudImages;
+    D3D11_TEXTURE2D_DESC hudDesc{};
+    bool guideReady = false, guideAttempted = false;
     std::vector<ID3D11Texture2D*> images;
 
     ID3D11Device* device = nullptr;   // Prey's, borrowed -- never released here
@@ -85,6 +106,12 @@ struct Host {
     std::uint32_t height = 0;
     bool sessionBegun = false;
     bool started = false;
+    std::optional<ui::Panel> menuPanel;
+    std::optional<ui::Panel> guidePanel;
+    unsigned long long panelReference = 0;
+    bool panelWasActive = false;
+    float panelAngle=0;
+    unsigned long long surfaceSerial=0;
 
     // Stereo submission: one held image per eye.
     //
@@ -122,6 +149,13 @@ struct Host {
 };
 
 Host gHost;
+LatestSnapshot<std::array<DWORD,15>> gResolution;
+LatestSnapshot<std::array<XrFovf,2>> gOptics;
+void PublishResolution() {
+    gResolution.Publish({gHost.recommendedWidth,gHost.recommendedHeight,gHost.maxWidth,gHost.maxHeight,
+        gHost.width,gHost.height,gHost.heldWidth,gHost.heldHeight,gHost.submittedWidth,gHost.submittedHeight,
+        gHost.recommendedSamples,gHost.viewsDiffer?1u:0u,gHost.heldFormat,gHost.viewCount,gHost.sizeMismatch?1u:0u});
+}
 
 // Stereo submission, off by default.
 //
@@ -258,9 +292,62 @@ bool EnsureLoaderPresent()
     return LoadLibraryW(kLoader) != nullptr;
 }
 
+void EnsurePointerTexture()
+{
+    if(gHost.pointerAttempted)return;
+    gHost.pointerAttempted=true;
+    std::uint32_t count=0;
+    if(XR_FAILED(xrEnumerateSwapchainFormats(gHost.session,0,&count,nullptr)))return;
+    std::vector<std::int64_t> formats(count);
+    if(XR_FAILED(xrEnumerateSwapchainFormats(gHost.session,count,&count,formats.data())))return;
+    auto format=DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    if(std::find(formats.begin(),formats.end(),format)==formats.end())format=DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+    if(std::find(formats.begin(),formats.end(),format)==formats.end())return;
+    std::array<std::uint8_t,32*32*4> pixels{};
+    for(int y=0;y<32;++y)for(int x=0;x<32;++x) {
+        const float dx=static_cast<float>(x)-15.5f,dy=static_cast<float>(y)-15.5f;
+        const auto alpha=static_cast<std::uint8_t>(std::clamp(14.5f-std::sqrt(dx*dx+dy*dy),0.f,1.f)*255);
+        const auto offset=static_cast<std::size_t>((y*32+x)*4);
+        pixels[offset]=format==DXGI_FORMAT_R8G8B8A8_UNORM_SRGB?90:255;
+        pixels[offset+1]=235;pixels[offset+2]=format==DXGI_FORMAT_R8G8B8A8_UNORM_SRGB?255:90;pixels[offset+3]=alpha;
+    }
+    XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};
+    create.createFlags=XR_SWAPCHAIN_CREATE_STATIC_IMAGE_BIT;
+    create.usageFlags=XR_SWAPCHAIN_USAGE_SAMPLED_BIT|XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+    create.format=format;create.sampleCount=1;create.width=32;create.height=32;
+    create.faceCount=1;create.arraySize=1;create.mipCount=1;
+    if(XR_FAILED(xrCreateSwapchain(gHost.session,&create,&gHost.pointerSwapchain)))return;
+    if(XR_FAILED(xrEnumerateSwapchainImages(gHost.pointerSwapchain,0,&count,nullptr)))return;
+    std::vector<XrSwapchainImageD3D11KHR> images(count,{XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
+    if(XR_FAILED(xrEnumerateSwapchainImages(gHost.pointerSwapchain,count,&count,
+        reinterpret_cast<XrSwapchainImageBaseHeader*>(images.data()))))return;
+    XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+    XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};wait.timeout=XR_INFINITE_DURATION;
+    std::uint32_t index=0;
+    if(XR_FAILED(xrAcquireSwapchainImage(gHost.pointerSwapchain,&acquire,&index)))return;
+    if(XR_FAILED(xrWaitSwapchainImage(gHost.pointerSwapchain,&wait))){gStopRequested.store(true);return;}
+    if(index<images.size()) {
+        ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+        if(context){context->UpdateSubresource(images[index].texture,0,nullptr,pixels.data(),32*4,0);context->Release();gHost.pointerReady=true;}
+    }
+    XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+    if(XR_FAILED(xrReleaseSwapchainImage(gHost.pointerSwapchain,&release)))gHost.pointerReady=false;
+    Log(std::string("ui_pointer texture_ready=")+(gHost.pointerReady?"1":"0"));
+}
+
 bool CreateInstanceAndSystem()
 {
-    const char* enabled[] = {XR_KHR_D3D11_ENABLE_EXTENSION_NAME};
+    std::vector<const char*> enabled{XR_KHR_D3D11_ENABLE_EXTENSION_NAME};
+    std::uint32_t extensionCount=0;
+    if(XR_SUCCEEDED(xrEnumerateInstanceExtensionProperties(nullptr,0,&extensionCount,nullptr))) {
+        std::vector<XrExtensionProperties> extensions(extensionCount,{XR_TYPE_EXTENSION_PROPERTIES});
+        if(XR_SUCCEEDED(xrEnumerateInstanceExtensionProperties(nullptr,extensionCount,&extensionCount,extensions.data())))
+            for(const auto& extension:extensions)
+                if(std::strcmp(extension.extensionName,XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME)==0) {
+                    enabled.push_back(XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME);gHost.cylinderSupported=true;
+                }
+    }
+    Log(std::string("ui_cylinder supported=")+(gHost.cylinderSupported?"1":"0 flat_fallback=1"));
     // Newest-first with a fallback: xr-sim accepts 1.1, VirtualDesktopXR does not
     // (F-010). One build has to work against both.
     const XrVersion candidates[] = {XR_CURRENT_API_VERSION, XR_API_VERSION_1_0};
@@ -268,8 +355,8 @@ bool CreateInstanceAndSystem()
     XrResult result = XR_ERROR_RUNTIME_FAILURE;
     for (const XrVersion candidate : candidates) {
         XrInstanceCreateInfo info{XR_TYPE_INSTANCE_CREATE_INFO};
-        info.enabledExtensionCount = 1;
-        info.enabledExtensionNames = enabled;
+        info.enabledExtensionCount = static_cast<std::uint32_t>(enabled.size());
+        info.enabledExtensionNames = enabled.data();
         std::snprintf(info.applicationInfo.applicationName,
                       sizeof(info.applicationInfo.applicationName), "PreyVR");
         std::snprintf(info.applicationInfo.engineName,
@@ -490,11 +577,15 @@ bool CreateSessionAndSwapchain()
          << " format=" << choice->format << " arraySize=2 images=" << imageCount
          << " colour_conversion=" << (xrswapchain::InvolvesColourConversion(*choice) ? "yes" : "no");
     Log(line.str());
+    PublishResolution();
     return true;
 }
 
 void Teardown()
 {
+    gResolution.Clear();
+    gOptics.Clear();
+    SetHudLayerPresentation(false);
     DestroyXrInput();
     for (auto*& image : gHost.eyeImage) {
         if (image != nullptr) {
@@ -502,6 +593,10 @@ void Teardown()
             image = nullptr;
         }
     }
+    if (gHost.guideSwapchain) xrDestroySwapchain(gHost.guideSwapchain);
+    if (gHost.pointerSwapchain) xrDestroySwapchain(gHost.pointerSwapchain);
+    ClearUiPointer();
+    if (gHost.hudSwapchain) xrDestroySwapchain(gHost.hudSwapchain);
     if (gHost.swapchain) xrDestroySwapchain(gHost.swapchain);
     if (gHost.space) xrDestroySpace(gHost.space);
     if (gHost.session) xrDestroySession(gHost.session);
@@ -668,10 +763,8 @@ std::optional<XrFovf> DeclaredFovFromLiveCamera()
 //
 // Prey renders one eye at a time, so the backbuffer is only ever half of a
 // stereo pair. This keeps the other half from the last time that eye was on
-// screen. Eye identity comes from *asking* -- the eye lock is held for several
-// frames and only then is the image taken -- rather than from reading back which
-// eye the engine thinks it drew, which cannot be trusted across the engine's
-// game and render threads.
+// screen. The frame service consumes one eye label at every renderer frame,
+// including menu/flat/skipped XR frames, and passes that label with this buffer.
 //
 // Returns false until both eyes have been seen at least once. Submitting a pair
 // with one empty half would show a black eye, which reads as a broken headset
@@ -682,7 +775,7 @@ bool SubmitStereoPair(
     std::uint32_t imageIndex,
     const XrView* views,
     const std::optional<XrFovf>& declaredFov,
-    XrTime displayTime)
+    XrTime displayTime, int renderedEye)
 {
     D3D11_TEXTURE2D_DESC desc{};
     backBuffer->GetDesc(&desc);
@@ -714,7 +807,7 @@ bool SubmitStereoPair(
     // -1 means the game thread has not published yet -- starting up, or the
     // render thread ran ahead. Hold the existing pair for a frame rather than
     // copying a backbuffer whose eye is unknown, which would be a coin flip.
-    const int eye = dll::ConsumeRenderedEye();
+    const int eye = renderedEye;
     if (eye == 0 || eye == 1) {
         const int target = gSwapEyes.load(std::memory_order_acquire) ? (1 - eye) : eye;
         context->CopyResource(gHost.eyeImage[target], backBuffer);
@@ -765,7 +858,12 @@ void PumpEvents()
                 gHost.sessionBegun = false;
                 gHost.contract.SetSessionRunning(false);
                 Log("session stopping");
+                gStopRequested.store(true);
+            } else if(changed->state==XR_SESSION_STATE_EXITING || changed->state==XR_SESSION_STATE_LOSS_PENDING) {
+                gStopRequested.store(true);
             }
+        } else if(event.type==XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING) {
+            gStopRequested.store(true);
         }
         event = XrEventDataBuffer{XR_TYPE_EVENT_DATA_BUFFER};
     }
@@ -798,8 +896,9 @@ DWORD SetXrRuntimeManifest(const char* manifestPath)
         Log("result=refused detail=runtime_manifest_path_invalid");
         return static_cast<DWORD>(XrSessionStatus::failed);
     }
-    std::wstring wide(static_cast<std::size_t>(needed - 1), 0);
+    std::wstring wide(static_cast<std::size_t>(needed), 0);
     MultiByteToWideChar(CP_UTF8, 0, manifestPath, -1, wide.data(), needed);
+    wide.resize(static_cast<std::size_t>(needed-1));
 
     // Checked, because a wrong path does not fail -- the loader falls back to the
     // registry runtime and the session runs against something else entirely while
@@ -886,6 +985,7 @@ DWORD StartXrSession()
     // Bring-up is single-threaded on the render thread; see the header.
     gHost.contract.AllowSingleThreaded(true);
     gHost.started = true;
+    gStopAcknowledged.store(false,std::memory_order_release);
     gStopRequested.store(false, std::memory_order_release);
     gStatus.store(static_cast<DWORD>(XrSessionStatus::running), std::memory_order_release);
     Log("result=0 detail=started");
@@ -894,8 +994,14 @@ DWORD StartXrSession()
 
 DWORD StopXrSession()
 {
+    gStopAcknowledged.store(true,std::memory_order_release);
     gStopRequested.store(true, std::memory_order_release);
     return gStatus.load(std::memory_order_acquire);
+}
+
+bool XrSessionLossPending() {
+    return gStopRequested.load(std::memory_order_acquire) &&
+        !gStopAcknowledged.load(std::memory_order_acquire);
 }
 
 DWORD XrSessionStatusValue()
@@ -910,6 +1016,10 @@ unsigned long long XrSubmittedFrameCount()
 
 void ServiceXrFrame(void* renderer)
 {
+    // Renderer-frame obligation, independent of whether XR submits this frame.
+    // Menu/flat paths still build cameras. Leaving their labels queued changed
+    // alternating-eye parity when the backlog was eventually discarded.
+    const int renderedEye = dll::ConsumeRenderedEye();
     if (gStatus.load(std::memory_order_acquire) != static_cast<DWORD>(XrSessionStatus::running)) {
         return; // the hot path
     }
@@ -921,6 +1031,7 @@ void ServiceXrFrame(void* renderer)
     }
 
     if (gStopRequested.load(std::memory_order_acquire)) {
+        if(!gStopAcknowledged.load(std::memory_order_acquire))return;
         // Torn down here rather than in StopXrSession, because the D3D resources
         // belong to this thread.
         Teardown();
@@ -929,6 +1040,11 @@ void ServiceXrFrame(void* renderer)
     }
 
     PumpEvents();
+    if(gStopRequested.load()) {
+        // Preserve the session until the worker has disarmed native camera,
+        // pose and input consumers, then acknowledged StopXrSession.
+        return;
+    }
     if (!gHost.sessionBegun) {
         return;
     }
@@ -1009,6 +1125,15 @@ void ServiceXrFrame(void* renderer)
                        views[1].pose.orientation.z, views[1].pose.orientation.w},
             Vec3{views[1].pose.position.x, views[1].pose.position.y, views[1].pose.position.z}};
         inputHead = stereo::CyclopsPose(left, right);
+        const Vec3 separation{right.position.x-left.position.x,
+                              right.position.y-left.position.y,right.position.z-left.position.z};
+        gRuntimeIpd.store(std::sqrt(separation.x*separation.x + separation.y*separation.y +
+                                   separation.z*separation.z));
+        for (int eye=0;eye<2;++eye) {
+            gHost.requestedFov[eye]=views[eye].fov;
+            gHost.requestedFovValid[eye]=true;
+        }
+        gOptics.Publish({views[0].fov,views[1].fov});
         inputHeadValidity.positionValid = inputHeadValidity.orientationValid = true;
         inputHeadValidity.positionTracked = (viewState.viewStateFlags & XR_VIEW_STATE_POSITION_TRACKED_BIT) != 0;
         inputHeadValidity.orientationTracked = (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_TRACKED_BIT) != 0;
@@ -1025,6 +1150,101 @@ void ServiceXrFrame(void* renderer)
     gHost.contract.OnBegun();
 
     XrCompositionLayerProjectionView projViews[2]{};
+    const auto panelMode=gUiPanelMode.load();
+    // A delayed main-thread poll is unknown, not proof that a menu closed.
+    // Preserve its presentation through a stall; pointer/gameplay input still
+    // requires a fresh modal sample. Otherwise a busy frame flashes projection
+    // and reanchors the screen when the next sample arrives.
+    const bool modalForDisplay=HudMenuStateKnown()?HudMenuIsOpen():gHost.panelWasActive;
+    const bool wantPanel=haveViews && (panelMode==2 ||
+        (panelMode==1 && modalForDisplay));
+    if (wantPanel != gHost.panelWasActive) {
+        gHost.menuPanel.reset();
+        gHost.guidePanel.reset();
+        gHost.eyeImageValid[0]=gHost.eyeImageValid[1]=false;
+        gHost.panelWasActive=wantPanel;
+        Log(std::string("result=0 detail=ui_panel active=")+(wantPanel?"1":"0"));
+    }
+    const auto reference=HeadTrackingReferenceGeneration();
+    const float curve=gHost.cylinderSupported?static_cast<float>(gUiCurveDegrees.load())*.01745329252f:0;
+    if (wantPanel && (!gHost.menuPanel || curve!=gHost.panelAngle || (reference%2==0 && reference!=gHost.panelReference))) {
+        std::array<ui::Eye,2> optical{};
+        for(int eye=0;eye<2;++eye) {
+            const auto& p=views[eye].pose;
+            optical[eye]={Pose{{p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w},
+                                   {p.position.x,p.position.y,p.position.z}},
+                          views[eye].fov.angleLeft,views[eye].fov.angleRight,
+                          views[eye].fov.angleUp,views[eye].fov.angleDown};
+        }
+        const float aspect=static_cast<float>(gHost.width)/static_cast<float>(gHost.height);
+        constexpr float guideRatio=static_cast<float>(kGuideHeight)/kGuideWidth;
+        constexpr float gapRatio=.015f;
+        auto layout=ui::FitPanel(inputHead,optical,1/(1/aspect+guideRatio+gapRatio));
+        if(layout) {
+            gHost.menuPanel.reset();gHost.guidePanel.reset();
+            for(int attempt=0;attempt<80;++attempt) {
+                auto menu=*layout,guide=*layout;
+                menu.height=menu.width/aspect;
+                guide.height=guide.width*guideRatio;
+                const float gap=menu.width*gapRatio;
+                menu.pose=Compose(layout->pose,Pose{{},{0,(guide.height+gap)*.5f,0}});
+                guide.pose=Compose(layout->pose,Pose{{},{0,-(menu.height+gap)*.5f,0}});
+                if(ui::SurfaceVisible({menu,curve},optical)&&ui::SurfaceVisible({guide,0},optical)) {
+                    gHost.menuPanel=menu;gHost.guidePanel=guide;break;
+                }
+                layout->width*=.95f;layout->height*=.95f;
+            }
+        }
+        gHost.panelReference=reference;
+        gHost.panelAngle=curve;
+        ++gHost.surfaceSerial;
+        Log("ui_surface angle_degrees="+std::to_string(curve*57.2957795f));
+    }
+    const bool panelActive=wantPanel && gHost.menuPanel.has_value();
+    if(panelActive && !gHost.guideAttempted) {
+        gHost.guideAttempted=true;
+        std::uint32_t count=0;
+        xrEnumerateSwapchainFormats(gHost.session,0,&count,nullptr);
+        std::vector<std::int64_t> formats(count);
+        xrEnumerateSwapchainFormats(gHost.session,count,&count,formats.data());
+        const std::int64_t format=std::find(formats.begin(),formats.end(),DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)!=formats.end()
+            ? DXGI_FORMAT_B8G8R8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        if(std::find(formats.begin(),formats.end(),format)!=formats.end()) {
+            auto pixels=MakeMenuGuide();
+            if(format==DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
+                for(std::size_t i=0;i<pixels.size();i+=4)std::swap(pixels[i],pixels[i+2]);
+            XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};
+            create.createFlags=XR_SWAPCHAIN_CREATE_STATIC_IMAGE_BIT;
+            create.usageFlags=XR_SWAPCHAIN_USAGE_SAMPLED_BIT|XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+            create.format=format;create.sampleCount=1;create.width=kGuideWidth;create.height=kGuideHeight;
+            create.faceCount=1;create.arraySize=1;create.mipCount=1;
+            if(!pixels.empty() && XR_SUCCEEDED(xrCreateSwapchain(gHost.session,&create,&gHost.guideSwapchain))) {
+                std::uint32_t imageCount=0,index=0;
+                xrEnumerateSwapchainImages(gHost.guideSwapchain,0,&imageCount,nullptr);
+                std::vector<XrSwapchainImageD3D11KHR> images(imageCount,{XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
+                const auto enumerated=xrEnumerateSwapchainImages(gHost.guideSwapchain,imageCount,&imageCount,
+                    reinterpret_cast<XrSwapchainImageBaseHeader*>(images.data()));
+                XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+                if(XR_SUCCEEDED(enumerated) && XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.guideSwapchain,&acquire,&index))) {
+                    XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO}; wait.timeout=XR_INFINITE_DURATION;
+                    const bool waited=XR_SUCCEEDED(xrWaitSwapchainImage(gHost.guideSwapchain,&wait));
+                    if(!waited)gStopRequested.store(true);
+                    if(waited && index<images.size()) {
+                        ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+                        if(context) {
+                            context->UpdateSubresource(images[index].texture,0,nullptr,pixels.data(),kGuideWidth*4,0);
+                            context->Release();gHost.guideReady=true;
+                        }
+                        XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+                        if(XR_FAILED(xrReleaseSwapchainImage(gHost.guideSwapchain,&release)))gHost.guideReady=false;
+                    } else if(waited) {
+                        XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+                        xrReleaseSwapchainImage(gHost.guideSwapchain,&release);
+                    }
+                }
+            }
+        }
+    }
     bool rendered = false;
     bool stereoPair = false;
 
@@ -1066,21 +1286,22 @@ void ServiceXrFrame(void* renderer)
                 timing ? preyvr::timing::MonotonicNanoseconds() : 0;
             const bool gotImage =
                 matchingSize &&
-                XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.swapchain, &acquire, &imageIndex)) &&
-                XR_SUCCEEDED(xrWaitSwapchainImage(gHost.swapchain, &waitImage));
+                XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.swapchain, &acquire, &imageIndex));
+            const bool imageWaited=gotImage && XR_SUCCEEDED(xrWaitSwapchainImage(gHost.swapchain,&waitImage));
+            if(gotImage && !imageWaited)gStopRequested.store(true);
             if (timing && matchingSize) {
                 gAcquireWait.AddNanoseconds(
                     preyvr::timing::MonotonicNanoseconds() - acquireStart);
             }
-            if (gotImage && imageIndex < gHost.images.size()) {
+            if (imageWaited && imageIndex < gHost.images.size()) {
                 ID3D11DeviceContext* context = nullptr;
                 gHost.device->GetImmediateContext(&context);
                 if (context != nullptr) {
-                    if (gStereoSubmission.load(std::memory_order_acquire)) {
+                    if (gStereoSubmission.load(std::memory_order_acquire) && !panelActive) {
                         stereoPair = SubmitStereoPair(
                             context, backBuffer, imageIndex,
                             views, DeclaredFovFromLiveCamera(),
-                            frameState.predictedDisplayTime);
+                            frameState.predictedDisplayTime, renderedEye);
                     } else {
                         // First light is a **flat mirror**: the same backbuffer
                         // into both eyes. It proves the whole path -- device,
@@ -1094,10 +1315,11 @@ void ServiceXrFrame(void* renderer)
                                 0, 0, 0, backBuffer, 0, nullptr);
                         }
                     }
+                    rendered=panelActive || !gStereoSubmission.load() || stereoPair;
                     context->Release();
                 }
                 XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-                xrReleaseSwapchainImage(gHost.swapchain, &release);
+                if(XR_FAILED(xrReleaseSwapchainImage(gHost.swapchain,&release))) {rendered=false;gStopRequested.store(true);}
 
                 // **What FOV to declare, and why it is not the runtime's.**
                 //
@@ -1147,7 +1369,9 @@ void ServiceXrFrame(void* renderer)
                         static_cast<std::int32_t>(gHost.width),
                         static_cast<std::int32_t>(gHost.height)};
                 }
-                rendered = true;
+            } else if(imageWaited) {
+                XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+                xrReleaseSwapchainImage(gHost.swapchain,&release);gStopRequested.store(true);
             }
             backBuffer->Release();
         }
@@ -1157,30 +1381,214 @@ void ServiceXrFrame(void* renderer)
     layer.space = gHost.space;
     layer.viewCount = 2;
     layer.views = projViews;
-    const XrCompositionLayerBaseHeader* layers[] = {
-        reinterpret_cast<const XrCompositionLayerBaseHeader*>(&layer)};
+    XrCompositionLayerQuad panelLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    if (panelActive) {
+        const auto& p=*gHost.menuPanel;
+        panelLayer.space=gHost.space;
+        panelLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+        panelLayer.pose={{p.pose.orientation.x,p.pose.orientation.y,p.pose.orientation.z,p.pose.orientation.w},
+                         {p.pose.position.x,p.pose.position.y,p.pose.position.z}};
+        panelLayer.size={p.width,p.height};
+        panelLayer.subImage.swapchain=gHost.swapchain;
+        panelLayer.subImage.imageArrayIndex=0;
+        panelLayer.subImage.imageRect={{0,0},{static_cast<int>(gHost.width),static_cast<int>(gHost.height)}};
+    }
+    XrCompositionLayerQuad guideLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    XrCompositionLayerCylinderKHR cylinderLayer{XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR};
+    ui::Surface surface{};
+    if(panelActive) {
+        surface={*gHost.menuPanel,gHost.panelAngle};
+        if(gHost.panelAngle>0) {
+            const auto axis=ui::CylinderAxis(surface);
+            cylinderLayer.space=panelLayer.space;cylinderLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+            cylinderLayer.subImage=panelLayer.subImage;
+            cylinderLayer.pose={{axis.orientation.x,axis.orientation.y,axis.orientation.z,axis.orientation.w},
+                {axis.position.x,axis.position.y,axis.position.z}};
+            cylinderLayer.radius=surface.panel.width/surface.angle;
+            cylinderLayer.centralAngle=surface.angle;
+            cylinderLayer.aspectRatio=surface.panel.width/surface.panel.height;
+        }
+        if(rendered)EnsurePointerTexture();
+    }
+    const auto pointer=PublishUiPointer(panelActive&&rendered&&gHost.pointerReady?&surface:nullptr,
+        gHost.width,gHost.height,gHost.surfaceSerial);
+    XrCompositionLayerQuad cursorLayer{XR_TYPE_COMPOSITION_LAYER_QUAD},beamLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    const bool cursorActive=pointer.active&&pointer.hit&&pointer.hit->inside;
+    bool beamActive=false;
+    auto pointerLayer=[&](XrCompositionLayerQuad& target,const Pose& pose,float width,float height) {
+        target.space=gHost.space;target.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+        target.layerFlags=XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT|XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT;
+        target.pose={{pose.orientation.x,pose.orientation.y,pose.orientation.z,pose.orientation.w},
+            {pose.position.x,pose.position.y,pose.position.z}};
+        target.size={width,height};target.subImage.swapchain=gHost.pointerSwapchain;
+        target.subImage.imageRect={{0,0},{32,32}};
+    };
+    if(cursorActive) {
+        const auto& hit=*pointer.hit;
+        const auto point=Compose(ui::SurfacePoint(surface,hit.u,hit.v),Pose{{},{0,0,.002f}});
+        const float size=pointer.pressed?.020f:.013f;
+        pointerLayer(cursorLayer,point,size,size);
+    }
+    if(pointer.active) {
+        const float length=cursorActive?pointer.hit->distance:.65f;
+        const auto y=Rotate(pointer.aim.orientation,{0,0,-1});
+        const Vec3 centre{pointer.aim.position.x+y.x*length*.5f,pointer.aim.position.y+y.y*length*.5f,
+            pointer.aim.position.z+y.z*length*.5f};
+        const Vec3 toHead{inputHead.position.x-centre.x,inputHead.position.y-centre.y,inputHead.position.z-centre.z};
+        Vec3 x{y.y*toHead.z-y.z*toHead.y,y.z*toHead.x-y.x*toHead.z,y.x*toHead.y-y.y*toHead.x};
+        const float norm=std::sqrt(x.x*x.x+x.y*x.y+x.z*x.z);
+        if(norm>.0001f) {
+            x={x.x/norm,x.y/norm,x.z/norm};
+            const Vec3 z{x.y*y.z-x.z*y.y,x.z*y.x-x.x*y.z,x.x*y.y-x.y*y.x};
+            pointerLayer(beamLayer,Pose{stereo::QuaternionFromBasis(x,y,z),centre},.002f,length);
+            beamLayer.subImage.imageRect={{15,15},{1,1}};
+            beamActive=true;
+        }
+    }
+    const bool guideActive=panelActive && gHost.guideReady && gHost.guidePanel.has_value();
+    if(guideActive) {
+        const auto& p=*gHost.guidePanel;
+        guideLayer.space=gHost.space;guideLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+        guideLayer.layerFlags=0; // Opaque instruction card.
+        guideLayer.pose={{p.pose.orientation.x,p.pose.orientation.y,p.pose.orientation.z,p.pose.orientation.w},
+                         {p.pose.position.x,p.pose.position.y,p.pose.position.z}};
+        guideLayer.size={p.width,p.height};
+        guideLayer.subImage.swapchain=gHost.guideSwapchain;
+        guideLayer.subImage.imageRect={{0,0},{kGuideWidth,kGuideHeight}};
+    }
+    XrCompositionLayerQuad hudLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    bool hudActive=false;
+    if(rendered && haveViews && !panelActive && HudLayerEnabled()) {
+        auto captured=HudLayerTexture();
+        if(captured) {
+            D3D11_TEXTURE2D_DESC desc{};captured->GetDesc(&desc);
+            if(gHost.hudSwapchain && (desc.Width!=gHost.hudDesc.Width || desc.Height!=gHost.hudDesc.Height || desc.Format!=gHost.hudDesc.Format)) {
+                xrDestroySwapchain(gHost.hudSwapchain);gHost.hudSwapchain=XR_NULL_HANDLE;gHost.hudImages.clear();
+            }
+            if(!gHost.hudSwapchain) {
+                XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};
+                create.usageFlags=XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT|XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+                create.format=desc.Format;create.sampleCount=1;create.width=desc.Width;create.height=desc.Height;
+                create.faceCount=1;create.arraySize=1;create.mipCount=1;
+                if(XR_SUCCEEDED(xrCreateSwapchain(gHost.session,&create,&gHost.hudSwapchain))) {
+                    gHost.hudDesc=desc;
+                    std::uint32_t count=0;
+                    xrEnumerateSwapchainImages(gHost.hudSwapchain,0,&count,nullptr);
+                    gHost.hudImages.assign(count,{XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
+                    if(XR_FAILED(xrEnumerateSwapchainImages(gHost.hudSwapchain,count,&count,
+                        reinterpret_cast<XrSwapchainImageBaseHeader*>(gHost.hudImages.data())))) {
+                            gHost.hudImages.clear();RefuseHudLayer("swapchain_images");
+                        }
+                } else {
+                    RefuseHudLayer("swapchain_format_or_allocation");
+                }
+            }
+            if(!gHost.hudImages.empty()) {
+                XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+                XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};wait.timeout=XR_INFINITE_DURATION;
+                std::uint32_t index=0;
+                const bool acquired=XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.hudSwapchain,&acquire,&index));
+                const bool waited=acquired && XR_SUCCEEDED(xrWaitSwapchainImage(gHost.hudSwapchain,&wait));
+                if(acquired && !waited) {gStopRequested.store(true);RefuseHudLayer("image_wait");}
+                if(waited) {
+                    if(index<gHost.hudImages.size()) {
+                        ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+                        if(context) {context->CopyResource(gHost.hudImages[index].texture,captured);context->Release();hudActive=true;}
+                    }
+                    XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+                    if(XR_FAILED(xrReleaseSwapchainImage(gHost.hudSwapchain,&release))) {hudActive=false;RefuseHudLayer("image_release");}
+                }
+            }
+            std::array<ui::Eye,2> optical{};
+            for(int eye=0;eye<2;++eye) {
+                const auto& p=views[eye].pose;
+                optical[eye]={Pose{{p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w},
+                    {p.position.x,p.position.y,p.position.z}},views[eye].fov.angleLeft,views[eye].fov.angleRight,
+                    views[eye].fov.angleUp,views[eye].fov.angleDown};
+            }
+            auto panel=ui::FitPanel(inputHead,optical,static_cast<float>(desc.Width)/desc.Height);
+            hudActive=hudActive && panel.has_value();
+            if(hudActive) {
+                const auto& p=*panel;
+                hudLayer.space=gHost.space;hudLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+                hudLayer.layerFlags=XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+                hudLayer.pose={{p.pose.orientation.x,p.pose.orientation.y,p.pose.orientation.z,p.pose.orientation.w},
+                               {p.pose.position.x,p.pose.position.y,p.pose.position.z}};
+                hudLayer.size={p.width,p.height};hudLayer.subImage.swapchain=gHost.hudSwapchain;
+                hudLayer.subImage.imageRect={{0,0},{static_cast<int>(desc.Width),static_cast<int>(desc.Height)}};
+                SetHudLayerPresentation(true,p.width,p.height,2);
+            }
+        }
+    }
+    if(!hudActive)SetHudLayerPresentation(false);
+    std::vector<const XrCompositionLayerBaseHeader*> layers;
+    if(panelActive)layers.push_back(gHost.panelAngle>0?reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cylinderLayer):
+        reinterpret_cast<const XrCompositionLayerBaseHeader*>(&panelLayer));
+    else layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&layer));
+    if(guideActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&guideLayer));
+    else if(hudActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hudLayer));
+    if(beamActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&beamLayer));
+    if(cursorActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cursorLayer));
 
     XrFrameEndInfo endInfo{XR_TYPE_FRAME_END_INFO};
     endInfo.displayTime = frameState.predictedDisplayTime;
     endInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
-    endInfo.layerCount = rendered ? 1u : 0u;
-    endInfo.layers = rendered ? layers : nullptr;
+    endInfo.layerCount = rendered ? static_cast<std::uint32_t>(layers.size()) : 0;
+    endInfo.layers = rendered ? layers.data() : nullptr;
     const std::uint64_t endStart = timing ? preyvr::timing::MonotonicNanoseconds() : 0;
-    xrEndFrame(gHost.session, &endInfo);
+    const auto endResult=xrEndFrame(gHost.session, &endInfo);
     if (timing) {
         const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
         gEndFrame.AddNanoseconds(now - endStart);
         gServiceTotal.AddNanoseconds(now - serviceStart);
     }
     gHost.contract.OnSubmitted(thread);
+    PublishResolution();
 
-    if (rendered) {
+    if (rendered && XR_SUCCEEDED(endResult)) {
+        if (panelActive) { gUiPanelFrames.fetch_add(1); }
         const unsigned long long count = gSubmitted.fetch_add(1, std::memory_order_relaxed) + 1;
         if (count == 1) {
             Log("result=0 detail=first_frame_submitted");
         }
     }
 }
+
+void ObserveXrBackbuffer(void* renderer)
+{
+    if(!renderer)return;
+    const auto swap=*reinterpret_cast<IDXGISwapChain**>(
+        reinterpret_cast<std::uintptr_t>(renderer)+engine::RendererLayout::swapchain);
+    ID3D11Texture2D* texture=nullptr;
+    if(!swap || FAILED(swap->GetBuffer(0,__uuidof(ID3D11Texture2D),reinterpret_cast<void**>(&texture))))return;
+    D3D11_TEXTURE2D_DESC desc{};texture->GetDesc(&desc);texture->Release();
+    static BackbufferSample sample{}; // frame observer / render thread owns it
+    const auto now=MonotonicNanoseconds();
+    if(sample.width!=desc.Width || sample.height!=desc.Height) {
+        sample={desc.Width,desc.Height,now,now,0};
+    }
+    sample.stamp=now;++sample.frames;gBackbufferSample.Publish(sample);
+}
+bool XrBackbufferReady(unsigned int width,unsigned int height)
+{
+    BackbufferSample s{};
+    const auto now=MonotonicNanoseconds();
+    return gBackbufferSample.TryRead(s) && FreshSample(now,s.stamp) && s.width>0 && s.height>0 &&
+        s.frames>=20 && now>=s.changed && now-s.changed>=1000000000ull &&
+        (!width || width==s.width) && (!height || height==s.height);
+}
+
+DWORD SetUiPanelMode(unsigned int mode) {
+    if(mode>2) return 1;
+    gUiPanelMode.store(mode);if(mode==0)ClearUiPointer();return 0;
+}
+DWORD SetUiCurveDegrees(unsigned int degrees) {
+    if(degrees>60)return ERROR_INVALID_PARAMETER;
+    gUiCurveDegrees.store(degrees);return 0;
+}
+unsigned int UiPanelMode() { return gUiPanelMode.load(); }
+unsigned long long UiPanelFrameCount() { return gUiPanelFrames.load(); }
+float XrRuntimeIpdMetres() { return gRuntimeIpd.load(); }
 
 DWORD SetMirrorFovPercent(unsigned int percent)
 {
@@ -1219,8 +1627,9 @@ bool XrRequestedEyeFov(int eye, float* left, float* right, float* up, float* dow
         up == nullptr || down == nullptr) {
         return false;
     }
-    if (!gHost.requestedFovValid[eye]) { return false; }
-    const XrFovf& fov = gHost.requestedFov[eye];
+    std::array<XrFovf,2> optical{};
+    if (!gOptics.TryRead(optical)) { return false; }
+    const XrFovf& fov = optical[eye];
     if (!(fov.angleRight > fov.angleLeft) || !(fov.angleUp > fov.angleDown)) {
         return false;
     }
@@ -1300,6 +1709,8 @@ std::string XrTimingReport()
 
 std::string XrCoverageReport()
 {
+    std::unique_lock lock(gMutex,std::try_to_lock);
+    if(!lock.owns_lock())return "coverage=busy";
     std::ostringstream out;
     out.imbue(std::locale::classic());
     out << std::setprecision(5);
@@ -1344,24 +1755,8 @@ std::string XrCoverageReport()
 
 DWORD XrResolutionChain(unsigned int field)
 {
-    switch (field) {
-        case 0: return gHost.recommendedWidth;
-        case 1: return gHost.recommendedHeight;
-        case 2: return gHost.maxWidth;
-        case 3: return gHost.maxHeight;
-        case 4: return gHost.width;             // Prey's backbuffer
-        case 5: return gHost.height;
-        case 6: return gHost.heldWidth;         // held eye texture
-        case 7: return gHost.heldHeight;
-        case 8: return gHost.submittedWidth;    // what the compositor is told
-        case 9: return gHost.submittedHeight;
-        case 10: return gHost.recommendedSamples;
-        case 11: return gHost.viewsDiffer ? 1u : 0u;
-        case 12: return gHost.heldFormat;
-        case 13: return gHost.viewCount;
-        case 14: return gHost.sizeMismatch ? 1u : 0u;
-        default: return 0;
-    }
+    std::array<DWORD,15> state{};
+    return field<state.size() && gResolution.TryRead(state)?state[field]:0;
 }
 
 unsigned long long DeclaredFovAgreeCount() { return gFovAgree.load(std::memory_order_relaxed); }

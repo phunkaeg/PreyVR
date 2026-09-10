@@ -29,7 +29,7 @@ New-Item -ItemType Directory -Path $preyvrDir -Force | Out-Null
 #                         PDB bridge we translate *from*, not this project's work,
 #                         and it would swamp every other signal in the graph.
 #   captures/rdc,frames - binary capture payloads
-$excludedPattern = '\\(build|graphify|\.git|\.vs)\\|\\tools\\Chairloader'
+$excludedPattern = '\\(build|graphify|\.git|\.vs|ida_decompile)\\|\\tools\\Chairloader'
 
 function Copy-Staged {
     param(

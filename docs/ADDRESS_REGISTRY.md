@@ -183,7 +183,7 @@ the inherited live identities explicitly referenced in the investigation.
 | R-066 | `PreyDll.dll` | `0x243A658`, `0x243A820` | `C3DEngine`'s cached `IRenderer*` (`SetCamera` at vtable `+0x188`), and the static frozen previous-frame `CCamera` used on the R-063 freeze path | `DAT_18243a658` and `DAT_18243a820` in R-057 | Ghidra decompilation of R-057, 2026-08-29 | reproduced | `0x243A820` is initialised once, thread-safely (`_Init_thread_header`/`_Init_thread_footer` on the guard at `0x243AA60`), from `gEnv->pSystem->GetViewCamera()`. Not yet read live. **Live 2026-08-29:** `0x243A658` read as `0x7FFD16674E80`, equal to `gEnv->pRenderer`, and its vtable `+0x188` resolves to RVA `0xF7FE70` (`IRenderer::SetCamera`). The frozen camera at `0x243A820` is **all zeros** and the init-once guard at `0x243AA60` is `0`, confirming the freeze branch has never executed this session -- which is the positive control for the control-flow reading in R-063, since that static is initialised only inside that branch. |
 | R-067 | `PreyDll.dll` | `0x121D70` | `CCamera::UpdateFrustum()`; rebuilds every cached field a matrix or FOV write invalidates | Prologue `48 8B C4 55 53 48 8D 68 A1 48 81 EC F8 00 00 00 F3 0F 10 59` | Found by decompiling the function `C3DEngine::UpdateRenderingCamera` (R-057) calls immediately after rotating the matrix for `e_CameraRotationSpeed`; the body writes exactly the offsets `CameraLayout` documents as derived state | static-only | **The missing piece for writing a camera correctly.** Rebuilds the eight frustum corners (`+0x7C..+0x108`), the six planes at **`+0x10C`** — matching `CameraLayout::frustumPlanes` — the plane sign/index tables (`+0x16C..+0x1F8`), and the cached position at `+0x230`. Writing a matrix without calling it leaves all of that describing the previous camera. Takes `CCamera*` and touches nothing else, so it is safe to call on a private copy; `CameraEditHook` does exactly that and only then blits. |
 | R-068 | `PreyDll.dll` | `0x11A310` | The orthonormality predicate `CCamera::UpdateFrustum` uses to decide whether to negate its plane normals | Nine cross-product comparisons against `(float* matrix, float epsilon)` | Decompiled 2026-08-30 while building the bounded camera write | static-only | **If this returns false, `UpdateFrustum` negates all six frustum plane normals** — so a denormalising matrix write does not render slightly wrong, it inverts culling. Transcribed verbatim into `preyvr::cameraedit::RotationIsOrthonormal`; paraphrasing it as "each column is the cross product of the other two" flipped a sign on the first attempt. **It also has a hole:** an all-zero matrix satisfies all nine comparisons, since each reduces to `|0 - 0|`. `RotationIsDegenerate` closes it and writes are gated on both. |
-| R-127 | `PreyDll.dll` | `DAT_18224D9C8`, vtable `+0x118`; params builder `0x18124BA90`; second builder `0x18124C9F0` | `IPhysicalWorld::RayWorldIntersection` and its `SRWIParams` layout, on the Steam build | **The call site identifies itself.** `ArkWrenchComponent::GetHits` (`0x1813BD620`) calls `(*(vtable+0x118))(pw, &params, "RayWorldIntersection(Game)", 4)` twice. Only `IPhysicalWorld::RayWorldIntersection` takes a `pNameTag` in that position (defaulting to `RWI_NAME_TAG`), and the four-argument shape `this, &rp, pNameTag, iCaller` matches its declaration exactly. `FUN_18124BA90` memsets `0x70` bytes and fills: `+0x18` origin, `+0x24` direction, `+0x30` objtypes `0x117`, `+0x34` flags `0xF`, `+0x38` hits buffer, `+0x40` nMaxHits `1`, `+0x50` skip count, `+0x58` skip list, `+0x64` `0x400000`. Slot `+0x110` on the same object is the broadphase the melee path uses first; `+0x1D0` is a third query | Static decompile 2026-09-09 on `/Prey/PreyDll.dll`, image base `0x180000000`. **Cross-checked against a live capture:** this function computes its record stride as `/0x50`, and the 2026-07-31 x64dbg capture returned four `0x50`-byte `ray_hit` records from this same call path. Static layout and runtime capture agree without either being derived from the other | static-plus-prior-runtime | **This is the world query the mod has never had, and it unlocks two open problems at once.** Barrel/reticle convergence (what is the crosshair actually over) and weapon-versus-geometry collision both need exactly one scene ray; the reconciliation has been treated as a geometry problem when it was a missing-query problem. **Receiver and slot confirmed by a second consumer:** `Prey_CArkWeaponGetFiringPosition` (`0x181694D6A`), the native weapon-obstruction test, makes the identical call three times — unrelated code path, same global, slot, name tag and `iCaller`. Its builder `0x18124C210` passes objtypes `0x11F` = `ent_all` exactly; the melee builder passes `0x117` = `ent_all` without `ent_living`, and that single differing bit matches each query's purpose (a body blocks a projectile spawn; a character must not read as a wall to a melee sweep that enumerates characters separately). Flags `0xF` = `rwi_stop_at_pierceable` in both, independently matching what Vee's EGS mod passes by name. **Still open:** `+0x64` (always `0x400000`) is unidentified — `rwi_colltype_bit` is 16 so `0x400000 >> 16` is `0x40`, not `geom_colltype_ray`, and `+0x34` already holds the flags. `DAT_18224D9C8` has no located writer in 400 xrefs, so it is not shown to be `gEnv+0x48`; call the global the game uses. |
+| R-127 | `PreyDll.dll` | receiver slot `0x224D9C8`, virtual `+0x118`; builders `0x124BA90` / `0x124C210` | Native scene-ray dispatch and caller parameter blocks | Melee and firing guard pass `this, &params, "RayWorldIntersection(Game)", 4`. Builders zero `0x70` bytes; origin `+0x18`, direction `+0x24`, objtypes `+0x30` = `0x117` / `0x11F`, flags `+0x34` = `0xF`, hits `+0x38`, max hits `+0x40` = 1, skip count `+0x50`, skip list `+0x58`, zero `+0x60` and byte `+0x68`. Melee writes `+0x64=0x400000`; weapon writes **sixth argument OR 0x400000**, and uses a shared hit buffer | Steam native decompile and bytes; 2026-09-09 takeover audit additionally proves CSystem constructor `0xDEF059/0xDEF064` stores environment base `0x224D980` at `this+0x28`, and accessor `0xDF1720` loads that base plus `0x48`: exactly `0x224D9C8`. See [takeover audit](RE-BUILD-TAKEOVER-2026-09-09.md) and its byte verifier | static; prior capture separately attributed | Concrete query implementation, complete output-write layout, filter semantics and caller/thread ownership still need proof before adding a call. Newer CryEngine `SCollisionClass` is a lead for `+0x60/+0x64`, not target proof. Native literal masks are established; the differing bit alone does not prove enum semantics. Historical `0x50`-byte records do not alone establish every write into a new output allocation. A target ray does not repair equip-time rotation capture, and one ray does not cover weapon-volume collision. Supersedes earlier claims of an unidentified environment route, constant weapon mask and a missing-query-only alignment problem. |
 | R-069 | `PreyDll.dll` | `0x2B1C64C`, `CD3D9Renderer+0x95B4` | `r_DrawNearFoV` backing float, and the per-frame copy the renderer actually uses | Registration `LEA R8,[0x182B1C64C]` beside the name string at `0x1CA9470`; latched by `MOVSS [RBX+0x95B4],XMM0` in `CD3D9Renderer::RT_BeginFrame` | Static xref analysis 2026-08-30; live value `54` read through the console on 2026-08-29 | static-only | **Answers the H-005 sub-question: the viewmodel FOV is latched once per frame, not read per draw.** `RT_BeginFrame` is the only reader of the cvar besides the `EF_Query` get/set path at `FUN_180FE1300`. So writing the *cvar* between two eye renders inside one frame cannot give per-eye viewmodel FOV — the latch has already happened. **`CD3D9Renderer+0x95B4` is the actual per-eye lever.** Relevant because the viewmodel renders at `54` degrees against the world's `88`, so it does not share the world's projection and will not follow a per-eye camera on its own. |
 | R-070 | `PreyDll.dll` | n/a (subsystem) | CryEngine's stock action-map input stack is present and unmodified | `CActionMap::*` diagnostic strings at `0x1CBE608..0x1CBEC60`; `Input:ActionMaps:ActionMapManager`, `:ActionMap`, `:ActionFilter`, `:ActionListener` at `0x1CA3120..0x1CA32F0`; `CMouse::Init CreateDirectInputDevice` at `0x1D5CD60`; `i_xinput`, `i_xinput_poll_time`, `i_xinput_deadzone_handling`, `i_forcefeedback`, `i_mouse_*` cvars at `0x1D5E0F8..0x1D5E670` | String and cvar survey 2026-08-30 | static-only | **The route for motion controllers to drive native gameplay rather than a parallel simulation (H-006).** Prey did not replace CryEngine's input layer: actions are named and dispatched through `CActionMapManager`, and named actions including `attack1`, `firemode`, `reload` and `Crouch` are present in the binary. The standard injection seam in this engine is `IInput::PostInputEvent`, which feeds the same pipeline the keyboard and gamepad do, so a synthesised action reaches every consumer that a real button does. **Not yet located:** `gEnv`'s `pInput` slot and the `PostInputEvent` vtable index — both want a live process to confirm rather than a guess. |
 
@@ -2400,3 +2400,69 @@ supplies a 16:9 desktop frame. Anything that only widens the frame buys nothing.
 before `xr.start`. A backbuffer that changes size after the session is built now
 refuses to submit rather than copying mismatched resources, which is what made
 allowlisting them safe.
+
+
+### 2026-09-09 addendum — authored weapon basis / concrete character binding
+
+Native ammo-helper consumer `0x16A29E0` receives `weapon+0x190`, reads the
+helper name at secondary+0x160 (=weapon+0x2F0), calls `0x11A5CF0`, then
+normalizes its Matrix34 +Y column. Later convergence can replace that direction.
+Character binding vtable `0x1CB1328` +0x10 -> `0x334EC0` loads child character
+from binding+8 and tail-calls character +0x198 -> `0x82E760`, which installs
+the attachment world transform as the child character location at +0xA90.
+Character +0x48 -> `0x12EABB0` returns manager at character+0x18. Its vtable
+is `0x1D22110`; pointer array manager+0x20, count array-4 & 0x7fffffff.
+Skeleton default pose absolute array is at skeleton+0x30, proved through
+`0x8BC0E0` -> CPoseData +0x48 -> `0x87C6D0`.
+
+The bone consumer uses stored relative default +0xF8 when projected bit 0x4000
+at attachment+8 is set; otherwise `0x7A2560` derives it from bind and absolute
+default. Always include the extra quaternion at +0x14C. These are read-only
+inputs to the opt-in authored-basis solver, not new native calls. Full target
+identity, limitations, raw bytes and interpretation are in
+[RE-WEAPON-BASIS-ALIGNMENT-2026-09-09.md](RE-WEAPON-BASIS-ALIGNMENT-2026-09-09.md).
+
+### 2026-09-10 addendum — live pose spans and native HUD extraction
+
+CPoseData vtable `0x1D27228` slot +0x48 -> `0x87C6D0`, bytes
+`8B C2 48 6B C0 1C 48 03 41 18 C3`, returns absolute+index*28.
+Count is owner+8; relative/absolute raw slices are +0x10/+0x18.
+The skeleton embedded owner starts at +0x18, so its count is skeleton+0x20
+and absolute slice skeleton+0x30. These slices have no DynArray count prefix.
+Actual joint, attachment-pointer and ADIK descriptor DynArrays retain their
+separate measured prefixes. This corrects the earlier fixture assumption.
+
+CFlashUIElement Render `0x2FEBC0`, primary player +0x58 / vtable `0x1DB56D8`,
+secondary render proxy player+8 / vtable `0x1DB58B8`, reaches native RT callback
+`0xE8C5E0(proxy, release)`. DanielleHUD can redirect that one original draw to
+private colour/stencil targets. Visibility +0x70 getter `0x2FD150` is
+`0F B6 41 70 C3` on the verified Steam binary.
+
+Known weapon presentation policies: wrench vtable `0x1E92F00`, empty ammo helper,
+model-frame alignment; Disruptor vtable `0x1E31290`, use measured `fx_muzzle`
+for presentation rotation rather than the rotated positional `muzzle` helper.
+Skin name getter: vtable `0x1D1EDA8`, +0x10 -> `0xE92610` reads name +0x18.
+Bone name getter: vtable `0x1D212B8`, +0x10 -> `0x8CE820` reads name +0x10.
+No physics calls or native ammo helper fields changed.
+See [interface report](RE-VR-INTERFACE-2026-09-10.md) for raw evidence and limits.
+
+### 2026-09-10 addendum — controller pointer and examination cursor
+
+CFlashUI primary vtable `0x1CA6898`; hardware-mouse secondary interface at UI+8,
+vtable `0x1CA6008`. Its slot +8 -> `0x2CFCC0(thisSecondary,x,y,event,wheel)`
+subtracts 8 and dispatches through primary +0xE0 -> `0x2CEF30`. Native move,
+left press and left release are hardware event values 0, 1, 2. UI element
++0x300 -> `0x2FF0C0`, player +0x1C0 -> `0xE8C9F0` ScreenToClient, player
++0xF0 -> `0xE8CB20` constructs the GFx event. The native route owns movie
+selection, viewport translation and the retained release receiver. Six concrete
+slots and the guarded prologue match the hashed Steam PE in the new verifier.
+
+CMouse::Init `0x9D45C0` registers key `0x10A` as `maxis_x`. Input-device
+listener `0x182D3A0` selects mouse mode independently of Flash cursor delivery.
+See [pointer report](RE-UI-POINTER-2026-09-10.md) for static and live limits.
+
+Examination cursor update is Steam `0x15ABC40`, called at `0x15850D7` with
+receiver player+0x9B0 and float time step in XMM1. It integrates/clamps cursor
++0x60/+0x64 while receiver+0x98 is 1 and dispatches `reticlePosition`.
+It is not just a transition reset. The donor EGS `0x157EBA0` is not this
+function on Steam. See [examination correction](RE-WORLD-UI-CURSOR-2026-09-10.md).

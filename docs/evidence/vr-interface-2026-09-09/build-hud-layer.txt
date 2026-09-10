@@ -1,0 +1,93 @@
+CMake is re-running because D:/Dev Debug/PreyVR/build/headless/CMakeFiles/generate.stamp is out-of-date.
+  the file 'D:/Dev Debug/PreyVR/CMakeLists.txt'
+  is newer than 'D:/Dev Debug/PreyVR/build/headless/CMakeFiles/generate.stamp.depend'
+  result='-1'
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26200.
+CMake Deprecation Warning at build/headless/_deps/minhook-src/CMakeLists.txt:27 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- EGL disabled
+-- Enabling OpenGL support
+-- Could NOT find Vulkan (missing: Vulkan_LIBRARY Vulkan_INCLUDE_DIR) (found version "")
+-- Could NOT find JsonCpp (missing: JsonCpp_INCLUDE_DIR JsonCpp_LIBRARY) 
+-- Could NOT find glslc, using precompiled .spv files
+-- OpenXR 1.1.60
+-- Found and will use pre-generated xr_generated_dispatch_table.h in source tree
+-- Found and will use pre-generated xr_generated_dispatch_table.c in source tree
+-- Found and will use pre-generated xr_generated_dispatch_table_core.h in source tree
+-- Found and will use pre-generated xr_generated_dispatch_table_core.c in source tree
+-- Found and will use pre-generated xr_generated_loader.hpp in source tree
+-- Found and will use pre-generated xr_generated_loader.cpp in source tree
+-- Configuring done (4.3s)
+-- Generating done (1.7s)
+-- Build files have been written to: D:/Dev Debug/PreyVR/build/headless
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  minhook.vcxproj -> D:\Dev Debug\PreyVR\build\headless\_deps\minhook-build\Release\minhook.x64.lib
+  preyvr_core.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_core.lib
+  preyvr_dll_smoke_host.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_dll_smoke_host.exe
+  preyvr_aim_state_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_aim_state_tests.exe
+  preyvr_dxgi_probe.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_dxgi_probe.exe
+  preyvr_frame_timing_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_frame_timing_tests.exe
+  preyvr_frame_dump_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_frame_dump_tests.exe
+  preyvr_camera_edit_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_camera_edit_tests.exe
+  preyvr_console_policy_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_console_policy_tests.exe
+  preyvr_frame_diff.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_frame_diff.exe
+  preyvr_engine_map_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_engine_map_tests.exe
+  preyvr_engine_map_probe.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_engine_map_probe.exe
+  preyvr_win32_bootstrap.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_win32_bootstrap.lib
+  preyvr_frustum_coverage_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_frustum_coverage_tests.exe
+  preyvr_injector.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_injector.exe
+  preyvr_debug_registers_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_debug_registers_tests.exe
+  preyvr_input_event_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_input_event_tests.exe
+  preyvr_input_queue_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_input_queue_tests.exe
+  preyvr_interaction_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_interaction_query_tests.exe
+  preyvr_anim_ik_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_anim_ik_tests.exe
+  preyvr_locomotion_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_locomotion_tests.exe
+  preyvr_menu_navigator_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_menu_navigator_tests.exe
+  preyvr_motion_controller_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_motion_controller_tests.exe
+  openxr_loader.vcxproj -> D:\Dev Debug\PreyVR\build\headless\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  preyvr_render_frame_table_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_render_frame_table_tests.exe
+  preyvr_ray_probe.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_ray_probe.exe
+  preyvr_runtime_bootstrap_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_runtime_bootstrap_tests.exe
+  preyvr_runtime_snapshot_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_runtime_snapshot_tests.exe
+  preyvr_stereo_camera_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_stereo_camera_tests.exe
+  preyvr_stereo_frame_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_stereo_frame_tests.exe
+  preyvr_weapon_aim_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_weapon_aim_tests.exe
+  preyvr_ui_panel_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_ui_panel_tests.exe
+  preyvr_vr_math_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_vr_math_tests.exe
+  preyvr_weapon_rig_alignment_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_weapon_rig_alignment_tests.exe
+  D:\Dev Debug\PreyVR\build\headless\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  preyvr_near_fov_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_near_fov_tests.exe
+  1 File(s) copied
+  preyvr_wrench_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_wrench_query_tests.exe
+  preyvr_xr_swapchain_format_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_xr_swapchain_format_tests.exe
+  preyvr_xr_frame_contract_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_xr_frame_contract_tests.exe
+  D:\Dev Debug\PreyVR\build\headless\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  preyvr_openxr_preflight_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_openxr_preflight_tests.exe
+  D:\Dev Debug\PreyVR\build\headless\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  preyvr_xr_adapter_probe.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_xr_adapter_probe.exe
+  preyvr_xr_session_probe.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_xr_session_probe.exe
+  HudLayer.cpp
+  MoveLane.cpp
+  CommandChannel.cpp
+D:\Dev Debug\PreyVR\src\dll\CommandChannel.cpp(354,27): error C2065: 'tokens': undeclared identifier [D:\Dev Debug\PreyVR\build\headless\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\src\dll\CommandChannel.cpp(354,20): error C2737: 'result': const object must be initialized [D:\Dev Debug\PreyVR\build\headless\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\src\dll\CommandChannel.cpp(355,39): error C3536: 'result': cannot be used before it is initialized [D:\Dev Debug\PreyVR\build\headless\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\src\dll\CommandChannel.cpp(355,36): error C2088: built-in operator '<<' cannot be applied to an operand of type 'std::basic_ostream<char,std::char_traits<char>>' [D:\Dev Debug\PreyVR\build\headless\preyvr.vcxproj]
+  ReticleFollow.cpp
+  XrInput.cpp
+D:\Dev Debug\PreyVR\src\dll\XrInput.cpp(111,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\headless\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\src\dll\XrInput.cpp(112,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\headless\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\src\dll\XrInput.cpp(134,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\headless\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\src\dll\XrInput.cpp(135,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\headless\preyvr.vcxproj]
+  XrSessionHost.cpp
+  Generating Code...

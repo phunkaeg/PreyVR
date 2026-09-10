@@ -1,0 +1,48 @@
+[02:23:22.915] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[02:23:22.922] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[02:23:22.922] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06
+[02:23:22.922] xrsim: ignoring a command.txt written before this run started
+[02:23:23.006] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[02:23:23.026] xrsim: compositor ready
+[02:23:23.026] xrsim: session state -> IDLE
+[02:23:23.026] xrsim: session created with D3D11 graphics
+[02:23:23.026] xrsim: action set 'preyvr' created
+[02:23:23.026] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[02:23:23.026] xrsim: 15 binding(s) suggested on the index profile, 15 driven
+[02:23:23.027] xrsim: action set(s) attached to the session
+[02:23:23.028] xrsim: swapchain 0 created 2560x1440x2 fmt 29 (3 images)
+[02:23:23.254] xrsim: session state -> READY
+[02:23:23.254] xrsim: session state -> SYNCHRONIZED
+[02:23:23.254] xrsim: session running - the app is now paced by the simulated headset
+[02:23:23.256] xrsim: session state -> VISIBLE
+[02:23:23.277] xrsim: session state -> FOCUSED
+[02:23:23.311] xrsim: swapchain 1 created 2560x1440x1 fmt 28 (3 images)
+[02:23:35.313] xrsim: applied 2 command(s): hand r point 0 0 | btn x press 160
+[02:23:36.152] xrsim: swapchain 2 created 1024x160x1 fmt 91 (3 images)
+[02:23:47.657] xrsim: applied 2 command(s): shot second-retry-inventory-06 | grip l 1
+[02:23:47.732] xrsim: capture written second-retry-inventory-06 (1032x1104)
+[02:24:00.808] xrsim: applied 1 command(s): grip l 0
+[02:24:12.320] xrsim: applied 1 command(s): btn b press 160
+[02:24:31.190] xrsim: applied 1 command(s): btn x press 160
+[02:24:40.965] xrsim: applied 3 command(s): shot held-test-start-06 | stick r 1 0 | trigger r 1
+[02:24:41.038] xrsim: capture written held-test-start-06 (1032x1104)
+[02:24:52.324] xrsim: applied 1 command(s): btn b press 160
+[02:25:10.033] xrsim: applied 1 command(s): shot held-exited-06
+[02:25:10.293] xrsim: capture written held-exited-06 (1032x1104)
+[02:25:26.616] xrsim: applied 2 command(s): stick r center | trigger r 0
+[02:25:47.970] xrsim: applied 1 command(s): btn x press 160
+[02:26:09.467] xrsim: applied 2 command(s): hand r point 30 0 | btn x press 160
+[02:26:19.451] xrsim: applied 1 command(s): btn b press 160
+[02:26:31.289] xrsim: applied 2 command(s): shot gloo-angle-06 | hand r point 0 0
+[02:26:31.546] xrsim: capture written gloo-angle-06 (1032x1104)
+[02:26:48.936] xrsim: applied 2 command(s): shot gloo-forward-06 | btn x press 160
+[02:26:49.191] xrsim: capture written gloo-forward-06 (1032x1104)
+[02:27:29.063] xrsim: applied 3 command(s): shot wrench-selected-06 | hand r point -30 0 | btn x press 160
+[02:27:29.138] xrsim: capture written wrench-selected-06 (1032x1104)
+[02:27:48.976] xrsim: applied 1 command(s): btn b press 160
+[02:28:15.842] xrsim: applied 2 command(s): shot wrench-angle-06 | hand r point 0 0
+[02:28:16.070] xrsim: capture written wrench-angle-06 (1032x1104)
+[02:28:40.436] xrsim: applied 1 command(s): shot wrench-forward-06
+[02:28:40.732] xrsim: capture written wrench-forward-06 (1032x1104)
+[02:29:11.373] xrsim: session torn down
+[02:29:11.373] xrsim: instance destroyed

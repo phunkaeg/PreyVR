@@ -1,0 +1,35 @@
+[00:46:32.946] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[00:46:32.952] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[00:46:32.952] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/vr-interface-2026-09-09/private-live-xrsim
+[00:46:32.952] xrsim: ignoring a command.txt written before this run started
+[00:46:33.020] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[00:46:33.043] xrsim: compositor ready
+[00:46:33.043] xrsim: session state -> IDLE
+[00:46:33.043] xrsim: session created with D3D11 graphics
+[00:46:33.043] xrsim: action set 'preyvr' created
+[00:46:33.043] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[00:46:33.043] xrsim: action set(s) attached to the session
+[00:46:33.043] xrsim: swapchain 0 created 1920x1080x2 fmt 29 (3 images)
+[00:46:33.270] xrsim: session state -> READY
+[00:46:33.270] xrsim: session state -> SYNCHRONIZED
+[00:46:33.270] xrsim: session running - the app is now paced by the simulated headset
+[00:46:33.285] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[00:46:33.286] xrsim: session state -> VISIBLE
+[00:46:33.299] xrsim: session state -> FOCUSED
+[00:46:54.657] xrsim: applied 1 command(s): shot restarted-menu
+[00:46:54.749] xrsim: capture written restarted-menu (1032x1104)
+[00:47:15.637] xrsim: applied 1 command(s): btn a press 160
+[00:47:37.367] xrsim: applied 1 command(s): shot after-continue
+[00:47:50.226] xrsim: capture written after-continue (1032x1104)
+[00:48:15.701] xrsim: applied 1 command(s): shot load-check
+[00:48:15.758] xrsim: capture written load-check (1032x1104)
+[00:48:35.383] xrsim: applied 1 command(s): btn a press 160
+[00:48:46.104] xrsim: applied 1 command(s): shot gameplay-entry
+[00:48:46.441] xrsim: capture written gameplay-entry (1032x1104)
+[00:49:18.065] xrsim: applied 1 command(s): btn x press 160
+[00:50:13.580] xrsim: applied 1 command(s): shot inventory-open
+[00:50:13.658] xrsim: capture written inventory-open (1032x1104)
+[00:51:21.154] xrsim: applied 1 command(s): grip r 1
+[00:51:47.082] xrsim: applied 2 command(s): grip r 0 | shot inventory-next-tab
+[00:51:47.167] xrsim: capture written inventory-next-tab (1032x1104)
+[00:52:01.850] xrsim: applied 1 command(s): btn b press 160

@@ -1,0 +1,53 @@
+{
+  "target": "D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\PreyDll.dll",
+  "sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "image_base": "0x180000000",
+  "machine": "x64",
+  "checks": [
+    {
+      "artifact": "rt-begin-frame-bytes.json",
+      "rva": "0xf7d710",
+      "bytes": 2112,
+      "sha256": "e114ff2c4b7b12c14099364558a4f51735310d5f179f5e2a2b43574e0ecca401"
+    },
+    {
+      "artifact": "system-constructor-bytes.json",
+      "rva": "0xdef000",
+      "bytes": 104,
+      "sha256": "8950956b990d4c05f0b0445294125332c329ca07d42681c3511bbaab6f3a1517"
+    },
+    {
+      "artifact": "weapon-query-builder-bytes.json",
+      "rva": "0x124c210",
+      "bytes": 163,
+      "sha256": "051b2c551bd50942c7479897e93b995b89abc4461982aa19dfc3b61d12c81a7c"
+    },
+    {
+      "artifact": "melee-query-builder-bytes.json",
+      "rva": "0x124ba90",
+      "bytes": 176,
+      "sha256": "319256937d673838fbcd6b9a24915757830017f0ee47facb016397cfa36e1a83"
+    },
+    {
+      "artifact": "physics-accessor-bytes.json",
+      "rva": "0xdf1720",
+      "bytes": 9,
+      "sha256": "3552e219184d7e83363039ab7717cf16e52b28d334cb0b0ee85e74b72dd1e1e1"
+    },
+    {
+      "artifact": "physics-accessor-slot.json",
+      "rva": "0x1d9bbd8",
+      "bytes": 8,
+      "sha256": "0a73a60578c2e8aeba7a624b05019814d8d28ec5f9d6fffa51d08f3f6d90830f"
+    },
+    {
+      "artifact": "renderer-begin-slot.json",
+      "rva": "0x1dd36d0",
+      "bytes": 8,
+      "sha256": "6e8e4c4c8dd53616c934715e4deda569edf94ea9e7eb1e8e05af656464a1f50b"
+    }
+  ],
+  "code_gate": "PASS",
+  "receiver_chain": "PASS",
+  "runtime": "not performed"
+}

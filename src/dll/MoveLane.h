@@ -98,7 +98,8 @@ unsigned long long FireLaneRefused();
 // distinguish it. Only a wearer can.
 DWORD SetInteractionEnabled(unsigned int enabled);
 
-// slot: 0 interact, 1 inventory, 2 jump, 3 crouch. Refuses a key id this build
+// slot: 0 interact, 1 inventory, 2 jump, 3 crouch, 4 weapon wheel (right stick
+// click, native mouse3). Refuses a key id this build
 // has no name for, rather than posting something nothing can consume.
 DWORD SetInteractionBinding(unsigned int slot, int keyId);
 

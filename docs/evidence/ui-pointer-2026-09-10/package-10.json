@@ -1,0 +1,7 @@
+{
+  "dll_sha256": "e7b521ee4e3a0244b237ffeac89f691b39687fef8d0583311413ca52f4713dc6",
+  "zip_sha256": "b29ba6224ef319fd7efb708daa43f56f2323aa8aed95e799f393c372eab86116",
+  "tests": "35/35 offline pass",
+  "runtime": "not run for candidate10",
+  "files_verified": 9
+}

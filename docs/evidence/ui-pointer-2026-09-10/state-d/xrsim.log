@@ -1,0 +1,96 @@
+[09:19:54.692] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[09:19:54.698] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[09:19:54.698] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/ui-pointer-2026-09-10/state-d
+[09:19:54.775] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[09:19:54.798] xrsim: compositor ready
+[09:19:54.798] xrsim: session state -> IDLE
+[09:19:54.798] xrsim: session created with D3D11 graphics
+[09:19:54.798] xrsim: action set 'preyvr' created
+[09:19:54.798] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[09:19:54.798] xrsim: 15 binding(s) suggested on the index profile, 15 driven
+[09:19:54.798] xrsim: action set(s) attached to the session
+[09:19:54.799] xrsim: swapchain 0 created 2560x1440x2 fmt 29 (3 images)
+[09:19:55.038] xrsim: session state -> READY
+[09:19:55.038] xrsim: session state -> SYNCHRONIZED
+[09:19:55.038] xrsim: session running - the app is now paced by the simulated headset
+[09:19:55.042] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[09:19:55.043] xrsim: swapchain 2 created 32x32x1 fmt 29 (3 images)
+[09:19:55.043] xrsim: session state -> VISIBLE
+[09:19:55.069] xrsim: session state -> FOCUSED
+[09:23:29.393] xrsim: applied 2 command(s): btn a press 180 | hand r point 16 13
+[09:24:09.150] xrsim: applied 1 command(s): shot mainmenu-06
+[09:24:09.239] xrsim: capture written mainmenu-06 (1032x1104)
+[09:27:45.418] xrsim: swapchain 3 created 2560x1440x1 fmt 28 (3 images)
+[09:31:29.162] xrsim: applied 1 command(s): btn x press 180
+[09:31:48.934] xrsim: applied 1 command(s): shot inventory-06
+[09:31:49.024] xrsim: capture written inventory-06 (1032x1104)
+[09:33:12.358] xrsim: applied 1 command(s): hand r point 30.690750 18.163052
+[09:33:36.009] xrsim: applied 1 command(s): shot apple-hover-06
+[09:33:36.086] xrsim: capture written apple-hover-06 (1032x1104)
+[09:33:53.555] xrsim: applied 1 command(s): trigger r 1
+[09:34:09.204] xrsim: applied 1 command(s): hand r point 30.690750 12.617923
+[09:34:22.106] xrsim: applied 1 command(s): shot apple-drag-held-06
+[09:34:22.190] xrsim: capture written apple-drag-held-06 (1032x1104)
+[09:34:40.066] xrsim: applied 1 command(s): trigger r 0
+[09:34:55.251] xrsim: applied 1 command(s): shot apple-drag-release-06
+[09:34:55.341] xrsim: capture written apple-drag-release-06 (1032x1104)
+[09:37:24.339] xrsim: applied 2 command(s): btn b press 180 | hand r point 30.690750 18.163052
+[09:37:34.467] xrsim: applied 1 command(s): trigger r 1
+[09:37:45.646] xrsim: applied 1 command(s): hand r point 30.690750 12.617923
+[09:37:55.293] xrsim: applied 1 command(s): trigger r 0
+[09:38:21.780] xrsim: applied 1 command(s): btn x press 180
+[09:38:37.361] xrsim: applied 2 command(s): shot inventory-reopen-06 | hand r point 30.690750 18.163052
+[09:38:37.447] xrsim: capture written inventory-reopen-06 (1032x1104)
+[09:39:48.727] xrsim: applied 1 command(s): hand r point 33.446199 22.845186
+[09:39:50.844] xrsim: applied 1 command(s): trigger r 1
+[09:39:52.958] xrsim: applied 1 command(s): hand r point 30.690750 18.163052
+[09:39:56.047] xrsim: applied 1 command(s): shot repeat-drag-held-06
+[09:39:56.147] xrsim: capture written repeat-drag-held-06 (1032x1104)
+[09:39:59.129] xrsim: applied 1 command(s): trigger r 0
+[09:40:02.191] xrsim: applied 1 command(s): shot repeat-drag-release-06
+[09:40:02.285] xrsim: capture written repeat-drag-release-06 (1032x1104)
+[09:42:24.143] xrsim: applied 1 command(s): hand r point 33.446199 22.845186
+[09:42:26.221] xrsim: applied 1 command(s): hand r point 30.690750 18.163052
+[09:47:42.008] xrsim: applied 1 command(s): hand r point 33.446199 22.845186
+[09:47:44.079] xrsim: applied 1 command(s): trigger r 1
+[09:47:46.175] xrsim: applied 1 command(s): hand r point 30.690750 18.163052
+[09:47:49.262] xrsim: applied 1 command(s): shot repeat-drag-held-06
+[09:47:49.337] xrsim: capture written repeat-drag-held-06 (1032x1104)
+[09:47:52.326] xrsim: applied 1 command(s): trigger r 0
+[09:47:55.399] xrsim: applied 1 command(s): shot repeat-drag-release-06
+[09:47:55.477] xrsim: capture written repeat-drag-release-06 (1032x1104)
+[09:52:07.718] xrsim: applied 1 command(s): hand r point 33.446199 22.845186
+[09:52:09.780] xrsim: applied 1 command(s): trigger r 1
+[09:52:11.862] xrsim: applied 1 command(s): hand r point 30.690750 18.163052
+[09:52:14.926] xrsim: applied 1 command(s): shot repeat-drag-held-06-inventory-process-mouse-06
+[09:52:15.008] xrsim: capture written repeat-drag-held-06-inventory-process-mouse-06 (1032x1104)
+[09:52:17.997] xrsim: applied 1 command(s): trigger r 0
+[09:52:21.059] xrsim: applied 1 command(s): shot repeat-drag-release-06-inventory-process-mouse-06
+[09:52:21.161] xrsim: capture written repeat-drag-release-06-inventory-process-mouse-06 (1032x1104)
+[09:53:41.171] xrsim: applied 1 command(s): hand r point 33.446199 22.845186
+[09:53:42.500] xrsim: applied 1 command(s): trigger r 1
+[09:53:43.826] xrsim: applied 1 command(s): hand r point 33 22
+[09:53:45.179] xrsim: applied 1 command(s): hand r point 32 21
+[09:53:46.511] xrsim: applied 1 command(s): hand r point 31 20
+[09:53:47.820] xrsim: applied 1 command(s): hand r point 30.690750 18.163052
+[09:53:49.935] xrsim: applied 1 command(s): shot continuous-drag-held-06-inventory-continuous-06
+[09:53:50.027] xrsim: capture written continuous-drag-held-06-inventory-continuous-06 (1032x1104)
+[09:53:52.032] xrsim: applied 1 command(s): trigger r 0
+[09:53:54.132] xrsim: applied 1 command(s): shot continuous-drag-release-06-inventory-continuous-06
+[09:53:54.213] xrsim: capture written continuous-drag-release-06-inventory-continuous-06 (1032x1104)
+[09:57:43.745] xrsim: applied 1 command(s): hand r point 30.690750 18.163052
+[09:57:45.086] xrsim: applied 1 command(s): trigger r 1
+[09:57:46.398] xrsim: applied 1 command(s): hand r point 30.690750 17
+[09:57:47.731] xrsim: applied 1 command(s): hand r point 30.690750 15
+[09:57:49.022] xrsim: applied 1 command(s): hand r point 30.690750 12.617923
+[09:57:51.099] xrsim: session state -> VISIBLE
+[09:57:51.101] xrsim: applied 1 command(s): focus lose
+[09:57:54.193] xrsim: session state -> FOCUSED
+[09:57:54.194] xrsim: applied 1 command(s): focus regain
+[09:57:57.230] xrsim: applied 1 command(s): shot focus-regained-held-06-inventory-focus-06
+[09:57:57.324] xrsim: capture written focus-regained-held-06-inventory-focus-06 (1032x1104)
+[09:57:59.284] xrsim: applied 1 command(s): trigger r 0
+[09:58:01.354] xrsim: applied 1 command(s): shot focus-released-06-inventory-focus-06
+[09:58:01.437] xrsim: capture written focus-released-06-inventory-focus-06 (1032x1104)
+[10:00:27.903] xrsim: session torn down
+[10:00:27.903] xrsim: instance destroyed

@@ -150,6 +150,20 @@ void TestConcurrentProducersNeverTearAnEvent()
 
 int main()
 {
+    {
+        EventQueue queue;
+        std::uint8_t pair[kEventSize*2]{};
+        Stamp(pair,1); Stamp(pair+kEventSize,2);
+        std::uint8_t out[kEventSize]{};
+        for(unsigned i=0;i<kQueueCapacity-1;++i) Require(queue.Push(pair),"fill queue leaving one cell");
+        Require(!queue.PushPair(pair),"a tap cannot fit in one cell");
+        for(unsigned i=0;i<kQueueCapacity-1;++i) Require(queue.Pop(out),"drain singles");
+        Require(!queue.Pop(out),"failed pair must leave no orphan press");
+        Require(queue.PushPair(pair),"pair fits across ring wrap");
+        Require(queue.Pop(out) && out[0]==1,"press first");
+        Require(queue.Pop(out) && out[0]==2,"release second");
+        Require(!queue.Pop(out),"exactly two events");
+    }
     TestEmptyAndRoundTrip();
     TestOrderIsPreserved();
     TestFullQueueDropsAndCounts();

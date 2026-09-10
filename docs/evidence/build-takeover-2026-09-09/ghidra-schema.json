@@ -1,0 +1,172 @@
+[
+  {
+    "path": "/decompile_function",
+    "method": "GET",
+    "description": "Decompile function at address to pseudocode. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+    "category": "function",
+    "category_description": "Decompile, rename, prototype, variables, batch rename, create/delete functions",
+    "params": [
+      {
+        "name": "address",
+        "type": "string",
+        "source": "query",
+        "required": true,
+        "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+        "param_type": "address"
+      },
+      {
+        "name": "program",
+        "type": "string",
+        "source": "query",
+        "required": false,
+        "default": "",
+        "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)"
+      },
+      {
+        "name": "timeout",
+        "type": "integer",
+        "source": "query",
+        "required": false,
+        "default": "60",
+        "description": "Decompile timeout in seconds"
+      }
+    ]
+  },
+  {
+    "path": "/disassemble_function",
+    "method": "GET",
+    "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+    "category": "function",
+    "category_description": "Decompile, rename, prototype, variables, batch rename, create/delete functions",
+    "params": [
+      {
+        "name": "address",
+        "type": "string",
+        "source": "query",
+        "required": true,
+        "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+        "param_type": "address"
+      },
+      {
+        "name": "program",
+        "type": "string",
+        "source": "query",
+        "required": false,
+        "default": ""
+      }
+    ]
+  },
+  {
+    "path": "/get_current_program_info",
+    "method": "GET",
+    "description": "Get detailed info about the active program. When multiple programs are open, call this first to confirm which program will receive tool calls that omit the program argument.",
+    "category": "program",
+    "category_description": "Program management, script execution, memory read, bookmarks, save",
+    "params": [
+      {
+        "name": "program",
+        "type": "string",
+        "source": "query",
+        "required": false,
+        "default": "",
+        "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)"
+      }
+    ]
+  },
+  {
+    "path": "/get_program_options",
+    "method": "GET",
+    "description": "Read all options in a program option group with types, current values, defaults, and descriptions. Use list_option_groups to discover group names.",
+    "category": "program",
+    "category_description": "Program management, script execution, memory read, bookmarks, save",
+    "params": [
+      {
+        "name": "group",
+        "type": "string",
+        "source": "query",
+        "required": true,
+        "description": "Option group name from list_option_groups (e.g. 'Program Information', 'Analyzers')."
+      },
+      {
+        "name": "program",
+        "type": "string",
+        "source": "query",
+        "required": false,
+        "default": "",
+        "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)"
+      }
+    ]
+  },
+  {
+    "path": "/get_xrefs_to",
+    "method": "GET",
+    "description": "Get cross-references to an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+    "category": "xref",
+    "category_description": "Cross-references, call graphs, incoming/outgoing calls, data refs",
+    "params": [
+      {
+        "name": "address",
+        "type": "string",
+        "source": "query",
+        "required": true,
+        "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+        "param_type": "address"
+      },
+      {
+        "name": "offset",
+        "type": "integer",
+        "source": "query",
+        "required": false,
+        "default": "0"
+      },
+      {
+        "name": "limit",
+        "type": "integer",
+        "source": "query",
+        "required": false,
+        "default": "100"
+      },
+      {
+        "name": "program",
+        "type": "string",
+        "source": "query",
+        "required": false,
+        "default": "",
+        "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)"
+      }
+    ]
+  },
+  {
+    "path": "/read_memory",
+    "method": "GET",
+    "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+    "category": "program",
+    "category_description": "Program management, script execution, memory read, bookmarks, save",
+    "params": [
+      {
+        "name": "address",
+        "type": "string",
+        "source": "query",
+        "required": true,
+        "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+        "param_type": "address"
+      },
+      {
+        "name": "length",
+        "type": "integer",
+        "source": "query",
+        "required": false,
+        "default": "16",
+        "description": "Number of bytes"
+      },
+      {
+        "name": "program",
+        "type": "string",
+        "source": "query",
+        "required": false,
+        "default": "",
+        "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)"
+      }
+    ]
+  }
+]

@@ -1,0 +1,94 @@
+[
+  {
+    "type": "send",
+    "payload": {
+      "weapon": "0x21dfa0c62f0",
+      "vtable": "0x1e92f00",
+      "mount": "0x21e05ca2460",
+      "helperNamePointer": "0x7ffd2d17d03c"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "weapon": "0x21dfa0c62f0",
+      "vtable": "0x1e92f00",
+      "mount": "0x21e05ca2460",
+      "weaponCharacter": "0x21e49752010",
+      "managerVtable": "0x1d22110",
+      "managerOwner": "0x21e49752010",
+      "helperNamePointer": "0x7ffd2d17d03c",
+      "helperName": "",
+      "helpers": "0x21d596e53a0",
+      "helperCount": 2147483650,
+      "jointCount": 2,
+      "names": [],
+      "attachments": [],
+      "stage": "header"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "weapon": "0x21dfa0c62f0",
+      "vtable": "0x1e92f00",
+      "mount": "0x21e05ca2460",
+      "weaponCharacter": "0x21e49752010",
+      "managerVtable": "0x1d22110",
+      "managerOwner": "0x21e49752010",
+      "helperNamePointer": "0x7ffd2d17d03c",
+      "helperName": "",
+      "helpers": "0x21d596e53a0",
+      "helperCount": 2147483650,
+      "jointCount": 2,
+      "names": [
+        {
+          "index": 0,
+          "name": "root_jnt",
+          "parent": -1,
+          "bind": [
+            0,
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "index": 1,
+          "name": "cog_jnt",
+          "parent": 0,
+          "bind": [
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "attachments": [
+        {
+          "name": null,
+          "vtable": "0x1d1eda8",
+          "joint": 0,
+          "abs": [
+            null,
+            0,
+            0,
+            5.605193857299268e-45
+          ]
+        },
+        {
+          "name": "fx_trail",
+          "vtable": "0x1d212b8",
+          "joint": 1,
+          "abs": [
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,89 @@
+--- a/src/xrsim_compositor.cpp
++++ b/src/xrsim_compositor.cpp
+@@ -44,7 +44,7 @@
+     float4 rectMin;     // xy = uv min of the submitted subimage
+     float4 rectMax;     // xy = uv max
+     float4 qRel;        // rotation from eye space into layer space
+-    float4x4 mvp;       // quad pass only
++    row_major float4x4 mvp;       // quad pass only
+     float4 quadParams;  // x = pass (0 projection, 1 quad), y = flipY
+ };
+ 
+--- a/src/xrsim_math.h
++++ b/src/xrsim_math.h
+@@ -216,9 +216,9 @@
+     const Vec3 u = quat_rotate(inv.q, Vec3{0.0f, 1.0f, 0.0f});
+     const Vec3 f = quat_rotate(inv.q, Vec3{0.0f, 0.0f, 1.0f});
+     Mat4 out = mat4_identity();
+-    out.m[0][0] = r.x; out.m[0][1] = u.x; out.m[0][2] = f.x;
+-    out.m[1][0] = r.y; out.m[1][1] = u.y; out.m[1][2] = f.y;
+-    out.m[2][0] = r.z; out.m[2][1] = u.z; out.m[2][2] = f.z;
++    out.m[0][0] = r.x; out.m[0][1] = r.y; out.m[0][2] = r.z;
++    out.m[1][0] = u.x; out.m[1][1] = u.y; out.m[1][2] = u.z;
++    out.m[2][0] = f.x; out.m[2][1] = f.y; out.m[2][2] = f.z;
+     out.m[3][0] = inv.p.x; out.m[3][1] = inv.p.y; out.m[3][2] = inv.p.z;
+     return out;
+ }
+--- a/src/xrsim_actions.cpp
++++ b/src/xrsim_actions.cpp
+@@ -17,6 +17,8 @@
+ std::mutex g_mutex;
+ SimActionSet g_sets[kMaxActionSets];
+ SimAction g_actions[kMaxActions];
++SimAction g_handActions[2][kMaxActions];
++bool g_hasSubactions[kMaxActions]{};
+ bool g_attached = false;
+ XrPath g_profileTouch = XR_NULL_PATH;
+ XrPath g_profileSimple = XR_NULL_PATH;
+@@ -379,6 +381,8 @@
+         g_actions[i].setIndex = si;
+         g_actions[i].type = info->actionType;
+         strcpy_s(g_actions[i].name, info->actionName);
++        g_hasSubactions[i]=info->countSubactionPaths!=0;
++        for(auto& bank:g_handActions) bank[i]=g_actions[i];
+         *out = make_typed_handle<XrAction>(HT_ACTION, i, gen);
+         return XR_SUCCESS;
+     }
+@@ -390,6 +394,7 @@
+     SimAction* a = action_get(handle);
+     if (!a) return XR_ERROR_HANDLE_INVALID;
+     a->used = false;
++    for(auto& bank:g_handActions) bank[a-g_actions].used=false;
+     return XR_SUCCESS;
+ }
+ 
+@@ -437,6 +442,10 @@
+         if (pe->authoritative || a->control == VC_NONE) {
+             a->control = e->control;
+             a->hand = e->hand;
++        }
++        if (e->hand>=0 && e->hand<2) {
++            auto& sub=g_handActions[e->hand][a-g_actions];
++            if(pe->authoritative || sub.control==VC_NONE){sub.control=e->control;sub.hand=e->hand;}
+         }
+         if (e->control != VC_NONE) ++bound;
+     }
+@@ -527,7 +536,8 @@
+         }
+ 
+         const Rig& rig = snap.rig;
+-        for (SimAction& action : g_actions) {
++        for (int bank=0;bank<3;++bank) for (unsigned ai=0;ai<kMaxActions;++ai) {
++            SimAction& action=bank==0?g_actions[ai]:g_handActions[bank-1][ai];
+             if (!action.used) continue;
+ 
+             const bool wasInitialized = action.syncInitialized;
+@@ -577,6 +587,13 @@
+     if (!actions_attached()) return XR_ERROR_ACTIONSET_NOT_ATTACHED;
+     SimAction* a = action_get(info->action);
+     if (!a) return XR_ERROR_HANDLE_INVALID;
++    if(info->subactionPath!=XR_NULL_PATH && g_hasSubactions[a-g_actions]) {
++        const char* path=path_str(info->subactionPath);
++        const int hand=path && strcmp(path,"/user/hand/left")==0?0:
++                       path && strcmp(path,"/user/hand/right")==0?1:-1;
++        if(hand<0)return XR_ERROR_PATH_UNSUPPORTED;
++        a=&g_handActions[hand][a-g_actions];
++    }
+     *out = a;
+     return XR_SUCCESS;
+ }

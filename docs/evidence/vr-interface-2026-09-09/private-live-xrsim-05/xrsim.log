@@ -1,0 +1,21 @@
+[02:08:56.062] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[02:08:56.090] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[02:08:56.090] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/vr-interface-2026-09-09/private-live-xrsim-05
+[02:08:56.091] xrsim: ignoring a command.txt written before this run started
+[02:08:56.196] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[02:08:56.238] xrsim: compositor ready
+[02:08:56.238] xrsim: session state -> IDLE
+[02:08:56.238] xrsim: session created with D3D11 graphics
+[02:08:56.238] xrsim: action set 'preyvr' created
+[02:08:56.238] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[02:08:56.238] xrsim: 15 binding(s) suggested on the index profile, 15 driven
+[02:08:56.238] xrsim: action set(s) attached to the session
+[02:08:56.239] xrsim: swapchain 0 created 2560x1440x2 fmt 29 (3 images)
+[02:08:56.460] xrsim: session state -> READY
+[02:08:56.460] xrsim: session state -> SYNCHRONIZED
+[02:08:56.460] xrsim: session running - the app is now paced by the simulated headset
+[02:08:56.462] xrsim: session state -> VISIBLE
+[02:08:56.485] xrsim: session state -> FOCUSED
+[02:08:56.544] xrsim: swapchain 1 created 2560x1440x1 fmt 28 (3 images)
+[02:09:47.283] xrsim: session torn down
+[02:09:47.283] xrsim: instance destroyed

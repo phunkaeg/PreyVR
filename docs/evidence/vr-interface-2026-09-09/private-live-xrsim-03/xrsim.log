@@ -1,0 +1,31 @@
+[01:11:06.535] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[01:11:06.540] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[01:11:06.540] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/vr-interface-2026-09-09/private-live-xrsim-03
+[01:11:06.610] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[01:11:06.635] xrsim: compositor ready
+[01:11:06.636] xrsim: session state -> IDLE
+[01:11:06.636] xrsim: session created with D3D11 graphics
+[01:11:06.636] xrsim: action set 'preyvr' created
+[01:11:06.636] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[01:11:06.636] xrsim: action set(s) attached to the session
+[01:11:06.637] xrsim: swapchain 0 created 2560x1440x2 fmt 29 (3 images)
+[01:11:06.864] xrsim: session state -> READY
+[01:11:06.864] xrsim: session state -> SYNCHRONIZED
+[01:11:06.864] xrsim: session running - the app is now paced by the simulated headset
+[01:11:06.878] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[01:11:06.879] xrsim: session state -> VISIBLE
+[01:11:06.890] xrsim: session state -> FOCUSED
+[01:12:23.810] xrsim: applied 1 command(s): btn a press 160
+[01:12:55.933] xrsim: applied 1 command(s): btn a press 160
+[01:14:12.587] xrsim: applied 1 command(s): shot load-03
+[01:14:12.658] xrsim: capture written load-03 (1032x1104)
+[01:14:32.464] xrsim: applied 2 command(s): btn a press 160 | hand r aim rot 0 0 0
+[01:14:32.838] xrsim: swapchain 2 created 2560x1440x1 fmt 28 (3 images)
+[01:15:25.638] xrsim: applied 1 command(s): shot hud-and-wrench-03
+[01:15:25.874] xrsim: capture written hud-and-wrench-03 (1032x1104)
+[01:18:39.515] xrsim: applied 2 command(s): hands reset | hand r point 0 0
+[01:19:07.606] xrsim: applied 1 command(s): shot hud-aim-forward
+[01:19:07.840] xrsim: capture written hud-aim-forward (1032x1104)
+[01:22:59.559] xrsim: applied 1 command(s): btn x press 160
+[01:24:31.196] xrsim: applied 1 command(s): shot inventory-page-native
+[01:24:31.284] xrsim: capture written inventory-page-native (1032x1104)

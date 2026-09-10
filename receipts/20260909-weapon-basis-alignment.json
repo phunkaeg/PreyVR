@@ -1,0 +1,357 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260909-weapon-basis-alignment",
+  "recorded_at": "2026-09-09T13:05:06.057027+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll; PreyVR source HEAD 5efd7c8f75923eec0f2553590d302e82743a2b37 plus pinned local snapshots",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Can the native weapon mount and authored ammo-helper frame supply wrist-to-barrel orientation without capturing arbitrary equip-time controller angle?",
+  "claim": "A native ammo-helper consumer uses helper +Y as forward. Concrete character-binding and bone-attachment consumers establish the mount chain, including projected relative defaults and extra rotation. The production resolver and solver reconstruct the desired full helper orientation independently of equip angle in bounded engine-layout fixtures, matching the actual reticle aim producer. This proves a static contract and offline implementation, not animated barrel agreement in the game.",
+  "evidence_grade": "STATIC",
+  "environment": "static",
+  "method": "Ghidra 12.1.2 explicit /Prey/PreyDll.dll via read-only MCP and schema-discovered localhost HTTP. Python 3.12/pefile verify_static.py compares 11 spans and 12 concrete slots to disk. build_verify.py uses CMake/MSVC Release and runs 32 CTest tests. Production resolver/solver fixtures verify 108 asset/equip/aim combinations, old 45-degree capture defect as control, projected native adjustment, lookup priority and guarded refusals. PowerShell startup parsed only. Commands and source/output hashes are in the report and build manifest.",
+  "validity": "VALID",
+  "mutation": "persistent",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Ghidra import/disk SHA-256 and x64/base agree; 11 spans and 12 concrete slots match; source/output hashes pinned."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Native decompile, ASM, getter bytes and concrete slots agree. Production resolver/solver execute against bounded engine-layout fixtures."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "108 reconstructions match reticle producer. Old 45-degree defect observed; malformed and unsupported fixture cases refuse with untouched bytes."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Static/offline work; no Prey process or headset used."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "Persistent source/build output; no game memory or runtime state mutated."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Release build and 32/32 offline tests passed after final C++ change. Final startup script parsed successfully. Excludes game/headset acceptance."
+  },
+  "limits": "Authored basis only. No live asset coverage, native solver scheduling, animated helper/recoil/reload agreement, frame-time budget or headset acceptance. Complete injected callback is not executed by the new harness. Static/entity bindings, unknown helpers and simulated/redirected mounts are refused. Position/reach coupling, muzzle-origin calibration and collision queries remain separate; no physics call added.",
+  "artifacts": [
+    {
+      "path": "docs/RE-WEAPON-BASIS-ALIGNMENT-2026-09-09.md",
+      "sha256": "7ce6c03f8cb005dc68d2da5d7bf14ae24c53e22754a43261a3178252873a8b9f",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/alignment-tests.log",
+      "sha256": "32f62d6a730482b8109bb822540e144524c7b67f7e4352549ed294085189952e",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/ammo-forward.asm",
+      "sha256": "766ee7098b8a3274a92c20a1b1e03eb42630d2d312f5463b34f6d4f8c31d1be5",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/attach-hand.c",
+      "sha256": "4069d3172fdddecc2ebd24b8f6d355a71d5ef3254c3a904e5df2c67270b87574",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/attachment-by-index.c",
+      "sha256": "19884e38f4453f8c6b9c3c2a69e6e0c52c9005da614b857f9d42f8a3be2d4c45",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/attachment-execute.c",
+      "sha256": "06c932348e7e2b856cf315a35128b11586c399a84137315272cc227bfe7c9c9d",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/attachment-index-by-name.c",
+      "sha256": "8c61d82a06d623603585224d98bd836040246fac465baaaf7d123917c9dbf9fa",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/binding-character-process-bytes.json",
+      "sha256": "87deb75d2ee8c0f84c1beb45a17eaebaaf56e02665e2525fcfeea82ead39f880",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/binding-character-process.c",
+      "sha256": "226d0ed6e9642720d7ff0e49421d466318c76061a9753336279e9cf85c15296e",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/binding-vtable.json",
+      "sha256": "a8ed4ee616ab4fb2864802775ce87bcffe24d21fc702c562beadac9a77a77ad7",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/build-initial.log",
+      "sha256": "d901321448228b2ef9695b1308622dcaa03944fee54126682b5435ab5d64baee",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/build-manifest.json",
+      "sha256": "0f3a26fe5f01da55fcc88ab576e4d6f0429824bf86dc48394fcfae94d7b9999d",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/build.log",
+      "sha256": "f80334f91ec922e3e26333a291dd88b95fca326dceefec5c7e90de7a9c5f86ef",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/build_verify.py",
+      "sha256": "edb5631627fd2f24062fde3cbfb3e948de3c0d9fd58e6bab4756a35094d8e888",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/char-manager-getter.json",
+      "sha256": "2e84d9ca9924dcf4883c1fe8589f471fd25b06395e6b543755641fb526c4f1e8",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/char-skeleton-getter.json",
+      "sha256": "e162dac5a4a68569b40cf012a675db7b852cd170ff222752f725fbf05affcc30",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/character-ctor.c",
+      "sha256": "f841799a0fc165e4561f847729e11ebe5515e6ef65c9ea042e9c1b16539d4f35",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/character-process-attachment.c",
+      "sha256": "40db394cfbd58b4ed7055c72939255d19ffd4c05c487bcd5fcc046483ae095e6",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/character-vtable.json",
+      "sha256": "f65c98aab62b5f9ab3e9e17c4b6df66b93bc05cf606d81e5c00bdb24fe33145d",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/ctest.log",
+      "sha256": "cc76367c81a12e6c8d2fa1de9e624526f8c88b0c878b734a50823379f543c69c",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/helper-user-1699f50.c",
+      "sha256": "dc5512b16e8ab0b2860cd39a40d9bb03c9b98a2598d89e22b4bbf89b1687abef",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/helper-user-169bb90.c",
+      "sha256": "e17dac8e26444cce68bb6415647fd51d28772fa895616416d833f7ba83f6cc5f",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/helper-user-16a29e0.c",
+      "sha256": "3480a2a8952ae46ad302ecb95856f86d88ae75c34a6d0b6fb79e570b6a44e7f9",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/helper.c",
+      "sha256": "7384a1859a9a1dd8bbaf188b07b5c9058030ae12716baf710d5186e2a0b7d31c",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/joint-index-by-name.c",
+      "sha256": "b7b6228c1196db38f3e52d2b6042f1a96a56cba5bfa9634be50b93b6d432ea5e",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/joint-parent-bytes.json",
+      "sha256": "f3558f5c156574e1154871a7293541be1fcd85e3e5e573f343b669a36bb2b42a",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/manager-count-bytes.json",
+      "sha256": "3b9358798907c6f711c1a6f78880e8f965a57568d3bd6601c1cc8aa7c5c4cdce",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/manager-index-bytes.json",
+      "sha256": "d551bdf8570b8a8c713d146988a24e94b944fba97c30c976e805d2a1ef7f13cf",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/manager-vtable.json",
+      "sha256": "76eec441cb6e1dcf9c17fb7486092660db6b58d7aeaa2012f229c3300824a4a3",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/pose-absolute-bytes.json",
+      "sha256": "a17acbe7f794c4fee63a4738694187d5a2b1b154466e042fc183066b89f977e0",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/pose-absolute-getter.c",
+      "sha256": "a1278be5eecd58571ad79c11e80a85947f886d1550b7267e82c33b7be6d6a237",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/project-attachment.c",
+      "sha256": "1ef5feb4958c9a6479366e976c7d86c5de57e9af22f6e6c83d17b6b2bbd7dc9a",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/shotgun.c",
+      "sha256": "4a590cd978b1026b4a18a6d609dce297d2494e002a16fdd90ce98bc643fd01e8",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/skeleton-default-absolute.c",
+      "sha256": "5d33df30e2bf69bcf8e60bd7617cbe7573a290568b7614880a93f30de6e35e38",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/skeleton-vtable.json",
+      "sha256": "a298751ddeff455e0aa7b9670e9a5777705feebeeadb775a1ff9a3903aafca92",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/CMakeLists.txt",
+      "sha256": "4afd970dc09b93af0da146ed770925c477d91feaf175a9f4a5ce490eed393df3",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/include/preyvr/AnimIk.h",
+      "sha256": "2c1ef9380920a9686e687d29eed73f092c9d6ce8db5221962b2a17f88dcf28f7",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/include/preyvr/RigOwnership.h",
+      "sha256": "c3dec948491cb5f9befe326d8750712454549ba0d24459f15f646df817b07a98",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/include/preyvr/WeaponRigAlignment.h",
+      "sha256": "6b230d1b9933b96d4a8ecfe3fdadf320e66514ba6754c8754bf5e364f941c961",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/common/AnimIk.cpp",
+      "sha256": "7214c7eccef7dd34cf88fdb1a6819c39a8d49607b39fe8d85a59d979a3cbf144",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/common/MotionController.cpp",
+      "sha256": "1a3f2542d6dc4f62dcfe92bf7fe3a6ac9fd833a0491326f03f30c90c1e95e8c9",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/common/StereoCamera.cpp",
+      "sha256": "b0c0093c561dbc589dc5b5b73052241eccc88d484a76a277071ae9143559df99",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/common/VrMath.cpp",
+      "sha256": "58a0956a1657bdf5babbe4d9bdea99828bf55498e70592bf0bc7962218e8c781",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/common/WeaponRigAlignment.cpp",
+      "sha256": "9e1e49256c0aaddba9dede1bed88b8a6187c87df2c6cd20f83c06e81a91db715",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/AimTakeover.cpp",
+      "sha256": "02f83efbbfddb5ceb5589da9b6705a3f31b3f557cc6fbf57092c510eaad8db40",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/AimTakeover.h",
+      "sha256": "818f54adc1e405bdf4ea285a90c46b87d114952932eec1dce3ef74848c4db8aa",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/AnimIkTakeover.cpp",
+      "sha256": "5c5c1842e1035192cfd6af5a3ec943f934f4a984f88ec82af92f6b57064ea2e1",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/AnimIkTakeover.h",
+      "sha256": "9c1b7c5c8cb956137f61f675c8b8163d9655717fee65aaae38f6b56dfab5fdf7",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/CommandChannel.cpp",
+      "sha256": "71402baed3aef341835bd43bdc492e86cde9cadea1f3a3a9ce0db06c5c28d1f5",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/NearFovOverride.cpp",
+      "sha256": "ce9f302b82649065b78eb1a3db01cb5c49abf00445650d03e11f22875055235d",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/NearFovOverride.h",
+      "sha256": "1d35bcf9912297c6bb9b1c1537f41690a0f8389effcab36c6e77b80f621d7fe8",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/WeaponAttachment.cpp",
+      "sha256": "9381b137d70942df16bc89138ffa95c45d5ce79f84181ecd41ca4e2ae104b61e",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/src/dll/WeaponAttachment.h",
+      "sha256": "4cb513457c644302d0d24cdc103e9ebc21a69c64010cff16f4dc1a3c2ac1771d",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/tests/WeaponRigAlignmentTests.cpp",
+      "sha256": "6e539a8b92152c5af3e78d1eaf5cfc323e11b0624a0223e540d2624f9cec1327",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/source/tools/Invoke-PreyVRStartup.ps1",
+      "sha256": "fc9e0b9111027727b854319c738ad9e6ae85e53c17f5c65fc8c20c3052576e1e",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/startup-syntax.log",
+      "sha256": "033f029e97b4685dea3ed31895de47aafdfe0ec6e3cd5840403aff7148b6e8d1",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/static-verification.json",
+      "sha256": "74c7b4a77e2b60a48c65d61b5803e5d964da8e67718f8727a096834ae61e7d84",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/target-info.json",
+      "sha256": "c4980bbb991e2ef3655627c6575d56d21ce37d814374870438b722d7f0e82181",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/target-options.json",
+      "sha256": "e438d3874ce0acc4c9bf47d8044f3d2e2ac2e168571d9517ded7bb2fa2e3ab0b",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    },
+    {
+      "path": "docs/evidence/weapon-basis-2026-09-09/verify_static.py",
+      "sha256": "839d198dd9785e71ef61d8af3387b97da04687422672394f212672e3969094ce",
+      "role": "Static native evidence, pinned source or offline verification; scope identified in report"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [
+    {
+      "approach": "Use inverse(controller-at-equip) * animated wrist as permanent weapon-to-aim basis",
+      "reason": "The 45-degree counterexample retains the arbitrary equip angle when returning to neutral. Longer settling cannot remove that dependency.",
+      "reopen_when": "Only as explicit user calibration/control, or after proving a reference frame independent of equip pose."
+    }
+  ],
+  "next_action": "Next authorized live session: compare legacy against ik.align 1 across weapons equipped at different controller angles. Correlate generation, helper, applied/refused and sequence with both-eye images. Check recoil/reload, recenter and focus. Prove additional binding/animated-helper ownership before expanding coverage."
+}

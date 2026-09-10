@@ -1,0 +1,40 @@
+[02:31:31.669] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[02:31:31.674] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[02:31:31.674] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07
+[02:31:31.741] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[02:31:31.762] xrsim: compositor ready
+[02:31:31.763] xrsim: session state -> IDLE
+[02:31:31.763] xrsim: session created with D3D11 graphics
+[02:31:31.763] xrsim: action set 'preyvr' created
+[02:31:31.763] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[02:31:31.763] xrsim: 15 binding(s) suggested on the index profile, 15 driven
+[02:31:31.763] xrsim: action set(s) attached to the session
+[02:31:31.764] xrsim: swapchain 0 created 2560x1440x2 fmt 29 (3 images)
+[02:31:31.987] xrsim: session state -> READY
+[02:31:31.987] xrsim: session state -> SYNCHRONIZED
+[02:31:31.987] xrsim: session running - the app is now paced by the simulated headset
+[02:31:31.990] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[02:31:31.990] xrsim: session state -> VISIBLE
+[02:31:32.010] xrsim: session state -> FOCUSED
+[02:32:42.892] xrsim: applied 3 command(s): fov quest3 | hand r point 0 0 | btn a press 160
+[02:32:53.963] xrsim: applied 2 command(s): shot main-menu-07 | btn a press 160
+[02:32:54.044] xrsim: capture written main-menu-07 (1032x1104)
+[02:33:44.833] xrsim: applied 2 command(s): shot loading-07 | btn a press 160
+[02:33:44.905] xrsim: capture written loading-07 (1032x1104)
+[02:33:58.528] xrsim: applied 2 command(s): shot gameplay-07 | btn x press 160
+[02:33:58.588] xrsim: capture written gameplay-07 (1032x1104)
+[02:34:10.867] xrsim: applied 2 command(s): shot inventory-07 | btn b press 160
+[02:34:10.936] xrsim: capture written inventory-07 (1032x1104)
+[02:34:39.398] xrsim: applied 1 command(s): btn a press 160
+[02:34:39.446] xrsim: swapchain 2 created 2560x1440x1 fmt 28 (3 images)
+[02:35:01.873] xrsim: applied 2 command(s): shot game-loaded-07 | btn x press 160
+[02:35:02.125] xrsim: capture written game-loaded-07 (1032x1104)
+[02:35:55.669] xrsim: applied 1 command(s): shot actual-inventory-07
+[02:35:55.749] xrsim: capture written actual-inventory-07 (1032x1104)
+[02:38:21.029] xrsim: applied 1 command(s): shot guide-probe-07
+[02:38:21.137] xrsim: capture written guide-probe-07 (1032x1104)
+[02:39:25.461] xrsim: applied 1 command(s): btn b press 160
+[02:40:05.175] xrsim: applied 1 command(s): shot final-gameplay-07
+[02:40:05.431] xrsim: capture written final-gameplay-07 (1032x1104)
+[02:40:19.173] xrsim: session torn down
+[02:40:19.174] xrsim: instance destroyed

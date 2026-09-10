@@ -1,6 +1,7 @@
 #include "FrameCaptureWin32.h"
 
 #include "Logger.h"
+#include "HudLayer.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/FrameDump.h"
 
@@ -8,6 +9,7 @@
 #include <dxgi.h>
 
 #include <atomic>
+#include <mutex>
 #include <cstdio>
 #include <filesystem>
 #include <sstream>
@@ -19,6 +21,8 @@ namespace {
 
 std::atomic<bool> gRequestPending{false};
 std::atomic<std::uint32_t> gRequestTag{0};
+std::atomic<bool> gHudOnly{false};
+std::mutex gRequestMutex;
 std::atomic<DWORD> gLastResult{static_cast<DWORD>(FrameCaptureResult::ok)};
 std::atomic<unsigned long long> gCompleted{0};
 std::atomic<int> gTagOverride{-1};
@@ -99,13 +103,15 @@ bool WriteDump(
 
 } // namespace
 
-DWORD RequestFrameCapture(std::uint32_t tag)
+DWORD RequestFrameCapture(std::uint32_t tag,bool hudOnly)
 {
-    bool expected = false;
-    if (!gRequestPending.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
+    std::lock_guard lock(gRequestMutex);
+    if (gRequestPending.load(std::memory_order_acquire)) {
         return static_cast<DWORD>(FrameCaptureResult::refused);
     }
     gRequestTag.store(tag, std::memory_order_release);
+    gHudOnly.store(hudOnly);
+    gRequestPending.store(true,std::memory_order_release);
     return static_cast<DWORD>(FrameCaptureResult::ok);
 }
 
@@ -155,7 +161,11 @@ void ServiceFrameCapture(void* renderer, unsigned long long frameIndex)
     }
 
     ID3D11Texture2D* backBuffer = nullptr;
-    if (FAILED(swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D),
+    if(gHudOnly.load()) {
+        backBuffer=HudLayerTexture();
+        if(!backBuffer) {Finish(FrameCaptureResult::unavailable,"no_fresh_hud_texture");return;}
+        backBuffer->AddRef();
+    } else if (FAILED(swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D),
                                     reinterpret_cast<void**>(&backBuffer))) ||
         backBuffer == nullptr) {
         Finish(FrameCaptureResult::failed, "get_buffer_failed");

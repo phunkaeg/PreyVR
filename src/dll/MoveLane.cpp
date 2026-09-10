@@ -74,7 +74,8 @@ enum ActionSlot {
     kActionInventory = 1,
     kActionJump = 2,
     kActionCrouch = 3,
-    kActionCount = 4,
+    kActionWeaponWheel = 4,
+    kActionCount = 5,
 };
 
 struct ActionBinding {
@@ -90,6 +91,9 @@ ActionBinding gActions[kActionCount] = {
     {{input::kBack}, {0}, {0}, {0}, false},      // inventory <- left X
     {{input::kButtonA}, {0}, {0}, {0}, false},   // jump      <- right A
     {{input::kButtonB}, {0}, {0}, {0}, false},   // crouch    <- right B
+    // Native PC Favorites Wheel shortcut (Bethesda manual); Steam CMouse::Init
+    // proves mouse3/0x102. Avoid gamepad Y's tap-swap/hold-wheel ambiguity.
+    {{input::kMouse3}, {0}, {0}, {0}, false},    // wheel     <- right stick click
 };
 std::atomic<bool> gActionsEnabled{false};
 std::atomic<bool> gActionsNeutralize{false};
@@ -284,7 +288,14 @@ void UpdateMoveLane()
     ControllerState state{};
     const bool active = gMode.load(std::memory_order_acquire) == 2u;
     const bool neutralize = gMoveNeutralize.exchange(false, std::memory_order_acq_rel);
-    const bool haveInput = active && !neutralize && TryGetControllerState(Hand::left, state);
+    bool haveInput = active && !neutralize && HudGameplayInputAllowed() &&
+        TryGetControllerState(Hand::left, state);
+    static bool awaitNeutral=false;
+    if (!HudGameplayInputAllowed()) { awaitNeutral=true; }
+    if (haveInput && awaitNeutral) {
+        if (std::fabs(state.thumbstickX)<=.15f && std::fabs(state.thumbstickY)<=.15f) awaitNeutral=false;
+        else haveInput=false;
+    }
     if (!haveInput) {
         // A partially delivered X/Y pair can leave one axis held even though
         // the candidate shaper was not committed. Release both owned axes and
@@ -361,13 +372,15 @@ void UpdateTurnAndFireLanes()
             // the new one. Recalibrating after a recentre is expected rather
             // than a fault, and saying so here saves rediscovering it while
             // wearing a headset.
-            RecenterHeadTracking();
-            gRecenters.fetch_add(1, std::memory_order_relaxed);
+            if (RecenterHeadTracking() == 0) { gRecenters.fetch_add(1, std::memory_order_relaxed); }
         }
         gRecenterHeld = both;
     }
 
-    const bool turnOn = gTurnEnabled.load(std::memory_order_acquire);
+    static bool turnBlocked=false;
+    if (!HudGameplayInputAllowed()) turnBlocked=true;
+    else if (haveInput && std::fabs(right.thumbstickX)<=.15f && std::fabs(right.thumbstickY)<=.15f) turnBlocked=false;
+    const bool turnOn = gTurnEnabled.load(std::memory_order_acquire) && HudGameplayInputAllowed() && !turnBlocked;
     const bool releaseTurn = gTurnNeutralize.exchange(false, std::memory_order_acq_rel);
     if (turnOn || (gTurnPrimed && gLastTurnSent != 0)) {
         const float dead = gTurnDeadzoneHundredths.load(std::memory_order_relaxed) / 100.0f;
@@ -399,9 +412,13 @@ void UpdateTurnAndFireLanes()
         }
     }
 
-    const bool fireOn = gFireEnabled.load(std::memory_order_acquire);
+    static bool awaitTriggerRelease=false;
+    if (!HudGameplayInputAllowed()) { awaitTriggerRelease=true; }
+    if (haveInput && right.triggerValue<=.05f) { awaitTriggerRelease=false; }
+    const bool fireOn = gFireEnabled.load(std::memory_order_acquire) &&
+                       HudGameplayInputAllowed() && !awaitTriggerRelease;
     const bool releaseFire = gFireNeutralize.exchange(false, std::memory_order_acq_rel);
-    if (fireOn || (gFirePrimed && gLastFireSent != 0)) {
+    if (fireOn || gFireHeld || (gFirePrimed && gLastFireSent != 0)) {
         // **The real travel is posted, not a quantised press.** `xi_triggerr` is
         // an analog axis, and sending only 0 or 1000 threw away everything
         // between -- which matters for a weapon whose native binding may ramp.
@@ -456,7 +473,7 @@ void UpdateTurnAndFireLanes()
     // button that both confirms a menu choice and jumps is the same class of
     // double-binding as the right stick that also changed weapons.
     const bool actionsOn = gActionsEnabled.load(std::memory_order_acquire) &&
-                           !HudMenuIsOpen();
+                           HudGameplayInputAllowed();
     const bool releaseActions = gActionsNeutralize.exchange(false, std::memory_order_acq_rel);
     {
         // The left hand is fetched here rather than reused from the recenter
@@ -465,14 +482,18 @@ void UpdateTurnAndFireLanes()
         ControllerState leftHand{};
         const bool haveLeftHand = TryGetControllerState(Hand::left, leftHand);
         const bool sources[kActionCount] = {
-            right.gripPressed,                        // interact  <- right grip
+            right.gripPressed && !gRecenterHeld,       // grips chord owns recenter
             haveLeftHand && leftHand.menuAccept,      // inventory <- left X
             right.menuAccept,                         // jump      <- right A
             right.menuCancel,                         // crouch    <- right B
+            right.weaponWheelPressed,                 // wheel     <- right stick click
         };
+        static bool blocked[kActionCount]{};
         for (int slot = 0; slot < kActionCount; ++slot) {
+            if (!HudGameplayInputAllowed() && sources[slot]) blocked[slot]=true;
+            if (!sources[slot]) blocked[slot]=false;
             ActionBinding& binding = gActions[slot];
-            const bool wanted = actionsOn && !releaseActions && sources[slot];
+            const bool wanted = actionsOn && !releaseActions && sources[slot] && !blocked[slot];
             if (wanted == binding.held) { continue; }
             const int keyId = binding.keyId.load(std::memory_order_acquire);
             const unsigned int state = wanted ? static_cast<unsigned int>(input::kStatePressed)
@@ -563,7 +584,7 @@ DWORD SetInteractionBinding(unsigned int slot, int keyId)
 std::string InteractionReport()
 {
     static const char* const kSlotNames[kActionCount] = {
-        "interact", "inventory", "jump", "crouch"};
+        "interact", "inventory", "jump", "crouch", "wheel"};
     std::ostringstream out;
     out << " actions=" << (gActionsEnabled.load(std::memory_order_relaxed) ? 1 : 0);
     for (int slot = 0; slot < kActionCount; ++slot) {

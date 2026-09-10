@@ -1,0 +1,2414 @@
+{
+  "question": "Do the historically labelled missing-text captures actually have missing card pixels?",
+  "rows": [
+    {
+      "set": "candidate06",
+      "name": "disruptor-forward-06",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/disruptor-forward-06_left.png",
+      "imageSha256": "54a66bffc1d98b9b81e5cd1c50af6fe8fdb3b60819583279787dab9cf7a6ed34",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/disruptor-forward-06.json",
+      "sidecarSha256": "28457255cc0de545d4a46c2b097e7208ce8deb1276d87723ae064e0688f164b0",
+      "cardPixelSha256": "f0018fac0522ad5e1f2a821436951de4711c72e0e10094cc9453e8d695dbf312",
+      "brightPixels": 2127
+    },
+    {
+      "set": "candidate06",
+      "name": "disruptor-forward-06",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/disruptor-forward-06_right.png",
+      "imageSha256": "b20afe714af8bf6d2b38ecb98f948926873bc03279ca1229f6e1cadd16e8aec8",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/disruptor-forward-06.json",
+      "sidecarSha256": "28457255cc0de545d4a46c2b097e7208ce8deb1276d87723ae064e0688f164b0",
+      "cardPixelSha256": "9ce90bfa06366f57a846c0a9edabe5bdd7769cc6e04c501b9cae0f17a2c20608",
+      "brightPixels": 2125
+    },
+    {
+      "set": "candidate06",
+      "name": "held-test-start-06",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/held-test-start-06_left.png",
+      "imageSha256": "c99a488c76e973446b98ecad583a749a04fd48d1d9bb1b8d45a3f20e27b11f3b",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/held-test-start-06.json",
+      "sidecarSha256": "b1ed842cda5375a6af8cd354079f5a7d6991ed401f19d4be228493dc21e1fa8a",
+      "cardPixelSha256": "f0018fac0522ad5e1f2a821436951de4711c72e0e10094cc9453e8d695dbf312",
+      "brightPixels": 2127
+    },
+    {
+      "set": "candidate06",
+      "name": "held-test-start-06",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/held-test-start-06_right.png",
+      "imageSha256": "6c34ca7b2920af74d7c42cc056e648b3c81e2eccfd9aca2ad526ccb19df9143a",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/held-test-start-06.json",
+      "sidecarSha256": "b1ed842cda5375a6af8cd354079f5a7d6991ed401f19d4be228493dc21e1fa8a",
+      "cardPixelSha256": "9ce90bfa06366f57a846c0a9edabe5bdd7769cc6e04c501b9cae0f17a2c20608",
+      "brightPixels": 2125
+    },
+    {
+      "set": "candidate06",
+      "name": "inventory-06",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/inventory-06_left.png",
+      "imageSha256": "4ba00c32ff6a790b1edbfc8fd88685c2cb12d72d3bf7507dced35e1a44f1a5f2",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/inventory-06.json",
+      "sidecarSha256": "cd7b7f202dc796ad704147aa95efd25f3b116abec53a278495980ea0a4eea904",
+      "cardPixelSha256": "f0018fac0522ad5e1f2a821436951de4711c72e0e10094cc9453e8d695dbf312",
+      "brightPixels": 2127
+    },
+    {
+      "set": "candidate06",
+      "name": "inventory-06",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/inventory-06_right.png",
+      "imageSha256": "76e0f40fd55c814443133bfd122e04a1aa7e8a4327d39e928411cc99cafbc813",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/inventory-06.json",
+      "sidecarSha256": "cd7b7f202dc796ad704147aa95efd25f3b116abec53a278495980ea0a4eea904",
+      "cardPixelSha256": "9ce90bfa06366f57a846c0a9edabe5bdd7769cc6e04c501b9cae0f17a2c20608",
+      "brightPixels": 2125
+    },
+    {
+      "set": "candidate06",
+      "name": "inventory-page-06",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/inventory-page-06_left.png",
+      "imageSha256": "30e0c3cc9c7db2c13dbe176627cb20281707b93fe9610cb04fc76562e6e5f0a3",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/inventory-page-06.json",
+      "sidecarSha256": "25f168f1cef81ccf682118154c9e498587fd510e7ada7a29feefc317507a528a",
+      "cardPixelSha256": "f0018fac0522ad5e1f2a821436951de4711c72e0e10094cc9453e8d695dbf312",
+      "brightPixels": 2127
+    },
+    {
+      "set": "candidate06",
+      "name": "inventory-page-06",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/inventory-page-06_right.png",
+      "imageSha256": "457ad6d90b96f76f551e676b820dedd713d780f2df0769855bdf4b6a13512b27",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/inventory-page-06.json",
+      "sidecarSha256": "25f168f1cef81ccf682118154c9e498587fd510e7ada7a29feefc317507a528a",
+      "cardPixelSha256": "9ce90bfa06366f57a846c0a9edabe5bdd7769cc6e04c501b9cae0f17a2c20608",
+      "brightPixels": 2125
+    },
+    {
+      "set": "candidate06",
+      "name": "main-menu-06",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/main-menu-06_left.png",
+      "imageSha256": "fb01049f3fa7b88b52ca98d36a5d8298cb16d26930c583b710ffbc489b35a1b2",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/main-menu-06.json",
+      "sidecarSha256": "4d2a402f45316b1fe6b47966a0d512acfac31d5cf14a1c60878eae3351c6929c",
+      "cardPixelSha256": "f0018fac0522ad5e1f2a821436951de4711c72e0e10094cc9453e8d695dbf312",
+      "brightPixels": 2127
+    },
+    {
+      "set": "candidate06",
+      "name": "main-menu-06",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/main-menu-06_right.png",
+      "imageSha256": "3bee490e082a2a9d75d331a7a8a83b8ba9cce15c6819231b6a1cc9849f399031",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/main-menu-06.json",
+      "sidecarSha256": "4d2a402f45316b1fe6b47966a0d512acfac31d5cf14a1c60878eae3351c6929c",
+      "cardPixelSha256": "9ce90bfa06366f57a846c0a9edabe5bdd7769cc6e04c501b9cae0f17a2c20608",
+      "brightPixels": 2125
+    },
+    {
+      "set": "candidate06",
+      "name": "recovered-menu-06",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/recovered-menu-06_left.png",
+      "imageSha256": "0b4077c5273d1115378efdcec10e12e6bc80f26b5004f1d2db4ec1d3835502ce",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/recovered-menu-06.json",
+      "sidecarSha256": "4991ef530bad05fc5882c7e7bdb89489d6f8e351dcd21cefb9a8860d6cdfc6c6",
+      "cardPixelSha256": "f0018fac0522ad5e1f2a821436951de4711c72e0e10094cc9453e8d695dbf312",
+      "brightPixels": 2127
+    },
+    {
+      "set": "candidate06",
+      "name": "recovered-menu-06",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/recovered-menu-06_right.png",
+      "imageSha256": "2e4b8b40f839e98dd018cadf8e720ba22229b256e3ca34fb981b9c42c535bc88",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/recovered-menu-06.json",
+      "sidecarSha256": "4991ef530bad05fc5882c7e7bdb89489d6f8e351dcd21cefb9a8860d6cdfc6c6",
+      "cardPixelSha256": "9ce90bfa06366f57a846c0a9edabe5bdd7769cc6e04c501b9cae0f17a2c20608",
+      "brightPixels": 2125
+    },
+    {
+      "set": "candidate06",
+      "name": "second-retry-inventory-06",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/second-retry-inventory-06_left.png",
+      "imageSha256": "09b0d151f946339871f5deff7e2ab5080023a032971af5d73ff4356bcb9fda7b",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/second-retry-inventory-06.json",
+      "sidecarSha256": "e3106efcdeb3738237a57e5dc793287294f38b6c9f5857758477acbf8c976023",
+      "cardPixelSha256": "f0018fac0522ad5e1f2a821436951de4711c72e0e10094cc9453e8d695dbf312",
+      "brightPixels": 2127
+    },
+    {
+      "set": "candidate06",
+      "name": "second-retry-inventory-06",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/second-retry-inventory-06_right.png",
+      "imageSha256": "00a548e4305e0f5464c424f95152c790a1ad75ff6249745ed4a5e383c69272fe",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/second-retry-inventory-06.json",
+      "sidecarSha256": "e3106efcdeb3738237a57e5dc793287294f38b6c9f5857758477acbf8c976023",
+      "cardPixelSha256": "9ce90bfa06366f57a846c0a9edabe5bdd7769cc6e04c501b9cae0f17a2c20608",
+      "brightPixels": 2125
+    },
+    {
+      "set": "candidate06",
+      "name": "wrench-selected-06",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/wrench-selected-06_left.png",
+      "imageSha256": "92b443877f16766bee1ac67a54e005aeb6b4913c4bd8b7e1c32efac69aa8f713",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/wrench-selected-06.json",
+      "sidecarSha256": "6151b92876345cbd21d44c1fce717dab0ab820a8428394534ab53509d9617d49",
+      "cardPixelSha256": "f0018fac0522ad5e1f2a821436951de4711c72e0e10094cc9453e8d695dbf312",
+      "brightPixels": 2127
+    },
+    {
+      "set": "candidate06",
+      "name": "wrench-selected-06",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/wrench-selected-06_right.png",
+      "imageSha256": "5bd62a84e1663d588f1a228b17c9a923bd3f3c7b7eced2c1aa7a546f801360ec",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/wrench-selected-06.json",
+      "sidecarSha256": "6151b92876345cbd21d44c1fce717dab0ab820a8428394534ab53509d9617d49",
+      "cardPixelSha256": "9ce90bfa06366f57a846c0a9edabe5bdd7769cc6e04c501b9cae0f17a2c20608",
+      "brightPixels": 2125
+    },
+    {
+      "set": "candidate07",
+      "name": "actual-inventory-07",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/actual-inventory-07_left.png",
+      "imageSha256": "b008e2a42fcdfdab228564f2bc6bea1bdd4380e65e8fd6e1ce99fca53a9dcc9f",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/actual-inventory-07.json",
+      "sidecarSha256": "0feadec62c5ab907dbec2ea7ff24904a921d38ca7d7768755cc53d0fb2ed6a3f",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "candidate07",
+      "name": "actual-inventory-07",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/actual-inventory-07_right.png",
+      "imageSha256": "b230da34bc8e5da804202dbbaae4580ad8420f5ed9236e0236ed1dbe9bb78c7c",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/actual-inventory-07.json",
+      "sidecarSha256": "0feadec62c5ab907dbec2ea7ff24904a921d38ca7d7768755cc53d0fb2ed6a3f",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "candidate07",
+      "name": "gameplay-07",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/gameplay-07_left.png",
+      "imageSha256": "526449ec95df6750dca640fb42a9dd69eceb80d3cc7ba09492ff8deb9a407c27",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/gameplay-07.json",
+      "sidecarSha256": "42ddc33f729f572dd403f55f33d3621edff2eca5e764d151e44d42149cad465d",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "candidate07",
+      "name": "gameplay-07",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/gameplay-07_right.png",
+      "imageSha256": "36928ac125c50c4110c9bb2e0a4db8ba7f46628f162eeda0593cfa7692bd8c79",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/gameplay-07.json",
+      "sidecarSha256": "42ddc33f729f572dd403f55f33d3621edff2eca5e764d151e44d42149cad465d",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "candidate07",
+      "name": "guide-probe-07",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/guide-probe-07_left.png",
+      "imageSha256": "043590ebca97ed2f308d22ccc15c472d3ddb98f6ab76f6fa0ca88110498df02b",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/guide-probe-07.json",
+      "sidecarSha256": "2a7c12cafbc98aa8bbf2fb9c8ef5ba6331a02cfc5da7d293ff84d0bf5ed9c97a",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "candidate07",
+      "name": "guide-probe-07",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/guide-probe-07_right.png",
+      "imageSha256": "61b6018e51732374df71c4e9b12d13aa2fd3ea468057cd1ea8eed2ad9f455807",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/guide-probe-07.json",
+      "sidecarSha256": "2a7c12cafbc98aa8bbf2fb9c8ef5ba6331a02cfc5da7d293ff84d0bf5ed9c97a",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "candidate07",
+      "name": "inventory-07",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/inventory-07_left.png",
+      "imageSha256": "526449ec95df6750dca640fb42a9dd69eceb80d3cc7ba09492ff8deb9a407c27",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/inventory-07.json",
+      "sidecarSha256": "2a12c010d1a9a2b0bf589a79a9381e5a3b93fc38ad38df50cce50efa27c4c3fa",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "candidate07",
+      "name": "inventory-07",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/inventory-07_right.png",
+      "imageSha256": "36928ac125c50c4110c9bb2e0a4db8ba7f46628f162eeda0593cfa7692bd8c79",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/inventory-07.json",
+      "sidecarSha256": "2a12c010d1a9a2b0bf589a79a9381e5a3b93fc38ad38df50cce50efa27c4c3fa",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "candidate07",
+      "name": "loading-07",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/loading-07_left.png",
+      "imageSha256": "0719324450de9e5698799a4b5238af0c46f26b47753778ed05ad961d28e255d4",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/loading-07.json",
+      "sidecarSha256": "c72993d5ab374383a5172db3310637b55a7baaa1a050ec3c73b5a747c739ea67",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "candidate07",
+      "name": "loading-07",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/loading-07_right.png",
+      "imageSha256": "4d68569a6eabd923d76e740305ef15efa3a7dd40786134b89f7777e67572a54b",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/loading-07.json",
+      "sidecarSha256": "c72993d5ab374383a5172db3310637b55a7baaa1a050ec3c73b5a747c739ea67",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "candidate07",
+      "name": "main-menu-07",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/main-menu-07_left.png",
+      "imageSha256": "274e17673e6b92aa6fefd1369b4cebf1904227f2bc78aa7bdc7237899db6fb23",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/main-menu-07.json",
+      "sidecarSha256": "43f99550dec8893574db0588183c2a1d98a67acbe576d3b922a09cfb0fe5cde1",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "candidate07",
+      "name": "main-menu-07",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/main-menu-07_right.png",
+      "imageSha256": "39d88dc9af234b6222594f13dacc9357fbd877ebe2a7737f34b2110bc793665a",
+      "sidecar": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/main-menu-07.json",
+      "sidecarSha256": "43f99550dec8893574db0588183c2a1d98a67acbe576d3b922a09cfb0fe5cde1",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-00",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-00_left.png",
+      "imageSha256": "0ba96869c9186a842dd65c970e2bbe5e191e289bfaaf425af2360f837a9403a1",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-00.json",
+      "sidecarSha256": "b222c4cc2973f26a20b2bce3b52cb4b13fd5065bc5fbd1676fa0e80c7adc7da5",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-00",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-00_right.png",
+      "imageSha256": "f618e6504232775b3c473ffe426c0f2debe907fb8a68475b8defb410ef735b39",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-00.json",
+      "sidecarSha256": "b222c4cc2973f26a20b2bce3b52cb4b13fd5065bc5fbd1676fa0e80c7adc7da5",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-01",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-01_left.png",
+      "imageSha256": "f20a4b779249bcc6036c1a9753273fd76a117d1e1aeabeeae29675f05730d314",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-01.json",
+      "sidecarSha256": "938454371194c5e2dd2d37e729e22ba3667aebea9622b2b5aa5b981fd6d2b552",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-01",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-01_right.png",
+      "imageSha256": "e0e8cdccdef4d7d2fbe997b4968e08c560c28cc351854e848752fb9c18c39835",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-01.json",
+      "sidecarSha256": "938454371194c5e2dd2d37e729e22ba3667aebea9622b2b5aa5b981fd6d2b552",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-02",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-02_left.png",
+      "imageSha256": "1bd6d85dcc911cebfc5c338dcc48f1193ca0bbe19cf45e13a01238b024984b78",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-02.json",
+      "sidecarSha256": "f40d6fe32c4cf5c64ca7fe4da5b5c154d9d4d03ea6323167966354e38539cee6",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-02",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-02_right.png",
+      "imageSha256": "53ab6ae8c24970ad6f9952b9d6137b6da615c4cf84274af5cf313447ecd521d9",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-02.json",
+      "sidecarSha256": "f40d6fe32c4cf5c64ca7fe4da5b5c154d9d4d03ea6323167966354e38539cee6",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-03",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-03_left.png",
+      "imageSha256": "170ba410a588305fd65f5620ae8ff333814d7ca384a596cb6412e9759dd0a0cd",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-03.json",
+      "sidecarSha256": "0e5c2d9664031f29d9c04027f2496b9e1330f1e0d494eeb596615282737ccb78",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-03",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-03_right.png",
+      "imageSha256": "1a7749b9f8061345e8c7b27d950facf02fb7d1be8e27f09db1f1ab10a9ee72c1",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-03.json",
+      "sidecarSha256": "0e5c2d9664031f29d9c04027f2496b9e1330f1e0d494eeb596615282737ccb78",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-04",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-04_left.png",
+      "imageSha256": "08aedc04f93350e1d8ecd94203efc63f92f20c9586bb9f341735e66ef337a178",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-04.json",
+      "sidecarSha256": "3abc0c88ea650ae5919a229414fc59d50217be5a8e7eae092d84a30bf4b3b398",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-04",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-04_right.png",
+      "imageSha256": "a3364e393abe1cd32a0f259824e3300a042e0c975619ab7f0ea586e3fd1bc46e",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-04.json",
+      "sidecarSha256": "3abc0c88ea650ae5919a229414fc59d50217be5a8e7eae092d84a30bf4b3b398",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-05",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-05_left.png",
+      "imageSha256": "8d0ef013d2fa5e736ad0559f1e560cd9c29db5c19485f07aaaa34771da36eef1",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-05.json",
+      "sidecarSha256": "f3b2bd09aaff9a53fe00c95760a0a69cc3987fbbb59446fd8fbcd0e4b1d5bb0d",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-05",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-05_right.png",
+      "imageSha256": "7b83755109345f2a6d5ec998aa0394b58863b8c9736805a66ab600a51ee21110",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-05.json",
+      "sidecarSha256": "f3b2bd09aaff9a53fe00c95760a0a69cc3987fbbb59446fd8fbcd0e4b1d5bb0d",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-06",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-06_left.png",
+      "imageSha256": "45f1b3cfd3dbeed6eca99152c65e9d16461706c7c8ee1687bc99a4727ec7ba56",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-06.json",
+      "sidecarSha256": "189d3fdd113f72feec9f546f646cc49b0b8adb0946c0db06547ff0b8039ed193",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-06",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-06_right.png",
+      "imageSha256": "b22335447a4999c7968305149437a701a074f04e735231a10ef07cd535536e61",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-06.json",
+      "sidecarSha256": "189d3fdd113f72feec9f546f646cc49b0b8adb0946c0db06547ff0b8039ed193",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-07",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-07_left.png",
+      "imageSha256": "a71f2d7a08af5917fb04f1b8438cc2d8ae0645dc60d9491c32ef2f3ef814f358",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-07.json",
+      "sidecarSha256": "2a238ea9612c40292c439a1351a92dc55b44a0abfda0faa47a7ebf87d51f1cc4",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-07",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-07_right.png",
+      "imageSha256": "a56eab5032ab39f9f41e42e2fa499d7fe7b8c90b726bc59b2a6cc79ac391379d",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-07.json",
+      "sidecarSha256": "2a238ea9612c40292c439a1351a92dc55b44a0abfda0faa47a7ebf87d51f1cc4",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-08",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-08_left.png",
+      "imageSha256": "1fe04da3d8c585e313bf980a6560ab0468acf8ab142540ab39af2dcbe635bde5",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-08.json",
+      "sidecarSha256": "0eaf752372af3f487fdb917d00233c41fee7aaab3d53f501ea042af2cf88bc59",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-08",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-08_right.png",
+      "imageSha256": "44dc58c27a32c68f0854c798d655fb6f52839c8f40bbb838594e7251c1166ca9",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-08.json",
+      "sidecarSha256": "0eaf752372af3f487fdb917d00233c41fee7aaab3d53f501ea042af2cf88bc59",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-09",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-09_left.png",
+      "imageSha256": "75038efe2cf3d129667f1c6cad051c5c1396a5c158a8e39d7ae1b45a127367be",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-09.json",
+      "sidecarSha256": "9d5c19e3fe7ae05f2384745b45cea5ed070f52bb946857870274ab64d7a25173",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-09",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-09_right.png",
+      "imageSha256": "9732efc29f44d9e9085cff0dbb7c11a6eff7cf07e1b1c87ad8b1621c6397d0bb",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-09.json",
+      "sidecarSha256": "9d5c19e3fe7ae05f2384745b45cea5ed070f52bb946857870274ab64d7a25173",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-10",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-10_left.png",
+      "imageSha256": "96285302afe9668a8de9d6951287a87f9475cc158e192a3a820280ef4b165cdc",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-10.json",
+      "sidecarSha256": "1596db415203a0d9c56a1d181e44ed315a735b7b03eae8c12d09b0950057bd25",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-10",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-10_right.png",
+      "imageSha256": "ba5749e2f5bfdc524fa031413c948af323bebfeae21df0e3b905ea5c6cb45121",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-10.json",
+      "sidecarSha256": "1596db415203a0d9c56a1d181e44ed315a735b7b03eae8c12d09b0950057bd25",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-11",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-11_left.png",
+      "imageSha256": "f86eb0a4de883f73439ddb87a77017273f35d007b2ab5a91ba601c30f0b1190c",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-11.json",
+      "sidecarSha256": "ad76a78ace22c639556f0a7dcd75c884fd8474a45773b1659d2d27ab97a949f3",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-11",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-11_right.png",
+      "imageSha256": "4285601fc619661e4dbf74da15f6b53069b3765a055d48adabb00177f462fe9a",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-11.json",
+      "sidecarSha256": "ad76a78ace22c639556f0a7dcd75c884fd8474a45773b1659d2d27ab97a949f3",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-12",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-12_left.png",
+      "imageSha256": "58a58981f8345d6bea74e5879a1e89ef1d8e7f0aa4ca1c98beb16310daaa81ff",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-12.json",
+      "sidecarSha256": "2948a9b600c6276ee4816b6e3a2246cb1fb9a424bde56a654cf2c79b9aa0ec2b",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-12",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-12_right.png",
+      "imageSha256": "e6001e0b4a577619f02fa4e3aaf54b82d03ab6043e13ca3db87cdcd34e7be4ce",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-12.json",
+      "sidecarSha256": "2948a9b600c6276ee4816b6e3a2246cb1fb9a424bde56a654cf2c79b9aa0ec2b",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-13",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-13_left.png",
+      "imageSha256": "615d09bb4c2ba2cb9d9b7ca303abe7eda78ed51abd69c030ee6b2fdd60d0666b",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-13.json",
+      "sidecarSha256": "f21cd39a78f473a098ec8950eb4b2ffa1a77055a64b8156a448577d8a0ffea9e",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-13",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-13_right.png",
+      "imageSha256": "a2a69358637e90c078b3969050c36281895c2a5ea08bcf7824d432350005e110",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-13.json",
+      "sidecarSha256": "f21cd39a78f473a098ec8950eb4b2ffa1a77055a64b8156a448577d8a0ffea9e",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-14",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-14_left.png",
+      "imageSha256": "2c5bd1028148c857a3965675d23db81522a6d11c008a089188a63f006ff287b2",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-14.json",
+      "sidecarSha256": "31b3701166b96764e03eb4d53927e53ea6b16aaaf9b88c107d8f24fe13a6022a",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-14",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-14_right.png",
+      "imageSha256": "ef943f3956567a86543dee170bf694eee8c51401fd3f0f6112648147311d418c",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-14.json",
+      "sidecarSha256": "31b3701166b96764e03eb4d53927e53ea6b16aaaf9b88c107d8f24fe13a6022a",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "inventory-15",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-15_left.png",
+      "imageSha256": "e42ee9f8368f06624571d3343b73177ea32ace5b7927306d598bb2c0b92a5335",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-15.json",
+      "sidecarSha256": "0713c9d6b71e86357f7e6f6936e3ff9235ea9b057a07b42c6604d7717b97bd50",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "inventory-15",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-15_right.png",
+      "imageSha256": "656ff1000bd2966b20d60abdb8f5d86b3f3c08b87584a58f01977b782555f37c",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/inventory-15.json",
+      "sidecarSha256": "0713c9d6b71e86357f7e6f6936e3ff9235ea9b057a07b42c6604d7717b97bd50",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-01",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-01_left.png",
+      "imageSha256": "2f14ad65082557fb4316f7e2e4060472cab7e656d4af61ed80cc3c908be522d5",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-01.json",
+      "sidecarSha256": "72ec27a83505b06f75af1525605b8810c3ed6f25b291b186c60208530ef9bddb",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-01",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-01_right.png",
+      "imageSha256": "ca4e1b5d644f1c0ba3b34e75ba2c8595be3e6e89d9c1bded52ba27d0d1d76bfb",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-01.json",
+      "sidecarSha256": "72ec27a83505b06f75af1525605b8810c3ed6f25b291b186c60208530ef9bddb",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-02",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-02_left.png",
+      "imageSha256": "dd4cacbf07bddc85cf142767e6b1211661e7fba6f4ec8354cf0430cd7d492989",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-02.json",
+      "sidecarSha256": "3c5db25be3e1e6dd6a3b631078972d324e0dc8037ffe08946b6f56f08251152e",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-02",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-02_right.png",
+      "imageSha256": "afe3f9557c1e81957be44a8f80559f14d94fd0382d9c59d872dcaf4174107460",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-02.json",
+      "sidecarSha256": "3c5db25be3e1e6dd6a3b631078972d324e0dc8037ffe08946b6f56f08251152e",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-03",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-03_left.png",
+      "imageSha256": "8d0ef013d2fa5e736ad0559f1e560cd9c29db5c19485f07aaaa34771da36eef1",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-03.json",
+      "sidecarSha256": "c0d1836fccff53fb43d2cc1491069069dc3889419746c4d4df9e1b9dedb24dbd",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-03",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-03_right.png",
+      "imageSha256": "7b83755109345f2a6d5ec998aa0394b58863b8c9736805a66ab600a51ee21110",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-03.json",
+      "sidecarSha256": "c0d1836fccff53fb43d2cc1491069069dc3889419746c4d4df9e1b9dedb24dbd",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-04",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-04_left.png",
+      "imageSha256": "9dbfa86609a93295e548f677afda9f6fe854f78b90024299d4728d48de07eb20",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-04.json",
+      "sidecarSha256": "0425220f4418815d8cc3bdc5b472a4d47c5e3926eb117986effdc39b890b1304",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-04",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-04_right.png",
+      "imageSha256": "b1062242cdec79d964ce22384c2f4cf3cb0048fa27bc9602d26a49e773148cf3",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-04.json",
+      "sidecarSha256": "0425220f4418815d8cc3bdc5b472a4d47c5e3926eb117986effdc39b890b1304",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-05",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-05_left.png",
+      "imageSha256": "c2e2a4811c8a8fc10dcb5c7636f87e9fddff0d92a2e2d62d8d525c7edf096d37",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-05.json",
+      "sidecarSha256": "c12215e94d19a3432be58fab7ac629a9f5f600ece777fa353f80aaab74d749e8",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-05",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-05_right.png",
+      "imageSha256": "1bcef7f1796d93a7af8d5c569a2ff9129d4b2ea66277e12ef123761af35b8a24",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-05.json",
+      "sidecarSha256": "c12215e94d19a3432be58fab7ac629a9f5f600ece777fa353f80aaab74d749e8",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-06",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-06_left.png",
+      "imageSha256": "ea6cacf285c130b8712278d5eaf8c9c9a868ad97cde39c41d5a4fa818d88a5bc",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-06.json",
+      "sidecarSha256": "dc84bd6dc7aba9e62daaa44114f63129566e30a6b026f6ec500aa1e2a0e16a07",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-06",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-06_right.png",
+      "imageSha256": "49ca996172da1c90b6f5c7ff448a8b48acffb5c9dbbbcfc2222b17de61bf8281",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-06.json",
+      "sidecarSha256": "dc84bd6dc7aba9e62daaa44114f63129566e30a6b026f6ec500aa1e2a0e16a07",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-07",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-07_left.png",
+      "imageSha256": "b376fe5e6fe0f5b20a9ec4be8d42758a10f617c9680e933111f416a6f32b4673",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-07.json",
+      "sidecarSha256": "35d9f389d1b44c6b2c540b55b6959feb2f7b7702921bf203bbf34b5252bc7bbe",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-07",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-07_right.png",
+      "imageSha256": "a06e5f675a7bf512b5d4f64d6017b9e1253ea7bc3c8e33aff94cfaf73e3851c9",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-07.json",
+      "sidecarSha256": "35d9f389d1b44c6b2c540b55b6959feb2f7b7702921bf203bbf34b5252bc7bbe",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-08",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-08_left.png",
+      "imageSha256": "58bc43cb02c592c595bebb1bb9056544ee04e3362953f9429edb37d541478ff2",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-08.json",
+      "sidecarSha256": "2b247d6372faa1a2b967d7c1804911e508411a9c1abfa57c141261d3477c7a66",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-08",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-08_right.png",
+      "imageSha256": "58ad9a1249f6591284130bd90497045605232ed7e32c79515177cab417033907",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-08.json",
+      "sidecarSha256": "2b247d6372faa1a2b967d7c1804911e508411a9c1abfa57c141261d3477c7a66",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-09",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-09_left.png",
+      "imageSha256": "3e90499b25b99124a9b7eedfd96256e9532673570adf3920abd1cd4e3b13ec70",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-09.json",
+      "sidecarSha256": "db4a545b8372d3bb60fd981131255fcacf1062c58d7aa4ede84410e90ac0d4f6",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-09",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-09_right.png",
+      "imageSha256": "674529599b987e578ebe4c0fe042a71d03c28faf9fc7b10914a5fc515c30a306",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-09.json",
+      "sidecarSha256": "db4a545b8372d3bb60fd981131255fcacf1062c58d7aa4ede84410e90ac0d4f6",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-10",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-10_left.png",
+      "imageSha256": "fe7a21461c8ed3627e088d79ab7d155fbcb0b90313ca5fc6fa64bfd4acca4087",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-10.json",
+      "sidecarSha256": "df47fd6a0a636fd4ef0800e6e8cdd2e25042c9152e65ef9af30ac35a60078318",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-10",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-10_right.png",
+      "imageSha256": "f4c1eef7956b07321d49aaaa8b5045bd43f009ac8c12717831d0eeaa79d2554e",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-10.json",
+      "sidecarSha256": "df47fd6a0a636fd4ef0800e6e8cdd2e25042c9152e65ef9af30ac35a60078318",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-11",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-11_left.png",
+      "imageSha256": "f41ae4759c4c0f44eaef9eaf7e0350a091541cd274b65b05d0dfa5a238ff60ba",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-11.json",
+      "sidecarSha256": "efb43115a636a82e69790d10ef9aea3b8eca9a4361d9f363019601e9a75f37eb",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-11",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-11_right.png",
+      "imageSha256": "fd2efdda1910e93f2e22caa855ae3c079b893eb63e824196286a7a00098f8104",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-11.json",
+      "sidecarSha256": "efb43115a636a82e69790d10ef9aea3b8eca9a4361d9f363019601e9a75f37eb",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-12",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-12_left.png",
+      "imageSha256": "00dbf7e4ad8e8da74b922758de82099e5feaaaa9b37efd4da524caa21f9b05d7",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-12.json",
+      "sidecarSha256": "eaf28b03c1bed2886c9cd700f4b057858f69c00c72ea089294a15d63c509b89d",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-12",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-12_right.png",
+      "imageSha256": "91bb78aa1da1796e38ae59f9c76258422ae6f7754cc70d59653910c228aebf23",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-12.json",
+      "sidecarSha256": "eaf28b03c1bed2886c9cd700f4b057858f69c00c72ea089294a15d63c509b89d",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-13",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-13_left.png",
+      "imageSha256": "c793eb07539a4ac38169bc0342d0d3c69d3257cdedb47dea62f0dd0ce1e4733c",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-13.json",
+      "sidecarSha256": "66d584ec7a9127a282e95f547c6b5cc6b70d9399b8215ca46acd7eead74ca171",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-13",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-13_right.png",
+      "imageSha256": "aa43bcfa4f4ba723fceffc3cae445ec629ed81771951070fc9ee8193e977b6b9",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-13.json",
+      "sidecarSha256": "66d584ec7a9127a282e95f547c6b5cc6b70d9399b8215ca46acd7eead74ca171",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-14",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-14_left.png",
+      "imageSha256": "40b25ff9c953ebdd59e9e2508602cea885a8dc10b1e275f3b1d9723c87371b3b",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-14.json",
+      "sidecarSha256": "87c9f2408042a6922d7499bbc9a5a0e84d6a1b70ded739b5f805e86101ff883e",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-14",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-14_right.png",
+      "imageSha256": "2b8f338283544ea693004dcfe6a5859e06db7cad9b607d8522c71997c80590c0",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-14.json",
+      "sidecarSha256": "87c9f2408042a6922d7499bbc9a5a0e84d6a1b70ded739b5f805e86101ff883e",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-15",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-15_left.png",
+      "imageSha256": "7296ee0524a61f9c6b5ff9b69f4b821ab00f5b5bc2b33399c8a7e358b0826759",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-15.json",
+      "sidecarSha256": "507ffac77221e8867dbdea336d242ea68b5ab737a18edbc22f7c3d93c49fa3df",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-15",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-15_right.png",
+      "imageSha256": "60b6d70fb816d0f7812a88325376bdb66cbf49c1392ec0619b3c6eaa94175245",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-15.json",
+      "sidecarSha256": "507ffac77221e8867dbdea336d242ea68b5ab737a18edbc22f7c3d93c49fa3df",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "plain-16",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-16_left.png",
+      "imageSha256": "90b45fc1a4c2cccec1032dc6116cfc4c1ff31d3080eb15061b6e50213bc3ec1b",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-16.json",
+      "sidecarSha256": "70a9c0addcfbeb2c1b9e6a8d0a9f81eacf9a06e94952126edce584d293eab67d",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "plain-16",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-16_right.png",
+      "imageSha256": "25b83086aa1ccdebd2093f7a1e88ac37a0e92c3f37ef9a59890899a26dfb141c",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/plain-16.json",
+      "sidecarSha256": "70a9c0addcfbeb2c1b9e6a8d0a9f81eacf9a06e94952126edce584d293eab67d",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "reopen-01",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-01_left.png",
+      "imageSha256": "e2b46c2914be054712dc0574e2f5b0c225e614a420464afa67f51c9054115759",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-01.json",
+      "sidecarSha256": "e4149e9be400fc04b7590d6d83d838e599a1084a6cbe4bef1033b2fc550d30b7",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "reopen-01",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-01_right.png",
+      "imageSha256": "1eae40801849206a015fefbcd2bb22a4bdc8b77727bfe04d083f09ceb6bd56f8",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-01.json",
+      "sidecarSha256": "e4149e9be400fc04b7590d6d83d838e599a1084a6cbe4bef1033b2fc550d30b7",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "reopen-02",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-02_left.png",
+      "imageSha256": "45946a1c047a9397afe55cb23ca08f80fc29d0ef093ae954397a03eccccc7d60",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-02.json",
+      "sidecarSha256": "81d87956cdfca20177053ebbe02d5789c7814c3bfdfaec0d56f32fe339823c5e",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "reopen-02",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-02_right.png",
+      "imageSha256": "581944e7fb1e38b5b13d5bb192d12fe1c4993f64594c7973ad452f6c9edcbc3a",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-02.json",
+      "sidecarSha256": "81d87956cdfca20177053ebbe02d5789c7814c3bfdfaec0d56f32fe339823c5e",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "reopen-03",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-03_left.png",
+      "imageSha256": "bbf74c8acbc1da6f8dac3caf33bb936d1a5ca491e1036f8cfba42eb04d1a7de5",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-03.json",
+      "sidecarSha256": "dced4c93daa670e809aedc70e98bd7ac22c6884496e2a54884d36289424ad636",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "reopen-03",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-03_right.png",
+      "imageSha256": "a3ceed61f2bf0c725309df3199c69df779ad38d1cbef3bdff6052258d88f4c3c",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-03.json",
+      "sidecarSha256": "dced4c93daa670e809aedc70e98bd7ac22c6884496e2a54884d36289424ad636",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "reopen-04",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-04_left.png",
+      "imageSha256": "b73743306c15701cb5ece31351f55b3869c9e04a33efb5b33842e9568873199f",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-04.json",
+      "sidecarSha256": "2909feaa9e331ad4582fec98b84f3c763764b9982c01a5331d0f33f55741c45e",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "reopen-04",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-04_right.png",
+      "imageSha256": "82f0c7cf05f6eb782eb6d75ec7c968d22fe0f77c23c866d0b9327bc2c2048b47",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/reopen-04.json",
+      "sidecarSha256": "2909feaa9e331ad4582fec98b84f3c763764b9982c01a5331d0f33f55741c45e",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "title-00",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-00_left.png",
+      "imageSha256": "4d6633347ec7e41336178debfde3c44c7892ab93e401cd8be54b0dad9cf6a445",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-00.json",
+      "sidecarSha256": "15b0637eba0fa7b23191b67a8a5c76aff08206067048565bf05ef0daa2f686a7",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "title-00",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-00_right.png",
+      "imageSha256": "3aa85e5a8a3663edbb5f52d738d131c9bb4a4a328fd8c06d3f8c2713f9acc330",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-00.json",
+      "sidecarSha256": "15b0637eba0fa7b23191b67a8a5c76aff08206067048565bf05ef0daa2f686a7",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "title-01",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-01_left.png",
+      "imageSha256": "526449ec95df6750dca640fb42a9dd69eceb80d3cc7ba09492ff8deb9a407c27",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-01.json",
+      "sidecarSha256": "c96d04ee5cf715a1c92d13dc6ab40a5a0a02facd28316a8f68f8940b4d5304f2",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "title-01",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-01_right.png",
+      "imageSha256": "36928ac125c50c4110c9bb2e0a4db8ba7f46628f162eeda0593cfa7692bd8c79",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-01.json",
+      "sidecarSha256": "c96d04ee5cf715a1c92d13dc6ab40a5a0a02facd28316a8f68f8940b4d5304f2",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "title-02",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-02_left.png",
+      "imageSha256": "4d6633347ec7e41336178debfde3c44c7892ab93e401cd8be54b0dad9cf6a445",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-02.json",
+      "sidecarSha256": "e0c09e46cb4d5ec448820f7f4aa5e89c01d2050969db9aa26ffbd06a42a22e18",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "title-02",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-02_right.png",
+      "imageSha256": "3aa85e5a8a3663edbb5f52d738d131c9bb4a4a328fd8c06d3f8c2713f9acc330",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-02.json",
+      "sidecarSha256": "e0c09e46cb4d5ec448820f7f4aa5e89c01d2050969db9aa26ffbd06a42a22e18",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "title-03",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-03_left.png",
+      "imageSha256": "526449ec95df6750dca640fb42a9dd69eceb80d3cc7ba09492ff8deb9a407c27",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-03.json",
+      "sidecarSha256": "ed7ada7302e1ae276b76e4e3840bcb3a8695bfe1ee4e8df38172b1cd180697f6",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "title-03",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-03_right.png",
+      "imageSha256": "36928ac125c50c4110c9bb2e0a4db8ba7f46628f162eeda0593cfa7692bd8c79",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-03.json",
+      "sidecarSha256": "ed7ada7302e1ae276b76e4e3840bcb3a8695bfe1ee4e8df38172b1cd180697f6",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "title-04",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-04_left.png",
+      "imageSha256": "3dc5cb8a107ab397b33bd1e42ec9b87f390ab66802fda14b6123117b1932a4f8",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-04.json",
+      "sidecarSha256": "45f1d259aa6224d5932e585b0e1e2e4fb2764fd1002268e0670aeaa4907cb43d",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "title-04",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-04_right.png",
+      "imageSha256": "32802cc54052b99ee328ae3ee6bbde22305f2b7fab7204bcf652ecd122e6414e",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-04.json",
+      "sidecarSha256": "45f1d259aa6224d5932e585b0e1e2e4fb2764fd1002268e0670aeaa4907cb43d",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    },
+    {
+      "set": "followup",
+      "name": "title-05",
+      "eye": "left",
+      "box": [
+        395,
+        633,
+        832,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-05_left.png",
+      "imageSha256": "526449ec95df6750dca640fb42a9dd69eceb80d3cc7ba09492ff8deb9a407c27",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-05.json",
+      "sidecarSha256": "21b93ccc95e92955eb831ed846bad98f00ab8d4e5f005d1a1f16cc2716e83d9d",
+      "cardPixelSha256": "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d",
+      "brightPixels": 2134
+    },
+    {
+      "set": "followup",
+      "name": "title-05",
+      "eye": "right",
+      "box": [
+        200,
+        633,
+        637,
+        695
+      ],
+      "image": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-05_right.png",
+      "imageSha256": "36928ac125c50c4110c9bb2e0a4db8ba7f46628f162eeda0593cfa7692bd8c79",
+      "sidecar": "docs/evidence/ui-compositor-2026-09-10/baseline-sim/capture/title-05.json",
+      "sidecarSha256": "21b93ccc95e92955eb831ed846bad98f00ab8d4e5f005d1a1f16cc2716e83d9d",
+      "cardPixelSha256": "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765",
+      "brightPixels": 2141
+    }
+  ],
+  "groups": [
+    {
+      "eye": "left",
+      "count": 8,
+      "hashes": [
+        "f0018fac0522ad5e1f2a821436951de4711c72e0e10094cc9453e8d695dbf312"
+      ],
+      "allIdentical": true,
+      "members": [
+        [
+          "candidate06",
+          "disruptor-forward-06"
+        ],
+        [
+          "candidate06",
+          "held-test-start-06"
+        ],
+        [
+          "candidate06",
+          "inventory-06"
+        ],
+        [
+          "candidate06",
+          "inventory-page-06"
+        ],
+        [
+          "candidate06",
+          "main-menu-06"
+        ],
+        [
+          "candidate06",
+          "recovered-menu-06"
+        ],
+        [
+          "candidate06",
+          "second-retry-inventory-06"
+        ],
+        [
+          "candidate06",
+          "wrench-selected-06"
+        ]
+      ]
+    },
+    {
+      "eye": "right",
+      "count": 8,
+      "hashes": [
+        "9ce90bfa06366f57a846c0a9edabe5bdd7769cc6e04c501b9cae0f17a2c20608"
+      ],
+      "allIdentical": true,
+      "members": [
+        [
+          "candidate06",
+          "disruptor-forward-06"
+        ],
+        [
+          "candidate06",
+          "held-test-start-06"
+        ],
+        [
+          "candidate06",
+          "inventory-06"
+        ],
+        [
+          "candidate06",
+          "inventory-page-06"
+        ],
+        [
+          "candidate06",
+          "main-menu-06"
+        ],
+        [
+          "candidate06",
+          "recovered-menu-06"
+        ],
+        [
+          "candidate06",
+          "second-retry-inventory-06"
+        ],
+        [
+          "candidate06",
+          "wrench-selected-06"
+        ]
+      ]
+    },
+    {
+      "eye": "left",
+      "count": 48,
+      "hashes": [
+        "7e93623d87ab9b0f14a345519a7a7bd516145c9b45b798c8f8c860310b85b80d"
+      ],
+      "allIdentical": true,
+      "members": [
+        [
+          "candidate07",
+          "actual-inventory-07"
+        ],
+        [
+          "candidate07",
+          "gameplay-07"
+        ],
+        [
+          "candidate07",
+          "guide-probe-07"
+        ],
+        [
+          "candidate07",
+          "inventory-07"
+        ],
+        [
+          "candidate07",
+          "loading-07"
+        ],
+        [
+          "candidate07",
+          "main-menu-07"
+        ],
+        [
+          "followup",
+          "inventory-00"
+        ],
+        [
+          "followup",
+          "inventory-01"
+        ],
+        [
+          "followup",
+          "inventory-02"
+        ],
+        [
+          "followup",
+          "inventory-03"
+        ],
+        [
+          "followup",
+          "inventory-04"
+        ],
+        [
+          "followup",
+          "inventory-05"
+        ],
+        [
+          "followup",
+          "inventory-06"
+        ],
+        [
+          "followup",
+          "inventory-07"
+        ],
+        [
+          "followup",
+          "inventory-08"
+        ],
+        [
+          "followup",
+          "inventory-09"
+        ],
+        [
+          "followup",
+          "inventory-10"
+        ],
+        [
+          "followup",
+          "inventory-11"
+        ],
+        [
+          "followup",
+          "inventory-12"
+        ],
+        [
+          "followup",
+          "inventory-13"
+        ],
+        [
+          "followup",
+          "inventory-14"
+        ],
+        [
+          "followup",
+          "inventory-15"
+        ],
+        [
+          "followup",
+          "plain-01"
+        ],
+        [
+          "followup",
+          "plain-02"
+        ],
+        [
+          "followup",
+          "plain-03"
+        ],
+        [
+          "followup",
+          "plain-04"
+        ],
+        [
+          "followup",
+          "plain-05"
+        ],
+        [
+          "followup",
+          "plain-06"
+        ],
+        [
+          "followup",
+          "plain-07"
+        ],
+        [
+          "followup",
+          "plain-08"
+        ],
+        [
+          "followup",
+          "plain-09"
+        ],
+        [
+          "followup",
+          "plain-10"
+        ],
+        [
+          "followup",
+          "plain-11"
+        ],
+        [
+          "followup",
+          "plain-12"
+        ],
+        [
+          "followup",
+          "plain-13"
+        ],
+        [
+          "followup",
+          "plain-14"
+        ],
+        [
+          "followup",
+          "plain-15"
+        ],
+        [
+          "followup",
+          "plain-16"
+        ],
+        [
+          "followup",
+          "reopen-01"
+        ],
+        [
+          "followup",
+          "reopen-02"
+        ],
+        [
+          "followup",
+          "reopen-03"
+        ],
+        [
+          "followup",
+          "reopen-04"
+        ],
+        [
+          "followup",
+          "title-00"
+        ],
+        [
+          "followup",
+          "title-01"
+        ],
+        [
+          "followup",
+          "title-02"
+        ],
+        [
+          "followup",
+          "title-03"
+        ],
+        [
+          "followup",
+          "title-04"
+        ],
+        [
+          "followup",
+          "title-05"
+        ]
+      ]
+    },
+    {
+      "eye": "right",
+      "count": 48,
+      "hashes": [
+        "ac61d9b6b8cd440e6eb2c034862e9cc4af6d5117ca778df25c27bf23d658c765"
+      ],
+      "allIdentical": true,
+      "members": [
+        [
+          "candidate07",
+          "actual-inventory-07"
+        ],
+        [
+          "candidate07",
+          "gameplay-07"
+        ],
+        [
+          "candidate07",
+          "guide-probe-07"
+        ],
+        [
+          "candidate07",
+          "inventory-07"
+        ],
+        [
+          "candidate07",
+          "loading-07"
+        ],
+        [
+          "candidate07",
+          "main-menu-07"
+        ],
+        [
+          "followup",
+          "inventory-00"
+        ],
+        [
+          "followup",
+          "inventory-01"
+        ],
+        [
+          "followup",
+          "inventory-02"
+        ],
+        [
+          "followup",
+          "inventory-03"
+        ],
+        [
+          "followup",
+          "inventory-04"
+        ],
+        [
+          "followup",
+          "inventory-05"
+        ],
+        [
+          "followup",
+          "inventory-06"
+        ],
+        [
+          "followup",
+          "inventory-07"
+        ],
+        [
+          "followup",
+          "inventory-08"
+        ],
+        [
+          "followup",
+          "inventory-09"
+        ],
+        [
+          "followup",
+          "inventory-10"
+        ],
+        [
+          "followup",
+          "inventory-11"
+        ],
+        [
+          "followup",
+          "inventory-12"
+        ],
+        [
+          "followup",
+          "inventory-13"
+        ],
+        [
+          "followup",
+          "inventory-14"
+        ],
+        [
+          "followup",
+          "inventory-15"
+        ],
+        [
+          "followup",
+          "plain-01"
+        ],
+        [
+          "followup",
+          "plain-02"
+        ],
+        [
+          "followup",
+          "plain-03"
+        ],
+        [
+          "followup",
+          "plain-04"
+        ],
+        [
+          "followup",
+          "plain-05"
+        ],
+        [
+          "followup",
+          "plain-06"
+        ],
+        [
+          "followup",
+          "plain-07"
+        ],
+        [
+          "followup",
+          "plain-08"
+        ],
+        [
+          "followup",
+          "plain-09"
+        ],
+        [
+          "followup",
+          "plain-10"
+        ],
+        [
+          "followup",
+          "plain-11"
+        ],
+        [
+          "followup",
+          "plain-12"
+        ],
+        [
+          "followup",
+          "plain-13"
+        ],
+        [
+          "followup",
+          "plain-14"
+        ],
+        [
+          "followup",
+          "plain-15"
+        ],
+        [
+          "followup",
+          "plain-16"
+        ],
+        [
+          "followup",
+          "reopen-01"
+        ],
+        [
+          "followup",
+          "reopen-02"
+        ],
+        [
+          "followup",
+          "reopen-03"
+        ],
+        [
+          "followup",
+          "reopen-04"
+        ],
+        [
+          "followup",
+          "title-00"
+        ],
+        [
+          "followup",
+          "title-01"
+        ],
+        [
+          "followup",
+          "title-02"
+        ],
+        [
+          "followup",
+          "title-03"
+        ],
+        [
+          "followup",
+          "title-04"
+        ],
+        [
+          "followup",
+          "title-05"
+        ]
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "name": "held-after-menu-06",
+      "reason": "head/layout outside fixed reference"
+    },
+    {
+      "name": "menu-moved-head-06",
+      "reason": "head/layout outside fixed reference"
+    },
+    {
+      "name": "menu-recentered-06",
+      "reason": "head/layout outside fixed reference"
+    }
+  ],
+  "allFixedLayoutGroupsIdentical": true
+}

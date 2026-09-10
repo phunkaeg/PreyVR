@@ -1,0 +1,5 @@
+{
+  "candidate08": false,
+  "candidate09": true,
+  "scope": "One consumption at frame-service entry before status, mutex, menu, acquisition and shouldRender branches; no second consumption in stereo-copy helper. Does not prove native producer/renderer correspondence."
+}

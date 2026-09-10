@@ -1,0 +1,130 @@
+{
+  "trace": "docs\\evidence\\vr-interface-2026-09-09\\private-live-tape-06\\trace-Prey.exe-72072-20260909-162147.ndjson",
+  "runtime": "xr-sim",
+  "frames": 5383,
+  "results": [
+    {
+      "name": "trace_is_readable",
+      "status": "PASS",
+      "detail": "schema 1, 5383 frames, exe D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\Prey.exe",
+      "atlas": ""
+    },
+    {
+      "name": "runtime_identified",
+      "status": "PASS",
+      "detail": "runtime 'xr-sim'",
+      "atlas": "FAIL-XR-006"
+    },
+    {
+      "name": "no_silent_truncation",
+      "status": "PASS",
+      "detail": "5383 frames recorded, cap 20000",
+      "atlas": ""
+    },
+    {
+      "name": "session_reached_focused",
+      "status": "PASS",
+      "detail": "reached FOCUSED",
+      "atlas": ""
+    },
+    {
+      "name": "stereo_view_count_is_2",
+      "status": "PASS",
+      "detail": "2 views",
+      "atlas": ""
+    },
+    {
+      "name": "frame_contract",
+      "status": "PASS",
+      "detail": "wait 5383, begin 5383, end 5383",
+      "atlas": "FAIL-XR-007"
+    },
+    {
+      "name": "frame_loop_advances",
+      "status": "PASS",
+      "detail": "5383 frames, display time monotonic",
+      "atlas": "FAIL-XR-004"
+    },
+    {
+      "name": "never_submits_zero_layers",
+      "status": "FAIL",
+      "detail": "2 frame(s) submitted zero layers while shouldRender was true (first: 2577)",
+      "atlas": ""
+    },
+    {
+      "name": "layer_budget",
+      "status": "SKIP",
+      "detail": "system max layer count unknown",
+      "atlas": ""
+    },
+    {
+      "name": "both_eyes_submitted",
+      "status": "PASS",
+      "detail": "2805 stereo layer(s)",
+      "atlas": "FAIL-STR-028"
+    },
+    {
+      "name": "eye_order",
+      "status": "PASS",
+      "detail": "view 0 is left in all 2805 pairs",
+      "atlas": "FAIL-STR-003"
+    },
+    {
+      "name": "ipd_plausible",
+      "status": "PASS",
+      "detail": "separation 0.0630..0.0630 m",
+      "atlas": ""
+    },
+    {
+      "name": "no_vertical_disparity",
+      "status": "PASS",
+      "detail": "max off-axis offset 0.00000 m",
+      "atlas": "FAIL-STR-002"
+    },
+    {
+      "name": "eyes_parallel",
+      "status": "PASS",
+      "detail": "orientation dot >= 1.000000",
+      "atlas": ""
+    },
+    {
+      "name": "submitted_fov_matches_located",
+      "status": "FAIL",
+      "detail": "submitted FOV differs from located by up to 0.279253 rad (frame 2579), tolerance 1e-05",
+      "atlas": "FAIL-STR-009"
+    },
+    {
+      "name": "submitted_pose_matches_located",
+      "status": "PASS",
+      "detail": "2805 frames, max difference 0",
+      "atlas": "FAIL-XR-011"
+    },
+    {
+      "name": "eye_subimages_distinct",
+      "status": "PASS",
+      "detail": "eye sub-images differ in all 2805 pairs",
+      "atlas": "FAIL-STR-001"
+    },
+    {
+      "name": "no_submit_with_invalid_pose",
+      "status": "PASS",
+      "detail": "2805 submitted frames all had valid orientation and position",
+      "atlas": "FAIL-XR-013"
+    },
+    {
+      "name": "eye_pair_shares_display_time",
+      "status": "PASS",
+      "detail": "5383 frames located and submitted at the same display time",
+      "atlas": "FAIL-STR-006"
+    },
+    {
+      "name": "depth_submission_consistent",
+      "status": "SKIP",
+      "detail": "no depth layers submitted",
+      "atlas": ""
+    }
+  ],
+  "passed": 16,
+  "failed": 2,
+  "skipped": 2
+}

@@ -1,0 +1,36 @@
+{
+  "xrefs": [
+    {
+      "name": "inventoryPickItem",
+      "rva": "0x162b0c0",
+      "pdata_begin": "0x162b010"
+    },
+    {
+      "name": "inventoryPlaceItem",
+      "rva": "0x162b0d6",
+      "pdata_begin": "0x162b010"
+    },
+    {
+      "name": "inventoryDragPos",
+      "rva": "0x162b0ec",
+      "pdata_begin": "0x162b010"
+    }
+  ],
+  "slots": [
+    {
+      "table": "0x1db56d8",
+      "slot": "0x70",
+      "callee": "0xe87f20"
+    },
+    {
+      "table": "0x1eb4b60",
+      "slot": "0x128",
+      "callee": "0x18a8d90"
+    },
+    {
+      "table": "0x1eb4b60",
+      "slot": "0x168",
+      "callee": "0x18a9f00"
+    }
+  ]
+}

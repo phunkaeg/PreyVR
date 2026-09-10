@@ -1,5 +1,6 @@
 #include "preyvr/LatestSnapshot.h"
 #include "HeadTrackingHook.h"
+#include "XrInput.h"
 #include "MinHookInit.h"
 
 #include "Logger.h"
@@ -65,6 +66,9 @@ LatestSnapshot<PoseSlot> gPoseSlot;
 
 std::atomic<bool> gHaveReference{false};
 std::atomic<float> gReferenceYaw{0.0f};
+struct RoomReference { float yaw = 0; Vec3 origin{}; };
+LatestSnapshot<RoomReference> gRoomReference;
+std::mutex gRecenterMutex;
 std::atomic<unsigned long long> gReferenceGeneration{0};
 
 std::int64_t QpcNow()
@@ -229,7 +233,7 @@ bool TryReadHeadPose(Pose& out, unsigned long long& ageMicroseconds)
     }
     out = pose;
     ageMicroseconds = age;
-    return true;
+    return age <= 200000ull;
 }
 
 bool ApplyHeadRotation(std::uint8_t* camera, std::size_t size)
@@ -347,8 +351,9 @@ void __fastcall UpdateViewObserved(void* camera, std::uint8_t* viewParams)
     std::memcpy(&gameRotation, viewParams + kViewRotation, sizeof(gameRotation));
     const stereo::Matrix34 gameMatrix =
         stereo::MatrixFromPose(Pose{gameRotation, Vec3{}});
-    const float playSpaceYaw = stereo::CameraYawOf(gameMatrix) -
-                               gReferenceYaw.load(std::memory_order_acquire);
+    RoomReference room{};
+    if (!gRoomReference.TryRead(room)) { return; }
+    const float playSpaceYaw = stereo::CameraYawOf(gameMatrix) - room.yaw;
 
     // **Position is gated separately from rotation on purpose.** They fail in
     // completely different ways -- a wrong rotation reads as the world spinning,
@@ -368,9 +373,9 @@ void __fastcall UpdateViewObserved(void* camera, std::uint8_t* viewParams)
         // has to move far from 1.0 to feel right means the measurement was wrong,
         // and that is worth knowing rather than hiding.
         const float scale = gPositionScale.load(std::memory_order_relaxed);
-        headForView.position.x *= scale;
-        headForView.position.y *= scale;
-        headForView.position.z *= scale;
+        headForView.position.x = (headPose.position.x - room.origin.x) * scale;
+        headForView.position.y = (headPose.position.y - room.origin.y) * scale;
+        headForView.position.z = (headPose.position.z - room.origin.z) * scale;
     }
 
     stereo::ReferenceFrame reference{};
@@ -556,12 +561,14 @@ void PublishHeadPose(const Pose& openXrHeadPose)
 
 DWORD RecenterHeadTracking()
 {
-    Pose headPose{};
-    std::int64_t publishedQpc = 0;
-    if (!ReadPose(headPose, publishedQpc)) {
-        Log("result=refused detail=no_pose_published");
+    TrackingFrame frame{};
+    if (!TryGetTrackingFrame(frame) ||
+        !FreshSample(MonotonicNanoseconds(), frame.publishedNs) ||
+        !IsPoseUsable(frame.head, frame.headValidity, 200000000ull)) {
+        Log("result=refused detail=no_fresh_tracked_head");
         return 1;
     }
+    const Pose headPose = frame.head;
     const auto yaw = stereo::RecenterYawFromHeadPose(headPose);
     if (!yaw) {
         // Near-vertical. Rejecting leaves the previous reference in place, which
@@ -570,12 +577,17 @@ DWORD RecenterHeadTracking()
         Log("result=refused detail=near_vertical_no_usable_yaw");
         return 2;
     }
+    std::unique_lock referenceLock(gRecenterMutex, std::try_to_lock);
+    if (!referenceLock.owns_lock()) { return 3; }
     gReferenceGeneration.fetch_add(1); // odd while recenter is being published
+    gRoomReference.Publish(RoomReference{*yaw, headPose.position});
     gReferenceYaw.store(*yaw, std::memory_order_release);
     gHaveReference.store(true, std::memory_order_release);
     gReferenceGeneration.fetch_add(1);
     std::ostringstream line;
-    line << "result=0 detail=recentered yawRadians=" << *yaw;
+    line << "result=0 detail=recentered yawRadians=" << *yaw
+         << " origin=" << headPose.position.x << ',' << headPose.position.y
+         << ',' << headPose.position.z;
     Log(line.str());
     return 0;
 }

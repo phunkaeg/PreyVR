@@ -455,6 +455,13 @@ DWORD SetNearViewHalfIpdMillimetres(unsigned int millimetres)
     return 0;
 }
 
+DWORD SetNearViewIpdMetres(float metres)
+{
+    if (!std::isfinite(metres) || metres < .045f || metres > .085f) { return 1; }
+    gHalfIpd.store(metres*.5f, std::memory_order_release);
+    return 0;
+}
+
 DWORD SetNearViewZeroDeltaControl(unsigned int enabled)
 {
     const bool on = enabled != 0u;

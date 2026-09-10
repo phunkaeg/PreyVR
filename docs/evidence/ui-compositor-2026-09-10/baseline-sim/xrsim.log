@@ -1,0 +1,118 @@
+[07:30:26.884] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[07:30:26.947] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[07:30:26.947] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/ui-compositor-2026-09-10/baseline-sim
+[07:30:27.030] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[07:30:27.148] xrsim: compositor ready
+[07:30:27.148] xrsim: session state -> IDLE
+[07:30:27.148] xrsim: session created with D3D11 graphics
+[07:30:27.148] xrsim: action set 'preyvr' created
+[07:30:27.148] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[07:30:27.149] xrsim: 15 binding(s) suggested on the index profile, 15 driven
+[07:30:27.149] xrsim: action set(s) attached to the session
+[07:30:27.149] xrsim: swapchain 0 created 2560x1440x2 fmt 29 (3 images)
+[07:30:27.291] xrsim: session state -> READY
+[07:30:27.291] xrsim: session state -> SYNCHRONIZED
+[07:30:27.291] xrsim: session running - the app is now paced by the simulated headset
+[07:30:27.294] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[07:30:27.294] xrsim: session state -> VISIBLE
+[07:30:27.319] xrsim: session state -> FOCUSED
+[07:31:09.349] xrsim: applied 2 command(s): hand r point 0 0 | btn a press 160
+[07:31:27.518] xrsim: applied 1 command(s): shot title-00
+[07:31:27.585] xrsim: capture written title-00 (1032x1104)
+[07:31:28.966] xrsim: applied 1 command(s): shot title-01
+[07:31:29.041] xrsim: capture written title-01 (1032x1104)
+[07:31:30.620] xrsim: applied 1 command(s): shot title-02
+[07:31:30.731] xrsim: capture written title-02 (1032x1104)
+[07:31:32.054] xrsim: applied 1 command(s): shot title-03
+[07:31:32.111] xrsim: capture written title-03 (1032x1104)
+[07:31:33.457] xrsim: applied 1 command(s): shot title-04
+[07:31:33.533] xrsim: capture written title-04 (1032x1104)
+[07:31:34.846] xrsim: applied 1 command(s): shot title-05
+[07:31:34.913] xrsim: capture written title-05 (1032x1104)
+[07:31:48.123] xrsim: applied 1 command(s): btn a press 160
+[07:31:48.272] xrsim: swapchain 2 created 2560x1440x1 fmt 28 (3 images)
+[07:32:09.208] xrsim: applied 1 command(s): shot load-state
+[07:32:09.488] xrsim: capture written load-state (1032x1104)
+[07:32:19.745] xrsim: applied 1 command(s): btn x press 160
+[07:32:35.474] xrsim: applied 1 command(s): shot inventory-00
+[07:32:35.551] xrsim: capture written inventory-00 (1032x1104)
+[07:32:36.864] xrsim: applied 1 command(s): shot inventory-01
+[07:32:36.958] xrsim: capture written inventory-01 (1032x1104)
+[07:32:38.257] xrsim: applied 1 command(s): shot inventory-02
+[07:32:38.347] xrsim: capture written inventory-02 (1032x1104)
+[07:32:39.630] xrsim: applied 1 command(s): shot inventory-03
+[07:32:39.710] xrsim: capture written inventory-03 (1032x1104)
+[07:32:41.020] xrsim: applied 1 command(s): shot inventory-04
+[07:32:41.097] xrsim: capture written inventory-04 (1032x1104)
+[07:32:42.726] xrsim: applied 1 command(s): shot inventory-05
+[07:32:42.804] xrsim: capture written inventory-05 (1032x1104)
+[07:32:44.108] xrsim: applied 1 command(s): shot inventory-06
+[07:32:44.199] xrsim: capture written inventory-06 (1032x1104)
+[07:32:45.535] xrsim: applied 1 command(s): shot inventory-07
+[07:32:45.609] xrsim: capture written inventory-07 (1032x1104)
+[07:32:46.914] xrsim: applied 1 command(s): shot inventory-08
+[07:32:47.006] xrsim: capture written inventory-08 (1032x1104)
+[07:32:48.305] xrsim: applied 1 command(s): shot inventory-09
+[07:32:48.395] xrsim: capture written inventory-09 (1032x1104)
+[07:32:49.697] xrsim: applied 1 command(s): shot inventory-10
+[07:32:49.789] xrsim: capture written inventory-10 (1032x1104)
+[07:32:51.410] xrsim: applied 1 command(s): shot inventory-11
+[07:32:51.514] xrsim: capture written inventory-11 (1032x1104)
+[07:32:52.854] xrsim: applied 1 command(s): shot inventory-12
+[07:32:52.956] xrsim: capture written inventory-12 (1032x1104)
+[07:32:54.543] xrsim: applied 1 command(s): shot inventory-13
+[07:32:54.648] xrsim: capture written inventory-13 (1032x1104)
+[07:32:55.999] xrsim: applied 1 command(s): shot inventory-14
+[07:32:56.078] xrsim: capture written inventory-14 (1032x1104)
+[07:32:57.450] xrsim: applied 1 command(s): shot inventory-15
+[07:32:57.553] xrsim: capture written inventory-15 (1032x1104)
+[07:33:25.155] xrsim: applied 1 command(s): shot plain-01
+[07:33:25.227] xrsim: capture written plain-01 (1032x1104)
+[07:33:25.633] xrsim: applied 1 command(s): shot plain-02
+[07:33:25.723] xrsim: capture written plain-02 (1032x1104)
+[07:33:26.112] xrsim: applied 1 command(s): shot plain-03
+[07:33:26.201] xrsim: capture written plain-03 (1032x1104)
+[07:33:26.593] xrsim: applied 1 command(s): shot plain-04
+[07:33:26.675] xrsim: capture written plain-04 (1032x1104)
+[07:33:27.050] xrsim: applied 1 command(s): shot plain-05
+[07:33:27.145] xrsim: capture written plain-05 (1032x1104)
+[07:33:27.527] xrsim: applied 1 command(s): shot plain-06
+[07:33:27.613] xrsim: capture written plain-06 (1032x1104)
+[07:33:28.004] xrsim: applied 1 command(s): shot plain-07
+[07:33:28.087] xrsim: capture written plain-07 (1032x1104)
+[07:33:28.482] xrsim: applied 1 command(s): shot plain-08
+[07:33:28.556] xrsim: capture written plain-08 (1032x1104)
+[07:33:28.961] xrsim: applied 1 command(s): shot plain-09
+[07:33:29.030] xrsim: capture written plain-09 (1032x1104)
+[07:33:29.445] xrsim: applied 1 command(s): shot plain-10
+[07:33:29.533] xrsim: capture written plain-10 (1032x1104)
+[07:33:29.925] xrsim: applied 1 command(s): shot plain-11
+[07:33:30.007] xrsim: capture written plain-11 (1032x1104)
+[07:33:30.402] xrsim: applied 1 command(s): shot plain-12
+[07:33:30.479] xrsim: capture written plain-12 (1032x1104)
+[07:33:30.901] xrsim: applied 1 command(s): shot plain-13
+[07:33:30.983] xrsim: capture written plain-13 (1032x1104)
+[07:33:31.381] xrsim: applied 1 command(s): shot plain-14
+[07:33:31.453] xrsim: capture written plain-14 (1032x1104)
+[07:33:31.877] xrsim: applied 1 command(s): shot plain-15
+[07:33:31.949] xrsim: capture written plain-15 (1032x1104)
+[07:33:32.355] xrsim: applied 1 command(s): shot plain-16
+[07:33:32.454] xrsim: capture written plain-16 (1032x1104)
+[07:34:46.323] xrsim: applied 1 command(s): btn b press 160
+[07:34:47.655] xrsim: applied 1 command(s): btn x press 160
+[07:34:48.984] xrsim: applied 1 command(s): shot reopen-01
+[07:34:49.073] xrsim: capture written reopen-01 (1032x1104)
+[07:34:49.110] xrsim: applied 1 command(s): btn b press 160
+[07:34:50.436] xrsim: applied 1 command(s): btn x press 160
+[07:34:51.766] xrsim: applied 1 command(s): shot reopen-02
+[07:34:51.843] xrsim: capture written reopen-02 (1032x1104)
+[07:34:51.891] xrsim: applied 1 command(s): btn b press 160
+[07:34:53.197] xrsim: applied 1 command(s): btn x press 160
+[07:34:54.548] xrsim: applied 1 command(s): shot reopen-03
+[07:34:54.623] xrsim: capture written reopen-03 (1032x1104)
+[07:34:54.674] xrsim: applied 1 command(s): btn b press 160
+[07:34:56.018] xrsim: applied 1 command(s): btn x press 160
+[07:34:57.325] xrsim: applied 1 command(s): shot reopen-04
+[07:34:57.401] xrsim: capture written reopen-04 (1032x1104)
+[07:36:47.487] xrsim: session torn down
+[07:36:47.487] xrsim: instance destroyed

@@ -1,0 +1,88 @@
+{
+  "ID3D11DeviceContext": {
+    "GetDevice": 3,
+    "GetPrivateData": 4,
+    "PSSetShaderResources": 8,
+    "PSSetShader": 9,
+    "VSSetShader": 11,
+    "Draw": 13,
+    "Map": 14,
+    "Unmap": 15,
+    "GetData": 29,
+    "OMSetRenderTargets": 33,
+    "CopyResource": 47,
+    "GetResourceMinLOD": 56,
+    "VSGetConstantBuffers": 72,
+    "PSGetShaderResources": 73,
+    "PSGetShader": 74,
+    "PSGetSamplers": 75,
+    "VSGetShader": 76,
+    "PSGetConstantBuffers": 77,
+    "GSGetConstantBuffers": 81,
+    "GSGetShader": 82,
+    "VSGetShaderResources": 84,
+    "VSGetSamplers": 85,
+    "GetPredication": 86,
+    "GSGetShaderResources": 87,
+    "GSGetSamplers": 88,
+    "OMGetRenderTargets": 89,
+    "OMGetRenderTargetsAndUnorderedAccessViews": 90,
+    "OMGetBlendState": 91,
+    "OMGetDepthStencilState": 92,
+    "RSGetState": 94,
+    "RSGetViewports": 95,
+    "RSGetScissorRects": 96,
+    "HSGetShaderResources": 97,
+    "HSGetShader": 98,
+    "HSGetSamplers": 99,
+    "HSGetConstantBuffers": 100,
+    "DSGetShaderResources": 101,
+    "DSGetShader": 102,
+    "DSGetSamplers": 103,
+    "DSGetConstantBuffers": 104,
+    "GetType": 112,
+    "GetContextFlags": 113
+  },
+  "ID3D11Device": {
+    "CreateBuffer": 3,
+    "GetPrivateData": 34,
+    "GetFeatureLevel": 37,
+    "GetCreationFlags": 38,
+    "GetDeviceRemovedReason": 39,
+    "GetImmediateContext": 40,
+    "GetExceptionMode": 42
+  },
+  "ID3D11Buffer": {
+    "GetDevice": 3,
+    "GetPrivateData": 4,
+    "GetType": 7,
+    "GetEvictionPriority": 9,
+    "GetDesc": 10
+  },
+  "ID3D11SamplerState": {
+    "GetDevice": 3,
+    "GetPrivateData": 4,
+    "GetDesc": 7
+  },
+  "ID3D11RasterizerState": {
+    "GetDevice": 3,
+    "GetPrivateData": 4,
+    "GetDesc": 7
+  },
+  "ID3D11DepthStencilState": {
+    "GetDevice": 3,
+    "GetPrivateData": 4,
+    "GetDesc": 7
+  },
+  "ID3D11BlendState": {
+    "GetDevice": 3,
+    "GetPrivateData": 4,
+    "GetDesc": 7
+  },
+  "ID3D11Predicate": {
+    "GetDevice": 3,
+    "GetPrivateData": 4,
+    "GetDataSize": 7,
+    "GetDesc": 8
+  }
+}

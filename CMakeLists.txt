@@ -73,6 +73,7 @@ target_include_directories(preyvr_headers INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}
 add_library(preyvr_core STATIC
     src/common/AimState.cpp
     src/common/AnimIk.cpp
+    src/common/WeaponRigAlignment.cpp
     src/common/CameraEdit.cpp
     src/common/ConsolePolicy.cpp
     src/common/DebugRegisters.cpp
@@ -84,6 +85,7 @@ add_library(preyvr_core STATIC
     src/common/InteractionQuery.cpp
     src/common/Locomotion.cpp
     src/common/MenuNavigator.cpp
+    src/common/UiPanel.cpp
     src/common/MotionController.cpp
     src/common/OpenXRBootstrap.cpp
     src/common/RenderFrameTable.cpp
@@ -110,6 +112,9 @@ endfunction()
 preyvr_enable_warnings(preyvr_core)
 
 if((PREYVR_BUILD_TOOLS OR PREYVR_BUILD_SMOKE_DLL) AND WIN32)
+    add_executable(preyvr_injector tools/injector/main.cpp)
+    target_compile_definitions(preyvr_injector PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+    preyvr_enable_warnings(preyvr_injector)
     add_executable(preyvr_engine_map_probe tools/engine_map_probe/main.cpp)
     target_compile_definitions(preyvr_engine_map_probe PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
     target_link_libraries(preyvr_engine_map_probe PRIVATE preyvr_core)
@@ -131,6 +136,11 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/AimTakeover.cpp
         src/dll/AnimIkTakeover.cpp
         src/dll/Bootstrap.cpp
+        src/dll/VrMode.cpp
+        src/dll/UiGuide.cpp
+        src/dll/HudLayer.cpp
+        src/dll/UiPointer.cpp
+        src/dll/InventoryPointerCapture.cpp
         src/dll/CameraEditHook.cpp
         src/dll/ConsoleBridgeWin32.cpp
         src/dll/DebugWatch.cpp
@@ -163,7 +173,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         "${CMAKE_CURRENT_BINARY_DIR}/generated"
     )
     target_compile_definitions(preyvr PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
-    target_link_libraries(preyvr PRIVATE preyvr_core preyvr_win32_bootstrap minhook bcrypt psapi shell32 d3d11 dxgi)
+    target_link_libraries(preyvr PRIVATE preyvr_core preyvr_win32_bootstrap minhook bcrypt psapi shell32 d3d11 dxgi gdi32)
     if(PREYVR_BUILD_OPENXR_LOADER AND TARGET openxr_loader)
         # The in-process session host needs the loader. The DLL already ships
         # openxr_loader.dll beside itself for the preflight, so this adds a link
@@ -332,6 +342,11 @@ if(PREYVR_BUILD_TESTS)
     preyvr_enable_warnings(preyvr_anim_ik_tests)
     add_test(NAME anim_ik COMMAND preyvr_anim_ik_tests)
 
+    add_executable(preyvr_weapon_rig_alignment_tests tests/WeaponRigAlignmentTests.cpp)
+    target_link_libraries(preyvr_weapon_rig_alignment_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_weapon_rig_alignment_tests)
+    add_test(NAME weapon_rig_alignment COMMAND preyvr_weapon_rig_alignment_tests)
+
     add_executable(preyvr_weapon_aim_tests tests/WeaponAimTests.cpp)
     target_link_libraries(preyvr_weapon_aim_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_weapon_aim_tests)
@@ -361,6 +376,10 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_menu_navigator_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_menu_navigator_tests)
     add_test(NAME menu_navigator COMMAND preyvr_menu_navigator_tests)
+    add_executable(preyvr_ui_panel_tests tests/UiPanelTests.cpp)
+    target_link_libraries(preyvr_ui_panel_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_ui_panel_tests)
+    add_test(NAME ui_panel COMMAND preyvr_ui_panel_tests)
 
     add_executable(preyvr_locomotion_tests tests/LocomotionTests.cpp)
     target_link_libraries(preyvr_locomotion_tests PRIVATE preyvr_core)
@@ -403,6 +422,25 @@ if(PREYVR_BUILD_TESTS)
     add_test(NAME runtime_bootstrap COMMAND preyvr_runtime_bootstrap_tests)
 
     if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
+        add_executable(preyvr_ui_pointer_tests tests/UiPointerTests.cpp)
+        target_include_directories(preyvr_ui_pointer_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
+        target_compile_definitions(preyvr_ui_pointer_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        target_link_libraries(preyvr_ui_pointer_tests PRIVATE preyvr_core)
+        preyvr_enable_warnings(preyvr_ui_pointer_tests)
+        add_test(NAME ui_pointer_dispatch COMMAND preyvr_ui_pointer_tests)
+
+        add_executable(preyvr_inventory_capture_tests tests/InventoryPointerCaptureTests.cpp)
+        target_include_directories(preyvr_inventory_capture_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
+        target_link_libraries(preyvr_inventory_capture_tests PRIVATE minhook)
+        preyvr_enable_warnings(preyvr_inventory_capture_tests)
+        add_test(NAME inventory_pointer_capture COMMAND preyvr_inventory_capture_tests)
+
+        add_executable(preyvr_near_fov_tests tests/NearFovOverrideTests.cpp)
+        target_include_directories(preyvr_near_fov_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
+        target_link_libraries(preyvr_near_fov_tests PRIVATE minhook)
+        preyvr_enable_warnings(preyvr_near_fov_tests)
+        add_test(NAME near_fov_override COMMAND preyvr_near_fov_tests)
+
         add_executable(preyvr_dll_smoke_host tests/DllSmokeHost.cpp)
         preyvr_enable_warnings(preyvr_dll_smoke_host)
         add_test(NAME dll_load_fail_closed COMMAND preyvr_dll_smoke_host $<TARGET_FILE:preyvr>)

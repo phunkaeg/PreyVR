@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260910-ui-pointer-contract",
+  "recorded_at": "2026-09-09T22:52:31.565273+00:00",
+  "target": {
+    "name": "Unmodified Steam PreyDll.dll x64; native UI cursor ABI",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Does this Steam binary expose a concrete Scaleform hardware-mouse route with a proved receiver adjustment, integer ABI and downstream cursor consumer?",
+  "claim": "Yes. The constructor installs a hardware-mouse secondary interface at CFlashUI+8, whose slot +8 calls 0x2CFCC0 and subtracts 8 before primary dispatch 0x2CEF30. Native code constructs cursor events, translates viewport coordinates, routes to eligible movies and retains the pressed receiver for release. Input-device selection is a separate listener; native mouse key 0x10A is named maxis_x. The source adds guarded main-thread delivery and quad/cylinder ray mapping; this receipt proves the static contract, not live menu acceptance.",
+  "evidence_grade": "STATIC",
+  "environment": "static",
+  "method": "Ghidra 12.1.2 explicit /Prey/PreyDll.dll. Producer constructor and downstream dispatch decompiles, plus Python 3.14 standard-library PE verifier: python verify_static.py <Steam PreyDll.dll>. Verifier requires the exact SHA-256, PE32+ AMD64, six concrete vtable targets and callback prologue. Source snapshot 05 is built with MSVC 19.50/CMake; CTest records 33 passes including independent analytic cylinder targets, transformed rooms, canted frusta and held-button state cases.",
+  "validity": "VALID",
+  "mutation": "persistent",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Ghidra metadata and read-only PE hash/base/width match the selected Steam binary."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Native constructor and consumer decompiles agree with six independently read concrete slots and exact guarded bytes; no runtime observation is used for this static claim."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "PE verifier rejects a mismatched target; pure fixtures reject invalid geometry/back faces and held-entry presses, while analytic off-centre rays reconstruct their prescribed UV coordinates."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "This receipt is restricted to static binary/source and offline tests. Separate game runs do not upgrade it."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "Read-only target inspection and persistent source/build changes; no game-memory mutation belongs to this static receipt."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Source snapshot 05 compiles and passes 33/33 offline tests. This baseline excludes native-game, compositor and headset acceptance."
+  },
+  "limits": "Static native ABI and bounded geometry/state fixtures only. PostInputEvent returning does not establish active device mode or a selected UI item. Automatic mouse mode, inventory dragging, physical comfort and terminal interaction require their own live evidence. A separate in-world examination-reticle path is documented but not hooked.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/native-pointer-decompiles.json",
+      "sha256": "479396ec0e345936d25a9f77b9c7ded1d7da832b49d10b3b2f5107df23f119fe",
+      "role": "Static native contract or frozen source/build verification; no live acceptance claim"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/native-input-mode-proof.json",
+      "sha256": "59fe87aa62e6f58968ce0ba04a57b7710a3c0a3f08c338b1a776361f88c7a598",
+      "role": "Static native contract or frozen source/build verification; no live acceptance claim"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/verify_static.py",
+      "sha256": "d4e495db3f36f9eac0efef46c49655b302d1ba83a07cf6e93faefbfdb23cd4cb",
+      "role": "Static native contract or frozen source/build verification; no live acceptance claim"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/static-contract.json",
+      "sha256": "d61669a50467aa75b9b3e785801792047b0b7a213e2539453dfd298f1f798019",
+      "role": "Static native contract or frozen source/build verification; no live acceptance claim"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/source-05.zip",
+      "sha256": "4af6455c7aae0c6b316d2ebbc8cd5dc03dcb4bc11fcba3715e9ab8934e3e808c",
+      "role": "Static native contract or frozen source/build verification; no live acceptance claim"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/build-05.txt",
+      "sha256": "10c286ca2ec2474b96df5277326215bdcf03eb4ca4128f71b988c4da9c7fa4ae",
+      "role": "Static native contract or frozen source/build verification; no live acceptance claim"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/ctest-05.txt",
+      "sha256": "e1c9ad34cc77b298919f164207e6c301c14489e8331b5c8ef0edd42899bfddb3",
+      "role": "Static native contract or frozen source/build verification; no live acceptance claim"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Run the new pointer build in Prey after the fleet is clear. Correlate input delivery with visible main-menu/inventory selection and dragging; validate the optional cylinder with compositor captures and then a headset."
+}

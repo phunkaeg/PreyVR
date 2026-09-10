@@ -1,0 +1,2 @@
+btn a up
+shot menu-native-tap

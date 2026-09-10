@@ -1,4 +1,5 @@
 #include "CommandChannel.h"
+#include "VrMode.h"
 
 #include "AimTakeover.h"
 #include "AnimIkTakeover.h"
@@ -13,6 +14,8 @@
 #include "RenderFrame.h"
 #include "ReticleFollow.h"
 #include "HudBridge.h"
+#include "HudLayer.h"
+#include "UiPointer.h"
 #include "FrameCaptureWin32.h"
 #include "InputPost.h"
 #include "MoveLane.h"
@@ -340,7 +343,24 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         return value;
     };
 
-    if (verb == "observer") {
+    if (verb == "vr.enable") {
+        EnableVrMode(); out << VrModeReport();
+    } else if (verb == "vr.disable") {
+        DisableVrMode(); out << VrModeReport();
+    } else if (verb == "vr.status") {
+        out << VrModeReport();
+    } else if (verb == "vr.recenter") {
+        out << "vr.recenter result=" << RecenterHeadTracking();
+    } else if (verb == "hud.layer") {
+        const auto result=args.size()>1?SetHudLayerEnabled(arg(1,0)):0;
+        out << "hud.layer result=" << result << ' ' << HudLayerReport();
+    } else if (verb == "ui.panel") {
+        out << "ui.panel result=" << SetUiPanelMode(arg(1,1)) << ' ' << VrModeReport();
+    } else if (verb == "ui.pointer") {
+        out << "ui.pointer result=" << (args.size()>1?SetUiPointerHand(arg(1,1)):0) << ' ' << UiPointerReport();
+    } else if (verb == "ui.curve") {
+        out << "ui.curve result=" << SetUiCurveDegrees(arg(1,35));
+    } else if (verb == "observer") {
         const DWORD status = SetFrameObserverEnabled(arg(1, 1));
         out << "observer status=" << ObserverStatusName(status) << "(" << status << ")";
     } else if (verb == "xr.runtime" && args.size() >= 2) {
@@ -376,12 +396,22 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     } else if (verb == "view.position") {
         out << "view.position result=" << SetViewPositionApplying(arg(1, 1));
     } else if (verb == "near.fov") {
-        // Decidegrees: `near.fov 1234` is 123.4 degrees, 0 disables.
-        out << "near.fov result=" << SetNearFovDeciDegrees(arg(1, 0))
+        // Bare command reports without changing/rearming a faulted override.
+        // Decidegrees: `near.fov 1234` is 123.4 degrees, explicit 0 disables.
+        DWORD result = 0;
+        if (args.size() > 1) {
+            int value = 0;
+            result = args.size() == 2 && ParseInt(args[1], value) && value >= 0
+                ? SetNearFovDeciDegrees(static_cast<unsigned int>(value)) : 1u;
+        }
+        out << "near.fov result=" << result
             << " deciDegrees=" << NearFovDeciDegrees()
             << " applied=" << NearFovAppliedCount()
             << " refused=" << NearFovRefusedCount()
-            << " observedDeciDegrees=" << NearFovObservedDeciDegrees();
+            << " observedDeciDegrees=" << NearFovObservedDeciDegrees()
+            << " observedValid=" << NearFovObservedValid()
+            << " faulted=" << NearFovFaulted()
+            << " thread=" << NearFovThreadId();
     } else if (verb == "near.enable") {
         out << "near.enable result=" << SetNearViewStereo(arg(1, 1));
     } else if (verb == "near.halfipd") {
@@ -404,6 +434,14 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "ik.drive result=" << SetAnimIkControllerDrive(arg(1, 1));
     } else if (verb == "ik.calibrate") {
         out << "ik.calibrate result=" << CalibrateAnimIk();
+    } else if (verb == "ik.align") {
+        DWORD result = 0;
+        if (args.size() > 1) {
+            int value = 0;
+            result = args.size() == 2 && ParseInt(args[1], value) && value >= 0
+                ? SetAnimIkWeaponAlignment(static_cast<unsigned int>(value)) : 1u;
+        }
+        out << "ik.align result=" << result << AnimIkWeaponAlignmentReport();
     } else if (verb == "ik.joints") {
         out << "ik.joints result=" << SetAnimIkJointSignature(arg(1, 101));
     } else if (verb == "ik.reach") {
@@ -514,9 +552,6 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << " nativeFailed=" << ReticleNativeCanvasFailedCount();
     } else if (verb == "aim.reticlestage") {
         out << "aim.reticlestage result=" << SetReticleStageScaleMode(arg(1, 0));
-    } else if (verb == "menu.nav") {
-        SetMenuNavigation(arg(1, 1));
-        out << "menu.nav result=0 value=" << arg(1, 1);
     } else if (verb == "aim.bodyyaw") {
         // 1 rotates head-relative offsets by the BODY yaw (camera - head), 0 by
         // the camera yaw. 0 makes the hand and weapon swing with the headset.
@@ -552,6 +587,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "weapon.rotate result=" << SetWeaponRotationDrive(arg(1, 1));
     } else if (verb == "weapon.calibrate") {
         out << "weapon.calibrate result=" << CalibrateWeaponRotation();
+    } else if (verb == "capture.hud") {
+        out << "capture.hud result=" << RequestFrameCapture(static_cast<std::uint32_t>(arg(1,900)),true);
     } else if (verb == "capture") {
         // A one-shot readback of the backbuffer -- which is exactly the image
         // submitted to the headset -- so "is X visible in the HMD" becomes a
@@ -774,6 +811,10 @@ DWORD WINAPI PollThread(LPVOID)
     Log("result=0 detail=started commands=\"" + commands.string() +
         "\" results=\"" + results.string() + "\"");
     while (gRunning.load(std::memory_order_acquire)) {
+        TickVrMode();
+        // Keys and startup progress are serviced at 50 Hz; disk polling stays 5 Hz.
+        static unsigned poll=0;
+        if (++poll%10!=0) { Sleep(20); continue; }
         std::error_code error;
         if (std::filesystem::exists(commands, error) &&
             std::filesystem::file_size(commands, error) > 0) {
@@ -800,7 +841,7 @@ DWORD WINAPI PollThread(LPVOID)
             }
             std::ofstream(results, std::ios::trunc) << out.str();
         }
-        Sleep(200);
+        Sleep(20);
     }
     return 0;
 }

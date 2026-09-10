@@ -34,6 +34,8 @@ public:
     // Copies `kEventSize` bytes. False when the queue is full or the pointer is
     // null; a false return is a dropped event, counted.
     bool Push(const std::uint8_t* event);
+    // Reserve adjacent press/release tickets together; a full queue drops both.
+    bool PushPair(const std::uint8_t* events);
 
     // Copies one event out. False when empty.
     bool Pop(std::uint8_t* out);

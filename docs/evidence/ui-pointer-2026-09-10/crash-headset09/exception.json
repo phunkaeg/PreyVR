@@ -1,0 +1,47 @@
+{
+  "threadId": 10112,
+  "code": "0xc0000005",
+  "address": "0x7ffde1c4ec40",
+  "parameters": [
+    "0x0",
+    "0x23c"
+  ],
+  "registers": {
+    "rax": "0x1fe1025",
+    "rcx": "0x18c65449ff0",
+    "rdx": "0x45e77ff500",
+    "rbx": "0x18bfb0fbd60",
+    "rsp": "0x45e77ff530",
+    "rbp": "0x45e77ff630",
+    "rsi": "0x0",
+    "rdi": "0x0",
+    "r8": "0x1",
+    "r9": "0x1",
+    "r10": "0x1",
+    "r11": "0xfffffffff8d3f6e4",
+    "r12": "0x1fe1025",
+    "r13": "0x8",
+    "r14": "0x1",
+    "r15": "0x45e77ff8e0",
+    "rip": "0x7ffde1c4ec40"
+  },
+  "faultModule": [
+    {
+      "name": "D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\PreyDll.dll",
+      "base": 140728388616192,
+      "size": 48353280
+    }
+  ],
+  "mod": [
+    {
+      "name": "D:\\Dev Debug\\PreyVR\\build\\ui-pointer-09\\PreyVR.dll",
+      "base": 140730581123072,
+      "size": 978944
+    },
+    {
+      "name": "D:\\Dev Debug\\PreyVR\\build\\ui-pointer-09\\openxr_loader.dll",
+      "base": 140730702102528,
+      "size": 675840
+    }
+  ]
+}

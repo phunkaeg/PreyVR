@@ -1,0 +1,33 @@
+{
+  "donor": "EGS/Chairloader reference; not the supported Steam target",
+  "dll_sha256": "0485c85bb741d6d2e5af69114bae54c521540d5868aac476a8d9fbd1899f0a63",
+  "machine": "0x8664",
+  "pe_codeview": [
+    {
+      "guid": "9054cdfe-4d2d-4b9b-94a5-183dfe3c1bba",
+      "age": 1,
+      "path": "D:\\_perforce\\danielle\\PreyBNet\\Binaries\\Danielle\\x64-Epic\\Release\\PreyDll.pdb"
+    }
+  ],
+  "pdb_identity": {
+    "guid": "9054cdfe-4d2d-4b9b-94a5-183dfe3c1bba",
+    "age": 1
+  },
+  "pdb_matches_pe": true,
+  "pdb_sha256": "f33ed345bcfeed884b38dff372cf146a89f3ed98acc124349fbf22c67a8b12f0",
+  "pdb_type_records": 1777224,
+  "pdb_module_info_bytes": 1055244,
+  "pdb_source_info_bytes": 2014484,
+  "indexed_functions": 99141,
+  "statuses": {
+    "ok": 90018,
+    "ok_jumpout": 9095,
+    "failed_fallback": 28
+  },
+  "missing_indexed_bodies": [],
+  "sqlite_counts": {
+    "functions": 99141,
+    "calls": 297993
+  },
+  "limitation": "Identity, type/source information and indexed file presence do not prove every original symbol survived or every decompiled body is semantically correct."
+}

@@ -1,7 +1,7 @@
 #include "ReticleFollow.h"
 #include "HudBridge.h"
+#include "HudLayer.h"
 
-#include "HudBridge.h"
 #include "XrSessionHost.h"
 #include "CameraEditHook.h"
 #include "Logger.h"
@@ -12,6 +12,7 @@
 #include "preyvr/LatestSnapshot.h"
 
 #include <atomic>
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <span>
@@ -297,13 +298,17 @@ bool WriteReticleForCamera(void* player, const Vec3& rayOrigin,
         const float frameWidth = static_cast<float>(XrResolutionChain(4));
         const float frameHeight = static_cast<float>(XrResolutionChain(5));
         const unsigned int mode = gCanvasMode.load(std::memory_order_acquire);
-        auto canvas = preyvr::aim::CanvasPoint{fractionX, fractionY};
+        float displayX=fractionX,displayY=fractionY;
+        // Preserve off-panel coordinates: the private target clips the symbol.
+        // Pinning a reticle to the safe HUD edge falsely labels a different aim.
+        HudLayerReticle(tanX,tanY,displayX,displayY);
+        auto canvas = preyvr::aim::CanvasPoint{displayX, displayY};
         if (mode == 1) {
-            canvas = preyvr::aim::ViewportToHudCanvas(fractionX, fractionY,
+            canvas = preyvr::aim::ViewportToHudCanvas(displayX, displayY,
                                                      frameWidth, frameHeight);
         } else if (mode == 2) {
             float nativeX = 0, nativeY = 0;
-            if (HudScreenToFlashFraction(fractionX, fractionY,
+            if (HudScreenToFlashFraction(displayX, displayY,
                                          gStageScaleMode.load(std::memory_order_acquire),
                                          &nativeX, &nativeY) == 0) {
                 canvas.x = nativeX;
@@ -314,7 +319,7 @@ bool WriteReticleForCamera(void* player, const Vec3& rayOrigin,
                 // rather than dispatching a viewport fraction we already know is
                 // wrong at this aspect, and count it so the fallback is visible
                 // instead of silently standing in for the native answer.
-                canvas = preyvr::aim::ViewportToHudCanvas(fractionX, fractionY,
+                canvas = preyvr::aim::ViewportToHudCanvas(displayX, displayY,
                                                           frameWidth, frameHeight);
                 gNativeCanvasFailed.fetch_add(1, std::memory_order_relaxed);
             }

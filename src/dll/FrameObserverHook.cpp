@@ -56,6 +56,7 @@ void __fastcall ObserveEndRendererScene(void* renderer)
     // so a console command lands at a frame boundary, and so a capture reads the
     // backbuffer this callback was invoked for.
     ServiceConsoleQueue();
+    ObserveXrBackbuffer(renderer);
     ServiceFrameCapture(renderer, count);
     // The XR frame runs here because this is the render thread and the only
     // place Prey's backbuffer is valid. Returns on one atomic load when no

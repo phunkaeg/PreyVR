@@ -1,0 +1,2 @@
+seq=11 frame=57760 error=-
+last=shot inventory-page-native

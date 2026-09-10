@@ -1,0 +1,46 @@
+{
+  "target": "D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\PreyDll.dll",
+  "sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "pointer_width": 8,
+  "guarded_prologue": "48895c240848896c24104889742418574883ec40",
+  "slots": [
+    {
+      "label": "CFlashUI primary SendFlashMouseEvent",
+      "table": "0x1ca6898",
+      "slot": "0xe0",
+      "callee": "0x2cef30"
+    },
+    {
+      "label": "CFlashUI secondary hardware mouse",
+      "table": "0x1ca6008",
+      "slot": "0x8",
+      "callee": "0x2cfcc0"
+    },
+    {
+      "label": "CFlashUIElement SendCursorEvent",
+      "table": "0x1cab358",
+      "slot": "0x300",
+      "callee": "0x2ff0c0"
+    },
+    {
+      "label": "Flash player ScreenToClient",
+      "table": "0x1db56d8",
+      "slot": "0x1c0",
+      "callee": "0xe8c9f0"
+    },
+    {
+      "label": "Flash player SendCursorEvent",
+      "table": "0x1db56d8",
+      "slot": "0xf0",
+      "callee": "0xe8cb20"
+    },
+    {
+      "label": "Hardware mouse Event (reference route)",
+      "table": "0x1d988c8",
+      "slot": "0x20",
+      "callee": "0xdd0220"
+    }
+  ],
+  "verdict": "PASS",
+  "limit": "Static contract only; UI acceptance requires in-game evidence."
+}

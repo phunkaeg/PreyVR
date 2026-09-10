@@ -1,0 +1,88 @@
+Logged at Thursday, September 10, 2026 10:39:14
+FileVersion: 1.0.1.0
+ProductVersion: 1.0.1.0
+LogFile: Game.log
+GameDir: GameSDK
+Executable: D:\SteamLibrary\steamapps\common\Prey\Binaries\Danielle\x64\Release\Prey.exe
+
+Exception Thread: 0x00002780 (JobSystem_Worker_4(Regular))
+Exception Code: 0xC0000005
+Exception Addr: 0x0033:0x00007FFDE1C4EC40
+Exception Module: <Unknown>
+Exception Description: EXCEPTION_ACCESS_VIOLATION, Attempt to read from address 0x000000000000023C
+The memory could not be "read"
+Memory in use: 4967.7MB
+Debug Status: 
+Out of Memory: 0
+
+Call Stack Trace:
+10) function=0x00007FFDE1C4EC40
+ 9) function=0x00007FFDE1C4F820
+ 8) function=0x00007FFDE1C4CD4F
+ 7) function=0x00007FFDE27A6B72
+ 6) function=0x00007FFDE27A7565
+ 5) function=0x00007FFDE1EA7E8C
+ 4) function=0x00007FFEF26FCD30
+ 3) function=0x00007FFEF409CCB7
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+
+
+Suspended thread (JobSystem_Worker_6(Regular)):
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+
+
+Suspended thread (JobSystem_Worker_2(Regular)):
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+
+
+Suspended thread (JobSystem_Worker_0(Regular)):
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+
+
+Suspended thread (JobSystem_Worker_3(Regular)):
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+
+
+Suspended thread (JobSystem_Worker_5(Regular)):
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+
+
+Suspended thread (JobSystem_Worker_1(Regular)):
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+
+
+Suspended thread (JobSystem_Worker_7(Regular)):
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+
+
+Suspended thread (JobSystem_Worker_0(Blocking)):
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+
+
+Suspended thread (RenderThread):
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+
+
+Suspended thread (Main):
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+
+
+Suspended thread (Physics):
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C
+
+
+Suspended thread (PhysicsWorker1):
+ 2) function=0x00007FFEF4F2AD6C
+ 1) function=0x00007FFEF4F2AD6C

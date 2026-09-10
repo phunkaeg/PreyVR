@@ -1,0 +1,25 @@
+{
+  "thread": 45136,
+  "exceptionAddress": "0x7ffd2b1aec2a",
+  "contextRva": 55620,
+  "contextSize": 1232,
+  "registers": {
+    "rax": "0x8",
+    "rcx": "0x21e300c1510",
+    "rdx": "0xec488feee0",
+    "rbx": "0x21df41c9d40",
+    "rsp": "0xec488fef10",
+    "rbp": "0xec488ff010",
+    "rsi": "0x0",
+    "rdi": "0x3f80000000000000",
+    "r8": "0x1",
+    "r9": "0x1",
+    "r10": "0x1",
+    "r11": "0xfffffffff8d3f6e4",
+    "r12": "0x1",
+    "r13": "0x8",
+    "r14": "0x1",
+    "r15": "0xec488ff2c0",
+    "rip": "0x7ffd2b1aec2a"
+  }
+}

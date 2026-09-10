@@ -1,0 +1,25 @@
+{
+  "name": "held-after-menu-06",
+  "frameIndex": 38167,
+  "displayTimeNs": 745226057427340,
+  "sessionState": "FOCUSED",
+  "width": 1032,
+  "height": 1104,
+  "pacing": {"mode": "free", "hz": 90.00, "creditsLeft": 0},
+  "gate": {"waited": 38167, "begun": 38167, "ended": 38167, "discarded": 0, "outOfOrder": 0},
+  "head": {"pos": [0.45000, 1.80000, 0.30000], "quat": [0.00000, 0.21644, 0.00000, 0.97630], "ypr": [25.000, 0.000, 0.000]},
+  "views": [
+    {"eye": "left", "pos": [0.42145, 1.80000, 0.31331], "fovDeg": {"l": -54.000, "r": 44.000, "u": 55.000, "d": -55.000}},
+    {"eye": "right", "pos": [0.47855, 1.80000, 0.28669], "fovDeg": {"l": -44.000, "r": 54.000, "u": 55.000, "d": -55.000}}
+  ],
+  "handL": {"grip": [0.12082, 1.50000, 0.06732], "aimYpr": [25.000, -40.000, 0.000], "valid": true},
+  "handR": {"grip": [0.48335, 1.50000, -0.10173], "aimYpr": [25.000, 0.000, 0.000], "valid": true},
+  "controls": {"a": false, "b": false, "x": false, "y": false, "menu": false, "trigL": 0.000, "trigR": 1.000, "gripL": 0.000, "gripR": 0.000, "stickL": [0.000, 0.000], "stickR": [1.000, 0.000]},
+  "layerCount": 2,
+  "layers": [
+    {"i": 0, "type": "quad", "space": "local", "sizeM": [1.9842, 1.1161], "pose": [-0.3952, 1.9699, -1.5126], "premultiplied": false, "pixelsCoveredL": 1, "pixelsCoveredR": 1},
+    {"i": 1, "type": "quad", "space": "local", "sizeM": [1.9842, 0.3100], "pose": [-0.3952, 1.2271, -1.5126], "premultiplied": true, "pixelsCoveredL": 1, "pixelsCoveredR": 1}
+  ],
+  "derived": {"eyeSeparationM": 0.063000, "ipdM": 0.063000, "claimTanH": 0.00000, "eyeTanH": 1.17104, "claimRatioH": 0.00000, "aimRayDots": 2, "aimRayMaxDevDeg": 17.1976, "aimRayMeanDevDeg": 14.3932, "aimRayDotsL": 0, "aimRayMaxDevDegL": 0.0000, "aimRayDotsR": 2, "aimRayMaxDevDegR": 17.1976},
+  "stats": {"meanLumaL": 2.96, "meanLumaR": 2.96, "nonBlackPctL": 8.38, "nonBlackPctR": 8.38}
+}

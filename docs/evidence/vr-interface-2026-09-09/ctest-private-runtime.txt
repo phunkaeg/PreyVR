@@ -1,0 +1,7 @@
+Test project D:/Dev Debug/PreyVR/build/validation-runtime/build
+    Start 1: xrsim_headless_smoke
+1/1 Test #1: xrsim_headless_smoke .............   Passed    0.55 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   0.58 sec

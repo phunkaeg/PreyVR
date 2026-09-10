@@ -55,6 +55,30 @@ bool EventQueue::Push(const std::uint8_t* event)
     return true;
 }
 
+bool EventQueue::PushPair(const std::uint8_t* events)
+{
+    if (!events) { dropped_.fetch_add(2); return false; }
+    auto position=enqueue_.load(std::memory_order_relaxed);
+    for (;;) {
+        const auto a=cells_[position & kMask].sequence.load(std::memory_order_acquire);
+        const auto b=cells_[(position+1) & kMask].sequence.load(std::memory_order_acquire);
+        if (a==position && b==position+1) {
+            if (enqueue_.compare_exchange_weak(position,position+2,std::memory_order_relaxed)) break;
+        } else if (static_cast<long long>(a)-static_cast<long long>(position)<0 ||
+                   static_cast<long long>(b)-static_cast<long long>(position+1)<0) {
+            dropped_.fetch_add(2); return false;
+        } else { position=enqueue_.load(std::memory_order_relaxed); }
+    }
+    auto& first=cells_[position & kMask];
+    auto& second=cells_[(position+1) & kMask];
+    std::memcpy(first.data,events,kEventSize);
+    std::memcpy(second.data,events+kEventSize,kEventSize);
+    second.sequence.store(position+2,std::memory_order_release);
+    first.sequence.store(position+1,std::memory_order_release);
+    pushed_.fetch_add(2,std::memory_order_relaxed);
+    return true;
+}
+
 bool EventQueue::Pop(std::uint8_t* out)
 {
     if (out == nullptr) {

@@ -1,0 +1,2 @@
+seq=18 frame=30513 error=-
+last=shot recentered-02 | grip l 0 | grip r 0

@@ -118,6 +118,9 @@ inline constexpr int kKeyUp = 0x61;
 inline constexpr int kKeyLeft = 0x63;
 inline constexpr int kKeyRight = 0x64;
 inline constexpr int kKeyDown = 0x66;
+// CMouse::Init 0x9D45C0 registers these exact name/id pairs on the Steam DLL.
+inline constexpr int kMouse3 = 0x102;
+inline constexpr int kMouseX = 0x10A;
 
 // **The device follows the key id, it is not a caller's choice.** The id ranges
 // are the enum's own partition -- keyboard below `0x100`, mouse `0x100..0x1FF`,
@@ -178,6 +181,12 @@ enum class MenuAction {
     Accept,
     Cancel,
     Start,
+    PreviousTab,
+    NextTab,
+    Secondary,
+    Tertiary,
+    PreviousPage,
+    NextPage,
 };
 
 // A digital tap is two events: pressed, then released. Emitting only the press

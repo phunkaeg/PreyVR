@@ -1,0 +1,14 @@
+{
+  "xrsim_compositor.cpp": {
+    "sourceSha256": "df2368ad0af8d9f0ee4ebd6c6081d517193a98ac16c76c4fffa2b2a2a2213d28",
+    "privateSha256": "b278456ae77e2442cc78379b9561dc6a12da856e625726f8a3256e3769429028"
+  },
+  "xrsim_math.h": {
+    "sourceSha256": "e158b445139e2d99d3438a8677ed9ecb4413ae686c91852c980bf9d6075a1c1c",
+    "privateSha256": "1a206b651f84879c2b7d5459e721c1ae3112a4213f756c2ec1cb0d2fdeb5a38f"
+  },
+  "xrsim_actions.cpp": {
+    "sourceSha256": "892c5dd394f0c6858c53f5f5ef7a8115894c0c4ad34c4b47cabf834f20598a0e",
+    "privateSha256": "7bf11fb8edde537e027f8c0311db4a8f27741b40fd9d6b4142a3c18e4d4480d5"
+  }
+}

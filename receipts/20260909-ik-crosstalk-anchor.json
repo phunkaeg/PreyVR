@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260909-ik-crosstalk-anchor",
+  "recorded_at": "2026-09-09T04:57:40.220139+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll native ray producer and PreyVR consumer source at 087d3be09dfb209cf9cc260062192ce009241864",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Can the shared hand anchor depend on reticle input, and can reach compression add shoulder motion with fixed head/controller/yaw and no clamping?",
+  "claim": "On the native +0x17EC reticle-input branch, RVA 0x1585320 writes a screen-dependent unprojected point to ArkPlayer+0x17D4, not camera-centre translation. PreyVR copies that field into GameplayPoseFrame.nativeEye and adds it to both hand goals; reticle follow supplies an aim-dependent producer input. Separately ScaleReach contributes (1-k) of shoulder movement. Fixed-input compiled math reproduces both dependencies without a camera-yaw change or clamping. Their runtime magnitudes and share of the reported wearer symptom are unresolved.",
+  "evidence_grade": "STATIC",
+  "environment": "static",
+  "method": "Read handover and source pinned at 087d3be09dfb209cf9cc260062192ce009241864. Use current-session read-only Ghidra decompile_function/disassemble_function/read_memory/get_program_options on /Prey/PreyDll.dll; imported SHA from Program Information matches installed PE hash. Python 3.12 pefile compared all 2230 producer bytes at RVA 0x1585320 with Ghidra data. Build the evidence-directory CMake harness with MSVC 19.50.35729.0 against exact snapshots of AnimIk, StereoCamera and VrMath. The near-plane input is an analytical projection fixture, not native emulation. Original handover, decompile, assembly, bytes, source excerpts, fixture and exact build/run output are retained.",
+  "validity": "VALID",
+  "mutation": "none",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Disk and Ghidra import SHA match; all 2230 bytes of examined producer match installed PE. Mod math and consumer excerpts pinned to the full source commit."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Native assembly supports the decompiled field reads/stores. Independent PE comparison and compiled real-IK math controls passed; Ghidra script unavailability was handled by documented metadata API."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Analytical reticle-only sweep holds head/left/camera/yaw fixed; shoulder-only sweep holds raw goal fixed; no-clamp assertions, camera-anchor and reach-100 controls, and transformed-model round trips passed."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Static/native-byte and offline math scope; no new in-game observation claimed."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "No native process, runtime state or game binary was modified."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "NOT_MEASURED",
+    "reason": "No game session, runtime isolation, shipped fix or headset acceptance was performed; compiled fixed-input math controls passed separately."
+  },
+  "limits": "Native static data flow and source/harness dependency proof only. Runtime activation of the native reticle branch and exact contribution to wearer crosstalk are not newly observed. The 0.1 m near distance and 120-degree fixture are illustrative, not measurements of the reproduction. Native shoulder movement caused by right aim, shared-yaw contamination, post-ADIK motion and model/render transform mismatch remain unisolated. No cyclops-anchor implementation was shipped; report includes the provenance requirements needed to avoid per-eye-camera regression.",
+  "artifacts": [
+    {
+      "path": "docs/RE-IK-CROSSTALK-2026-09-09.md",
+      "sha256": "3c7f420f50ffb4dc6a3c6204e134ad94ff0c64138c7a91ddc5975d5863cc91f3",
+      "role": "Scoped static findings, uncertainty, discriminator and fix design"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/CMakeLists.txt",
+      "sha256": "57588f4486d14f37fcc3a2884e8ea40343e251b9784a5f1e092c323969e301e3",
+      "role": "Static/harness evidence; see scoped review for interpretation"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/handover-original.md",
+      "sha256": "a241b8dab65eaea00b3d5c561d197d45857ad052e1b387538e9c986a19a1c42e",
+      "role": "Static/harness evidence; see scoped review for interpretation"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/identity.json",
+      "sha256": "52fee103fbadf0cf58df9d6c20dbb912acd8fba795e1bc6a53dae42ee8b2a193",
+      "role": "Static/harness evidence; see scoped review for interpretation"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/IkCrosstalkAudit.cpp",
+      "sha256": "2ee3f24ddc2fc7b6647cf00f5ac9cf4d686302ed4f630332878154734318e281",
+      "role": "Static/harness evidence; see scoped review for interpretation"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/native-ray-assembly.txt",
+      "sha256": "dee25e3bb94d1dfbfe8571b760361c7844618bf024eb8800b6ef23a13af52e3b",
+      "role": "Static/harness evidence; see scoped review for interpretation"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/native-ray-bytes.json",
+      "sha256": "819a460fcd3a81914806de82232921b9fc0fb71877d7ea6f76fde95609f2e362",
+      "role": "Static/harness evidence; see scoped review for interpretation"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/native-ray-decompile.txt",
+      "sha256": "4639c0a3b5d7156f68631259ceebf3f47f894f97f8cd220b8277c0b63f91511d",
+      "role": "Static/harness evidence; see scoped review for interpretation"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/snapshot/include/preyvr/AnimIk.h",
+      "sha256": "eea4a253d765f3fbfdb729ef98267127158fb4781afe2f374d27f7fd17e3feaa",
+      "role": "Pinned source used by harness"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/snapshot/include/preyvr/StereoCamera.h",
+      "sha256": "f7ef34cfe3abc352d91ee56a067ffc543d89b9c0634aaafa402d95c4c5e52ba0",
+      "role": "Pinned source used by harness"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/snapshot/include/preyvr/VrMath.h",
+      "sha256": "d43e7c676f15e6c092bb1f6e048d3b58060e1006c530b6edfc5d7113c58e6881",
+      "role": "Pinned source used by harness"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/snapshot/src/common/AnimIk.cpp",
+      "sha256": "eaa77d9fa25c79760d76dbdd8841311a2be1b2b2abcfb5007eb04cc82fb7c7ce",
+      "role": "Pinned source used by harness"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/snapshot/src/common/StereoCamera.cpp",
+      "sha256": "b0c0093c561dbc589dc5b5b73052241eccc88d484a76a277071ae9143559df99",
+      "role": "Pinned source used by harness"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/snapshot/src/common/VrMath.cpp",
+      "sha256": "58a0956a1657bdf5babbe4d9bdea99828bf55498e70592bf0bc7962218e8c781",
+      "role": "Pinned source used by harness"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/source-excerpts.txt",
+      "sha256": "c4bd8b8e9265362b9595e48674649868f3bfa1ca317128d35329ebd747205a84",
+      "role": "Static/harness evidence; see scoped review for interpretation"
+    },
+    {
+      "path": "docs/evidence/ik-crosstalk-2026-09-09/verification.txt",
+      "sha256": "936142e809e6d18518ce96037b740d7da28b2ff02918fb33c1484e8f5a87a2a2",
+      "role": "Static/harness evidence; see scoped review for interpretation"
+    }
+  ],
+  "routes": [
+    "FAIL-HAND-037"
+  ],
+  "do_not_repeat": [
+    {
+      "approach": "Treat cachedReticleOrigin as a stable head anchor merely because it was copied before the mod writes the cached ray.",
+      "reason": "The native producer itself depends on reticle coordinates, which the mod changes from right-controller aim.",
+      "reopen_when": "Producer-to-consumer proof establishes an independent cyclops anchor with matching tracking/reference epoch."
+    },
+    {
+      "approach": "Interpret zero clamping or zero right-target writes as eliminating all additive coupling into the left goal.",
+      "reason": "Reach compression includes current animated shoulder motion even while unclamped, and the shared ray anchor does not require a right-target write.",
+      "reopen_when": "Coherent per-hand raw/scaled/clamped world-goal and world-shoulder records isolate the writer actually moving the wrist."
+    }
+  ],
+  "next_action": "Runtime owner should isolate aim.reticle field writes while preserving aim.enable and healthy left IK, then compare reach 65/100 with both unclamped. Keep rotation-only and translation-only right-hand sweeps separate. Implement independent cyclops/head, native-ray and firing-origin contracts; do not blind-read the live stereo camera. Consider a contribution to existing playbook origin/feedback guidance with this scoped example, not a new universal prohibition or claimed headset fix."
+}

@@ -199,6 +199,8 @@ void TestEveryMenuActionIsMapped()
     const MenuAction actions[] = {
         MenuAction::Up, MenuAction::Down, MenuAction::Left, MenuAction::Right,
         MenuAction::Accept, MenuAction::Cancel, MenuAction::Start,
+        MenuAction::PreviousTab,MenuAction::NextTab,MenuAction::Secondary,MenuAction::Tertiary,
+        MenuAction::PreviousPage,MenuAction::NextPage,
     };
     std::uint8_t buffer[kEventSize * 2];
     for (const MenuAction action : actions) {

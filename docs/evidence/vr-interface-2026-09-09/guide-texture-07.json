@@ -1,0 +1,16 @@
+[
+  {
+    "type": "send",
+    "payload": {
+      "kind": "texture",
+      "width": 1024,
+      "height": 160,
+      "format": 91,
+      "rowPitch": 4096,
+      "thread": 119412
+    }
+  },
+  {
+    "captured": true
+  }
+]

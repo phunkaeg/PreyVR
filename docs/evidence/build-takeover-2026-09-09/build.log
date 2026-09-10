@@ -1,0 +1,50 @@
+Command: ['C:/Program Files/CMake/bin/cmake.exe', '--build', 'build/headless', '--config', 'Release', '--parallel', '6']
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  minhook.vcxproj -> D:\Dev Debug\PreyVR\build\headless\_deps\minhook-build\Release\minhook.x64.lib
+  preyvr_core.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_core.lib
+  preyvr_console_policy_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_console_policy_tests.exe
+  preyvr_frame_diff.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_frame_diff.exe
+  preyvr_dll_smoke_host.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_dll_smoke_host.exe
+  preyvr_engine_map_probe.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_engine_map_probe.exe
+  preyvr_dxgi_probe.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_dxgi_probe.exe
+  preyvr_frame_dump_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_frame_dump_tests.exe
+  preyvr_win32_bootstrap.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_win32_bootstrap.lib
+  preyvr_engine_map_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_engine_map_tests.exe
+  preyvr_anim_ik_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_anim_ik_tests.exe
+  preyvr_frame_timing_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_frame_timing_tests.exe
+  preyvr_debug_registers_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_debug_registers_tests.exe
+  preyvr_camera_edit_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_camera_edit_tests.exe
+  preyvr_interaction_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_interaction_query_tests.exe
+  preyvr_aim_state_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_aim_state_tests.exe
+  preyvr_frustum_coverage_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_frustum_coverage_tests.exe
+  preyvr_input_queue_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_input_queue_tests.exe
+  preyvr_input_event_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_input_event_tests.exe
+  preyvr_locomotion_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_locomotion_tests.exe
+  preyvr_menu_navigator_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_menu_navigator_tests.exe
+  preyvr_motion_controller_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_motion_controller_tests.exe
+  preyvr_ray_probe.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_ray_probe.exe
+  preyvr_render_frame_table_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_render_frame_table_tests.exe
+  preyvr_runtime_bootstrap_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_runtime_bootstrap_tests.exe
+  preyvr_runtime_snapshot_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_runtime_snapshot_tests.exe
+  preyvr_stereo_camera_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_stereo_camera_tests.exe
+  openxr_loader.vcxproj -> D:\Dev Debug\PreyVR\build\headless\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  preyvr_stereo_frame_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_stereo_frame_tests.exe
+  preyvr_vr_math_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_vr_math_tests.exe
+  preyvr_wrench_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_wrench_query_tests.exe
+  preyvr_weapon_aim_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_weapon_aim_tests.exe
+  preyvr_xr_frame_contract_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_xr_frame_contract_tests.exe
+  preyvr_xr_swapchain_format_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_xr_swapchain_format_tests.exe
+  preyvr_near_fov_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_near_fov_tests.exe
+  preyvr_openxr_preflight_tests.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_openxr_preflight_tests.exe
+  D:\Dev Debug\PreyVR\build\headless\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  D:\Dev Debug\PreyVR\build\headless\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  D:\Dev Debug\PreyVR\build\headless\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  preyvr_xr_session_probe.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_xr_session_probe.exe
+  preyvr_xr_adapter_probe.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\preyvr_xr_adapter_probe.exe
+  CommandChannel.cpp
+     Creating library D:/Dev Debug/PreyVR/build/headless/Release/PreyVR.lib and object D:/Dev Debug/PreyVR/build/headless/Release/PreyVR.exp
+  preyvr.vcxproj -> D:\Dev Debug\PreyVR\build\headless\Release\PreyVR.dll

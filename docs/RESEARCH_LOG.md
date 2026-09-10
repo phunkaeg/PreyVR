@@ -3012,3 +3012,102 @@ IK rebinds erasing an automatic calibration recovery request. No stale offset
 is reused; the settling interval restarts on the newest binding. 28/28 standard
 tests and 4/4 integration replays pass. Full findings, remaining gaps and the
 isolated DLL hash are in RE-HEADSET-SESSION-AUDIT-2026-09-08.md.
+
+
+## 2026-09-09 — build takeover: near-FOV ordering and R-127 scope
+
+Moved the near-FOV assertion from game-thread CSystem::Render entries to a gated
+RT_BeginFrame return hook, using its renderer receiver after the native latch.
+Added receiver/fault guards, strict native range, read-only status, and a production
+callback harness. Release build and 31/31 offline tests passed; no game was launched
+or injected. Static bytes match the installed Steam target.
+
+Closed the R-127 environment receiver route through the CSystem constructor and
+accessor. Corrected the weapon builder address and callerMask OR 0x400000 write;
+concrete query/output/filter verification remains open. The next feature milestone
+is authored weapon/barrel-to-wrist alignment across equips, followed by collision.
+See [takeover report](RE-BUILD-TAKEOVER-2026-09-09.md) for evidence and limits.
+
+
+## 2026-09-09 — Authored weapon basis replaces equip-angle capture (opt-in)
+
+- **Static:** Native ammo-helper consumer `0x16A29E0` uses helper +Y as forward. Character binding/attachment consumers prove the model frame, including the projected relative-default field and extra rotation. Eleven byte spans and twelve concrete slots match the Steam PE.
+- **Implemented:** `ik.align 1` solves the right wrist from the coherent controller aim sample and authored barrel basis, without equip-angle calibration. Unsupported routes refuse explicitly. `ik.align 0` retains the legacy route; the new startup switch is `-WeaponAimAlignment` with `-Controls`.
+- **Offline:** Release build and 32/32 tests passed, including 108 native-chain/reticle comparisons and rejection fixtures. Package and source hashes are pinned. No game launch, injection, runtime query or headset test.
+- **Limits/next:** Live per-weapon binding coverage, animated barrel/recoil/reload agreement and scheduling remain unmeasured. Positional cross-talk and collision queries remain separate. See [the report](RE-WEAPON-BASIS-ALIGNMENT-2026-09-09.md).
+
+## 2026-09-10 — Player interface, automatic startup and live alignment correction
+
+- Added one-click package/launcher/injector, staged VR activation, F11 retry,
+  F12/two-grip reset, controller modal navigation and held-input suppression.
+- Native DanielleHUD now renders once into its own transparent target/layer;
+  menus/inventory use a stable 2 m panel fitted inside both runtime eye frusta.
+- Live pose reads refuted the old raw-QuatT-slice DynArray-prefix assumption.
+  Fixed counts and concrete attachment names; added explicit wrench model-frame
+  and Disruptor fx_muzzle presentation policies. GLOO/wrench off-angle equips
+  and the Disruptor's forward model were observed in game.
+- Candidate 06 completed title/Continue/load/inventory, tab/page navigation,
+  recenter, held-trigger/stick exit protection, and two forced-loss/retry cycles.
+  The earlier candidate-04 fault remains recorded; no original writer is claimed.
+- [Interface report](RE-VR-INTERFACE-2026-09-10.md) separates live, static and
+  headset claims. [Player guide](PLAYER-GUIDE.md) is the package entry point.
+
+## 2026-09-10 — Missing help-card warning refuted by actual image pixels
+
+The earlier disappearance diagnosis came from incorrectly interpreting full-frame
+previews. All 112 compared eye images have identical card pixels within matching
+layout/eye/alpha groups, including the historical images labelled faulty. The
+unchanged candidate-07 DLL also passed six title, sixteen instrumented inventory,
+sixteen uninstrumented inventory and four reopen captures. No rendering fix was
+needed. Frozen earlier reports/receipts remain historical; this correction
+supersedes their missing-card interpretation. See
+[pixel verification](RE-UI-CAPTURE-PIXELS-2026-09-10.md). Physical headset acceptance
+and earlier native-frustum/trace limits remain independent.
+
+## 2026-09-10 — Controller beam and curved menu implementation
+
+Added analytic quad/cylinder hit mapping, a visible controller beam and tangent
+cursor, native Scaleform move/press/release delivery from the main-thread drain,
+drag capture and release on lost focus/recenter/menu exit. OpenXR cylinder support
+is optional, with core-quad fallback; launcher settings retain curvature and hand.
+Release build 06 passes 33/33 tests. Candidate 05 visibly hovered and opened
+Options with the automatic mouse-mode signal and right-controller trigger.
+Both-eye captures also show its curved menu. Build 06 fixes initial input
+readiness and stale modal-poll presentation; its fresh launch enabled VR without
+a retry and reached gameplay. Inventory beam dragging and physical headset
+acceptance remain open. See [pointer report](RE-UI-POINTER-2026-09-10.md).
+
+The new direct notes from Vittorio also prompted a correction to R-109 above:
+both reticlePosition producers are **not** transitions. Steam `0x15ABC40`
+integrates cursor input while examination is active and is called from the
+player update region. This does not establish a rival during ordinary weapon
+aiming. The existing September 8 research had correctly described that function;
+the later summary overstated it. See [Steam examination route](RE-WORLD-UI-CURSOR-2026-09-10.md).
+
+## 2026-09-10 — Native inventory cancellation and headset handoff
+
+Candidate 08 passes 35/35 offline tests. Continuous simulated controller motion
+moves inventory item 64982 from (1,1) to (2,3) and commits on trigger release.
+The off-panel cancellation test drags it toward (2,5), calls the Steam native
+CancelPickItem and restores the item to (2,3), without another press on held
+re-entry. Native callbacks, mod logs and both-eye images agree. Candidate 06's
+outside release instead clamped and placed at (1,1); that failure is preserved.
+Candidate 07 exposed and refused an inverted module-pin gate, corrected in 08.
+A snapshot contention fix keeps a still-fresh sample rather than inventing
+tracking loss; it is not established as the sole earlier live-release cause.
+
+All owned simulator runs were closed normally. With the user in the Quest,
+candidate 08 was started through VirtualDesktopXR (run player-20260910-102050,
+PID 49556). Cylinder support and frame submission are logged; headset comfort
+and input acceptance await the user's observations. Focused gameplay is the
+normal acceptance condition. Development does not require the user to leave
+their PC untouched during static work. See [pointer report](RE-UI-POINTER-2026-09-10.md).
+
+The extracted EGS corpus includes a PDB whose GUID/age match its DLL, plus a
+symbol-backed decompile/navigation index. The independently checked identity,
+coverage and cross-build caveats are in [the corpus audit](RE-EGS-SYMBOL-CORPUS-2026-09-10.md).
+
+
+## 2026-09-10 — candidate 09 headset result / candidate 10 wheel shortcut
+
+User confirmed candidate 09 corrected stereo and a curved in-game popup. That session then crashed on native job worker reading 0x23C; cause remains unresolved. Candidate 10 preserves the stereo fix and adds right-stick click -> native mouse3 Favorites Wheel shortcut for Touch/Index. Release build and 35/35 offline tests pass; no game launched for candidate 10. Opening and wheel selection remain unverified live. Package DLL SHA256: `e7b521ee4e3a0244b237ffeac89f691b39687fef8d0583311413ca52f4713dc6`. See [wheel and headset notes](RE-WEAPON-WHEEL-2026-09-10.md).

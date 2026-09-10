@@ -1,0 +1,31 @@
+#pragma once
+#include "preyvr/VrMath.h"
+#include <array>
+#include <optional>
+
+namespace preyvr::ui {
+struct Eye { Pose pose{}; float left=0, right=0, up=0, down=0; };
+struct Panel { Pose pose{}; float width=0, height=0; };
+// Fits all four corners inside BOTH eye frusta, including asymmetric/canted views.
+// The runtime FOV is an optical bound, not a visibility-mask guarantee; the
+// tangent margin and angular caps deliberately reserve room around the panel.
+std::optional<Panel> FitPanel(const Pose& head, const std::array<Eye,2>& eyes,
+                             float aspect, float distance=2.0f);
+bool CornersVisible(const Panel& panel, const std::array<Eye,2>& eyes);
+// angle=0 is a plane; otherwise width is arc length. The panel pose always
+// denotes the visible surface centre, while OpenXR's cylinder pose is its axis.
+struct Surface { Panel panel{}; float angle=0; };
+struct RayHit { float u=0,v=0,distance=0; Vec3 point{}; bool inside=false; };
+Pose CylinderAxis(const Surface& surface);
+Pose SurfacePoint(const Surface& surface,float u,float v);
+std::optional<RayHit> Intersect(const Surface& surface,const Pose& aim);
+bool SurfaceVisible(const Surface& surface,const std::array<Eye,2>& eyes);
+// Neutral on entry; losing the target releases outside it, never clicks the
+// last hovered item. A captured drag can travel beyond the screen boundary.
+struct PointerButtons {
+    bool armed=false,down=false;
+    int Update(bool active,bool inside,bool pressed); // -1 release, +1 press
+};
+// Unclipped canvas position of a head-relative ray on a front-facing HUD plane.
+std::optional<std::array<float,2>> PanelFraction(float tanX,float tanY,float width,float height,float distance);
+}

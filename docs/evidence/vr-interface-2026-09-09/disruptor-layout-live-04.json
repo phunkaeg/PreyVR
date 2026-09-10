@@ -1,0 +1,237 @@
+[
+  {
+    "type": "send",
+    "payload": {
+      "weapon": "0x21df21b37e0",
+      "vtable": "0x1e31290",
+      "mount": "0x21e05ca2460",
+      "helperNamePointer": "0x21d593ccf4c"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "weapon": "0x21df21b37e0",
+      "vtable": "0x1e31290",
+      "mount": "0x21e05ca2460",
+      "weaponCharacter": "0x21e49751500",
+      "managerVtable": "0x1d22110",
+      "managerOwner": "0x21e49751500",
+      "helperNamePointer": "0x21d593ccf4c",
+      "helperName": "muzzle",
+      "helpers": "0x21d596e5070",
+      "helperCount": 2147483656,
+      "jointCount": 9,
+      "names": [],
+      "attachments": [],
+      "stage": "header"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "weapon": "0x21df21b37e0",
+      "vtable": "0x1e31290",
+      "mount": "0x21e05ca2460",
+      "weaponCharacter": "0x21e49751500",
+      "managerVtable": "0x1d22110",
+      "managerOwner": "0x21e49751500",
+      "helperNamePointer": "0x21d593ccf4c",
+      "helperName": "muzzle",
+      "helpers": "0x21d596e5070",
+      "helperCount": 2147483656,
+      "jointCount": 9,
+      "names": [
+        {
+          "index": 0,
+          "name": "root_jnt",
+          "parent": -1,
+          "bind": [
+            0,
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "index": 1,
+          "name": "cog_jnt",
+          "parent": 0,
+          "bind": [
+            -3.0908619663705394e-08,
+            0.7071067690849304,
+            0.7071067690849304,
+            -3.0908619663705394e-08
+          ]
+        },
+        {
+          "index": 2,
+          "name": "trigger_jnt",
+          "parent": 1,
+          "bind": [
+            -3.0908619663705394e-08,
+            0.7071067690849304,
+            0.7071067690849304,
+            -3.0908619663705394e-08
+          ]
+        },
+        {
+          "index": 3,
+          "name": "lever_jnt",
+          "parent": 1,
+          "bind": [
+            -3.0908619663705394e-08,
+            0.7071067690849304,
+            0.7071067690849304,
+            -3.0908619663705394e-08
+          ]
+        },
+        {
+          "index": 4,
+          "name": "release_jnt",
+          "parent": 1,
+          "bind": [
+            -3.0908619663705394e-08,
+            0.7071067690849304,
+            0.7071067690849304,
+            -3.0908619663705394e-08
+          ]
+        },
+        {
+          "index": 5,
+          "name": "gunlUI_jnt",
+          "parent": 1,
+          "bind": [
+            -3.0908619663705394e-08,
+            0.7071067690849304,
+            0.7071067690849304,
+            -3.0908619663705394e-08
+          ]
+        },
+        {
+          "index": 6,
+          "name": "cable_jnt",
+          "parent": 1,
+          "bind": [
+            -3.0908619663705394e-08,
+            0.7071067690849304,
+            0.7071067690849304,
+            -3.0908619663705394e-08
+          ]
+        },
+        {
+          "index": 7,
+          "name": "muzzle_jnt",
+          "parent": 3,
+          "bind": [
+            2.220446049250313e-16,
+            1,
+            2.220445916901415e-16,
+            -4.371138828673793e-08
+          ]
+        },
+        {
+          "index": 8,
+          "name": "batteryOpening_jnt",
+          "parent": 3,
+          "bind": [
+            -3.0908619663705394e-08,
+            0.7071067690849304,
+            0.7071067690849304,
+            -3.0908619663705394e-08
+          ]
+        }
+      ],
+      "attachments": [
+        {
+          "name": "fx_muzzle",
+          "vtable": "0x1d212b8",
+          "joint": 1,
+          "abs": [
+            0,
+            0,
+            0,
+            0.9999998807907104
+          ]
+        },
+        {
+          "name": "muzzle",
+          "vtable": "0x1d212b8",
+          "joint": 1,
+          "abs": [
+            -3.090861255827804e-08,
+            0.7071067094802856,
+            0.7071067094802856,
+            -3.090861255827804e-08
+          ]
+        },
+        {
+          "name": null,
+          "vtable": "0x1d1eda8",
+          "joint": 0,
+          "abs": [
+            null,
+            0,
+            0,
+            5.605193857299268e-45
+          ]
+        },
+        {
+          "name": "malfuntion",
+          "vtable": "0x1d212b8",
+          "joint": 1,
+          "abs": [
+            -3.0908616110991716e-08,
+            0.7071067094802856,
+            0.7071067094802856,
+            -3.0908616110991716e-08
+          ]
+        },
+        {
+          "name": "fx_electrical_all",
+          "vtable": "0x1d212b8",
+          "joint": 0,
+          "abs": [
+            0,
+            0,
+            0,
+            0.9999999403953552
+          ]
+        },
+        {
+          "name": "fx_electrical_firing",
+          "vtable": "0x1d212b8",
+          "joint": 0,
+          "abs": [
+            0,
+            0,
+            0,
+            0.9999999403953552
+          ]
+        },
+        {
+          "name": "arklight_stungun",
+          "vtable": "0x1d212b8",
+          "joint": 1,
+          "abs": [
+            -3.0908619663705394e-08,
+            0.7071067690849304,
+            0.7071067690849304,
+            -3.0908619663705394e-08
+          ]
+        },
+        {
+          "name": "fx_muzzlelight",
+          "vtable": "0x1d212b8",
+          "joint": 1,
+          "abs": [
+            0,
+            0,
+            0,
+            0.9999998807907104
+          ]
+        }
+      ]
+    }
+  }
+]

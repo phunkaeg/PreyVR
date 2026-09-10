@@ -1,0 +1,173 @@
+[
+  {
+    "capture": "title-05",
+    "frame": 2942,
+    "layer_types": [
+      "quad",
+      "quad",
+      "quad"
+    ],
+    "layer0": {
+      "i": 0,
+      "type": "quad",
+      "space": "local",
+      "sizeM": [
+        1.9842,
+        1.1161
+      ],
+      "pose": [
+        0.0,
+        1.7699,
+        -2.0
+      ],
+      "radius": 0.0,
+      "centralAngle": 0.0,
+      "premultiplied": false,
+      "pixelsCoveredL": 1,
+      "pixelsCoveredR": 1
+    },
+    "handR": {
+      "grip": [
+        0.2,
+        1.3,
+        -0.35
+      ],
+      "aimYpr": [
+        -0.0,
+        -40.0,
+        0.0
+      ],
+      "valid": true
+    },
+    "order_errors": 0
+  },
+  {
+    "capture": "mainmenu-05",
+    "frame": 7344,
+    "layer_types": [
+      "quad",
+      "quad",
+      "quad",
+      "quad"
+    ],
+    "layer0": {
+      "i": 0,
+      "type": "quad",
+      "space": "local",
+      "sizeM": [
+        1.9842,
+        1.1161
+      ],
+      "pose": [
+        0.0,
+        1.7699,
+        -2.0
+      ],
+      "radius": 0.0,
+      "centralAngle": 0.0,
+      "premultiplied": false,
+      "pixelsCoveredL": 1,
+      "pixelsCoveredR": 1
+    },
+    "handR": {
+      "grip": [
+        0.2,
+        1.3,
+        -0.35
+      ],
+      "aimYpr": [
+        16.0,
+        13.0,
+        -0.0
+      ],
+      "valid": true
+    },
+    "order_errors": 0
+  },
+  {
+    "capture": "options-auto-05",
+    "frame": 8951,
+    "layer_types": [
+      "quad",
+      "quad",
+      "quad",
+      "quad"
+    ],
+    "layer0": {
+      "i": 0,
+      "type": "quad",
+      "space": "local",
+      "sizeM": [
+        1.9842,
+        1.1161
+      ],
+      "pose": [
+        0.0,
+        1.7699,
+        -2.0
+      ],
+      "radius": 0.0,
+      "centralAngle": 0.0,
+      "premultiplied": false,
+      "pixelsCoveredL": 1,
+      "pixelsCoveredR": 1
+    },
+    "handR": {
+      "grip": [
+        0.2,
+        1.3,
+        -0.35
+      ],
+      "aimYpr": [
+        16.0,
+        13.0,
+        -0.0
+      ],
+      "valid": true
+    },
+    "order_errors": 0
+  },
+  {
+    "capture": "curve-main-05",
+    "frame": 12853,
+    "layer_types": [
+      "cylinder",
+      "quad",
+      "quad",
+      "quad"
+    ],
+    "layer0": {
+      "i": 0,
+      "type": "cylinder",
+      "space": "local",
+      "sizeM": [
+        1.9842,
+        1.1161
+      ],
+      "pose": [
+        0.0,
+        1.7699,
+        1.2481
+      ],
+      "radius": 3.24812,
+      "centralAngle": 0.61087,
+      "premultiplied": false,
+      "pixelsCoveredL": 1,
+      "pixelsCoveredR": 1
+    },
+    "handR": {
+      "grip": [
+        0.2,
+        1.3,
+        -0.35
+      ],
+      "aimYpr": [
+        16.0,
+        13.0,
+        -0.0
+      ],
+      "valid": true
+    },
+    "order_errors": 0
+  }
+]

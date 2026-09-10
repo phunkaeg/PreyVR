@@ -1,0 +1,4 @@
+Prey VR: 2560 x 1440 per eye; runtime: system OpenXR runtime
+Controls: menu button = pause; right stick = navigate; A = select; B = back.
+Grips = tabs; triggers = pages; X/Y = actions. F12 or both grips = reset view.
+Preflight passed. Nothing launched.

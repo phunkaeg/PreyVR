@@ -1,0 +1,146 @@
+{
+  "entries": {
+    "DanielleElevatorGeneric": {
+      "element": "0x28e4a131100",
+      "player": "0x28e51748890",
+      "visible": 1,
+      "thread": 98900,
+      "count": 26
+    },
+    "DanielleFabricator": {
+      "element": "0x28e4a131850",
+      "player": "0x28e51748d70",
+      "visible": 1,
+      "thread": 98900,
+      "count": 26
+    },
+    "DanielleMarkers": {
+      "element": "0x28e1a2162f0",
+      "player": "0x28ded98ee10",
+      "visible": 1,
+      "thread": 98900,
+      "count": 26
+    },
+    "DanielleKeyPad": {
+      "element": "0x28e4a131fa0",
+      "player": "0x28e51748070",
+      "visible": 1,
+      "thread": 98900,
+      "count": 26
+    },
+    "DanielleKeyReader": {
+      "element": "0x28e4a132210",
+      "player": "0x28e51748210",
+      "visible": 1,
+      "thread": 98900,
+      "count": 26
+    },
+    "DanielleKiosk": {
+      "element": "0x28e4a130e90",
+      "player": "0x28e517483b0",
+      "visible": 1,
+      "thread": 98900,
+      "count": 52
+    },
+    "DanielleLevelTransDoor": {
+      "element": "0x28e4a132480",
+      "player": "0x28ded98f7d0",
+      "visible": 1,
+      "thread": 98900,
+      "count": 26
+    },
+    "DanielleOperator": {
+      "element": "0x28e4a1315e0",
+      "player": "0x28ded98efb0",
+      "visible": 1,
+      "thread": 98900,
+      "count": 26
+    },
+    "DanielleRecycler": {
+      "element": "0x28e4a1326f0",
+      "player": "0x28e5179ba10",
+      "visible": 1,
+      "thread": 98900,
+      "count": 26
+    },
+    "DanielleWorkstationV2": {
+      "element": "0x28e4a131ac0",
+      "player": "0x28e517e74f0",
+      "visible": 1,
+      "thread": 98900,
+      "count": 52
+    },
+    "DanielleSimlabsWorkstation": {
+      "element": "0x28e6561d460",
+      "player": "0x28e5f2a6be0",
+      "visible": 1,
+      "thread": 98900,
+      "count": 26
+    },
+    "DanielleHUD": {
+      "element": "0x28e1a215e10",
+      "player": "0x28e1a340430",
+      "visible": 1,
+      "thread": 98900,
+      "count": 26
+    },
+    "DaniellePDA": {
+      "element": "0x28e1afc5680",
+      "player": "0x28e5fc56430",
+      "visible": 1,
+      "thread": 98900,
+      "count": 26
+    },
+    "DanielleSubtitles": {
+      "element": "0x28e1afc73c0",
+      "player": "0x28e1a3405d0",
+      "visible": 1,
+      "thread": 98900,
+      "count": 26
+    }
+  },
+  "callbacks": {
+    "0x28ded98ee18-15255008": {
+      "proxy": "0x28ded98ee18",
+      "rva": 15255008,
+      "thread": 128348,
+      "count": 26
+    },
+    "0x28e1a340438-15255008": {
+      "proxy": "0x28e1a340438",
+      "rva": 15255008,
+      "thread": 128348,
+      "count": 26
+    },
+    "0x28e5fc56438-15255008": {
+      "proxy": "0x28e5fc56438",
+      "rva": 15255008,
+      "thread": 128348,
+      "count": 26
+    },
+    "0x28e1a3405d8-15255008": {
+      "proxy": "0x28e1a3405d8",
+      "rva": 15255008,
+      "thread": 128348,
+      "count": 26
+    }
+  },
+  "names": {
+    "0x28e51748898": "DanielleElevatorGeneric",
+    "0x28e51748d78": "DanielleFabricator",
+    "0x28ded98ee18": "DanielleMarkers",
+    "0x28e51748078": "DanielleKeyPad",
+    "0x28e51748218": "DanielleKeyReader",
+    "0x28e517483b8": "DanielleKiosk",
+    "0x28e51748558": "DanielleKiosk",
+    "0x28ded98f7d8": "DanielleLevelTransDoor",
+    "0x28ded98efb8": "DanielleOperator",
+    "0x28e5179ba18": "DanielleRecycler",
+    "0x28e517e74f8": "DanielleWorkstationV2",
+    "0x28e517e7838": "DanielleWorkstationV2",
+    "0x28e5f2a6be8": "DanielleSimlabsWorkstation",
+    "0x28e1a340438": "DanielleHUD",
+    "0x28e5fc56438": "DaniellePDA",
+    "0x28e1a3405d8": "DanielleSubtitles"
+  }
+}

@@ -1,0 +1,180 @@
+{
+  "entries": {
+    "DanielleElevatorGeneric": {
+      "element": "0x28e4a131100",
+      "player": "0x28e51748890",
+      "visible": 1,
+      "thread": 98900,
+      "count": 24
+    },
+    "DanielleFabricator": {
+      "element": "0x28e4a131850",
+      "player": "0x28e51748d70",
+      "visible": 1,
+      "thread": 98900,
+      "count": 24
+    },
+    "DanielleMarkers": {
+      "element": "0x28e1a2162f0",
+      "player": "0x28ded98ee10",
+      "visible": 1,
+      "thread": 98900,
+      "count": 24
+    },
+    "DanielleKeyPad": {
+      "element": "0x28e4a131fa0",
+      "player": "0x28e51748070",
+      "visible": 1,
+      "thread": 98900,
+      "count": 24
+    },
+    "DanielleKeyReader": {
+      "element": "0x28e4a132210",
+      "player": "0x28e51748210",
+      "visible": 1,
+      "thread": 98900,
+      "count": 24
+    },
+    "DanielleKiosk": {
+      "element": "0x28e4a130e90",
+      "player": "0x28e517483b0",
+      "visible": 1,
+      "thread": 98900,
+      "count": 48
+    },
+    "DanielleLevelTransDoor": {
+      "element": "0x28e4a132480",
+      "player": "0x28ded98f7d0",
+      "visible": 1,
+      "thread": 98900,
+      "count": 24
+    },
+    "DanielleOperator": {
+      "element": "0x28e4a1315e0",
+      "player": "0x28ded98efb0",
+      "visible": 1,
+      "thread": 98900,
+      "count": 24
+    },
+    "DanielleRecycler": {
+      "element": "0x28e4a1326f0",
+      "player": "0x28e5179ba10",
+      "visible": 1,
+      "thread": 98900,
+      "count": 24
+    },
+    "DanielleWorkstationV2": {
+      "element": "0x28e4a131ac0",
+      "player": "0x28e517e74f0",
+      "visible": 1,
+      "thread": 98900,
+      "count": 48
+    },
+    "DanielleSimlabsWorkstation": {
+      "element": "0x28e6561d460",
+      "player": "0x28e5f2a6be0",
+      "visible": 1,
+      "thread": 98900,
+      "count": 24
+    },
+    "DanielleHUD": {
+      "element": "0x28e1a215e10",
+      "player": "0x28e1a340430",
+      "visible": 1,
+      "thread": 98900,
+      "count": 24
+    },
+    "DaniellePDA": {
+      "element": "0x28e1afc5680",
+      "player": "0x28e5fc56430",
+      "visible": 1,
+      "thread": 98900,
+      "count": 24
+    },
+    "DanielleSubtitles": {
+      "element": "0x28e1afc73c0",
+      "player": "0x28e1a3405d0",
+      "visible": 1,
+      "thread": 98900,
+      "count": 24
+    }
+  },
+  "callbacks": {
+    "0x28ded98ee18-15255008": {
+      "proxy": "0x28ded98ee18",
+      "rva": 15255008,
+      "thread": 128348,
+      "rt": "0x28e3bf7dda0",
+      "ds": "0x28e3bf7cd20",
+      "count": 23
+    },
+    "0x28e1a340438-15255008": {
+      "proxy": "0x28e1a340438",
+      "rva": 15255008,
+      "thread": 128348,
+      "rt": "0x28e3bf7dda0",
+      "ds": "0x28e3bf7cd20",
+      "count": 23
+    },
+    "0x28e5fc56438-15255008": {
+      "proxy": "0x28e5fc56438",
+      "rva": 15255008,
+      "thread": 128348,
+      "rt": "0x28e3bf7dda0",
+      "ds": "0x28e3bf7cd20",
+      "count": 23
+    },
+    "0x28e1a3405d8-15255008": {
+      "proxy": "0x28e1a3405d8",
+      "rva": 15255008,
+      "thread": 128348,
+      "rt": "0x28e3bf7dda0",
+      "ds": "0x28e3bf7cd20",
+      "count": 23
+    }
+  },
+  "names": {
+    "0x28e51748898": "DanielleElevatorGeneric",
+    "0x28e51748d78": "DanielleFabricator",
+    "0x28ded98ee18": "DanielleMarkers",
+    "0x28e51748078": "DanielleKeyPad",
+    "0x28e51748218": "DanielleKeyReader",
+    "0x28e517483b8": "DanielleKiosk",
+    "0x28e51748558": "DanielleKiosk",
+    "0x28ded98f7d8": "DanielleLevelTransDoor",
+    "0x28ded98efb8": "DanielleOperator",
+    "0x28e5179ba18": "DanielleRecycler",
+    "0x28e517e74f8": "DanielleWorkstationV2",
+    "0x28e517e7838": "DanielleWorkstationV2",
+    "0x28e5f2a6be8": "DanielleSimlabsWorkstation",
+    "0x28e1a340438": "DanielleHUD",
+    "0x28e5fc56438": "DaniellePDA",
+    "0x28e1a3405d8": "DanielleSubtitles"
+  },
+  "bindings": {
+    "DaniellePDA:0x28e6704f2a0:0x28e67049720": {
+      "name": "DaniellePDA",
+      "targets": [
+        "0x28e6704f2a0"
+      ],
+      "dsv": "0x28e67049720",
+      "count": 644
+    },
+    "DaniellePDA:0x28e3bf7dda0:0x28e3bf7cd20": {
+      "name": "DaniellePDA",
+      "targets": [
+        "0x28e3bf7dda0"
+      ],
+      "dsv": "0x28e3bf7cd20",
+      "count": 1334
+    },
+    "DaniellePDA:0x28e670501a0:0x28e67049720": {
+      "name": "DaniellePDA",
+      "targets": [
+        "0x28e670501a0"
+      ],
+      "dsv": "0x28e67049720",
+      "count": 23
+    }
+  }
+}

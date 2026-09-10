@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260910-inventory-cancel-08",
+  "recorded_at": "2026-09-10T00:23:58.224481+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll x64, candidate 08 controller inventory input",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Can a controller drag commit normally and cancel on panel exit without native placement at clamped inventory cell (1,1)?",
+  "claim": "In candidate 08, item 64982 moved from (1,1) to (2,3) and native Place cleared its drag flags. Dragging it from (2,3) toward (2,5), then leaving the panel, called native CancelPickItem and restored the item visibly to (2,3). Held re-entry generated no new press. Candidate 06 instead moved to and placed at (1,1) after focus-loss outside coordinates. The scoped fix cancels the native drag before release and never sends an off-panel coordinate while the native button is held.",
+  "evidence_grade": "LIVE",
+  "environment": "in_game",
+  "method": "Explicit Ghidra /Prey/PreyDll.dll decompiles of native inventory Pick, Drag, Place and Cancel; read-only PE vtable/prologue lookup. Candidate 08 DLL SHA bf9cbf3c14c2fa04d3b997b26811ee72c045d4d9d1df583732fc6cc073e121d0, MSVC Release, 35 CTest passes. Live Prey PID 144280 with process-scoped private x64 D3D11 xr-sim cylinder runtime. Bounded Frida downstream observer plus continuous hand point / trigger script: trace_cursor.py 144280 1 inventory-cancel-08.json drag-offpanel-steps-07.json state-f. Normal control reused drag-continuous-steps-06.json from occupied (1,1). Inspect native callbacks, mod event order and both-eye PNGs, not only command acknowledgement. Previous receipt 20260910-ui-pointer-contract remains static and unchanged.",
+  "validity": "VALID",
+  "mutation": "persistent",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Launcher SHA gate and DLL identity in frozen run log match supported Steam target and candidate 08."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Downstream Drag/Place callbacks and accepted normal drag provide positive coverage; the observer avoids both guarded mouse entry and production Pick detour. Both-eye PNGs inspected."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Ordinary continuous drag commits at (2,3); off-panel variant restores its own source slot. Candidate 06 focus-loss clamp/place failure is preserved separately."
+    },
+    "scene": {
+      "status": "PASS",
+      "reason": "Actual native inventory with the occupied source slot observed before each accepted test; empty-slot preliminary run excluded."
+    },
+    "restore": {
+      "status": "PASS",
+      "reason": "Both bounded Frida scripts detached. Mod log records VR off and XR teardown before normal closure of owned PID 144280. Fresh headset PID 49556 is a separate user-driven session; no shared runtime setting was changed."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Candidate 08 builds, passes 35 offline tests, and passes the bounded ordinary-drag control in this game run. This baseline excludes performance and headset comfort."
+  },
+  "limits": "Actual Prey with simulated controllers, not physical headset acceptance. Exact Steam build and ordinary inventory screen only. Live recenter/hand-change/focus cancellation and left-hand/flat fallback acceptance remain open. A preliminary off-panel trace had no inventory callbacks because the assumed source slot was empty; it is excluded. Snapshot contention was a static defect, not the proven unique cause of an earlier unexpected release. Native cancellation retains the game's fallback policy. In-world terminals are not beam-enabled.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/source-08-owned.zip",
+      "sha256": "10908f4a01508ca1f67bab5bf79c2bb4541f4640fa0333bc73c61e4739dea8d3",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/build-08.txt",
+      "sha256": "3827b20a7d13ec38d840c2b1a0cad220ae66f197811e4f35fac7a3533e80e350",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/ctest-08.txt",
+      "sha256": "2e173f1afd3261aea18a8de6c6755e5d2aceb35dabb93df0acbb2200fd605346",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/native-inventory-cancel-07.json",
+      "sha256": "893d76f6ca8ab25c9cae4cac4a667314490ee40bf9bb1f268d23453e016150a2",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/steam-ui-xrefs.json",
+      "sha256": "67c742cbd3e74191d6aa481e4e25d7cc4a7360e23940596d044e4c0738b14261",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/inventory-continuous-06.json",
+      "sha256": "c8e236fa4ff6c1dc3986f6a365a3dec77cee24902c8c803d329fd54211dd2087",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/inventory-focus-06.json",
+      "sha256": "80d19d350fd64280f6ca7cb867f1de8616becd4ce5000480a75deddfd2db1515",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/inventory-normal-08.json",
+      "sha256": "f600cd75680ac90f1690290ac9417f86ecb028de9e2ea42f57809f3781064e9c",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/inventory-cancel-08.json",
+      "sha256": "8b6c83ce84598960c8847f58bef9004e340c8e1d39472088e214831a847dcddb",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/trace_cursor.py",
+      "sha256": "9179c7bc72f6464266f5dbb0c1b92289948ecd551a790671f4fcf3818a58ae06",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/drag-continuous-steps-06.json",
+      "sha256": "c482d1967234e1a5f9244eb911210246a29f5012e11330cae69745bd528ef270",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/drag-offpanel-steps-07.json",
+      "sha256": "f6bec50ed2957a155e2712480691e9aedb95e7bb0dbb3b33203e28a10bf13faf",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/runs/player-20260910-101606/PreyVR.log",
+      "sha256": "33baa59479ba2135c379d5254fc46ed80ba7b3da87649a594fdce6fb37cec4ef",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/state-f/capture/continuous-drag-release-06-inventory-normal-08_left.png",
+      "sha256": "ce8ac9a27a9c1b436997d05457d753ff91fa56ab0a9a6114fbe6aee362160c22",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/state-f/capture/continuous-drag-release-06-inventory-normal-08_right.png",
+      "sha256": "d346d2c422e9be6cce991fa6947e5b35616be36f35e7889e19bec2aef9ffc9c8",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/state-f/capture/dragging-inventory-cancel-08_left.png",
+      "sha256": "f4440d41a30613d32025394717ad897711423a8667e63fd1c2a2bef45c80baf2",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/state-f/capture/dragging-inventory-cancel-08_right.png",
+      "sha256": "69618bfee1399e3a5000c423db339abe82f28c6044c10201421d88b0171207bd",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/state-f/capture/cancelled-inventory-cancel-08_left.png",
+      "sha256": "7ccbfb99fa344a1034d473501c90264dcb9f62c735b8891d78d8da69ecb62017",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    },
+    {
+      "path": "docs/evidence/ui-pointer-2026-09-10/state-f/capture/cancelled-inventory-cancel-08_right.png",
+      "sha256": "fabd9160cd3c9b5f4d7a0edf4817873fae7727d98844784ac426c6d00e88f4b9",
+      "role": "Frozen candidate source, static contract, build or live control/cancellation evidence"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [
+    {
+      "approach": "Test inventory dragging with only one teleport from press point to drop point",
+      "reason": "The first move can initiate Pick without any intermediate Drag callback; absence of movement in that case was not a pointer-path failure.",
+      "reopen_when": "The test explicitly targets rapid single-frame motion and records Pick/Drag/Place coverage."
+    }
+  ],
+  "next_action": "Obtain physical Quest/VirtualDesktopXR menu readability, beam alignment, click and recenter acceptance; then test the remaining input transitions. Current user owns PID 49556 for that headset test. Queue the native queued-input and cancellation finding for fleet review; no bottleneck promotion."
+}

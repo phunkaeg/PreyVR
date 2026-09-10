@@ -1,8 +1,10 @@
 #include "HudBridge.h"
 #include "CameraEditHook.h"
 #include "XrSessionHost.h"
+#include "InventoryPointerCapture.h"
 
 #include "preyvr/WeaponAim.h"
+#include "preyvr/LatestSnapshot.h"
 
 #include "Logger.h"
 
@@ -131,6 +133,7 @@ using IsVisibleFn = bool(__fastcall*)(void*);
 // `hud.call` is queued -- so the predicate is a value, not a call.
 std::atomic<bool> gMenuOpen{false};
 std::atomic<unsigned long long> gMenuStateSamples{0};
+std::atomic<std::uint64_t> gMenuStamp{0};
 
 using ScreenToFlashFn =
     void(__fastcall*)(void*, const float*, const float*, float*, float*, bool);
@@ -530,6 +533,11 @@ constexpr const char* kMenuElements[] = {
     "DanielleShell",
     "DanielleOptions",
     "DanielleSaveLoad",
+    "DaniellePDA",               // native lookups: 0x1378C80, 0x14B7FC0
+    "DanielleInventoryExternal", // native inventoryClose consumer: 0x161BF70
+    "LoadingScreen",             // target string RVA 0x1CB49E0
+    "DanielleDialog",            // native modal dispatcher 0x1632857
+    "DanielleDialogInGame",
 };
 
 void* ResolveNamedElement(std::uintptr_t base, const char* name)
@@ -571,7 +579,13 @@ DWORD HudRefreshMenuOpenState()
         void* const element = ResolveNamedElement(base, name);
         if (element == nullptr) { continue; }
         const std::uintptr_t isVisible = ReadVtableSlot(element, kIsVisibleSlot);
-        if (!PointerIsExecutable(isVisible)) { continue; }
+        // Concrete CFlashUIElement constructor 0x2F79B0 installs 0x1CAB358;
+        // +0xE8 -> 0x2FD150: movzx eax, byte [rcx+0x70]; ret. SetVisible
+        // 0x3005F0 writes that same byte. Do not accept an arbitrary executable.
+        constexpr std::uint8_t getterBytes[] = {0x0F, 0xB6, 0x41, 0x70, 0xC3};
+        if (ReadPointer(reinterpret_cast<std::uintptr_t>(element)) != base + 0x1CAB358 ||
+            isVisible != base + 0x2FD150 || !BytesMatch(
+                reinterpret_cast<const std::uint8_t*>(isVisible), getterBytes, sizeof(getterBytes))) { continue; }
         bool ok = false;
         const bool visible = CallIsVisible(isVisible, element, &ok);
         if (!ok) { continue; }
@@ -585,11 +599,46 @@ DWORD HudRefreshMenuOpenState()
     // the D-pad taps this predicate exists to suppress.
     if (!anyAnswered) { return 7; }
     gMenuOpen.store(anyVisible, std::memory_order_release);
+    gMenuStamp.store(MonotonicNanoseconds(), std::memory_order_release);
     gMenuStateSamples.fetch_add(1, std::memory_order_relaxed);
     return 0;
 }
 
+DWORD HudDispatchPointer(int event,int x,int y)
+{
+    if(event<0||event>2||x < -24576||x>24576||y < -24576||y>24576)return ERROR_INVALID_PARAMETER;
+    const auto captureHook=EnsureInventoryPointerCapture();
+    if(captureHook)return captureHook;
+    const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
+    if(!base)return ERROR_MOD_NOT_FOUND;
+    // Constructor 0x2D3240 installs primary 0x1CA6898 and mouse listener
+    // 0x1CA6008 at primary+8. Its +8 callee subtracts 8 from this before
+    // SendFlashMouseEvent (+0xE0 -> 0x2CEF30). This is a secondary receiver.
+    __try {
+        const auto* accessor=reinterpret_cast<const std::uint8_t*>(base+kGetHudElementRva);
+        if(!BytesMatch(accessor,kGetHudHead.data(),kGetHudHead.size())||
+           !BytesMatch(accessor+7,kGetHudLea.data(),kGetHudLea.size())||
+           !BytesMatch(accessor+14,kGetHudTail.data(),kGetHudTail.size()))return ERROR_BAD_EXE_FORMAT;
+        const auto slot=reinterpret_cast<std::uintptr_t>(accessor)+7+
+            static_cast<std::intptr_t>(ReadRelativeDisplacement(accessor+3));
+        const auto ui=ReadPointer(slot);
+        if(!ui||ReadPointer(ui)!=base+0x1CA6898||ReadPointer(ui+8)!=base+0x1CA6008||
+           ReadPointer(base+0x1CA6010)!=base+0x2CFCC0||ReadPointer(base+0x1CA6978)!=base+0x2CEF30)
+            return ERROR_INVALID_ADDRESS;
+        constexpr std::uint8_t head[]={0x48,0x89,0x5C,0x24,0x08,0x48,0x89,0x6C,0x24,0x10,
+            0x48,0x89,0x74,0x24,0x18,0x57,0x48,0x83,0xEC,0x40};
+        if(!BytesMatch(reinterpret_cast<const std::uint8_t*>(base+0x2CFCC0),head,sizeof(head)))return ERROR_BAD_EXE_FORMAT;
+        using MouseFn=void(__fastcall*)(void*,int,int,int,int);
+        BeginInventoryPointerEvent(event);
+        reinterpret_cast<MouseFn>(base+0x2CFCC0)(reinterpret_cast<void*>(ui+8),x,y,event,0);
+        EndInventoryPointerEvent(event);
+        return 0;
+    } __except(EXCEPTION_EXECUTE_HANDLER) {EndInventoryPointerEvent(event);return GetExceptionCode();}
+}
+
 bool HudMenuIsOpen() { return gMenuOpen.load(std::memory_order_acquire); }
+bool HudMenuStateKnown() { return FreshSample(MonotonicNanoseconds(), gMenuStamp.load()); }
+bool HudGameplayInputAllowed() { return HudMenuStateKnown() && !HudMenuIsOpen(); }
 unsigned long long HudMenuStateSampleCount()
 {
     return gMenuStateSamples.load(std::memory_order_relaxed);

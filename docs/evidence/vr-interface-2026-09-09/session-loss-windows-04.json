@@ -1,0 +1,26 @@
+[
+  {
+    "hwnd": "19400432",
+    "text": "DIEmWin"
+  },
+  {
+    "hwnd": "5377490",
+    "text": "Prey"
+  },
+  {
+    "hwnd": "28185640",
+    "text": "Prey.exe has stopped working,"
+  },
+  {
+    "hwnd": "6950328",
+    "text": "OK"
+  },
+  {
+    "hwnd": "12462522",
+    "text": ""
+  },
+  {
+    "hwnd": "22284020",
+    "text": "Attempt to read from address 0xFFFFFFFFFFFFFFFF\r\nThe memory could not be \"read\""
+  }
+]

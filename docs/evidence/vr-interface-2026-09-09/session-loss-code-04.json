@@ -1,0 +1,207 @@
+[
+  {
+    "type": "send",
+    "payload": [
+      {
+        "rva": "0x27ebd0",
+        "asm": "mov rcx, rbx"
+      },
+      {
+        "rva": "0x27ebd3",
+        "asm": "call qword ptr [rax + 0x30]"
+      },
+      {
+        "rva": "0x27ebd6",
+        "asm": "cmp byte ptr [rbp + 0x1c8], 0"
+      },
+      {
+        "rva": "0x27ebdd",
+        "asm": "mov r13d, eax"
+      },
+      {
+        "rva": "0x27ebe0",
+        "asm": "je 0x7ffd2b1aebec"
+      },
+      {
+        "rva": "0x27ebe2",
+        "asm": "cmp r14b, 1"
+      },
+      {
+        "rva": "0x27ebe6",
+        "asm": "je 0x7ffd2b1aec7b"
+      },
+      {
+        "rva": "0x27ebec",
+        "asm": "mov rcx, qword ptr [r15 + 0x18]"
+      },
+      {
+        "rva": "0x27ebf0",
+        "asm": "prefetcht0 byte ptr [rsp + 0x68]"
+      },
+      {
+        "rva": "0x27ebf5",
+        "asm": "mov rdi, qword ptr [rcx + 0x228]"
+      },
+      {
+        "rva": "0x27ebfc",
+        "asm": "test rdi, rdi"
+      },
+      {
+        "rva": "0x27ebff",
+        "asm": "jne 0x7ffd2b1aec2a"
+      },
+      {
+        "rva": "0x27ec01",
+        "asm": "movzx edx, byte ptr [rcx + 0x23c]"
+      },
+      {
+        "rva": "0x27ec08",
+        "asm": "shr dl, 1"
+      },
+      {
+        "rva": "0x27ec0a",
+        "asm": "and dl, r14b"
+      },
+      {
+        "rva": "0x27ec0d",
+        "asm": "test dl, 7"
+      },
+      {
+        "rva": "0x27ec10",
+        "asm": "je 0x7ffd2b1af38b"
+      },
+      {
+        "rva": "0x27ec16",
+        "asm": "lea rdx, [rsp + 0x50]"
+      },
+      {
+        "rva": "0x27ec1b",
+        "asm": "call 0x7ffd2b01d170"
+      },
+      {
+        "rva": "0x27ec20",
+        "asm": "test al, al"
+      },
+      {
+        "rva": "0x27ec22",
+        "asm": "je 0x7ffd2b1af38b"
+      },
+      {
+        "rva": "0x27ec28",
+        "asm": "jmp 0x7ffd2b1aec7b"
+      },
+      {
+        "rva": "0x27ec2a",
+        "asm": "movsxd rax, dword ptr [rdi + 8]"
+      },
+      {
+        "rva": "0x27ec2e",
+        "asm": "xor esi, esi"
+      },
+      {
+        "rva": "0x27ec30",
+        "asm": "test eax, eax"
+      },
+      {
+        "rva": "0x27ec32",
+        "asm": "jle 0x7ffd2b1af38b"
+      },
+      {
+        "rva": "0x27ec38",
+        "asm": "mov rdi, qword ptr [rdi]"
+      },
+      {
+        "rva": "0x27ec3b",
+        "asm": "mov r12, rax"
+      },
+      {
+        "rva": "0x27ec3e",
+        "asm": "nop"
+      },
+      {
+        "rva": "0x27ec40",
+        "asm": "movzx eax, byte ptr [rdi + 0x23c]"
+      },
+      {
+        "rva": "0x27ec47",
+        "asm": "shr al, 1"
+      },
+      {
+        "rva": "0x27ec49",
+        "asm": "and al, r14b"
+      },
+      {
+        "rva": "0x27ec4c",
+        "asm": "test al, 7"
+      },
+      {
+        "rva": "0x27ec4e",
+        "asm": "je 0x7ffd2b1aec61"
+      },
+      {
+        "rva": "0x27ec50",
+        "asm": "lea rdx, [rsp + 0x50]"
+      },
+      {
+        "rva": "0x27ec55",
+        "asm": "mov rcx, rdi"
+      },
+      {
+        "rva": "0x27ec58",
+        "asm": "call 0x7ffd2b01d170"
+      },
+      {
+        "rva": "0x27ec5d",
+        "asm": "test al, al"
+      },
+      {
+        "rva": "0x27ec5f",
+        "asm": "jne 0x7ffd2b1aec75"
+      },
+      {
+        "rva": "0x27ec61",
+        "asm": "inc rsi"
+      },
+      {
+        "rva": "0x27ec64",
+        "asm": "add rdi, 0x240"
+      },
+      {
+        "rva": "0x27ec6b",
+        "asm": "cmp rsi, r12"
+      },
+      {
+        "rva": "0x27ec6e",
+        "asm": "jl 0x7ffd2b1aec40"
+      },
+      {
+        "rva": "0x27ec70",
+        "asm": "jmp 0x7ffd2b1af38b"
+      },
+      {
+        "rva": "0x27ec75",
+        "asm": "mov esi, dword ptr [rbp + 0x1b0]"
+      },
+      {
+        "rva": "0x27ec7b",
+        "asm": "movss xmm1, dword ptr [rsp + 0x50]"
+      },
+      {
+        "rva": "0x27ec81",
+        "asm": "movaps xmm0, xmm15"
+      },
+      {
+        "rva": "0x27ec85",
+        "asm": "subss xmm1, xmm6"
+      },
+      {
+        "rva": "0x27ec89",
+        "asm": "comiss xmm1, xmm15"
+      },
+      {
+        "rva": "0x27ec8d",
+        "asm": "jb 0x7ffd2b1aec96"
+      }
+    ]
+  }
+]

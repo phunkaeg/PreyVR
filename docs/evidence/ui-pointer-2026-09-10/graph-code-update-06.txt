@@ -1,0 +1,40 @@
+PreyVR          229 files   2,004,069 bytes  ~  534,418 input tokens
+TOTAL           229 files   2,004,069 bytes  ~  534,418 input tokens
+
+Refreshing PreyVR's project-local corpus...
+Staging PreyVR corpus:
+  markdown (recursive)         204 files
+  C++ source and headers       210 files
+  build and tooling            33 files
+
+Staged corpus totals:
+  bioshockvr     45 files
+  dishonoredvr   38 files
+  farcry2vr      45 files
+  graphify-out   1 files
+  mohvr          28 files
+  preyvr         507 files
+  sims4vr        13 files
+  sofvr          27 files
+  somavr         42 files
+  ss2vr          104 files
+  swat4vr        23 files
+
+Normalizing PreyVR code under the installed Graphify version...
+[graphify extract] --force --code-only: full AST re-scan, existing semantic layer preserved (no semantic pass this run)
+[graphify extract] --force: full re-scan, semantic cache reads skipped
+[graphify extract] scanning D:\Dev Debug\PreyVR\graphify\corpus\preyvr
+[graphify extract] --code-only: skipping 259 non-code file(s) (259 docs, 0 papers, 0 images) — no LLM extraction
+[graphify extract] found 235 code, 0 docs, 0 papers, 0 images
+[graphify extract] 1 file(s) not classified (no supported extension or shebang), skipped: regenny__PreyVR.genny
+[graphify extract] AST extraction on 235 code files...
+  AST extraction: 4/4 uncached files (100%)
+  warning: 1 file(s) had syntax errors and may be partially extracted: src__dll__Bootstrap.h (first error at line 7, no symbols extracted)
+[graphify] Replaced 3667 node(s) from re-extracted source file(s).
+[graphify] backed up semantic+curated graph (7 files) -> 2026-09-10/
+[graphify extract] wrote D:\Dev Debug\PreyVR\graphify\graphify-out\graph.json: 4805 nodes, 8960 edges, 339 communities
+[graphify extract] wrote D:\Dev Debug\PreyVR\graphify\graphify-out\.graphify_analysis.json
+[graphify extract] next: run `graphify cluster-only D:\Dev Debug\PreyVR\graphify` to generate GRAPH_REPORT.md and name communities
+  verified: 4,797 -> 4,805 nodes; 69 document/concept nodes across 11 source documents
+
+Selected project code graphs are current; existing semantic nodes were preserved.

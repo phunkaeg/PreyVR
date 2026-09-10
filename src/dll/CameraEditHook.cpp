@@ -1,11 +1,11 @@
 #include "CameraEditHook.h"
 
-#include "NearFovOverride.h"
 #include "XrSessionHost.h"
 #include "MinHookInit.h"
 
 #include "InputPost.h"
 #include "HudBridge.h"
+#include "UiPointer.h"
 #include "AimTakeover.h"
 #include "MoveLane.h"
 
@@ -1031,6 +1031,7 @@ void __fastcall RenderWithCameraEdit(void* system)
     // first, and the early return would otherwise skip it.
     DrainQueuedInput();
     DrainQueuedHudCalls();
+    DrainUiPointer();
     // Same thread and same frame as the drain: the lane produces at most two
     // axis events per frame and the drain consumes one, so producing anywhere
     // else would race the queue it feeds.
@@ -1041,7 +1042,6 @@ void __fastcall RenderWithCameraEdit(void* system)
          !gHeadRotationArmed.load(std::memory_order_acquire)) || system == nullptr) {
         if (original != nullptr) {
             UpdateAimReticleForRender();
-            AssertNearFovForRender();
             original(system);
         }
         return;
@@ -1107,7 +1107,6 @@ void __fastcall RenderWithCameraEdit(void* system)
             SetFrameCaptureTagOverride(eye);
             if (original != nullptr) {
                 UpdateAimReticleForRender();
-            AssertNearFovForRender();
                 original(system);
             }
         }
@@ -1239,7 +1238,6 @@ void __fastcall RenderWithCameraEdit(void* system)
     std::memcpy(camera, edited.data(), cameraedit::kCameraSize);
 
     UpdateAimReticleForRender();
-            AssertNearFovForRender();
 
     // Publish the forward axis we just wrote, so the pass-camera probe can ask
     // whether the camera the engine culls with is this one.

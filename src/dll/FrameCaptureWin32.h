@@ -31,7 +31,7 @@ enum class FrameCaptureResult : DWORD {
 // Returns refused if a request is already pending -- captures are deliberately
 // not queued, because a queue would silently spread one experiment across
 // frames that are not adjacent.
-DWORD RequestFrameCapture(std::uint32_t tag);
+DWORD RequestFrameCapture(std::uint32_t tag, bool hudOnly=false);
 
 // Called from the frame observer. Returns immediately when nothing is armed.
 void ServiceFrameCapture(void* renderer, unsigned long long frameIndex);

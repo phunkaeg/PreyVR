@@ -1,0 +1,678 @@
+{
+  "dllSha256": "7e38452274fc570b0adfaa67db46c0c2417755356c38f6a5512436fc42f755b0",
+  "packageSha256": "8659263d406697d3fced9b1bbe936c5563d21b3434e9d4ef5cb8d899cd235593",
+  "sourceZipSha256": "a16c7d7c95b8b2ea01d5b8c99701b81be1942786daa978694447798c4922e8f8",
+  "sourceFiles": [
+    {
+      "path": "CMakeLists.txt",
+      "sha256": "9c982da730a359635d2c9efebacdb7b27595ef82ba61e41a2a9b4138030a6c0f"
+    },
+    {
+      "path": "docs/PLAYER-GUIDE.md",
+      "sha256": "a9923c34783bda75f6505ad3bafc3041f5b3f553de9e087648438f673afc15a8"
+    },
+    {
+      "path": "include/preyvr/AimState.h",
+      "sha256": "2b7c14378496a8769627f00f4a8100ae526d590ed0c75c58c3fe8fc1e5d4e481"
+    },
+    {
+      "path": "include/preyvr/AnimIk.h",
+      "sha256": "2c1ef9380920a9686e687d29eed73f092c9d6ce8db5221962b2a17f88dcf28f7"
+    },
+    {
+      "path": "include/preyvr/CameraEdit.h",
+      "sha256": "a05d404167cf1896723f9d5a3f696e7510aea7095304703f2d5369d2385babd0"
+    },
+    {
+      "path": "include/preyvr/ConsolePolicy.h",
+      "sha256": "4c30efd0eca0897a0285d4377721dd7bdc7011efc8f810141d28ab613b49dcac"
+    },
+    {
+      "path": "include/preyvr/DebugRegisters.h",
+      "sha256": "6c5aace6a6c249d237bde85c627905c5d054051a16c23ea287dde0cb7d58a936"
+    },
+    {
+      "path": "include/preyvr/EngineMap.h",
+      "sha256": "cfc57157734fed62d56f54efea50a8dd96721e61922dc5107d16514fc6688982"
+    },
+    {
+      "path": "include/preyvr/FiringPosition.h",
+      "sha256": "51b54b0b00cd2db78433dc974861252453a280dfe6542cee5178ac5b37b0eec9"
+    },
+    {
+      "path": "include/preyvr/FrameDump.h",
+      "sha256": "f8b5ff6ddcb54bb93dde47aa4869b3321144fbaed7dc003c1b96f0c9eabb625a"
+    },
+    {
+      "path": "include/preyvr/FrameObserver.h",
+      "sha256": "5795ebb67d313d3badd7a8726d232ac5c5943e719fd3b267e90d17e1fce20a33"
+    },
+    {
+      "path": "include/preyvr/FrameTiming.h",
+      "sha256": "9cffd29561804aee6d753e7390cb13fd2197c9c837fe67dde2b49724f409fafc"
+    },
+    {
+      "path": "include/preyvr/FrustumCoverage.h",
+      "sha256": "4978be2aa370f046c9f588f8f02a148c362d62a791b988500d3af876bcd65599"
+    },
+    {
+      "path": "include/preyvr/InputEvent.h",
+      "sha256": "fc9bb46b570d3d5a0327c633a11d1539e6d5d4e10574e0cf821d42df93c65aed"
+    },
+    {
+      "path": "include/preyvr/InputQueue.h",
+      "sha256": "f7d7d91f66a3f4a2b24f04e1d032aad7bbf177683dca55ae3f4bb5cb8a491c7e"
+    },
+    {
+      "path": "include/preyvr/InteractionQuery.h",
+      "sha256": "bd0f82bd4ca7386f36c186583f5dbc341a123ed99187a301e144b6ce9cdfb4b1"
+    },
+    {
+      "path": "include/preyvr/LatestSnapshot.h",
+      "sha256": "6ddce2a9887d46ca64dd0a7eb9acb9fcea93bf74bfc03b9da125bc3657edba7d"
+    },
+    {
+      "path": "include/preyvr/Locomotion.h",
+      "sha256": "ebbc49b12a73ea7ec2aa7fea6763c2eff28dc5b479fb044756192abcbbb296bb"
+    },
+    {
+      "path": "include/preyvr/MenuNavigator.h",
+      "sha256": "fd6bd5948f60d9f35a175a0204bb6b45228e45618059b42bd8fa2e3cebee8d00"
+    },
+    {
+      "path": "include/preyvr/MotionController.h",
+      "sha256": "23a308ce4585cc60ad25dd9cbdaa1817048ce624179dea7032b13e297dd4c3da"
+    },
+    {
+      "path": "include/preyvr/OpenXRBootstrap.h",
+      "sha256": "77170850586d62de892f8dfd539649ce437d619ee194706e272bee919ab7d342"
+    },
+    {
+      "path": "include/preyvr/README.md",
+      "sha256": "01659c5b929e2017c0c1175996d3bc75bbce8e9100ab485e3feb6839c88b8789"
+    },
+    {
+      "path": "include/preyvr/RenderFrameTable.h",
+      "sha256": "c9d090358c3c89ff2786e55068af561897a0c1ec5e9cd709e763e4ddd83a3283"
+    },
+    {
+      "path": "include/preyvr/RigOwnership.h",
+      "sha256": "c3dec948491cb5f9befe326d8750712454549ba0d24459f15f646df817b07a98"
+    },
+    {
+      "path": "include/preyvr/RuntimeSnapshot.h",
+      "sha256": "a37b510ff882ad4a9583501890d7519744c7691a2f53bb2d14d26ce09842a9ab"
+    },
+    {
+      "path": "include/preyvr/StereoCamera.h",
+      "sha256": "f7ef34cfe3abc352d91ee56a067ffc543d89b9c0634aaafa402d95c4c5e52ba0"
+    },
+    {
+      "path": "include/preyvr/StereoFrame.h",
+      "sha256": "92e17fe8a5055eaf26488075614f1e6808404b9072c327554987eb2de3b64e8b"
+    },
+    {
+      "path": "include/preyvr/UiPanel.h",
+      "sha256": "23a77b39e63ff8e0e88d030288a5dbce65a3ebace7719f8a55f96a5ba3ec381d"
+    },
+    {
+      "path": "include/preyvr/VrMath.h",
+      "sha256": "d43e7c676f15e6c092bb1f6e048d3b58060e1006c530b6edfc5d7113c58e6881"
+    },
+    {
+      "path": "include/preyvr/WeaponAim.h",
+      "sha256": "38046524142b78b342a0cfbfdd8d970af7d668fa055311307ef1dc7530aa0e74"
+    },
+    {
+      "path": "include/preyvr/WeaponRigAlignment.h",
+      "sha256": "45a3634aa33ae453411b0785a7b61798d4dfb23256661e5dc458ec5ca1500545"
+    },
+    {
+      "path": "include/preyvr/WrenchQuery.h",
+      "sha256": "a0925e2c8aa1832af783600df768ef24899e4b83edecc47aa55122b8dbafa1f6"
+    },
+    {
+      "path": "include/preyvr/XrFrameContract.h",
+      "sha256": "f576d13242d4c29f7438668ce74b234a1a94c3a598ed046fba26ee368220ca89"
+    },
+    {
+      "path": "include/preyvr/XrSwapchainFormat.h",
+      "sha256": "4060ce380a9461678456c5952e0a133650e15c41c9296d01a036d51e3a5aa29c"
+    },
+    {
+      "path": "README.md",
+      "sha256": "9190425feda6440f91fcaead7b1521c60520e32c3714a2c95056c89e55478e4f"
+    },
+    {
+      "path": "src/common/AimState.cpp",
+      "sha256": "003f86b7a4efc20674d2d9da64d23d75eade4e6ff9f2a0b222b8217f1ee9f547"
+    },
+    {
+      "path": "src/common/AnimIk.cpp",
+      "sha256": "7214c7eccef7dd34cf88fdb1a6819c39a8d49607b39fe8d85a59d979a3cbf144"
+    },
+    {
+      "path": "src/common/CameraEdit.cpp",
+      "sha256": "86f09c2d5b1e8f0788277f4f132e8d496aaa08780850a066fbe5765ffdbb6e2d"
+    },
+    {
+      "path": "src/common/ConsolePolicy.cpp",
+      "sha256": "eaf446761cf7b52811768b64f8879c810fcc7b031c029182b718cd26443a08ae"
+    },
+    {
+      "path": "src/common/DebugRegisters.cpp",
+      "sha256": "6d71261bb243d07249822d8f55167fabc78977634efd0cd47722911840606671"
+    },
+    {
+      "path": "src/common/EngineMap.cpp",
+      "sha256": "1fd038ec991df0661bb22842c92cba998f4f6c893998fe69fce4d7723c94b834"
+    },
+    {
+      "path": "src/common/FrameDump.cpp",
+      "sha256": "a130ac7b49b062a06e6238df05ef22f111e2b2071fb88ed3562ccabbd048b3e4"
+    },
+    {
+      "path": "src/common/FrameObserver.cpp",
+      "sha256": "d7f5e5f0dd189ca70d35ec1656505f086087648c1721eca0a99758659de7dc9c"
+    },
+    {
+      "path": "src/common/FrameTiming.cpp",
+      "sha256": "1f017d96c4579be35aff5a886e858f7736b967fb6400d8a9ee9ba0547782b624"
+    },
+    {
+      "path": "src/common/FrustumCoverage.cpp",
+      "sha256": "82f2dc1f0b27dc3b3ab913bf984a53568f04a3881a8e45249a04574761ad59c5"
+    },
+    {
+      "path": "src/common/InputEvent.cpp",
+      "sha256": "83f0cc301c732d99f20c71e545cf4a4fad48031f7f24a1ae3876800ba49b3012"
+    },
+    {
+      "path": "src/common/InputQueue.cpp",
+      "sha256": "efa544ecdc94116ce2398c4488923369e30d687e00e009fe122958dabf5a5d24"
+    },
+    {
+      "path": "src/common/InteractionQuery.cpp",
+      "sha256": "85f8a580e6dc7e8b8186b39e28119acfa6a21cd32ad2befcc7635515752e1748"
+    },
+    {
+      "path": "src/common/Locomotion.cpp",
+      "sha256": "6d42e4a291237d308319c614f64f7a2664979e1486454e2c56379eef28d54b32"
+    },
+    {
+      "path": "src/common/MenuNavigator.cpp",
+      "sha256": "015068d74912f00ddea1ca1d6e790172e4ad79ad19edc1b1a9242c8ff7c2db3c"
+    },
+    {
+      "path": "src/common/MotionController.cpp",
+      "sha256": "1a3f2542d6dc4f62dcfe92bf7fe3a6ac9fd833a0491326f03f30c90c1e95e8c9"
+    },
+    {
+      "path": "src/common/OpenXRBootstrap.cpp",
+      "sha256": "36d85b194abdad9f342442297a835fea7bf9e51a45cbb007b825c5d89095131c"
+    },
+    {
+      "path": "src/common/RenderFrameTable.cpp",
+      "sha256": "899f7931f5c1bef18df7b71628beea0f99a725d4d702c977871ba956d0f0b699"
+    },
+    {
+      "path": "src/common/RuntimeSnapshot.cpp",
+      "sha256": "57023a9fe5c8177b9e53bedd387eb370e91b11222fa78b58342f93b962c4788c"
+    },
+    {
+      "path": "src/common/StereoCamera.cpp",
+      "sha256": "b0c0093c561dbc589dc5b5b73052241eccc88d484a76a277071ae9143559df99"
+    },
+    {
+      "path": "src/common/StereoFrame.cpp",
+      "sha256": "491a6c7f40c8482af951e2c9fb532f45aa59c7276d867b97cc601efbbf229b72"
+    },
+    {
+      "path": "src/common/UiPanel.cpp",
+      "sha256": "5514f48472949aa9eec4b3ed096f7fcc11448a87ba45d84609b445a63179b3f7"
+    },
+    {
+      "path": "src/common/VrMath.cpp",
+      "sha256": "58a0956a1657bdf5babbe4d9bdea99828bf55498e70592bf0bc7962218e8c781"
+    },
+    {
+      "path": "src/common/WeaponAim.cpp",
+      "sha256": "4b73d6c36b1fce62bf5857f8117389fb47ebc67067017c65664861d4eb73b7d1"
+    },
+    {
+      "path": "src/common/WeaponRigAlignment.cpp",
+      "sha256": "32c172bf1c3b2de16cfc75d7739346d6bdb9c48acd18f42d95329023b3a7c8c0"
+    },
+    {
+      "path": "src/common/WrenchQuery.cpp",
+      "sha256": "a77f56447097f50c5bb7f8dd5284363246cfe85cddccfa35cd9ae43e789d50a2"
+    },
+    {
+      "path": "src/common/XrFrameContract.cpp",
+      "sha256": "f063f2d42884e59f5792511205a333508f5c19eb744aeadf78140623b086a5a7"
+    },
+    {
+      "path": "src/common/XrSwapchainFormat.cpp",
+      "sha256": "9330664149ab07a6e2d4c36927a4f01765850f2bcbc0945f6fde7ceac8baf74a"
+    },
+    {
+      "path": "src/dll/AimRayProbe.cpp",
+      "sha256": "9e4f004e7c2929c20053bfd2b02f4ec3843dda1cbfe3a2143db96657da8d2396"
+    },
+    {
+      "path": "src/dll/AimRayProbe.h",
+      "sha256": "804395cf3c79020234462ff86a55d396ae4bb4aa23d624fbaf0e151d48201799"
+    },
+    {
+      "path": "src/dll/AimTakeover.cpp",
+      "sha256": "02f83efbbfddb5ceb5589da9b6705a3f31b3f557cc6fbf57092c510eaad8db40"
+    },
+    {
+      "path": "src/dll/AimTakeover.h",
+      "sha256": "818f54adc1e405bdf4ea285a90c46b87d114952932eec1dce3ef74848c4db8aa"
+    },
+    {
+      "path": "src/dll/AnimIkTakeover.cpp",
+      "sha256": "e8c817ac9dd21b8539fc777863bbf76a91adf398838884da08def03fd07e8849"
+    },
+    {
+      "path": "src/dll/AnimIkTakeover.h",
+      "sha256": "9c1b7c5c8cb956137f61f675c8b8163d9655717fee65aaae38f6b56dfab5fdf7"
+    },
+    {
+      "path": "src/dll/Bootstrap.cpp",
+      "sha256": "d174f65ec67b6e428d21ad37c7298793b3e72b48981b580a5c0a6232a5126853"
+    },
+    {
+      "path": "src/dll/Bootstrap.h",
+      "sha256": "927911f82d4e80905e23d1a1206501a953b63aee42240aa56d177757e9ecb51d"
+    },
+    {
+      "path": "src/dll/CameraEditHook.cpp",
+      "sha256": "3d376902f11046d677f804226394dc56c6816f1149a25430ec7f33bfd4925aa4"
+    },
+    {
+      "path": "src/dll/CameraEditHook.h",
+      "sha256": "25789701c609ac6f30f41e0010a67e338dea4edab0c1bd0b926eb88b81291b60"
+    },
+    {
+      "path": "src/dll/CommandChannel.cpp",
+      "sha256": "a3e17291b547f1081cb6150b5dba29dd89e67dd8fa685300ab2292b46f0dd28e"
+    },
+    {
+      "path": "src/dll/CommandChannel.h",
+      "sha256": "0749f2f476630d30ff2bf1aaf2e2e01151d0328be1cae2b9ecf2d5089140e5e7"
+    },
+    {
+      "path": "src/dll/ConsoleBridgeWin32.cpp",
+      "sha256": "b6ba6c6073b158c70b1852896a61012e47dc763b082b6d0f8a5229eb95dd8215"
+    },
+    {
+      "path": "src/dll/ConsoleBridgeWin32.h",
+      "sha256": "21af3a0363e7c19262d29c5c6a81a4502e8c2332a2530d8ad2c7f5e686044304"
+    },
+    {
+      "path": "src/dll/DebugWatch.cpp",
+      "sha256": "3b2d716e2415693072549cb5b03e521b1a0806e1ee088bd6768c2bca206d662c"
+    },
+    {
+      "path": "src/dll/DebugWatch.h",
+      "sha256": "46a0a0fa0096bb8a602f3300d79a1f8c6811506dafb40c29273b9180fe735af0"
+    },
+    {
+      "path": "src/dll/DllMain.cpp",
+      "sha256": "2b88baa762f6b8c47cfdcc3a20bf2f275942e822dfefe9466026a77f9cc692ed"
+    },
+    {
+      "path": "src/dll/FrameCaptureWin32.cpp",
+      "sha256": "d6359f5c7324250adcff485b82aa51d4e0fa3705a57400a6b77fc6f17ee80d07"
+    },
+    {
+      "path": "src/dll/FrameCaptureWin32.h",
+      "sha256": "4e7847a6c729cbbb550fe6c654cc0ff3067adf90736761db4a367bf712a61771"
+    },
+    {
+      "path": "src/dll/FrameObserverHook.cpp",
+      "sha256": "624e5dc251494baef17ca76a2b827f7c46eadfab720c04afa0890eb5632ab341"
+    },
+    {
+      "path": "src/dll/FrameObserverHook.h",
+      "sha256": "bcb5b98359ea4bcf120948c8608016d38f57ce218c553a710dd66b4312aa8a58"
+    },
+    {
+      "path": "src/dll/HandRigTakeover.cpp",
+      "sha256": "1d91078dff88d2124a3fee2fce16919ec202209b048c5ae195f590797b73505d"
+    },
+    {
+      "path": "src/dll/HandRigTakeover.h",
+      "sha256": "9bf342283c4f2a7c50f30d76e822cd795e05a5deebe6a1aa3a1485fe9523ab91"
+    },
+    {
+      "path": "src/dll/HeadTrackingHook.cpp",
+      "sha256": "385ec1beec354f60125f95928951a8b810801cd6336200104d616ef0a99d1388"
+    },
+    {
+      "path": "src/dll/HeadTrackingHook.h",
+      "sha256": "a47f2e063753555a5387c26fed5ce2bbe050405b435b7e5f5456a887bcead656"
+    },
+    {
+      "path": "src/dll/HotkeyBridge.cpp",
+      "sha256": "24d70a68224213e6d3690f21bbcd39059ba8388661f41de28bf87e9a6bfa944c"
+    },
+    {
+      "path": "src/dll/HotkeyBridge.h",
+      "sha256": "8f483a68f8af40d78464410e9f1bc568d44cab276534e3fa2f2daa09b1226ec8"
+    },
+    {
+      "path": "src/dll/HudBridge.cpp",
+      "sha256": "f2c08dc76c8a37a2ca255292fa6d83bfb5f121dd0c59b37bf56e85ba485f8249"
+    },
+    {
+      "path": "src/dll/HudBridge.h",
+      "sha256": "8b8de408c8013c078fb79e0157936b319e17f3c099a6b2213a678a8616d73bce"
+    },
+    {
+      "path": "src/dll/HudLayer.cpp",
+      "sha256": "4e7807210fbeeb29344e890310cf05c39b87ab4dbbedebcd8cc1e6d7936ecbef"
+    },
+    {
+      "path": "src/dll/HudLayer.h",
+      "sha256": "a212577a47ee1fe68cb49b798885d16d0c7cd634c7fd94226ee3ebab9a58dcd7"
+    },
+    {
+      "path": "src/dll/IkTargetProbe.cpp",
+      "sha256": "e45a3b4dc2701aadd8ba7e91534b93efd15877840a5ebda11fe49e2df7cdf2fd"
+    },
+    {
+      "path": "src/dll/IkTargetProbe.h",
+      "sha256": "bf534b3327a4dd4c2fd916922f9b12354f31ff4a1adb206c41d7e8e79f6d029a"
+    },
+    {
+      "path": "src/dll/InputPathProbe.cpp",
+      "sha256": "e262e0c3ef888683ecf07ea4d47d5d0ab1121659a01b89e37691a0d9689553a0"
+    },
+    {
+      "path": "src/dll/InputPathProbe.h",
+      "sha256": "d25926e5a21c135d60a4d99013aa1d400ed59b8d294028534cccad56faca27a4"
+    },
+    {
+      "path": "src/dll/InputPost.cpp",
+      "sha256": "52dd6f850bbb52d5cfd24a58e34a9cd7bf207947cd905ab67e2d1589d56de776"
+    },
+    {
+      "path": "src/dll/InputPost.h",
+      "sha256": "7cf3d50b62292e2de547581db9d6ed8e80d822339b7c30ea97db16e4b687ae9d"
+    },
+    {
+      "path": "src/dll/MinHookInit.cpp",
+      "sha256": "92f4be99a0fc9264c95cfa24c7bfd4a18d2ab02397a4ce77f097151222ea4521"
+    },
+    {
+      "path": "src/dll/MinHookInit.h",
+      "sha256": "bad7404593a252e5858559348d7df1f8e7c6bbe409751d33111db103513d71e7"
+    },
+    {
+      "path": "src/dll/MoveLane.cpp",
+      "sha256": "c740c0cdc304a80a43bf6ca72b1d18b5a1b52ac4d1316efaadbb986b952076bc"
+    },
+    {
+      "path": "src/dll/MoveLane.h",
+      "sha256": "6138c082c60a0b84e12482fd958d132c010449260d9aef761b2cb5d6efcc96be"
+    },
+    {
+      "path": "src/dll/NearFovOverride.cpp",
+      "sha256": "ce9f302b82649065b78eb1a3db01cb5c49abf00445650d03e11f22875055235d"
+    },
+    {
+      "path": "src/dll/NearFovOverride.h",
+      "sha256": "1d35bcf9912297c6bb9b1c1537f41690a0f8389effcab36c6e77b80f621d7fe8"
+    },
+    {
+      "path": "src/dll/NearViewStereo.cpp",
+      "sha256": "65b2d6a51902542b11fddf34f6a1a6fc01ab9c340a66c8a004d4c515e5020766"
+    },
+    {
+      "path": "src/dll/NearViewStereo.h",
+      "sha256": "7878ba04e7da401b1a1789d4b9db359a370bdd6dca00ea531ba9386d16a067b6"
+    },
+    {
+      "path": "src/dll/OpenXRPreflightWin32.cpp",
+      "sha256": "ccb1e2cf12f12022f347b538e4710c9f19f99d5cfda3a65742b4860e9c7706ec"
+    },
+    {
+      "path": "src/dll/OpenXRPreflightWin32.h",
+      "sha256": "e0430b00d4b9844baefb0e33c1db66d01bfab60ebb63c183cd286f2beeca6ae2"
+    },
+    {
+      "path": "src/dll/PassCameraProbe.cpp",
+      "sha256": "1d0e38142d2447e74e4b15f72067a98a04ddd5ee7507d2fa90d779e3e584afa2"
+    },
+    {
+      "path": "src/dll/PassCameraProbe.h",
+      "sha256": "53f11ccf9723c2bd851f828891ba8d439fd940671c67400b663e5b381de234ac"
+    },
+    {
+      "path": "src/dll/RenderFrame.cpp",
+      "sha256": "995e9384cd8fc0494eb86cef538af5587cd8f2ea7c617db1cd86c854dd0d698c"
+    },
+    {
+      "path": "src/dll/RenderFrame.h",
+      "sha256": "33b7a8074a0509b008ee8ce3a409b077002a2bdde5015dd24c2770ea112d092c"
+    },
+    {
+      "path": "src/dll/ReticleFollow.cpp",
+      "sha256": "8f6547cc9dd26b8f176df6aa717532aec4225fbed7c2a860503edd111255b490"
+    },
+    {
+      "path": "src/dll/ReticleFollow.h",
+      "sha256": "86eb905c5cfbcf5828dbd9a263ba27d628885c04de83d3aa69823469bfcd80f7"
+    },
+    {
+      "path": "src/dll/RuntimeSnapshotWin32.cpp",
+      "sha256": "66139e28ca50c386834c86c594ce8716935bcf40e334ca889b17b7651fc02243"
+    },
+    {
+      "path": "src/dll/RuntimeSnapshotWin32.h",
+      "sha256": "b5b5f96809b84c7857bae1f64522a6c49fbd18961bca61a3f5987051db7c7737"
+    },
+    {
+      "path": "src/dll/UiGuide.cpp",
+      "sha256": "9818f6908488086e3e2aafd74fde533932e299470b612adb5924678421b2cba5"
+    },
+    {
+      "path": "src/dll/UiGuide.h",
+      "sha256": "43f58160b2d488f80fab3b76ca8df8bf4a1a1646bc8857227a8c84872161d411"
+    },
+    {
+      "path": "src/dll/VrMode.cpp",
+      "sha256": "fc01c95384067bb0b7e558a5ef1bbdaa398185ce7d396bfbf22ddf7c0fa2bd89"
+    },
+    {
+      "path": "src/dll/VrMode.h",
+      "sha256": "707367b3386e72e72265fb7cb86c5293dbf6c2949a25ed17052d8e7df1f883c0"
+    },
+    {
+      "path": "src/dll/WeaponAttachment.cpp",
+      "sha256": "9381b137d70942df16bc89138ffa95c45d5ce79f84181ecd41ca4e2ae104b61e"
+    },
+    {
+      "path": "src/dll/WeaponAttachment.h",
+      "sha256": "4cb513457c644302d0d24cdc103e9ebc21a69c64010cff16f4dc1a3c2ac1771d"
+    },
+    {
+      "path": "src/dll/XrInput.cpp",
+      "sha256": "3b828bf968fa774899b9326f4d52c30e23a1f6c31a77239a795aa113dfa4c661"
+    },
+    {
+      "path": "src/dll/XrInput.h",
+      "sha256": "e4d8b6aef688cf1676d48d154b2ef5789ee3531b62c78f5c3d0fd87d5ba5ec4e"
+    },
+    {
+      "path": "src/dll/XrSessionHost.cpp",
+      "sha256": "7d909e4b1d421be81d8b1816c7208e4e9ebd702321e9097cffa3d64ce2627d24"
+    },
+    {
+      "path": "src/dll/XrSessionHost.h",
+      "sha256": "5fa16ba0d3dea318ad1faa36d49e80f7ed300a2f7654892dd8307f8d28bd151b"
+    },
+    {
+      "path": "src/lifecycle/Logger.cpp",
+      "sha256": "d482183b119c4c3fc64a249f9c8f94cfe504b3c45044950a0d0894533d151618"
+    },
+    {
+      "path": "src/lifecycle/Logger.h",
+      "sha256": "bb7d8177662e48b58e1bf25f5ccbb50d9a0deafdeb565fb88e829f0083f5f5f1"
+    },
+    {
+      "path": "src/README.md",
+      "sha256": "42d12ae72b508712d36fdeab77e2c18287ef7fc1cdb516d3133eda8a1a0aa6d3"
+    },
+    {
+      "path": "tests/AimStateTests.cpp",
+      "sha256": "07c4e4f9f440e3473057bce35211a0f1a4e43ab12d1e09d6e36c793251ec5842"
+    },
+    {
+      "path": "tests/AnimIkTests.cpp",
+      "sha256": "9965752c56863836042dbb65f1ac2f814f993d991c98b21914b65a88c9a7805e"
+    },
+    {
+      "path": "tests/CameraEditTests.cpp",
+      "sha256": "f883ac07b9c47910bc804051b23fe41c5168d6dd9a14b6db45cb40d57c3310ce"
+    },
+    {
+      "path": "tests/ConsolePolicyTests.cpp",
+      "sha256": "daf6c6576df56133054b09bc78d5989441a2eac25edd3ba1ee085cbdeb518c84"
+    },
+    {
+      "path": "tests/DebugRegistersTests.cpp",
+      "sha256": "5a541cbb861bd04e07a2d4c83a858a103686a18c789d7190a40e1ccc59feb014"
+    },
+    {
+      "path": "tests/DllSmokeHost.cpp",
+      "sha256": "75a474407707ceac303b0204d1a07e2055396f9a9018ccdbdc8051df520ff596"
+    },
+    {
+      "path": "tests/EngineMapTests.cpp",
+      "sha256": "249d5f5d85a0315a999242b592dc4906c552351c9979519daed8edb82a402968"
+    },
+    {
+      "path": "tests/FrameDumpTests.cpp",
+      "sha256": "cf73f0e2052f9e3f12301336715af17e137e35cee43c256514ed182bd7f4a05d"
+    },
+    {
+      "path": "tests/FrameTimingTests.cpp",
+      "sha256": "da65817acc8f2e6f9e961ce9183cd269852ded9aaece2a22f17c54cb2d7edb00"
+    },
+    {
+      "path": "tests/FrustumCoverageTests.cpp",
+      "sha256": "546eb43ae42fc9e4958a320eda6a4938f37cf51923c105ffbec48e31379ea926"
+    },
+    {
+      "path": "tests/InputEventTests.cpp",
+      "sha256": "68689bef37519bc8431f06bed549c60191c0c61665ec69f03069fc613139d2fa"
+    },
+    {
+      "path": "tests/InputQueueTests.cpp",
+      "sha256": "2816ed9bc115230109ab0412dd061a3c3d6461f385b7c3c6d912d2fbade35f2e"
+    },
+    {
+      "path": "tests/InteractionQueryTests.cpp",
+      "sha256": "4a0ea0ed16ce5b54d4e30636ed4f00329c1329f2ed0a61b9162af7b488d1e657"
+    },
+    {
+      "path": "tests/LocomotionTests.cpp",
+      "sha256": "b1479d4847b9e24506753b996b92af70343bd3d9202576209b6d9027ab494259"
+    },
+    {
+      "path": "tests/MenuNavigatorTests.cpp",
+      "sha256": "354398a43cdd761a3fa876dea19c102f122603c037c65024b6c03b5c5288cf76"
+    },
+    {
+      "path": "tests/MotionControllerTests.cpp",
+      "sha256": "734481d220a4d4775046383c5e4c396989a93d548dde2c7a34b838527a172033"
+    },
+    {
+      "path": "tests/NearFovOverrideTests.cpp",
+      "sha256": "cb2f79a5599c7c4ce782e0fdb335819d9bf19d26504774426ba325a64941dd28"
+    },
+    {
+      "path": "tests/OpenXRPreflightWin32Tests.cpp",
+      "sha256": "c31b294800dbf646f91bebf93776f6f9bb44e91a6bc57a13dd1e4e5c7f453d69"
+    },
+    {
+      "path": "tests/README.md",
+      "sha256": "11c94c901d150d28551b2e036a69500f6e0538458f568de196fc9c609ab585e6"
+    },
+    {
+      "path": "tests/RenderFrameTableTests.cpp",
+      "sha256": "3e408fcf92838b0c476d7acae0161ff55af2ea1cd57f2c508fefa6d4a963abf8"
+    },
+    {
+      "path": "tests/RuntimeBootstrapTests.cpp",
+      "sha256": "e21df2b7642397ac2b12e8c6a064f28f9019d471f8043f6bfdc25b0ee62f3255"
+    },
+    {
+      "path": "tests/RuntimeSnapshotTests.cpp",
+      "sha256": "41118b8ea6e05cd6fc07a45c61c5e1acfdfbc47af8d92c8fb46d388f348a47c5"
+    },
+    {
+      "path": "tests/StereoCameraTests.cpp",
+      "sha256": "bb9fe99771a239891d4effbf035302d319307e29a77823176d569994e8b5e72b"
+    },
+    {
+      "path": "tests/StereoFrameTests.cpp",
+      "sha256": "929bfa8cad1cd8ae44b82a65009874d0f58ba0d68d7b8df71f2ec5dddd9885e3"
+    },
+    {
+      "path": "tests/UiPanelTests.cpp",
+      "sha256": "89a1b439eecb1f17881f1dc3db7e5e7649618b3473f1616dd288f1d50c9e62fb"
+    },
+    {
+      "path": "tests/VrMathTests.cpp",
+      "sha256": "52064e9b880e072fe27af39acc9ef24cc1b772d4d1477c708de27656f67eb314"
+    },
+    {
+      "path": "tests/WeaponAimTests.cpp",
+      "sha256": "4f325ea76595be5c47e1b9be7fc4ad43c572e5ca99767853c5882ca84edff718"
+    },
+    {
+      "path": "tests/WeaponRigAlignmentTests.cpp",
+      "sha256": "d1f30f6a1045131b00b088ed16d1f5480e7ceeef798182d493e14c6d1fc2787e"
+    },
+    {
+      "path": "tests/WrenchQueryTests.cpp",
+      "sha256": "488be10c0421523df5dcf1127baaee2c6a02e5e09d2196cc3cc3b64c65ca8ff5"
+    },
+    {
+      "path": "tests/XrFrameContractTests.cpp",
+      "sha256": "76149ef33cf5641f824fac66e417c5f5b4c5b96505830a100c8488f77c965c29"
+    },
+    {
+      "path": "tests/XrSwapchainFormatTests.cpp",
+      "sha256": "9c6aeeac37676af88a54fc36da139dd15c6566c0e51bff3a1a82ffe33205bf65"
+    },
+    {
+      "path": "tools/injector/main.cpp",
+      "sha256": "710700ceeada91d61c28462e7a4d3e8fb93689d44bff5c080dcaf9074a3bd0b9"
+    },
+    {
+      "path": "tools/Invoke-PreyVRStartup.ps1",
+      "sha256": "fc9e0b9111027727b854319c738ad9e6ae85e53c17f5c65fc8c20c3052576e1e"
+    },
+    {
+      "path": "tools/Package-PreyVR.ps1",
+      "sha256": "994d29ef80ab4e012eec41fa5c4506295c576989446a4ba00f4582e1b743555e"
+    },
+    {
+      "path": "tools/Start Prey VR.cmd",
+      "sha256": "2fb0e50199b90dc8abd3b1c9afc0cb6054985b5573ee5356e47c63c54aab064e"
+    },
+    {
+      "path": "tools/Start-PreyVR.ps1",
+      "sha256": "e473e6597fa2ccbe02ec596f4a7c6330af67bf778a0630775044f0f20c7a513b"
+    }
+  ],
+  "verifiedPackageFiles": 8,
+  "privateRuntimePackaged": false,
+  "machineSettingsPackaged": false
+}

@@ -1,0 +1,1 @@
+hud.layer result=0 hudLayer=0 captured=7177 refused=0

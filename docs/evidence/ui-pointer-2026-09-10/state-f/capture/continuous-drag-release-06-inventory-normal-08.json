@@ -1,0 +1,27 @@
+{
+  "name": "continuous-drag-release-06-inventory-normal-08",
+  "frameIndex": 7428,
+  "displayTimeNs": 773914213416298,
+  "sessionState": "FOCUSED",
+  "width": 1032,
+  "height": 1104,
+  "pacing": {"mode": "free", "hz": 90.00, "creditsLeft": 0},
+  "gate": {"waited": 7428, "begun": 7428, "ended": 7428, "discarded": 0, "outOfOrder": 0},
+  "head": {"pos": [0.00000, 1.60000, 0.00000], "quat": [0.00000, 0.00000, 0.00000, 1.00000], "ypr": [-0.000, 0.000, 0.000]},
+  "views": [
+    {"eye": "left", "pos": [-0.03150, 1.60000, 0.00000], "fovDeg": {"l": -54.000, "r": 44.000, "u": 55.000, "d": -55.000}},
+    {"eye": "right", "pos": [0.03150, 1.60000, 0.00000], "fovDeg": {"l": -44.000, "r": 54.000, "u": 55.000, "d": -55.000}}
+  ],
+  "handL": {"grip": [-0.20000, 1.30000, -0.35000], "aimYpr": [-0.000, -40.000, 0.000], "valid": true},
+  "handR": {"grip": [0.20000, 1.30000, -0.35000], "aimYpr": [30.691, 18.163, -0.000], "valid": true},
+  "controls": {"a": false, "b": false, "x": false, "y": false, "menu": false, "trigL": 0.000, "trigR": 0.000, "gripL": 0.000, "gripR": 0.000, "stickL": [0.000, 0.000], "stickR": [0.000, 0.000]},
+  "layerCount": 4,
+  "layers": [
+    {"i": 0, "type": "cylinder", "space": "local", "sizeM": [1.9842, 1.1161], "pose": [0.0000, 1.7699, 1.2481], "radius": 3.24812, "centralAngle": 0.61087, "premultiplied": false, "pixelsCoveredL": 1, "pixelsCoveredR": 1},
+    {"i": 1, "type": "quad", "space": "local", "sizeM": [1.9842, 0.3100], "pose": [0.0000, 1.0271, -2.0000], "radius": 0.00000, "centralAngle": 0.00000, "premultiplied": false, "pixelsCoveredL": 1, "pixelsCoveredR": 1},
+    {"i": 2, "type": "quad", "space": "local", "sizeM": [0.0020, 1.9177], "pose": [-0.2650, 1.5989, -1.1335], "radius": 0.00000, "centralAngle": 0.00000, "premultiplied": true, "pixelsCoveredL": 1, "pixelsCoveredR": 1},
+    {"i": 3, "type": "quad", "space": "local", "sizeM": [0.0130, 0.0130], "pose": [-0.7296, 1.8978, -1.9150], "radius": 0.00000, "centralAngle": 0.00000, "premultiplied": true, "pixelsCoveredL": 1, "pixelsCoveredR": 1}
+  ],
+  "derived": {"eyeSeparationM": 0.063000, "ipdM": 0.063000, "claimTanH": 0.00000, "eyeTanH": 1.17104, "claimRatioH": 0.00000, "aimRayDots": 3, "aimRayMaxDevDeg": 36.1471, "aimRayMeanDevDeg": 12.0556, "aimRayDotsL": 1, "aimRayMaxDevDegL": 31.2861, "aimRayDotsR": 2, "aimRayMaxDevDegR": 0.0198},
+  "stats": {"meanLumaL": 3.43, "meanLumaR": 3.42, "nonBlackPctL": 8.86, "nonBlackPctR": 8.86}
+}

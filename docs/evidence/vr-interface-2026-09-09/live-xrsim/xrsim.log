@@ -1,0 +1,25 @@
+[00:25:36.490] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[00:25:36.498] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[00:25:36.498] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/vr-interface-2026-09-09/live-xrsim
+[00:25:36.578] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[00:25:36.607] xrsim: compositor ready
+[00:25:36.607] xrsim: session state -> IDLE
+[00:25:36.607] xrsim: session created with D3D11 graphics
+[00:25:36.607] xrsim: action set 'preyvr' created
+[00:25:36.607] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[00:25:36.607] xrsim: action set(s) attached to the session
+[00:25:36.608] xrsim: swapchain 0 created 1920x1080x2 fmt 29 (3 images)
+[00:25:36.835] xrsim: session state -> READY
+[00:25:36.835] xrsim: session state -> SYNCHRONIZED
+[00:25:36.835] xrsim: session running - the app is now paced by the simulated headset
+[00:25:36.853] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[00:25:36.854] xrsim: session state -> VISIBLE
+[00:25:36.870] xrsim: session state -> FOCUSED
+[00:26:08.177] xrsim: applied 1 command(s): shot menu-first
+[00:26:08.259] xrsim: capture written menu-first (1032x1104)
+[00:26:41.166] xrsim: applied 1 command(s): btn a press 140
+[00:26:54.748] xrsim: applied 1 command(s): shot menu-after-a
+[00:26:54.824] xrsim: capture written menu-after-a (1032x1104)
+[00:30:00.167] xrsim: applied 1 command(s): btn a down
+[00:32:09.483] xrsim: applied 2 command(s): btn a up | shot menu-native-tap
+[00:32:09.585] xrsim: capture written menu-native-tap (1032x1104)

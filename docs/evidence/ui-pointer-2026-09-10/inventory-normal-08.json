@@ -1,0 +1,747 @@
+[
+  {
+    "type": "send",
+    "payload": {
+      "ready": true,
+      "base": "0x7ffde19d0000"
+    }
+  },
+  {
+    "control": "hand r point 33.446199 22.845186",
+    "ms": 1788999542768
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2cef30",
+      "ms": 1788999543751,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cfd60",
+      "event": [
+        0,
+        210,
+        320,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2ff0c0",
+      "ms": 1788999543751,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cf192",
+      "event": [
+        0,
+        210,
+        320,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "e8cb20",
+      "ms": 1788999543751,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2ff250",
+      "event": [
+        0,
+        210,
+        320,
+        0,
+        0
+      ],
+      "root": "0x28859279000",
+      "rootVtable": "0x1eb4b60",
+      "handleEvent": "0x18a9f00"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "processMouse": true,
+      "ms": 1788999543751,
+      "xy": [
+        3150,
+        4800
+      ],
+      "buttons": 0,
+      "flags": 64,
+      "before": [
+        21285,
+        150,
+        0
+      ],
+      "after": [
+        3150,
+        4800,
+        0
+      ]
+    }
+  },
+  {
+    "control": "trigger r 1",
+    "ms": 1788999544125
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2cef30",
+      "ms": 1788999545080,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cfd60",
+      "event": [
+        0,
+        210,
+        320,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2ff0c0",
+      "ms": 1788999545080,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cf192",
+      "event": [
+        0,
+        210,
+        320,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "e8cb20",
+      "ms": 1788999545080,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2ff250",
+      "event": [
+        0,
+        210,
+        320,
+        0,
+        0
+      ],
+      "root": "0x28859279000",
+      "rootVtable": "0x1eb4b60",
+      "handleEvent": "0x18a9f00"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "processMouse": true,
+      "ms": 1788999545080,
+      "xy": [
+        3150,
+        4800
+      ],
+      "buttons": 0,
+      "flags": 64,
+      "before": [
+        3150,
+        4800,
+        0
+      ],
+      "after": [
+        3150,
+        4800,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2cef30",
+      "ms": 1788999545081,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cfd60",
+      "event": [
+        1,
+        210,
+        320,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2ff0c0",
+      "ms": 1788999545081,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cf192",
+      "event": [
+        1,
+        210,
+        320,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "e8cb20",
+      "ms": 1788999545081,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2ff250",
+      "event": [
+        1,
+        210,
+        320,
+        0,
+        0
+      ],
+      "root": "0x28859279000",
+      "rootVtable": "0x1eb4b60",
+      "handleEvent": "0x18a9f00"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "processMouse": true,
+      "ms": 1788999545081,
+      "xy": [
+        3150,
+        4800
+      ],
+      "buttons": 1,
+      "flags": 0,
+      "before": [
+        3150,
+        4800,
+        0
+      ],
+      "after": [
+        3150,
+        4800,
+        1
+      ]
+    }
+  },
+  {
+    "control": "hand r point 33 22",
+    "ms": 1788999545461
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2cef30",
+      "ms": 1788999546383,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cfd60",
+      "event": [
+        0,
+        229,
+        363,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2ff0c0",
+      "ms": 1788999546383,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cf192",
+      "event": [
+        0,
+        229,
+        363,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "e8cb20",
+      "ms": 1788999546383,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2ff250",
+      "event": [
+        0,
+        229,
+        363,
+        0,
+        0
+      ],
+      "root": "0x28859279000",
+      "rootVtable": "0x1eb4b60",
+      "handleEvent": "0x18a9f00"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "processMouse": true,
+      "ms": 1788999546383,
+      "xy": [
+        3435,
+        5445
+      ],
+      "buttons": 0,
+      "flags": 64,
+      "before": [
+        3150,
+        4800,
+        1
+      ],
+      "after": [
+        3435,
+        5445,
+        1
+      ]
+    }
+  },
+  {
+    "control": "hand r point 32 21",
+    "ms": 1788999546783
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2cef30",
+      "ms": 1788999547724,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cfd60",
+      "event": [
+        0,
+        273,
+        417,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2ff0c0",
+      "ms": 1788999547724,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cf192",
+      "event": [
+        0,
+        273,
+        417,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "e8cb20",
+      "ms": 1788999547725,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2ff250",
+      "event": [
+        0,
+        273,
+        417,
+        0,
+        0
+      ],
+      "root": "0x28859279000",
+      "rootVtable": "0x1eb4b60",
+      "handleEvent": "0x18a9f00"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "inventory": "drag",
+      "ms": 1788999547725,
+      "args": [
+        {
+          "type": 4,
+          "bits": 2812870284,
+          "f32": -4.690534730913097e-15,
+          "text": "2.0222222222222"
+        },
+        {
+          "type": 4,
+          "bits": 2811866828,
+          "f32": -4.2655545843530915e-15,
+          "text": "2.3483333333333"
+        }
+      ],
+      "before": [
+        1,
+        1,
+        64982,
+        257
+      ],
+      "after": [
+        2,
+        2,
+        64982,
+        257
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "processMouse": true,
+      "ms": 1788999547725,
+      "xy": [
+        4095,
+        6255
+      ],
+      "buttons": 0,
+      "flags": 64,
+      "before": [
+        3435,
+        5445,
+        1
+      ],
+      "after": [
+        4095,
+        6255,
+        1
+      ]
+    }
+  },
+  {
+    "control": "hand r point 31 20",
+    "ms": 1788999548106
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2cef30",
+      "ms": 1788999549049,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cfd60",
+      "event": [
+        0,
+        316,
+        469,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2ff0c0",
+      "ms": 1788999549049,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cf192",
+      "event": [
+        0,
+        316,
+        469,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "e8cb20",
+      "ms": 1788999549049,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2ff250",
+      "event": [
+        0,
+        316,
+        469,
+        0,
+        0
+      ],
+      "root": "0x28859279000",
+      "rootVtable": "0x1eb4b60",
+      "handleEvent": "0x18a9f00"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "inventory": "drag",
+      "ms": 1788999549049,
+      "args": [
+        {
+          "type": 4,
+          "bits": 2811866828,
+          "f32": -4.2655545843530915e-15,
+          "text": "2.3672222222222"
+        },
+        {
+          "type": 4,
+          "bits": 2811285964,
+          "f32": -4.0195491114161305e-15,
+          "text": "2.7794444444444"
+        }
+      ],
+      "before": [
+        2,
+        2,
+        64982,
+        257
+      ],
+      "after": [
+        2,
+        2,
+        64982,
+        257
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "processMouse": true,
+      "ms": 1788999549049,
+      "xy": [
+        4740,
+        7035
+      ],
+      "buttons": 0,
+      "flags": 64,
+      "before": [
+        4095,
+        6255,
+        1
+      ],
+      "after": [
+        4740,
+        7035,
+        1
+      ]
+    }
+  },
+  {
+    "control": "hand r point 30.690750 18.163052",
+    "ms": 1788999549427
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2cef30",
+      "ms": 1788999550372,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cfd60",
+      "event": [
+        0,
+        330,
+        555,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2ff0c0",
+      "ms": 1788999550372,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cf192",
+      "event": [
+        0,
+        330,
+        555,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "e8cb20",
+      "ms": 1788999550372,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2ff250",
+      "event": [
+        0,
+        330,
+        555,
+        0,
+        0
+      ],
+      "root": "0x28859279000",
+      "rootVtable": "0x1eb4b60",
+      "handleEvent": "0x18a9f00"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "inventory": "drag",
+      "ms": 1788999550373,
+      "args": [
+        {
+          "type": 4,
+          "bits": 2811866828,
+          "f32": -4.2655545843530915e-15,
+          "text": "2.4761111111111"
+        },
+        {
+          "type": 4,
+          "bits": 2811285964,
+          "f32": -4.0195491114161305e-15,
+          "text": "3.4972222222222"
+        }
+      ],
+      "before": [
+        2,
+        2,
+        64982,
+        257
+      ],
+      "after": [
+        2,
+        3,
+        64982,
+        257
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "processMouse": true,
+      "ms": 1788999550372,
+      "xy": [
+        4950,
+        8325
+      ],
+      "buttons": 0,
+      "flags": 64,
+      "before": [
+        4740,
+        7035,
+        1
+      ],
+      "after": [
+        4950,
+        8325,
+        1
+      ]
+    }
+  },
+  {
+    "control": "shot continuous-drag-held-06-inventory-normal-08",
+    "ms": 1788999551500
+  },
+  {
+    "control": "trigger r 0",
+    "ms": 1788999553589
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2cef30",
+      "ms": 1788999554546,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cfd60",
+      "event": [
+        2,
+        330,
+        555,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "2ff0c0",
+      "ms": 1788999554546,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2cf192",
+      "event": [
+        2,
+        330,
+        555,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "rva": "e8cb20",
+      "ms": 1788999554546,
+      "thread": 113336,
+      "from": "PreyDll.dll+0x2ff250",
+      "event": [
+        2,
+        330,
+        555,
+        0,
+        0
+      ],
+      "root": "0x28859279000",
+      "rootVtable": "0x1eb4b60",
+      "handleEvent": "0x18a9f00"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "inventory": "place",
+      "ms": 1788999554546,
+      "args": [
+        {
+          "type": 4,
+          "bits": 2811285964,
+          "f32": -4.0195491114161305e-15,
+          "text": "64982"
+        }
+      ],
+      "before": [
+        2,
+        3,
+        64982,
+        257
+      ],
+      "after": [
+        2,
+        3,
+        64982,
+        0
+      ]
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "processMouse": true,
+      "ms": 1788999554546,
+      "xy": [
+        4950,
+        8325
+      ],
+      "buttons": 1,
+      "flags": 128,
+      "before": [
+        4950,
+        8325,
+        1
+      ],
+      "after": [
+        4950,
+        8325,
+        0
+      ]
+    }
+  },
+  {
+    "control": "shot continuous-drag-release-06-inventory-normal-08",
+    "ms": 1788999555676
+  }
+]

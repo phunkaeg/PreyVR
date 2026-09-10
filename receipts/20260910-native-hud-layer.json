@@ -1,0 +1,366 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260910-native-hud-layer",
+  "recorded_at": "2026-09-09T16:33:20.991004+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll; player candidate 07 and frozen source snapshot",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Can DanielleHUD render once into a private transparent target and be submitted separately without retaining its baked scene copy?",
+  "claim": "The concrete Flash RT callback can redirect its one original DanielleHUD draw, preserving private stencil and native filter targets. In-game isolated RGBA output contains HUD graphics and transparent background; on/off captures and projection-plus-HUD submissions support removal from the scene and separate presentation. Other native UI canvases remain scoped separately.",
+  "evidence_grade": "LIVE",
+  "environment": "in_game",
+  "method": "Ghidra 12.1.2 static callback/receiver checks; bounded Frida read-only native callback/D3D bindings; process-scoped xr-sim, xr-tape candidate-06 traces, existing FrameCaptureWin32 GPU readback; CMake/MSVC Release and CTest 33/33. Final candidate-07 uses xr-sim captures/logs; no candidate-07 tape was produced. Reproduce with tools/Start-PreyVR.ps1 and the commands/state paths in the report.",
+  "validity": "VALID",
+  "mutation": "persistent",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Steam target SHA, Ghidra program and PE getter bytes agree; final source/package hashes frozen."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Native callback observations plus raw GPU texture and pixel captures; private runtime corrections and limits retained. Claims are bounded to the inspected native HUD/pose evidence, not full runtime conformance."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Native HUD off/on and isolated alpha target; old pose-prefix failure captured, owning-count correction and refusal fixtures executed."
+    },
+    "scene": {
+      "status": "PASS",
+      "reason": "Actual Prey Talos Lobby save and native menus/inventory; declared simulated headset/profile."
+    },
+    "restore": {
+      "status": "PASS",
+      "reason": "Owned processes disarmed and closed normally; shared runtime registration/game binary unchanged. Persistent source and isolated outputs intentionally retained."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "FAIL",
+    "reason": "33/33 offline tests and the measured player flow passed, but the simulator control card remains intermittent, broad trace checks are not all green, and headset acceptance is open. This receipt does not approve production readiness."
+  },
+  "limits": "Actual injected Steam Prey with a private xr-sim validation runtime. No physical Quest/VDXR acceptance, all-weapon/terminal coverage, native collision call or frame-time claim. Read the report for capped traces, native-versus-optical FOV policy, transition omissions and the unresolved card capture inconsistency.",
+  "artifacts": [
+    {
+      "path": "docs/RE-VR-INTERFACE-2026-09-10.md",
+      "sha256": "e4e986b1e31b5f159152b769285991befbc38123e08cbf30d2b41a3f2698117c",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/PLAYER-GUIDE.md",
+      "sha256": "a9923c34783bda75f6505ad3bafc3041f5b3f553de9e087648438f673afc15a8",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/target-info.json",
+      "sha256": "c4980bbb991e2ef3655627c6575d56d21ce37d814374870438b722d7f0e82181",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-runtime.patch",
+      "sha256": "ed03fb1a3aba4134fabdc25b8cbcc40a49a544f95eba53b9191c65539f7d657d",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-runtime-source.json",
+      "sha256": "1b4252ed2efec39813d23aa3652ae110f9e8c1682766c45eb3c4e403d63a7e17",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/ctest-private-runtime.txt",
+      "sha256": "b5c4ae961a76757c29725fb4c4da61804aba3adcd857e1f192ab68fa1ccd7b4f",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/build-player-07-final.txt",
+      "sha256": "d65feeca94892cea70ef7bb1db31074d8b4f9fee9055a66ee9d4bde9c2c25459",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/ctest-player-07-final.txt",
+      "sha256": "a411e5ee7e59a5d19522b2180614990d6e0f7508444626c2603fe3f653c22380",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/final-active-report-07.txt",
+      "sha256": "4756f2a8c3e8cf5d8dd44cbb28ce65b8d39970b788fc77186251b4749963c93b",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/held-exit-before-06.txt",
+      "sha256": "00b525d7ee14ce23e61136ba83918011970b1af7a1bcc0643d5d43dc95d3f753",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/held-exit-after-06.txt",
+      "sha256": "97819b2529a29f7db03c5a7a7b95018a299b91c6a4b00976a465796896722e40",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/loss-menu-06.txt",
+      "sha256": "1d14f56ea6cd6d9f200b44d694ddcb8d5e97b4c66e7a8a480fcc441fb5f5cc31",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/loss-gameplay-06.txt",
+      "sha256": "b5e5b69eef886a9f938d9eb4c106c2d3a0d86215e1822068c3bc6568a0cbb4c2",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/recovered-gameplay-06.txt",
+      "sha256": "1b711316d6a94069340c6a6c894defc57750a99a37678de728dd60bc24ee5fd9",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/runs/player-20260910-021201/PreyVR.log",
+      "sha256": "d96f5c719a636df4dae53df3a710c023303760449a46002b9089f45f85df7be6",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/runs/player-20260910-023114/PreyVR.log",
+      "sha256": "41cbf3e025dfaac246d9f4f26de5861c6121f59c60c6b24a7d3c3376ff370932",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/tape-check-06-0.json",
+      "sha256": "dd1d785d2c86157e6e270a0b6f66269335d2792d398bba741ccf58aee024e275",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/tape-check-06-1.json",
+      "sha256": "a21ba759f217a94c77637c055ec56ce49042bf5268e8c6d7eeb6cd3369cd43e2",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/tape-check-06-2.json",
+      "sha256": "50504a3a08339490f6e57c01a4e635eef766f1db4b81ea9529459f1a9b0723e2",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/final-player/verification.json",
+      "sha256": "02377717feacf68fdf95f3bb49916199ba5281be7e9e0e3402ee1d8567374ae5",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/final-player/package-manifest.json",
+      "sha256": "dcaba2ee7c82b0f5a325cdc80271a162221acffa5f706e5c32df146188ecc990",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/final-player/source-snapshot.zip",
+      "sha256": "a16c7d7c95b8b2ea01d5b8c99701b81be1942786daa978694447798c4922e8f8",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/final-player/PreyVR-player-preview-20260910.zip",
+      "sha256": "8659263d406697d3fced9b1bbe936c5563d21b3434e9d4ef5cb8d899cd235593",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/launcher-final-preflight.txt",
+      "sha256": "61864b0c4e2693801d560fee48185644b331008bc9e70ab968d9e5262eca2180",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-tape-06/trace-Prey.exe-72072-20260909-161218.ndjson",
+      "sha256": "b32e2b5f15d47ef8379906a29ba37ff652522d4752d6fdfbecd614a09d0e0c1f",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-tape-06/trace-Prey.exe-72072-20260909-162147.ndjson",
+      "sha256": "6efd5a373e2f1662c513dd13a2cf31785f00b642508026fc34d3604c8b9378bb",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-tape-06/trace-Prey.exe-72072-20260909-162322.ndjson",
+      "sha256": "81fadb806f36efa679e4c3a1dd5144c9ec677e1a7d9e03c8c583f30a4c060f96",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/flash-0x180e8c5e0.c",
+      "sha256": "5152cef28ccf5d5176201bf2e3969e3ca7c797913f2f7b9cd1925ab64cf96894",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/flash-bindings-gameplay.json",
+      "sha256": "16c0b55f1572b914535fed249a6bf73e4f657b91bd69426695497cac6f305604",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/flash-bindings-inventory.json",
+      "sha256": "21871bb54bf99a918b721a5ee4691f8580400382010b2407ab91038a137fe629",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/visible-getter.json",
+      "sha256": "b621e98b5a488e4d42a30d41f8812c2039ce62514424405f6fd73a02c2b6586a",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/hud-alpha-check.json",
+      "sha256": "6880aa7fe2de896fb46e372b170de42f97032057a417c4d61e40e5220b208331",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/hud-raw/frame-14999-tag0.pvrframe",
+      "sha256": "e72fb4551a868e312b948de16ee2b5cd60be922a611a82b861f025c9eccd3d61",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/hud-raw/frame-14999-tag0.png",
+      "sha256": "75f34ed3527ce39892a1780d3b99a718ae22cb9a309143837ae7cf5f8c88a401",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/guide-texture-07.json",
+      "sha256": "026fe90da04668e391f25229eba72b1c055c5290c7f84c86ca36201d50499ea3",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/guide-texture-07.bgra",
+      "sha256": "34479bd23daec0740a674ebe832cc1148a161a23d579d9c9c28b30024aef56fb",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/guide-texture-07.png",
+      "sha256": "31177922f22b91b49c4da733db8622bbebba7172a1b5850fdc089a3bad86b26e",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/d3d-readback-slots.json",
+      "sha256": "ca56dd63e9e605163ada986f65e25551c48a77cc10c48a27cea6b31f066e4ebf",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/read-guide-texture.py",
+      "sha256": "b72d1c94e94b21e828d95197374fe3b76fb9088bdcc485cfff13027ea669cddc",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-02/capture/hud-layer-first.json",
+      "sha256": "2b3e31d4cbe4da1315fbcbbd114493beb30a6aca2de6a2d806e7d5a43ef6761c",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-02/capture/hud-layer-first_left.png",
+      "sha256": "f491313396700259b45fcc7c6070ccc385bc81388994861df48115c211e3d054",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-02/capture/hud-layer-first_right.png",
+      "sha256": "9d96d3a1d17bb275968e1483e45cdd1e65f096f20bbc7c99c2a24f072499c136",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-02/capture/hud-off-control.json",
+      "sha256": "0ce13b2fa6b231d3e2747fcd942392e32a46f1b66262f96f4557658066b5c5f4",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-02/capture/hud-off-control_left.png",
+      "sha256": "50fb1e04e0fff93b020c23d296284c299f07ceccd2b9bacece0210b5edb31f14",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-02/capture/hud-off-control_right.png",
+      "sha256": "6be5e2db1215a65d44403f88905b6b9ffa5081ca259e52abc9aa9e149be45755",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/held-exited-06.json",
+      "sha256": "76c3eba8e4645690eb226f2725191b7b35b91cb18df69b886f973ecf661a35b3",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/held-exited-06_left.png",
+      "sha256": "1e9b59d3f50d20de374e5b98ff55946e1db722ea2f5406e011103fe23cee9a58",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/held-exited-06_right.png",
+      "sha256": "aceed8cab143c34bdf587b92dd2b8c18b11f7b9b64aff4b23a774ce8012070db",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/inventory-page-06.json",
+      "sha256": "25f168f1cef81ccf682118154c9e498587fd510e7ada7a29feefc317507a528a",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/inventory-page-06_left.png",
+      "sha256": "30e0c3cc9c7db2c13dbe176627cb20281707b93fe9610cb04fc76562e6e5f0a3",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/inventory-page-06_right.png",
+      "sha256": "457ad6d90b96f76f551e676b820dedd713d780f2df0769855bdf4b6a13512b27",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/menu-recentered-06.json",
+      "sha256": "bb4b2d401bddcca164c6d70990cd9be7a7f323a41478221d3373b7f6589b1f84",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/menu-recentered-06_left.png",
+      "sha256": "ffadcf61100d4721ea6fecf80b25476d977d6009b9af87f7356cf93a7e6c40c4",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-06/capture/menu-recentered-06_right.png",
+      "sha256": "5d314bfd2ae8c43af27cc315a1168f9e49c5969eaf739598b3783aa26ec82959",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/final-gameplay-07.json",
+      "sha256": "4380ed0a96717a34085a1b6789645bc234f5bd03bd1bb3a53f60660c169ccd55",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/final-gameplay-07_left.png",
+      "sha256": "e9569982b40526609f61f505d9c60790bb45c393d11f5868cf21304a578515ec",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/final-gameplay-07_right.png",
+      "sha256": "815c84421153c22b5123095443e1f78b68ede72ae46bbf19711167e288f76f47",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/guide-probe-07.json",
+      "sha256": "2a7c12cafbc98aa8bbf2fb9c8ef5ba6331a02cfc5da7d293ff84d0bf5ed9c97a",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/guide-probe-07_left.png",
+      "sha256": "043590ebca97ed2f308d22ccc15c472d3ddb98f6ab76f6fa0ca88110498df02b",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/guide-probe-07_right.png",
+      "sha256": "61b6018e51732374df71c4e9b12d13aa2fd3ea468057cd1ea8eed2ad9f455807",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/actual-inventory-07.json",
+      "sha256": "0feadec62c5ab907dbec2ea7ff24904a921d38ca7d7768755cc53d0fb2ed6a3f",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/actual-inventory-07_left.png",
+      "sha256": "b008e2a42fcdfdab228564f2bc6bea1bdd4380e65e8fd6e1ce99fca53a9dcc9f",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    },
+    {
+      "path": "docs/evidence/vr-interface-2026-09-09/private-live-xrsim-07/capture/actual-inventory-07_right.png",
+      "sha256": "b230da34bc8e5da804202dbbaae4580ad8420f5ed9236e0236ed1dbe9bb78c7c",
+      "role": "Inspected evidence; exact observation scope and caveats in report"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Review for the UI/pose ownership chapters; test Quest/VDXR readability, animated weapons and terminals. Investigate card compositing with the preserved raw GPU texture; do not infer a missing upload from one screenshot."
+}

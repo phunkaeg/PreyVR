@@ -1,0 +1,36 @@
+[08:19:20.093] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[08:19:20.126] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[08:19:20.126] xrsim: control channel live at D:/Dev Debug/PreyVR/docs/evidence/ui-pointer-2026-09-10/state
+[08:19:20.185] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-000155A0 (15995 MB)
+[08:19:20.326] xrsim: compositor ready
+[08:19:20.326] xrsim: session state -> IDLE
+[08:19:20.327] xrsim: session created with D3D11 graphics
+[08:19:20.327] xrsim: action set 'preyvr' created
+[08:19:20.327] xrsim: 15 binding(s) suggested on the touch profile, 15 driven
+[08:19:20.327] xrsim: 15 binding(s) suggested on the index profile, 15 driven
+[08:19:20.327] xrsim: action set(s) attached to the session
+[08:19:20.328] xrsim: swapchain 0 created 2560x1440x2 fmt 29 (3 images)
+[08:19:20.445] xrsim: session state -> READY
+[08:19:20.445] xrsim: session state -> SYNCHRONIZED
+[08:19:20.445] xrsim: session running - the app is now paced by the simulated headset
+[08:19:20.449] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[08:19:20.450] xrsim: swapchain 2 created 32x32x1 fmt 29 (3 images)
+[08:19:20.450] xrsim: session state -> VISIBLE
+[08:19:20.471] xrsim: session state -> FOCUSED
+[08:19:36.102] xrsim: applied 2 command(s): hand r point 0 0 | shot pointer-title-02
+[08:20:00.640] xrsim: capture written pointer-title-02 (1032x1104)
+[08:20:23.523] xrsim: swapchain 3 created 2560x1440x1 fmt 28 (3 images)
+[08:21:11.157] xrsim: applied 1 command(s): shot current-02
+[08:21:11.415] xrsim: capture written current-02 (1032x1104)
+[08:21:34.237] xrsim: applied 1 command(s): btn menu press 180
+[08:21:47.387] xrsim: applied 1 command(s): shot pause-pointer-02
+[08:21:47.471] xrsim: capture written pause-pointer-02 (1032x1104)
+[08:22:28.542] xrsim: applied 1 command(s): hand r point 16.6843 12.465
+[08:22:38.502] xrsim: applied 1 command(s): shot options-hover-02
+[08:22:38.578] xrsim: capture written options-hover-02 (1032x1104)
+[08:23:02.799] xrsim: applied 1 command(s): trigger r pull 250
+[08:23:17.628] xrsim: applied 1 command(s): shot options-click-02
+[08:23:17.694] xrsim: capture written options-click-02 (1032x1104)
+[08:24:00.923] xrsim: applied 1 command(s): hand r point 16 13
+[08:24:44.227] xrsim: session torn down
+[08:24:44.227] xrsim: instance destroyed

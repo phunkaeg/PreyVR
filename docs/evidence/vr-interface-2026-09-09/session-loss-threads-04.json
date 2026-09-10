@@ -1,0 +1,1848 @@
+[
+  {
+    "type": "send",
+    "payload": {
+      "threads": [
+        {
+          "id": 70980,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0xcfa44",
+            "KERNELBASE.dll+0x428d1",
+            "PreyDll.dll+0x9c70a",
+            "PreyDll.dll+0x27da32",
+            "PreyDll.dll+0x281e8c",
+            "PreyDll.dll+0x21f091",
+            "PreyDll.dll+0x21e38a",
+            "PreyDll.dll+0x21f703",
+            "PreyDll.dll+0xe0bc62",
+            "PreyVR.dll+0x1e280",
+            "PreyDll.dll+0x5c7048",
+            "PreyDll.dll+0x17047c3"
+          ]
+        },
+        {
+          "id": 61044,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x229f3",
+            "CoreMessaging.dll+0x236b8",
+            "CoreMessaging.dll+0x23393",
+            "CoreMessaging.dll+0x22fee",
+            "CoreMessaging.dll+0x30fac",
+            "CoreMessaging.dll+0x30537",
+            "CoreMessaging.dll+0x28884",
+            "CoreMessaging.dll+0x2841d",
+            "CoreMessaging.dll+0x29288",
+            "CoreMessaging.dll+0x8b696",
+            "CoreMessaging.dll+0x847ef",
+            "CoreMessaging.dll+0x60a5b"
+          ]
+        },
+        {
+          "id": 7068,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x10f613",
+            "ntdll.dll+0x1693a0",
+            "ntdll.dll+0x11f933",
+            "ntdll.dll+0x164abf",
+            "ntdll.dll+0x45e97",
+            "ntdll.dll+0x1643fe",
+            "PreyDll.dll+0x27ec2a",
+            "PreyDll.dll+0x27f820",
+            "PreyDll.dll+0x27cd4f",
+            "PreyDll.dll+0xdd6b72",
+            "PreyDll.dll+0xdd7565",
+            "PreyDll.dll+0x4d7e8c"
+          ]
+        },
+        {
+          "id": 127288,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x10f613",
+            "ntdll.dll+0x1693a0",
+            "ntdll.dll+0x11f933",
+            "ntdll.dll+0x164abf",
+            "ntdll.dll+0x45e97",
+            "ntdll.dll+0x1643fe",
+            "PreyDll.dll+0x27ec2a",
+            "PreyDll.dll+0x27f820",
+            "PreyDll.dll+0x27cd4f",
+            "PreyDll.dll+0xdd6b72",
+            "PreyDll.dll+0xdd7565",
+            "PreyDll.dll+0x4d7e8c"
+          ]
+        },
+        {
+          "id": 130380,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x10f613",
+            "ntdll.dll+0x1693a0",
+            "ntdll.dll+0x11f933",
+            "ntdll.dll+0x164abf",
+            "ntdll.dll+0x45e97",
+            "ntdll.dll+0x1643fe",
+            "PreyDll.dll+0x27ec2a",
+            "PreyDll.dll+0x27f820",
+            "PreyDll.dll+0x27cd4f",
+            "PreyDll.dll+0xdd6b72",
+            "PreyDll.dll+0xdd7565",
+            "PreyDll.dll+0x4d7e8c"
+          ]
+        },
+        {
+          "id": 45136,
+          "state": "running",
+          "frames": [
+            "USER32.dll+0x1329a",
+            "USER32.dll+0x30a97",
+            "USER32.dll+0x32396",
+            "USER32.dll+0x5eb12",
+            "USER32.dll+0x5e56f",
+            "USER32.dll+0x8e470",
+            "USER32.dll+0x8e265",
+            "PreyDll.dll+0xda7362",
+            "PreyDll.dll+0xda81a4",
+            "PreyDll.dll+0xda8401",
+            "KERNELBASE.dll+0x10f613",
+            "ntdll.dll+0x1693a0"
+          ]
+        },
+        {
+          "id": 118068,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x10f613",
+            "ntdll.dll+0x1693a0",
+            "ntdll.dll+0x11f933",
+            "ntdll.dll+0x164abf",
+            "ntdll.dll+0x45e97",
+            "ntdll.dll+0x1643fe",
+            "PreyDll.dll+0x27ec2a",
+            "PreyDll.dll+0x27f820",
+            "PreyDll.dll+0x27cd4f",
+            "PreyDll.dll+0xdd6b72",
+            "PreyDll.dll+0xdd7565",
+            "PreyDll.dll+0x4d7e8c"
+          ]
+        },
+        {
+          "id": 119628,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x10f613",
+            "ntdll.dll+0x1693a0",
+            "ntdll.dll+0x11f933",
+            "ntdll.dll+0x164abf",
+            "ntdll.dll+0x45e97",
+            "ntdll.dll+0x1643fe",
+            "PreyDll.dll+0x27ec2a",
+            "PreyDll.dll+0x27f820",
+            "PreyDll.dll+0x27cd4f",
+            "PreyDll.dll+0xdd6b72",
+            "PreyDll.dll+0xdd7565",
+            "PreyDll.dll+0x4d7e8c"
+          ]
+        },
+        {
+          "id": 74328,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x10f613",
+            "ntdll.dll+0x1693a0",
+            "ntdll.dll+0x11f933",
+            "ntdll.dll+0x164abf",
+            "ntdll.dll+0x45e97",
+            "ntdll.dll+0x1643fe",
+            "PreyDll.dll+0x27ec2a",
+            "PreyDll.dll+0x27f820",
+            "PreyDll.dll+0x27cd4f",
+            "PreyDll.dll+0xdd6b72",
+            "PreyDll.dll+0xdd7565",
+            "PreyDll.dll+0x4d7e8c"
+          ]
+        },
+        {
+          "id": 74012,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x10f613",
+            "ntdll.dll+0x1693a0",
+            "ntdll.dll+0x11f933",
+            "ntdll.dll+0x164abf",
+            "ntdll.dll+0x45e97",
+            "ntdll.dll+0x1643fe",
+            "PreyDll.dll+0x27ec2a",
+            "PreyDll.dll+0x27f820",
+            "PreyDll.dll+0x27cd4f",
+            "PreyDll.dll+0xdd6b72",
+            "PreyDll.dll+0xdd7565",
+            "PreyDll.dll+0x4d7e8c"
+          ]
+        },
+        {
+          "id": 98996,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0xdd29ee",
+            "PreyDll.dll+0xdd3cb7",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 130220,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0xe32367",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 12468,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0xe32367",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 107760,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0xe3285d",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 91388,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0x5fc6e",
+            "KERNELBASE.dll+0x22cd8",
+            "MSVCP140.dll+0x176ea",
+            "PreyDll.dll+0xa760c",
+            "PreyDll.dll+0xd85e9d",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 117244,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0xcfa44",
+            "KERNELBASE.dll+0x428d1",
+            "PreyDll.dll+0xd736e9",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 120940,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x229f3",
+            "PreyDll.dll+0x1a6eae0",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 82296,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0x1a20ea1",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 54040,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x229f3",
+            "KERNELBASE.dll+0x228c1",
+            "XAudio2_7.dll+0x32891",
+            "XAudio2_7.dll+0x32b8a",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 60708,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0x1a2f171",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 87700,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0xcfa44",
+            "KERNELBASE.dll+0x428d1",
+            "PreyDll.dll+0xfe975e",
+            "PreyDll.dll+0xfef1d9",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 125548,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x929030",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 98032,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x229f3",
+            "KERNELBASE.dll+0x228c1",
+            "nvwgf2umx.dll+0x120456",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 88404,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x98bc8f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 85692,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 81844,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 117196,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 107232,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 69664,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 15488,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 110076,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 83100,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 88660,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 129404,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 106672,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 64948,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 93344,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 108868,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 124900,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 76104,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 95172,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 8512,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 110028,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 8908,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 31224,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 34260,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 127080,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 90036,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 94764,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 122604,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 94360,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 76992,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 125056,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 97100,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 82920,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 124556,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 5540,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x55cade",
+            "nvwgf2umx.dll+0x55c455",
+            "nvwgf2umx.dll+0x550fbd",
+            "nvwgf2umx.dll+0xa61d2a",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 108140,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 113476,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 101392,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 39668,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 55360,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 113900,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 81668,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 49408,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 26068,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 35200,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 123976,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 101524,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 125624,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 69760,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 113836,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 33804,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 20924,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 85836,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 38804,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 10524,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 54176,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 88076,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 96504,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 86916,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 24244,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 94120,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 120388,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 30888,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 130088,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 48776,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 81876,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 104052,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 76720,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 122680,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0x3fe7b",
+            "KERNELBASE.dll+0x23d48",
+            "bink2w64.dll+0x309d5",
+            "bink2w64.dll+0xf19a",
+            "bink2w64.dll+0xe571",
+            "bink2w64.dll+0xef59",
+            "bink2w64.dll+0x30612",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 55572,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0x3fe7b",
+            "KERNELBASE.dll+0x23d48",
+            "bink2w64.dll+0x309d5",
+            "bink2w64.dll+0xf19a",
+            "bink2w64.dll+0xe571",
+            "bink2w64.dll+0xef59",
+            "bink2w64.dll+0x30612",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 70644,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x229f3",
+            "KERNELBASE.dll+0x228c1",
+            "AUDIOSES.DLL+0x5f22a",
+            "AUDIOSES.DLL+0x5f1de",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 86540,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x229f3",
+            "xaudio2_9.DLL+0x82ad",
+            "xaudio2_9.DLL+0x341f7",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 125340,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 121216,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x229f3",
+            "KERNELBASE.dll+0x228c1",
+            "nvwgf2umx.dll+0x987bb7",
+            "nvwgf2umx.dll+0xa61d2a",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 84344,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0xe8c969",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 78000,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0x5fc6e",
+            "KERNELBASE.dll+0x22cd8",
+            "MSVCP140.dll+0x176ea",
+            "PreyDll.dll+0xa760c",
+            "PreyDll.dll+0xaec4a9",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 125012,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0xcfa44",
+            "KERNELBASE.dll+0x428d1",
+            "PreyDll.dll+0xdca3f0",
+            "PreyDll.dll+0xdca5a1",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 55908,
+          "state": "running",
+          "frames": [
+            "DINPUT8.dll+0xe1b1",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 44404,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0xe98457",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 50508,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0xe98457",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 105600,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0xe98457",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 47020,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0xcfa44",
+            "KERNELBASE.dll+0x428d1",
+            "MSVCP140.dll+0x17bd7",
+            "PreyDll.dll+0x1b4b256",
+            "PreyDll.dll+0x1b4817d",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 97336,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0xcfa44",
+            "KERNELBASE.dll+0x428d1",
+            "MSVCP140.dll+0x17bd7",
+            "PreyDll.dll+0x1b4b256",
+            "PreyDll.dll+0x1b4817d",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 118860,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0xcfa44",
+            "KERNELBASE.dll+0x428d1",
+            "MSVCP140.dll+0x17bd7",
+            "PreyDll.dll+0x1b4e596",
+            "PreyDll.dll+0x1b4817d",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 48256,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0xcfa44",
+            "KERNELBASE.dll+0x428d1",
+            "MSVCP140.dll+0x17bd7",
+            "PreyDll.dll+0x1b4e4a6",
+            "PreyDll.dll+0x1b4817d",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 101736,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0xcfa44",
+            "KERNELBASE.dll+0x428d1",
+            "PreyVR.dll+0x3b6b9",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 70684,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0x4d7466",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 10568,
+          "state": "running",
+          "frames": [
+            "0x21d80bd3530"
+          ]
+        },
+        {
+          "id": 59600,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0x5064e",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 89200,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0xdf41f6",
+            "PreyDll.dll+0xdf380f",
+            "PreyDll.dll+0xe98cb9",
+            "PreyDll.dll+0xe9849a",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 95872,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "PreyDll.dll+0xbb9989",
+            "PreyDll.dll+0xe98cb9",
+            "PreyDll.dll+0xe9849a",
+            "PreyDll.dll+0x4d7e8c",
+            "ucrtbase.dll+0x2cd30",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 13848,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 57284,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 4044,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 126280,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 28584,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 71828,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 38756,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 104292,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 46788,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 93228,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 21364,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 8180,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 45320,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 66372,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 20704,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 88048,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 120532,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 45020,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 98876,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 115532,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 20072,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 57044,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 84516,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 105904,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 75420,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 95056,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 31464,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 32692,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 123656,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 83980,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 122332,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 1936,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0x1c11f",
+            "nvwgf2umx.dll+0x905058",
+            "nvwgf2umx.dll+0x904f7f",
+            "nvwgf2umx.dll+0xe700da",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 116988,
+          "state": "running",
+          "frames": [
+            "KERNELBASE.dll+0xbeb2f",
+            "DiscordHook64.dll+0xa7333",
+            "DiscordHook64.dll+0x9f7a0",
+            "DiscordHook64.dll+0xa116a",
+            "DiscordHook64.dll+0xe032f",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 29620,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0x5064e",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        },
+        {
+          "id": 116820,
+          "state": "running",
+          "frames": [
+            "ntdll.dll+0x5064e",
+            "KERNEL32.DLL+0x2ccb7",
+            "ntdll.dll+0xaad6c"
+          ]
+        }
+      ]
+    }
+  }
+]

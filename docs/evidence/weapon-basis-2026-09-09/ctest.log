@@ -1,0 +1,70 @@
+Command: ['C:/Program Files/CMake/bin/ctest.exe', '--test-dir', 'build/headless', '-C', 'Release', '--output-on-failure']
+Test project D:/Dev Debug/PreyVR/build/headless
+      Start  1: vr_math
+ 1/32 Test  #1: vr_math ..........................   Passed    0.04 sec
+      Start  2: engine_map
+ 2/32 Test  #2: engine_map .......................   Passed    0.10 sec
+      Start  3: aim_state_fixture
+ 3/32 Test  #3: aim_state_fixture ................   Passed    0.05 sec
+      Start  4: wrench_query_fixture
+ 4/32 Test  #4: wrench_query_fixture .............   Passed    0.04 sec
+      Start  5: interaction_query_fixture
+ 5/32 Test  #5: interaction_query_fixture ........   Passed    0.05 sec
+      Start  6: runtime_snapshot
+ 6/32 Test  #6: runtime_snapshot .................   Passed    0.05 sec
+      Start  7: xr_swapchain_format
+ 7/32 Test  #7: xr_swapchain_format ..............   Passed    0.05 sec
+      Start  8: xr_frame_contract
+ 8/32 Test  #8: xr_frame_contract ................   Passed    0.05 sec
+      Start  9: stereo_frame
+ 9/32 Test  #9: stereo_frame .....................   Passed    0.04 sec
+      Start 10: motion_controller
+10/32 Test #10: motion_controller ................   Passed    0.05 sec
+      Start 11: anim_ik
+11/32 Test #11: anim_ik ..........................   Passed    0.05 sec
+      Start 12: weapon_rig_alignment
+12/32 Test #12: weapon_rig_alignment .............   Passed    0.01 sec
+      Start 13: weapon_aim
+13/32 Test #13: weapon_aim .......................   Passed    0.05 sec
+      Start 14: frustum_coverage
+14/32 Test #14: frustum_coverage .................   Passed    0.05 sec
+      Start 15: frame_timing
+15/32 Test #15: frame_timing .....................   Passed    0.04 sec
+      Start 16: input_event
+16/32 Test #16: input_event ......................   Passed    0.04 sec
+      Start 17: input_queue
+17/32 Test #17: input_queue ......................   Passed    0.11 sec
+      Start 18: menu_navigator
+18/32 Test #18: menu_navigator ...................   Passed    0.05 sec
+      Start 19: locomotion
+19/32 Test #19: locomotion .......................   Passed    0.04 sec
+      Start 20: render_frame_table
+20/32 Test #20: render_frame_table ...............   Passed    6.31 sec
+      Start 21: stereo_camera
+21/32 Test #21: stereo_camera ....................   Passed    0.05 sec
+      Start 22: camera_edit
+22/32 Test #22: camera_edit ......................   Passed    0.04 sec
+      Start 23: frame_dump
+23/32 Test #23: frame_dump .......................   Passed    0.04 sec
+      Start 24: debug_registers
+24/32 Test #24: debug_registers ..................   Passed    0.04 sec
+      Start 25: console_policy
+25/32 Test #25: console_policy ...................   Passed    0.04 sec
+      Start 26: runtime_bootstrap
+26/32 Test #26: runtime_bootstrap ................   Passed    0.10 sec
+      Start 27: near_fov_override
+27/32 Test #27: near_fov_override ................   Passed    0.01 sec
+      Start 28: dll_load_fail_closed
+28/32 Test #28: dll_load_fail_closed .............   Passed    0.04 sec
+      Start 29: openxr_preflight_files
+29/32 Test #29: openxr_preflight_files ...........   Passed    0.05 sec
+      Start 30: dxgi_method_probe
+30/32 Test #30: dxgi_method_probe ................   Passed    0.19 sec
+      Start 31: smoke_log_parser
+31/32 Test #31: smoke_log_parser .................   Passed    0.49 sec
+      Start 32: build_doctor
+32/32 Test #32: build_doctor .....................   Passed    0.58 sec
+
+100% tests passed, 0 tests failed out of 32
+
+Total Test time (real) =   9.93 sec

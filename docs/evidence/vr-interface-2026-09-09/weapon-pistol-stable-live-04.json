@@ -1,0 +1,17 @@
+[
+  {
+    "type": "send",
+    "payload": {
+      "weapon": "0x21dfa2fe470",
+      "vtable": "0x1e6e390",
+      "mount": "0x0",
+      "helperNamePointer": "0x21d593ccd6c"
+    }
+  },
+  {
+    "type": "send",
+    "payload": {
+      "error": "Error: access violation accessing 0x20"
+    }
+  }
+]

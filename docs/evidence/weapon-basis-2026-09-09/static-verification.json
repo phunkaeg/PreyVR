@@ -1,0 +1,66 @@
+{
+  "target": "D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\PreyDll.dll",
+  "sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "machine": "x64",
+  "image_base": "0x180000000",
+  "captured_spans": [
+    {
+      "artifact": "binding-character-process-bytes.json",
+      "rva": "0x334ec0",
+      "bytes": 16
+    },
+    {
+      "artifact": "binding-vtable.json",
+      "rva": "0x1cb1328",
+      "bytes": 32
+    },
+    {
+      "artifact": "char-manager-getter.json",
+      "rva": "0x12eabb0",
+      "bytes": 12
+    },
+    {
+      "artifact": "char-skeleton-getter.json",
+      "rva": "0x8ce820",
+      "bytes": 12
+    },
+    {
+      "artifact": "character-vtable.json",
+      "rva": "0x1d22200",
+      "bytes": 432
+    },
+    {
+      "artifact": "joint-parent-bytes.json",
+      "rva": "0x8bc330",
+      "bytes": 32
+    },
+    {
+      "artifact": "manager-count-bytes.json",
+      "rva": "0x82dd50",
+      "bytes": 32
+    },
+    {
+      "artifact": "manager-index-bytes.json",
+      "rva": "0x8230a0",
+      "bytes": 40
+    },
+    {
+      "artifact": "manager-vtable.json",
+      "rva": "0x1d22110",
+      "bytes": 96
+    },
+    {
+      "artifact": "pose-absolute-bytes.json",
+      "rva": "0x87c6d0",
+      "bytes": 24
+    },
+    {
+      "artifact": "skeleton-vtable.json",
+      "rva": "0x1d2a3e8",
+      "bytes": 88
+    }
+  ],
+  "concrete_slots_checked": 12,
+  "result": "PASS",
+  "runtime": "not performed"
+}

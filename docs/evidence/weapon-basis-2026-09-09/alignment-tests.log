@@ -1,0 +1,3 @@
+Command: ['build/headless/Release/preyvr_weapon_rig_alignment_tests.exe']
+108 native-chain/reticle comparisons passed
+weapon rig alignment fixtures passed (static/offline; no game)
