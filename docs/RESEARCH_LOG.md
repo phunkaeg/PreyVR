@@ -1944,6 +1944,83 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-10 — R-131: the depth buffer is the WRONG one, and eye skew is now measured
+
+### The depth target: proved, and it fails the test
+
+R-130 verified `+0x9970` is a depth-stencil view passed to `OMSetRenderTargets`.
+Before submitting it, its **contents** were checked, and the answer is that this
+is not the buffer we want.
+
+- **Its binder is initialisation, not a per-frame pass.** `FUN_180F38060` has two
+  callers, allocates buffers, sizes arrays and constructs objects. It sets the
+  renderer's initial target state once; it is not a scene pass.
+- **It is bound alongside the BACKBUFFER**, with the engine asserting the RTV
+  equals the swapchain buffer at the current index.
+- **CryEngine keeps scene depth somewhere else.** `$ZTarget` appears 13 times in
+  this binary and `$ZTargetScaled` 3 times. A deferred renderer writes scene
+  depth to its own target, not to the swapchain's native Z surface -- which is
+  exactly what Luma's name for the field, `m_pNativeZSurface`, says it is.
+
+**So `+0x9970` is the native swapchain depth-stencil.** Submitting it through
+`XR_KHR_composition_layer_depth` would hand the runtime a buffer that is empty or
+carries only late/UI geometry, and the runtime would reproject as though the whole
+scene sat at one distance. That is **worse than submitting no depth at all**,
+because rotation-only reprojection at least degrades gracefully.
+
+The R-130 caution was therefore not hedging; it was the actual defect, and
+checking it cost far less than a headset session would have.
+
+**What was kept.** The extension is now detected and requested when the runtime
+offers it, and `preyvr::depth::BuildRange` is implemented and tested -- five
+tests, including that reversed depth swaps the two distances. **Reverse-Z is
+confirmed for this game**: `r_ReverseDepth` is registered with a default of `1`
+(`MOV R9D,0x1` at `0x180ECC72B`, against `XOR R9D,R9D` on the registration
+immediately above it). Since OpenXR reads `nearZ > farZ` as the *declaration* of
+reversed depth, that swap is the signal rather than an implementation detail, and
+getting it backwards would have been silent.
+
+**What was not built.** No copy and no layer chain. The remaining work is finding
+`$ZTarget`, which is a named `CTexture` lookup rather than a fixed offset.
+
+### Threading: two threads, already proven
+
+Prey is multi-threaded and this project measured it a fortnight ago. R-064 traced
+`CRenderView::SwitchUsageMode` and observed `Writing -> WritingDone` on the **game
+thread (44208)** and `Reading -> ReadingDone` on the **render thread (54600)**.
+The `RT_` prefix on `RT_RenderScene` and `RT_BeginFrame` is the engine's own
+marker for render-thread functions.
+
+This matters for the next section: the eye label is published by one thread and
+consumed by another, so the two can drift.
+
+### Eye skew: the instrument existed and was never read
+
+`gHost.eyeDisplayTime[2]` has been written at the publication unit since the
+stereo pair was built, and **nothing anywhere read it**. It is exactly the number
+the "the eyes feel slightly out of sync" report needs.
+
+`xr.timing` now reports `eyeSkewP50/P95/P99/Max/N/Total`, `eyeSkewSamples` and
+`staleEye`, sampled at the point both halves are known present -- a single eye's
+timestamp is not a skew until the other exists. The distribution reuses
+`DurationSeries`, so the statistics come from already-tested code rather than new
+arithmetic.
+
+**How to read it.** Prey renders one eye per frame, so a submitted pair is always
+one older image and one newer. `eyeSkewP50` near `frameP50` is that ordinary
+cadence. Far above it means an eye is starving rather than alternating. And
+`staleEye` that never changes is a fixed scheduling asymmetry, where one that
+alternates is the normal pattern.
+
+**The suspected cause, unconfirmed.** Eye selection is
+`gEyeCounter.fetch_add(1) & 1` -- a free-running parity, which is the shape
+inherited ban I-08 warns against, and it is not derived from the engine's own
+frame phase. The playbook's 2026-09-10 comparison brief names the alternative
+directly: a three-clock timeline keeping engine, render and presenter frames in
+lockstep, with eye cadence taken from `presenter % 2` and drift recovered by
+skipping a present. That is the fix if the measurement shows drift; the
+measurement comes first.
+
 ## 2026-09-10 — R-130: the depth surface verified, at an OMSetRenderTargets call
 
 **One basic block verifies two of Luma's fields and one of ours, on the same

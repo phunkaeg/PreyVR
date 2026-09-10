@@ -1,5 +1,6 @@
 #include "XrSessionHost.h"
 
+#include "preyvr/DepthSubmission.h"
 #include "preyvr/FrameTiming.h"
 #include "preyvr/FrustumCoverage.h"
 
@@ -97,6 +98,14 @@ struct Host {
     std::uint32_t viewCount = 0;
     bool viewsDiffer = false;          // per-eye sizes are allowed to differ
     std::uint32_t heldWidth = 0, heldHeight = 0, heldFormat = 0;
+    // Depth submission (XR_KHR_composition_layer_depth). The swapchain is built
+    // only when the runtime offers the game's own depth format, because the copy
+    // is a straight CopyResource and a format mismatch there fails at the API
+    // rather than converting.
+    bool depthSupported = false;                    // extension enabled
+    XrSwapchain depthSwapchain = XR_NULL_HANDLE;
+    std::vector<XrSwapchainImageD3D11KHR> depthImages;
+    std::uint32_t depthFormat = 0;                  // DXGI format actually created
     std::uint32_t submittedWidth = 0, submittedHeight = 0;
     // Set when Prey's backbuffer no longer matches the size this session was
     // built at, which makes every copy invalid until a restart.
@@ -342,11 +351,18 @@ bool CreateInstanceAndSystem()
     if(XR_SUCCEEDED(xrEnumerateInstanceExtensionProperties(nullptr,0,&extensionCount,nullptr))) {
         std::vector<XrExtensionProperties> extensions(extensionCount,{XR_TYPE_EXTENSION_PROPERTIES});
         if(XR_SUCCEEDED(xrEnumerateInstanceExtensionProperties(nullptr,extensionCount,&extensionCount,extensions.data())))
-            for(const auto& extension:extensions)
+            // Braced deliberately: this loop was a single unbraced statement, and
+            // adding a second test to it silently moved that test outside the loop.
+            for(const auto& extension:extensions) {
+                if(std::strcmp(extension.extensionName,XR_KHR_COMPOSITION_LAYER_DEPTH_EXTENSION_NAME)==0) {
+                    enabled.push_back(XR_KHR_COMPOSITION_LAYER_DEPTH_EXTENSION_NAME);gHost.depthSupported=true;
+                }
                 if(std::strcmp(extension.extensionName,XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME)==0) {
                     enabled.push_back(XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME);gHost.cylinderSupported=true;
                 }
+            }
     }
+    Log(std::string("xr_depth extension_supported=")+(gHost.depthSupported?"1":"0"));
     Log(std::string("ui_cylinder supported=")+(gHost.cylinderSupported?"1":"0 flat_fallback=1"));
     // Newest-first with a fallback: xr-sim accepts 1.1, VirtualDesktopXR does not
     // (F-010). One build has to work against both.
@@ -632,6 +648,80 @@ preyvr::timing::DurationSeries gWaitFrame, gAcquireWait, gEndFrame, gServiceTota
 // configured budget so nobody has to assume the two agree. `xr.timing 1 90`
 // configures 11111 us; if the runtime is at 72 Hz that budget is simply wrong,
 // and only this number says so.
+
+// **Off by default, and it stays that way until a wearer has judged it.** A
+// wrong depth layer degrades the image everywhere and looks like a subtle warp
+// under head motion rather than an obvious fault, so this is not a default.
+// **Eye skew: how far apart in time the two submitted eyes are.**
+//
+// Prey renders one eye per frame, so a submitted pair is always one older image
+// and one newer one. `eyeDisplayTime[2]` was already being written at the
+// publication unit and never read by anything -- this reads it. The skew is the
+// difference between the two eyes' display times, which is the temporal
+// disparity a wearer perceives as the pair not agreeing.
+//
+// Reuses DurationSeries so the distribution comes from tested code: a p50 says
+// what the pair normally looks like, and the max says whether an eye ever
+// starved for much longer than one frame.
+preyvr::timing::DurationSeries gEyeSkew;
+std::atomic<int> gStaleEye{-1};              // which eye currently holds the older image
+std::atomic<unsigned long long> gEyeSkewSamples{0};
+
+std::atomic<bool> gDepthEnabled{false};
+std::atomic<unsigned long long> gDepthSubmitted{0}, gDepthRefused{0};
+std::atomic<int> gDepthNearMilli{0}, gDepthFarMilli{0};
+std::atomic<bool> gDepthReversed{false};
+
+// R-130: the renderer holds its depth-stencil view at +0x9970, proved by the
+// OMSetRenderTargets call that passes it in the pDepthStencilView slot. A view
+// is not a resource, so the texture behind it has to be fetched -- which is also
+// the check that the offset still points at a DSV, because GetResource on
+// anything else does not survive the QueryInterface below.
+ID3D11Texture2D* GameDepthTexture(D3D11_TEXTURE2D_DESC& desc)
+{
+    constexpr std::uintptr_t kNativeZSurface = 0x9970;
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) { return nullptr; }
+    const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+    auto* const renderer =
+        *reinterpret_cast<std::uint8_t**>(base + engine::RendererLayout::singletonPointerRva);
+    if (renderer == nullptr) { return nullptr; }
+    auto* const view =
+        *reinterpret_cast<ID3D11DepthStencilView**>(renderer + kNativeZSurface);
+    if (view == nullptr) { return nullptr; }
+
+    ID3D11Resource* resource = nullptr;
+    view->GetResource(&resource);
+    if (resource == nullptr) { return nullptr; }
+    ID3D11Texture2D* texture = nullptr;
+    resource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&texture));
+    resource->Release();
+    if (texture == nullptr) { return nullptr; }
+    texture->GetDesc(&desc);
+    return texture;   // caller releases
+}
+
+// The engine's own near and far, live, in engine units. Same receiver as
+// DeclaredFovFromLiveCamera, so the planes and the frustum come from one camera
+// rather than two reads that could straddle a frame.
+bool GameDepthPlanes(float& nearPlane, float& farPlane)
+{
+    const HMODULE preyDll = GetModuleHandleW(L"PreyDll.dll");
+    if (preyDll == nullptr) { return false; }
+    const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+    auto* const systemPtr =
+        *reinterpret_cast<std::uint8_t**>(base + engine::SystemLayout::pointerRva);
+    if (systemPtr == nullptr) { return false; }
+    const auto* const camera =
+        reinterpret_cast<const std::uint8_t*>(
+            reinterpret_cast<std::uintptr_t>(systemPtr) + engine::SystemLayout::viewCamera);
+    // GetNearPlane()/GetFarPlane() are the .y of the edge vectors, per the
+    // camera layout -- +4 into each, not the vector base.
+    std::memcpy(&nearPlane, camera + engine::CameraLayout::edgeNearLeftTop + 4, sizeof(float));
+    std::memcpy(&farPlane, camera + engine::CameraLayout::edgeFarLeftTop + 4, sizeof(float));
+    return true;
+}
+
 std::atomic<std::uint32_t> gRuntimePeriodUs{0};
 
 std::atomic<unsigned long long> gFovAgree{0};
@@ -830,6 +920,19 @@ bool SubmitStereoPair(
 
     if (!gHost.eyeImageValid[0] || !gHost.eyeImageValid[1]) {
         return false;
+    }
+    // Both halves are present, so the pair about to be submitted is complete and
+    // its skew is meaningful. Sampled here rather than at the copy, because a
+    // single eye's timestamp is not a skew until the other one exists.
+    if (gHost.eyeDisplayTime[0] != 0 && gHost.eyeDisplayTime[1] != 0) {
+        const XrTime a = gHost.eyeDisplayTime[0], b = gHost.eyeDisplayTime[1];
+        const auto skew = static_cast<std::uint64_t>(a > b ? a - b : b - a);
+        gEyeSkew.AddNanoseconds(skew);
+        gEyeSkewSamples.fetch_add(1, std::memory_order_relaxed);
+        // Which eye is behind, not merely how far. A skew that stays on one eye
+        // is a scheduling asymmetry; one that alternates is the ordinary
+        // one-frame-per-eye cadence.
+        gStaleEye.store(a < b ? 0 : 1, std::memory_order_relaxed);
     }
     for (std::uint32_t slice = 0; slice < 2; ++slice) {
         context->CopySubresourceRegion(
@@ -1063,6 +1166,7 @@ void ServiceXrFrame(void* renderer)
     gAcquireWait.ApplyPendingReset();
     gEndFrame.ApplyPendingReset();
     gServiceTotal.ApplyPendingReset();
+    gEyeSkew.ApplyPendingReset();
     const std::uint64_t serviceStart = timing ? preyvr::timing::MonotonicNanoseconds() : 0;
     if (timing) { gServiceInterval.Mark(serviceStart); }
 
@@ -1654,6 +1758,7 @@ DWORD SetXrTimingEnabled(unsigned int enabled, unsigned int displayHz)
     gAcquireWait.RequestReset();
     gEndFrame.RequestReset();
     gServiceTotal.RequestReset();
+    gEyeSkew.RequestReset();
     if (displayHz > 0 && displayHz <= 1000) {
         gServiceInterval.SetBudgetMicroseconds(1000000u / displayHz);
     }
@@ -1703,6 +1808,14 @@ std::string XrTimingReport()
     // early return can produce an interval sample with no matching service
     // sample. Comparing these populations needs frame-linked records, which this
     // instrument does not produce.
+    emit("eyeSkew", gEyeSkew.Compute());
+    // **This is the temporal disparity between the two submitted eyes.** With
+    // one eye rendered per frame it should sit near one frame interval; a p50
+    // far above `frameP50` means an eye is starving rather than alternating,
+    // and a `staleEye` that never changes means the asymmetry is fixed rather
+    // than the ordinary cadence.
+    out << " eyeSkewSamples=" << gEyeSkewSamples.load(std::memory_order_relaxed)
+        << " staleEye=" << gStaleEye.load(std::memory_order_relaxed);
     out << " timingNote=unpaired_stage_rings";
     return out.str();
 }
