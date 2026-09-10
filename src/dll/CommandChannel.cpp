@@ -364,17 +364,16 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     } else if (verb == "ui.pointer") {
         out << "ui.pointer result=" << (args.size()>1?SetUiPointerHand(arg(1,1)):0) << ' ' << UiPointerReport();
     } else if (verb == "ui.scale") {
-        // **Echo the stored value.** Without it a wearer could not tell a
-        // refused value from an accepted one whose effect the fit margin then
-        // absorbed -- which is exactly what happened: raising the scale past
-        // ~130 stored fine and changed nothing, and read as a clamp at 130.
-        // `margin` is printed beside it because that is the actual ceiling.
+        // The stored percent was already echoed here; `margin` and `guide` join
+        // it because they are what actually decide the panel's size. A wearer
+        // reading "percent=160" while the panel refused to grow had no way to
+        // see that the fit margin was shrinking it straight back off, which is
+        // the whole reason ui.scale looked as though it capped at 130.
         if (args.size() > 1) { out << "ui.scale result=" << SetUiScalePercent(arg(1, 100)); }
         else { out << "ui.scale result=0"; }
         out << " percent=" << UiScalePercent()
             << " margin=" << UiFitMarginPercent()
             << " guide=" << UiGuideEnabled();
-        out << " percent=" << UiScalePercent();
     } else if (verb == "ui.margin") {
         // The real size ceiling. ui.scale above ~130 was being absorbed by the
         // fit loops shrinking the panel back inside 72% of the reported frustum.
