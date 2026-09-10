@@ -9,8 +9,16 @@ struct Panel { Pose pose{}; float width=0, height=0; };
 // Fits all four corners inside BOTH eye frusta, including asymmetric/canted views.
 // The runtime FOV is an optical bound, not a visibility-mask guarantee; the
 // tangent margin and angular caps deliberately reserve room around the panel.
+// `scale` shrinks the fit below the angular caps. It exists because the caps
+// are 60 deg horizontal / 40 vertical and the corner test only shrinks until the
+// corners fit the frustum the RUNTIME REPORTS -- which on a Quest 3 is wider
+// than the lenses actually show, so a panel that passes the test is still
+// cropped at the edges by the optics. A wearer is the only instrument that can
+// settle where the real edge is, so this is a dial rather than a constant.
+// Clamped to [0.2, 1.0]: above 1 would exceed the caps, and below 0.2 is a
+// postage stamp nobody asked for.
 std::optional<Panel> FitPanel(const Pose& head, const std::array<Eye,2>& eyes,
-                             float aspect, float distance=2.0f);
+                             float aspect, float distance=2.0f, float scale=1.0f);
 bool CornersVisible(const Panel& panel, const std::array<Eye,2>& eyes);
 // angle=0 is a plane; otherwise width is arc length. The panel pose always
 // denotes the visible surface centre, while OpenXR's cylinder pose is its axis.

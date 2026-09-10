@@ -100,14 +100,19 @@ bool CornersVisible(const Panel& panel, const std::array<Eye,2>& eyes) {
     return true;
 }
 std::optional<Panel> FitPanel(const Pose& head, const std::array<Eye,2>& eyes,
-                             float aspect, float distance) {
+                             float aspect, float distance, float scale) {
     if (!Valid(head) || !Valid(eyes[0]) || !Valid(eyes[1]) ||
         !std::isfinite(aspect) || aspect < .25f || aspect > 5 ||
-        !std::isfinite(distance) || distance < 1 || distance > 4) return {};
+        !std::isfinite(distance) || distance < 1 || distance > 4 ||
+        !std::isfinite(scale)) return {};
+    if (scale > 1) scale = 1; if (scale < .2f) scale = .2f;
     Panel panel{};
     panel.pose=Compose(head,Pose{{},{0,0,-distance}});
-    // At most 60 degrees horizontally / 40 vertically. Preserve image aspect.
-    panel.width=std::min(2*distance*std::tan(.523598776f),
+    // At most 60 degrees horizontally / 40 vertically, times the wearer's scale.
+    // The corner test below only shrinks until the corners fit the frustum the
+    // runtime REPORTS, which is an optical bound rather than what the lenses
+    // show -- so passing it is not the same as being visible.
+    panel.width=scale*std::min(2*distance*std::tan(.523598776f),
                          2*distance*std::tan(.34906585f)*aspect);
     panel.height=panel.width/aspect;
     for (int attempt=0;attempt<80;++attempt) {
