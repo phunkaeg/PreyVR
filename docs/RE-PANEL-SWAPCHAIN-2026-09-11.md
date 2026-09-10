@@ -91,6 +91,9 @@ the only change is which images the panel reads. If the inventory still renders
 correctly, the plumbing is proven in isolation. Then 4-5 as a second change,
 where a regression can only be the world path.
 
-Doing both at once means a black or doubled panel has two candidate causes, and
-the session that ends with "the inventory went black" has already happened once
-today.
+Doing both at once means a wrong panel has two candidate causes.
+
+An earlier draft cited today's black inventory as evidence for this. It was not:
+that had one cause -- a capture shipped without anything consuming it -- and
+the lesson it actually carries is the reverse: land the separation *with* its
+consumer wired, never as a half-step.
