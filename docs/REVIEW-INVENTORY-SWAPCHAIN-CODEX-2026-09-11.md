@@ -3,7 +3,7 @@
 Read-only review of uncommitted work in the tree as of this note:
 `src/dll/InventorySwapchain.{h,cpp}` (new) and edits to `HudLayer.{h,cpp}`,
 `HudBridge.{h,cpp}`, `XrSessionHost.cpp`. Nothing here was built or run; the
-tree cannot link yet (see defect 2). My own independent notes are in
+tree could not link at first read (see defect 2, since withdrawn). My own independent notes are in
 `RE-PANEL-SWAPCHAIN-2026-09-11.md`; this file is the comparison.
 
 ## Verdict
@@ -75,13 +75,13 @@ happens to be linear — consistent by accident, and it would diverge the moment
 `xr.srgb 1` is set. Neither analysis wrote "match the main swapchain", which is
 the actual requirement.
 
-## Defect 2 — the new source is not registered
+## Defect 2 — withdrawn
 
-`CMakeLists.txt` does not list `src/dll/InventorySwapchain.cpp`. `HudLayer.cpp`
-now calls `InventoryTextureCompatible` and `XrSessionHost.cpp` constructs the
-class, so the tree will not link until it is added. Most likely simply not done
-yet; noted because an unregistered source is exactly the kind of dead path that
-cost three live tests today.
+At the time of the first read, `CMakeLists.txt` did not list
+`src/dll/InventorySwapchain.cpp` and the tree could not link. Codex registered
+it — and added a `preyvr_inventory_swapchain_tests` target — before this review
+was finished. Kept rather than deleted, because "not done yet" and "dead path"
+look identical from a single snapshot, and this one was the former.
 
 ## Behavioural note, not a defect
 
@@ -107,7 +107,7 @@ tests. All of it is code rather than a plan.
 
 ## Recommended next
 
-Fix defect 1, register the source, build, run the suite, package. Then the
+Fix defect 1, build, run the suite, package. Then the
 first headset run is the discriminating test for the whole plan: with
 `ui.inventory 1`, open the inventory and confirm it still renders (plumbing),
 then read `hud.layer` and the log for the `inventory_swapchain_upload` refusal
