@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$GameExe='',
-    [string]$PackageDir=$PSScriptRoot,
+    [string]$PackageDir='',
     [string]$Runtime='',
     [string]$RunRoot="$env:LOCALAPPDATA\PreyVR\runs",
     [int]$Width=2560,
@@ -13,6 +13,19 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+
+# **`$PSScriptRoot` must not be a param default here.** Under Windows PowerShell
+# 5.1, a script with [CmdletBinding()] invoked as `powershell.exe -File`
+# evaluates param defaults in a scope where $PSScriptRoot is still empty --
+# while $PSScriptRoot in the body is correct. PowerShell 7 does not do this, so
+# the bug is invisible to anyone testing with pwsh.
+#
+# The shipped .cmd wrapper uses powershell.exe, so EVERY double-click hit it:
+# $PackageDir came out empty and the first Join-Path threw "Cannot bind argument
+# to parameter 'Path' because it is an empty string" before anything launched.
+# Resolved in the body instead, which behaves identically in both versions.
+if (-not $PackageDir) { $PackageDir = $PSScriptRoot }
+if (-not $PackageDir) { $PackageDir = Split-Path -Parent $PSCommandPath }
 try {
     $config=Join-Path $PackageDir 'PreyVR.json'
     if (Test-Path -LiteralPath $config) {
