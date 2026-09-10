@@ -85,6 +85,7 @@ add_library(preyvr_core STATIC
     src/common/InteractionQuery.cpp
     src/common/Locomotion.cpp
     src/common/MenuNavigator.cpp
+    src/common/InventoryDepth.cpp
     src/common/UiPanel.cpp
     src/common/MotionController.cpp
     src/common/OpenXRBootstrap.cpp
@@ -388,6 +389,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_menu_navigator_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_menu_navigator_tests)
     add_test(NAME menu_navigator COMMAND preyvr_menu_navigator_tests)
+    add_executable(preyvr_inventory_depth_tests tests/InventoryDepthTests.cpp)
+    target_link_libraries(preyvr_inventory_depth_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_inventory_depth_tests)
+    add_test(NAME inventory_depth COMMAND preyvr_inventory_depth_tests)
+
     add_executable(preyvr_ui_panel_tests tests/UiPanelTests.cpp)
     target_link_libraries(preyvr_ui_panel_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_ui_panel_tests)

@@ -3609,3 +3609,8 @@ coverage and cross-build caveats are in [the corpus audit](RE-EGS-SYMBOL-CORPUS-
 ## 2026-09-10 — candidate 09 headset result / candidate 10 wheel shortcut
 
 User confirmed candidate 09 corrected stereo and a curved in-game popup. That session then crashed on native job worker reading 0x23C; cause remains unresolved. Candidate 10 preserves the stereo fix and adds right-stick click -> native mouse3 Favorites Wheel shortcut for Touch/Index. Release build and 35/35 offline tests pass; no game launched for candidate 10. Opening and wheel selection remain unverified live. Package DLL SHA256: `e7b521ee4e3a0244b237ffeac89f691b39687fef8d0583311413ca52f4713dc6`. See [wheel and headset notes](RE-WEAPON-WHEEL-2026-09-10.md).
+
+
+## 2026-09-11 — inventory native 3D depth confirmed live
+
+Running user-owned PID18188: bounded read-only-data Frida observers identified DaniellePDA and eight parallel planes after removing common tilt. Three complete sampled displays each contained 403 unique transforms. No mod change or stereo acceptance claim. Observers detached; game remained responsive. See [live depth evidence](RE-INVENTORY-DEPTH-2026-09-11.md).

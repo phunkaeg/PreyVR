@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260911-inventory-depth",
+  "recorded_at": "2026-09-10T22:57:02.426897+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll x64; running selfserve-20260911b mod",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Does native inventory contain genuine layer depth after removing common mouse-driven panel tilt?",
+  "claim": "DaniellePDA Display scoped live matrices form eight distinct parallel planes after removal of common tilt: native UI relative offsets 0,-1000,-2000,-2500,-5000,-7000,-9000,-15000. The same 403 unique matrices and eight planes occur in three sampled Display frames. This confirms native layered geometry, not completed stereo UI.",
+  "evidence_grade": "LIVE",
+  "environment": "in_game",
+  "method": "Frida 17.12.0 observation-only interceptors scoped by typed DaniellePDA movie root, Steam static byte/decompile verification and Python offline common-normal projection. Final probe: C:/mcp-envs/frida/Scripts/python.exe -E -X utf8 -B docs/evidence/inventory-hologram-2026-09-11/probe_depth.py 18188 docs/evidence/inventory-hologram-2026-09-11/live-depth-02.json. Analyzer: analyze_depth.py. Initial 120-matrix batch was coplanar and excluded as proof of layered depth; complete sampled frames resolve eight planes.",
+  "validity": "VALID",
+  "mutation": "temporary",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Loaded process path and Steam file SHA checked; module base recorded in raw trace. Mod path/hash recorded in notes."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Typed PDA element/player/root checks and 139 scoped Display calls in second probe; 154012 World3D calls, 4031 null; no probe read errors. Matching Steam function bodies verified."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Initial 120 coplanar transforms and offline translated tilted-plane control reject false depth from rotation. Complete samples repeat eight planes across three displays with sub-.001 residual."
+    },
+    "scene": {
+      "status": "PASS",
+      "reason": "User opened inventory; live DaniellePDA visible byte=1 and scoped root Display callbacks were observed."
+    },
+    "restore": {
+      "status": "PASS",
+      "reason": "Both probes finish with Interceptor.detachAll, unload and session detach in finally; commands exited zero. Fresh Get-Process confirmed PID18188 Responding afterward."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "NOT_MEASURED",
+    "reason": "Process remained running and Responding after observers detached; no new mod build, performance baseline, stability or headset acceptance test was performed."
+  },
+  "limits": "Exact Steam build and inspected PDA screen only. Units are native UI units, not metres. Plane-to-widget mapping, stereo output, input unprojection, mouse causality and continued world rendering during pause remain open. Earlier crash remains unresolved. No blanket inference from arbitrary varying matrix Z values.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/inventory-hologram-2026-09-11/live-depth-01.json",
+      "sha256": "a0aec6f363918811524757c23839b5cdfc0e281faaac453e83dc18b6dabd757c",
+      "role": "Scoped live matrix evidence or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/inventory-hologram-2026-09-11/live-depth-02.json",
+      "sha256": "f0dd3c246dcfb7aaa8cdee9f2bc875d5e50b9aaccfc52d33d3b2c24cd25c3956",
+      "role": "Scoped live matrix evidence or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/inventory-hologram-2026-09-11/probe_depth.py",
+      "sha256": "298c576938f0be6a3444d2e3e26a2fbad21ae14fc063e4f84ca121a7b74de6e1",
+      "role": "Scoped live matrix evidence or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/inventory-hologram-2026-09-11/analyze_depth.py",
+      "sha256": "58125cbce5be25d73ade77b7de3d4f19417e8cbadf49ce16c090d1168e2ff150",
+      "role": "Scoped live matrix evidence or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/inventory-hologram-2026-09-11/depth-analysis.json",
+      "sha256": "18933c71ef464937079e74d39ddec7238fbed7ec87dc165eb4b6612ca34b2402",
+      "role": "Scoped live matrix evidence or reproducible analysis"
+    },
+    {
+      "path": "docs/RE-INVENTORY-DEPTH-2026-09-11.md",
+      "sha256": "33b927a192d9e8627c3f0a6aa080ee5c78d4a9c180b09ffe61791c757db34986",
+      "role": "Target identity, control, native seams and limits"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Use native 3D movie transforms for per-eye UI rendering with one animation/input advance, verified render-command ownership and explicit UI-units-to-world conversion. Identify plane/widget relationships and pointer hit projection before shipping."
+}

@@ -1,0 +1,66 @@
+{
+  "method": "common-normal projection removes shared panel tilt; source translation is not metres",
+  "tilted_plane_control": "PASS",
+  "frames": [
+    {
+      "display": 1,
+      "unique_matrices": 403,
+      "normal": [
+        0.03435322214655165,
+        -0.008309610054625442,
+        0.9993752080719682
+      ],
+      "relative_plane_offsets_native_units": {
+        "-15000": 1,
+        "-9000": 2,
+        "-7000": 1,
+        "-5000": 2,
+        "-2500": 2,
+        "-2000": 52,
+        "-1000": 34,
+        "0": 309
+      },
+      "maximum_quantization_residual": 0.00031602448734702193
+    },
+    {
+      "display": 61,
+      "unique_matrices": 403,
+      "normal": [
+        0.03435322214655165,
+        -0.008309610054625442,
+        0.9993752080719682
+      ],
+      "relative_plane_offsets_native_units": {
+        "-15000": 1,
+        "-9000": 2,
+        "-7000": 1,
+        "-5000": 2,
+        "-2500": 2,
+        "-2000": 52,
+        "-1000": 34,
+        "0": 309
+      },
+      "maximum_quantization_residual": 0.00031602448734702193
+    },
+    {
+      "display": 121,
+      "unique_matrices": 403,
+      "normal": [
+        0.03435322214655165,
+        -0.008309610054625442,
+        0.9993752080719682
+      ],
+      "relative_plane_offsets_native_units": {
+        "-15000": 1,
+        "-9000": 2,
+        "-7000": 1,
+        "-5000": 2,
+        "-2500": 2,
+        "-2000": 52,
+        "-1000": 34,
+        "0": 309
+      },
+      "maximum_quantization_residual": 0.00031602448734702193
+    }
+  ]
+}
