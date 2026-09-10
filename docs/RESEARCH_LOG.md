@@ -1944,6 +1944,70 @@ F-011 is precisely why the returned zero will not be treated as the answer.
 
 
 
+## 2026-09-10 — R-130: the depth surface verified, at an OMSetRenderTargets call
+
+**One basic block verifies two of Luma's fields and one of ours, on the same
+receiver.** `FUN_180F38060` ends by setting the backbuffer and depth target:
+
+```asm
+180f38ebe: MOV RCX, qword ptr [RSI + 0xae88]   ; OUR swapchain field
+180f38ec5: CALL 0x180597420                    ; -> current buffer index
+180f38eca: MOV RDX, qword ptr [RSI + 0xae00]   ; LUMA m_pBackBuffer
+180f38ed3: MOV RAX, qword ptr [RSI + 0xade8]   ; the buffer array
+180f38eda: CMP RDX, qword ptr [RAX + RCX*0x8]  ; assert RTV matches that index
+180f38ede: JZ  0x180f38ee7
+180f38ee0: CALL qword ptr [0x181c742e0]        ; assertion failure path
+
+180f38ee7: MOV RBX, qword ptr [RSI + 0x9970]   ; LUMA m_pNativeZSurface
+180f38ef1: MOV qword ptr [RBP + 0x208], RDX    ; one-element RTV array
+180f38ef8: CALL 0x180ef6960                    ; -> device context holder
+180f38efd: MOV R9, RBX                         ; arg4 pDepthStencilView
+180f38f00: LEA R8, [RBP + 0x208]               ; arg3 ppRenderTargetViews
+180f38f07: MOV EDX, 0x1                        ; arg2 NumViews
+180f38f0c: MOV RCX, qword ptr [RAX]            ; arg1 this
+180f38f12: CALL qword ptr [RAX + 0x108]        ; OMSetRenderTargets
+```
+
+`+0x108` is index 33 of `ID3D11DeviceContext`, which is `OMSetRenderTargets`.
+The Windows x64 argument order places `pDepthStencilView` in R9, and R9 is loaded
+from `[RSI + 0x9970]`.
+
+**`m_pNativeZSurface` at `+0x9970`: VERIFIED.** It is passed as the depth-stencil
+view to `OMSetRenderTargets`. Nothing but a DSV goes in that slot.
+
+**`m_pBackBuffer` at `+0xAE00`: VERIFIED.** It is the sole render-target view in
+the array, and the engine itself asserts three instructions earlier that it
+equals the swapchain buffer at the current index.
+
+**Our own swapchain at `+0xAE88`: VERIFIED.** It is the receiver of the call
+producing that index. R-128 could only say our field sat in a region Luma marked
+unknown; this shows the engine using ours and theirs together, two instructions
+apart, off one `RSI`.
+
+### A correction to my own reasoning
+
+Reading the constructor (`FUN_180F76200`) I saw three `0xffffffff` stores at
+`0x9914`, `0x993c` and `0x9964` -- a `0x28` stride -- and inferred that `+0x9970`
+might be a member of a repeated structure rather than a standalone pointer. That
+inference was wrong. A constructor zeroing neighbouring fields in a regular
+pattern says nothing about what any one of them is for, and the call site above
+settles it directly. The constructor did establish something useful, though: it
+zeroes `+0x9898`, independently confirming Luma's `m_nAsyncDeviceState`.
+
+### What this unlocks
+
+**We have never had depth.** `XR_KHR_composition_layer_depth` accepts a depth
+image alongside each submitted eye, which lets the runtime reproject far more
+accurately -- and reprojection is what this build currently leans on, running
+around 78 fps against a 90 Hz display. That is now a reachable piece of work
+rather than a missing prerequisite.
+
+Two cautions before anyone submits it. The DSV here is bound with the BACKBUFFER,
+so this is the final/UI target, not necessarily the scene depth the compositor
+would want -- confirm which pass owns the depth that matters. And a DSV is not a
+shader-readable resource; the extension wants an image, so the depth texture
+behind the view has to be obtained and its format checked.
+
 ## 2026-09-10 — R-129: the jitter field verified, and R-026 confirmed by a stranger
 
 **One function verified a Luma lead and one of our own findings at the same
