@@ -171,6 +171,13 @@ void TestHudAndConsoleEntriesAreAllowed()
         "casing does not matter, as CryEngine matches names case-insensitively");
     Require(Classify("sys_DeactivateConsole 0") == Classification::sceneControl,
         "the engine's own console gate is settable");
+
+    // The positive control for the console drawing a background but no glyphs.
+    // Both forms matter: 1 to arm it, 0 to put it back.
+    Require(Classify("r_DisplayInfo 1") == Classification::sceneControl,
+        "the IFFont positive control can be armed");
+    Require(Classify("r_DisplayInfo 0") == Classification::sceneControl,
+        "and disarmed, since it draws over the game");
 }
 
 // What the widening deliberately did NOT admit.

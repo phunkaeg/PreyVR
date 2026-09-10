@@ -62,7 +62,7 @@ namespace {
 // None reaches outside the game, all are reversible by setting them back, and
 // unlike the resolution entries none of them touches the swapchain, so there is
 // no latched-size hazard to guard.
-constexpr std::array<std::string_view, 41> kAllowlist{
+constexpr std::array<std::string_view, 42> kAllowlist{
     "g_reticleYPercentage",
     "hud_bobHud",
     "hud_canvas_width_adjustment",
@@ -156,6 +156,26 @@ constexpr std::array<std::string_view, 41> kAllowlist{
     "ConsoleHide",
     "ConsoleShow",
     "sys_DeactivateConsole",
+    // **The positive control for the console's missing text.**
+    //
+    // ConsoleShow works -- it drops the shade, which is the background
+    // EngineAssets/Textures/White.dds that CXConsole::Init loads -- but nothing
+    // types. CXConsole draws its text through the IFFont it takes in Init as
+    // GetFont("default"), and the binary carries the matching failure strings
+    // "Error loading the default font from " and "Fonts/default.xml". If that
+    // font is not in the retail package, m_pFont is null and exactly this is
+    // seen: background yes, glyphs no.
+    //
+    // The paks are encrypted CryPak (header d6 9a 1a 45, not PK), so the font's
+    // presence cannot be settled offline -- searching them returned zero for
+    // every needle including the filename table, which is a coverage failure
+    // and not a negative result.
+    //
+    // r_DisplayInfo draws through the same IFFont path, so it separates the two
+    // explanations in one command: text on screen means the font is fine and the
+    // console's text failure is elsewhere; nothing means the font is the cause.
+    // A renderer debug toggle, the same category as the r_ entries above.
+    "r_DisplayInfo",
 };
 
 bool IsSpace(char c) {
