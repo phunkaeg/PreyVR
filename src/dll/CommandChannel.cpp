@@ -277,6 +277,7 @@ void WriteReport(std::ostringstream& out)
         << " frameOverrideRefused=" << RenderFrameOverrideRefusedCount()
         << " menuActions=" << MenuNavigationActionCount()
         << " inputPosted=" << InputPostCount()
+        << " menuDiscarded=" << InputMenuDiscardedCount()
         << " moveMode=" << MoveLaneMode()
         << " moveHooked=" << MoveLaneHooked()
         << " moveOursX=" << MoveLaneOursX() << " moveOursY=" << MoveLaneOursY()
@@ -365,10 +366,15 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "input.hotkeys result=" << (args.size()>1?SetHotkeysEnabled(arg(1,1)):0)
             << " consoleToggles=" << HotkeyConsoleToggles();
     } else if (verb == "ui.inventory") {
-        // Off by default: arming it redirects the inventory's one draw into a
-        // private texture, and nothing submits that texture yet.
+        // Opt-in separate inventory layer; native redirection is additionally
+        // gated on a compatible, recently serviced XR swapchain consumer.
         out << "ui.inventory result=" << (args.size()>1?SetInventoryCaptureEnabled(arg(1,0)):0)
-            << ' ' << HudLayerReport();
+            << ' ' << HudLayerReport()
+            // Frames actually submitted through the separate inventory swapchain.
+            // captured= above says the redirect happened; this says the layer
+            // reached xrEndFrame -- the two can differ, and that gap is the
+            // upload-refusal fallback.
+            << " layerFrames=" << InventoryLayerFrameCount();
     } else if (verb == "ui.panel") {
         out << "ui.panel result=" << SetUiPanelMode(arg(1,1)) << ' ' << VrModeReport();
     } else if (verb == "ui.pointer") {

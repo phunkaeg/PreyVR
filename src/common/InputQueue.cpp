@@ -50,12 +50,13 @@ bool EventQueue::Push(const std::uint8_t* event)
         }
     }
     std::memcpy(cell->data, event, kEventSize);
+    cell->menuEpoch=0;
     cell->sequence.store(position + 1, std::memory_order_release);
     pushed_.fetch_add(1, std::memory_order_relaxed);
     return true;
 }
 
-bool EventQueue::PushPair(const std::uint8_t* events)
+bool EventQueue::PushPair(const std::uint8_t* events, std::uint64_t menuEpoch)
 {
     if (!events) { dropped_.fetch_add(2); return false; }
     auto position=enqueue_.load(std::memory_order_relaxed);
@@ -73,13 +74,14 @@ bool EventQueue::PushPair(const std::uint8_t* events)
     auto& second=cells_[(position+1) & kMask];
     std::memcpy(first.data,events,kEventSize);
     std::memcpy(second.data,events+kEventSize,kEventSize);
+    first.menuEpoch=second.menuEpoch=menuEpoch;
     second.sequence.store(position+2,std::memory_order_release);
     first.sequence.store(position+1,std::memory_order_release);
     pushed_.fetch_add(2,std::memory_order_relaxed);
     return true;
 }
 
-bool EventQueue::Pop(std::uint8_t* out)
+bool EventQueue::Pop(std::uint8_t* out, std::uint64_t* menuEpoch)
 {
     if (out == nullptr) {
         return false;
@@ -103,6 +105,7 @@ bool EventQueue::Pop(std::uint8_t* out)
         }
     }
     std::memcpy(out, cell->data, kEventSize);
+    if(menuEpoch)*menuEpoch=cell->menuEpoch;
     cell->sequence.store(position + kQueueCapacity, std::memory_order_release);
     popped_.fetch_add(1, std::memory_order_relaxed);
     return true;

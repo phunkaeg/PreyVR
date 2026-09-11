@@ -500,6 +500,8 @@ void UpdateTurnAndFireLanes()
                                               : static_cast<unsigned int>(input::kStateReleased);
             if (PostRawInputImmediate(keyId, state, wanted ? 1000 : 0) == 0) {
                 binding.held = wanted;
+                if(slot==kActionWeaponWheel)Log(std::string("result=0 detail=wheel_input pressed=")+
+                    (wanted?"1":"0")+" key="+std::to_string(keyId)+" source=right_stick_click");
                 (wanted ? binding.pressed : binding.released)
                     .fetch_add(1, std::memory_order_relaxed);
             } else {
@@ -593,6 +595,7 @@ std::string InteractionReport()
         out << ' ' << kSlotNames[slot] << "=0x" << std::hex << keyId << std::dec
             << '(' << (name != nullptr ? name : "?") << ')'
             << " sent=" << gActions[slot].pressed.load(std::memory_order_relaxed)
+            << " released=" << gActions[slot].released.load(std::memory_order_relaxed)
             << " refused=" << gActions[slot].refused.load(std::memory_order_relaxed);
     }
     return out.str();

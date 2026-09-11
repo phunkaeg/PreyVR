@@ -36,6 +36,8 @@
 namespace preyvr::input {
 
 inline constexpr std::size_t kEventSize = 0x38;
+inline constexpr std::size_t kOffsetState = 0x04;
+inline constexpr std::size_t kOffsetKeyId = 0x18;
 
 enum Device : std::uint32_t {
     kDeviceKeyboard = 0,

@@ -35,10 +35,10 @@ public:
     // null; a false return is a dropped event, counted.
     bool Push(const std::uint8_t* event);
     // Reserve adjacent press/release tickets together; a full queue drops both.
-    bool PushPair(const std::uint8_t* events);
+    bool PushPair(const std::uint8_t* events, std::uint64_t menuEpoch = 0);
 
     // Copies one event out. False when empty.
-    bool Pop(std::uint8_t* out);
+    bool Pop(std::uint8_t* out, std::uint64_t* menuEpoch = nullptr);
 
     unsigned long long Dropped() const { return dropped_.load(std::memory_order_relaxed); }
     unsigned long long Pushed() const { return pushed_.load(std::memory_order_relaxed); }
@@ -48,6 +48,7 @@ private:
     struct Cell {
         std::atomic<unsigned long long> sequence{0};
         std::uint8_t data[kEventSize]{};
+        std::uint64_t menuEpoch=0; // queue metadata, never native event bytes
     };
 
     Cell cells_[kQueueCapacity];

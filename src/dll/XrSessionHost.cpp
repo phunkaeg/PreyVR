@@ -14,8 +14,10 @@
 #include "UiGuide.h"
 #include "UiPointer.h"
 #include "HudLayer.h"
+#include "InventorySwapchain.h"
 #include "preyvr/UiPanel.h"
 #include "preyvr/LatestSnapshot.h"
+#include "preyvr/HudCapturePair.h"
 #include "preyvr/StereoCamera.h"
 #include "preyvr/StereoFrame.h"
 #include "preyvr/XrSwapchainFormat.h"
@@ -40,6 +42,7 @@
 #include <span>
 #include <chrono>
 #include <mutex>
+#include <memory>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -66,6 +69,7 @@ std::atomic<bool> gStopAcknowledged{false};
 std::atomic<unsigned long long> gSubmitted{0};
 std::atomic<unsigned int> gUiPanelMode{0};
 std::atomic<unsigned long long> gUiPanelFrames{0};
+std::atomic<unsigned long long> gInventoryLayerFrames{0};
 std::atomic<unsigned int> gUiCurveDegrees{35};
 std::atomic<float> gRuntimeIpd{0};
 struct BackbufferSample { unsigned width=0,height=0; std::uint64_t changed=0,stamp=0; unsigned frames=0; };
@@ -77,10 +81,12 @@ struct Host {
     XrSession session = XR_NULL_HANDLE;
     XrSpace space = XR_NULL_HANDLE;
     XrSwapchain swapchain = XR_NULL_HANDLE;
+    DXGI_FORMAT colorFormat = DXGI_FORMAT_UNKNOWN;
     XrSwapchain guideSwapchain = XR_NULL_HANDLE;
     XrSwapchain pointerSwapchain = XR_NULL_HANDLE;
     bool pointerReady=false,pointerAttempted=false,cylinderSupported=false;
     XrSwapchain hudSwapchain = XR_NULL_HANDLE;
+    std::unique_ptr<InventorySwapchain> inventorySwapchain;
     std::vector<XrSwapchainImageD3D11KHR> hudImages;
     D3D11_TEXTURE2D_DESC hudDesc{};
     bool guideReady = false, guideAttempted = false;
@@ -131,6 +137,7 @@ struct Host {
     // a frozen scene, which is how the first depth test is run.
     ID3D11Texture2D* eyeImage[2] = {nullptr, nullptr};
     bool eyeImageValid[2] = {false, false};
+    HudCapturePair hudCapturePair;
 
     // **The contract that rendered each eye's pixels, held with them.**
     //
@@ -561,6 +568,7 @@ bool CreateSessionAndSwapchain()
     swapchainInfo.usageFlags =
         XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT;
     swapchainInfo.format = choice->format;
+    gHost.colorFormat = static_cast<DXGI_FORMAT>(choice->format);
     swapchainInfo.sampleCount = 1;
     swapchainInfo.width = gHost.width;
     swapchainInfo.height = gHost.height;
@@ -602,6 +610,8 @@ void Teardown()
     gResolution.Clear();
     gOptics.Clear();
     SetHudLayerPresentation(false);
+    SetInventoryConsumerReady(nullptr);
+    gHost.inventorySwapchain.reset(); // XR images die before their session.
     DestroyXrInput();
     for (auto*& image : gHost.eyeImage) {
         if (image != nullptr) {
@@ -896,7 +906,7 @@ bool SubmitStereoPair(
     std::uint32_t imageIndex,
     const XrView* views,
     const std::optional<XrFovf>& declaredFov,
-    XrTime displayTime, int renderedEye)
+    XrTime displayTime, int renderedEye, bool hudCaptured)
 {
     D3D11_TEXTURE2D_DESC desc{};
     backBuffer->GetDesc(&desc);
@@ -932,6 +942,7 @@ bool SubmitStereoPair(
     if (eye == 0 || eye == 1) {
         const int target = gSwapEyes.load(std::memory_order_acquire) ? (1 - eye) : eye;
         context->CopyResource(gHost.eyeImage[target], backBuffer);
+        gHost.hudCapturePair.RecordEye(target,hudCaptured);
         // Publish the pixels and the contract that produced them together. The
         // copy and these three writes are the one publication unit; nothing
         // downstream may pair this image with any other frame's pose or FOV.
@@ -1154,6 +1165,11 @@ void ServiceXrFrame(void* renderer)
     // Menu/flat paths still build cameras. Leaving their labels queued changed
     // alternating-eye parity when the backlog was eventually discarded.
     const int renderedEye = dll::ConsumeRenderedEye();
+    // Take each capture once, even on skipped submissions; never reuse a PDA
+    // image after a dialog or another menu has replaced it.
+    ID3D11Texture2D* inventoryTexture = InventoryLayerTexture();
+    ID3D11Texture2D* hudTexture = HudLayerTexture();
+    SetInventoryConsumerReady(nullptr);
     if (gStatus.load(std::memory_order_acquire) != static_cast<DWORD>(XrSessionStatus::running)) {
         return; // the hot path
     }
@@ -1396,6 +1412,9 @@ void ServiceXrFrame(void* renderer)
     }
     bool rendered = false;
     bool stereoPair = false;
+    bool inventorySubmitted = false, inventoryPrepared = false;
+    D3D11_TEXTURE2D_DESC inventoryDescription{};
+    if (!InventoryCaptureEnabled() && !inventoryTexture) gHost.inventorySwapchain.reset();
 
     if (gHost.contract.ShouldRenderThisFrame()) {
         IDXGISwapChain* swapChain = *reinterpret_cast<IDXGISwapChain**>(
@@ -1433,8 +1452,38 @@ void ServiceXrFrame(void* renderer)
             // independently of the wait it exists to set up.
             const std::uint64_t acquireStart =
                 timing ? preyvr::timing::MonotonicNanoseconds() : 0;
+            ID3D11Texture2D* panelSource = backBuffer;
+            // Finish an already redirected draw even if the command channel
+            // disabled capture between the native callback and this boundary.
+            if (matchingSize && panelActive && HudInventoryIsOpen() && (InventoryCaptureEnabled() || inventoryTexture)) {
+                if (!gHost.inventorySwapchain) {
+                    gHost.inventorySwapchain = std::make_unique<InventorySwapchain>(InventorySwapchainApi{
+                        xrEnumerateSwapchainFormats, xrCreateSwapchain, xrEnumerateSwapchainImages,
+                        xrAcquireSwapchainImage, xrWaitSwapchainImage, xrReleaseSwapchainImage, xrDestroySwapchain});
+                }
+                inventoryPrepared = gHost.inventorySwapchain->Prepare(gHost.session, backDesc, gHost.colorFormat);
+                inventoryDescription = backDesc;
+                if (inventoryTexture) {
+                    // This draw was redirected already. If XR upload fails,
+                    // retain a complete opaque inventory in the legacy panel.
+                    D3D11_TEXTURE2D_DESC capturedDesc{}; inventoryTexture->GetDesc(&capturedDesc);
+                    if (InventoryTextureCompatible(backDesc, capturedDesc)) panelSource = inventoryTexture;
+                    ID3D11DeviceContext* context = nullptr; gHost.device->GetImmediateContext(&context);
+                    const auto upload = inventoryPrepared ? gHost.inventorySwapchain->Copy(context, inventoryTexture)
+                                                          : InventorySwapchain::Upload::failed;
+                    if (context) context->Release();
+                    inventorySubmitted = upload == InventorySwapchain::Upload::ready;
+                    rendered = inventorySubmitted;
+                    if (!inventorySubmitted) {
+                        RefuseInventoryCapture("swapchain_upload_failed");
+                        inventoryPrepared = false;
+                        Log("result=refused detail=inventory_swapchain_upload legacy_panel_fallback=1");
+                        if (upload == InventorySwapchain::Upload::sessionFault) gStopRequested.store(true);
+                    }
+                }
+            }
             const bool gotImage =
-                matchingSize &&
+                matchingSize && !inventorySubmitted &&
                 XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.swapchain, &acquire, &imageIndex));
             const bool imageWaited=gotImage && XR_SUCCEEDED(xrWaitSwapchainImage(gHost.swapchain,&waitImage));
             if(gotImage && !imageWaited)gStopRequested.store(true);
@@ -1450,7 +1499,7 @@ void ServiceXrFrame(void* renderer)
                         stereoPair = SubmitStereoPair(
                             context, backBuffer, imageIndex,
                             views, DeclaredFovFromLiveCamera(),
-                            frameState.predictedDisplayTime, renderedEye);
+                            frameState.predictedDisplayTime, renderedEye, hudTexture!=nullptr);
                     } else {
                         // First light is a **flat mirror**: the same backbuffer
                         // into both eyes. It proves the whole path -- device,
@@ -1461,7 +1510,7 @@ void ServiceXrFrame(void* renderer)
                             context->CopySubresourceRegion(
                                 gHost.images[imageIndex],
                                 D3D11CalcSubresource(0, slice, 1),
-                                0, 0, 0, backBuffer, 0, nullptr);
+                                0, 0, 0, panelSource, 0, nullptr);
                         }
                     }
                     rendered=panelActive || !gStereoSubmission.load() || stereoPair;
@@ -1538,7 +1587,8 @@ void ServiceXrFrame(void* renderer)
         panelLayer.pose={{p.pose.orientation.x,p.pose.orientation.y,p.pose.orientation.z,p.pose.orientation.w},
                          {p.pose.position.x,p.pose.position.y,p.pose.position.z}};
         panelLayer.size={p.width,p.height};
-        panelLayer.subImage.swapchain=gHost.swapchain;
+        panelLayer.subImage.swapchain=inventorySubmitted?gHost.inventorySwapchain->Handle():gHost.swapchain;
+        if(inventorySubmitted)panelLayer.layerFlags=XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
         panelLayer.subImage.imageArrayIndex=0;
         panelLayer.subImage.imageRect={{0,0},{static_cast<int>(gHost.width),static_cast<int>(gHost.height)}};
     }
@@ -1551,6 +1601,7 @@ void ServiceXrFrame(void* renderer)
             const auto axis=ui::CylinderAxis(surface);
             cylinderLayer.space=panelLayer.space;cylinderLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
             cylinderLayer.subImage=panelLayer.subImage;
+            cylinderLayer.layerFlags=panelLayer.layerFlags;
             cylinderLayer.pose={{axis.orientation.x,axis.orientation.y,axis.orientation.z,axis.orientation.w},
                 {axis.position.x,axis.position.y,axis.position.z}};
             cylinderLayer.radius=surface.panel.width/surface.angle;
@@ -1607,8 +1658,11 @@ void ServiceXrFrame(void* renderer)
     }
     XrCompositionLayerQuad hudLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
     bool hudActive=false;
-    if(rendered && haveViews && !panelActive && HudLayerEnabled()) {
-        auto captured=HudLayerTexture();
+    // A held eye may still contain the native reticle from before capture was
+    // enabled/refused. Never add another HUD over that eye's baked-in copy.
+    const bool hudRemovedFromWorld=gHost.hudCapturePair.CanOverlay(gStereoSubmission.load(),hudTexture!=nullptr);
+    if(rendered && haveViews && !panelActive && HudLayerEnabled() && hudRemovedFromWorld) {
+        auto captured=hudTexture;
         if(captured) {
             D3D11_TEXTURE2D_DESC desc{};captured->GetDesc(&desc);
             if(gHost.hudSwapchain && (desc.Width!=gHost.hudDesc.Width || desc.Height!=gHost.hudDesc.Height || desc.Format!=gHost.hudDesc.Format)) {
@@ -1689,6 +1743,10 @@ void ServiceXrFrame(void* renderer)
     endInfo.layers = rendered ? layers.data() : nullptr;
     const std::uint64_t endStart = timing ? preyvr::timing::MonotonicNanoseconds() : 0;
     const auto endResult=xrEndFrame(gHost.session, &endInfo);
+    // Arm only after a complete successful frame. Until then the native movie
+    // keeps rendering normally and the existing full-menu panel remains usable.
+    if (rendered && endResult == XR_SUCCESS && inventoryPrepared && !gStopRequested.load() && InventoryCaptureEnabled())
+        SetInventoryConsumerReady(&inventoryDescription);
     if (timing) {
         const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
         gEndFrame.AddNanoseconds(now - endStart);
@@ -1698,6 +1756,11 @@ void ServiceXrFrame(void* renderer)
     PublishResolution();
 
     if (rendered && XR_SUCCEEDED(endResult)) {
+        if (inventorySubmitted) {
+            if (gInventoryLayerFrames.fetch_add(1)==0)
+                Log("result=0 detail=first_inventory_layer_submitted separate_swapchain=1 array_size=1 world_copy=0");
+            gHost.submittedWidth=gHost.width;gHost.submittedHeight=gHost.height;
+        }
         if (panelActive) { gUiPanelFrames.fetch_add(1); }
         const unsigned long long count = gSubmitted.fetch_add(1, std::memory_order_relaxed) + 1;
         if (count == 1) {
@@ -1740,6 +1803,7 @@ DWORD SetUiCurveDegrees(unsigned int degrees) {
 }
 unsigned int UiPanelMode() { return gUiPanelMode.load(); }
 unsigned long long UiPanelFrameCount() { return gUiPanelFrames.load(); }
+unsigned long long InventoryLayerFrameCount() { return gInventoryLayerFrames.load(); }
 float XrRuntimeIpdMetres() { return gRuntimeIpd.load(); }
 
 DWORD SetMirrorFovPercent(unsigned int percent)

@@ -85,6 +85,7 @@ DWORD XrSessionStatusValue();
 DWORD SetUiPanelMode(unsigned int mode);
 unsigned int UiPanelMode();
 unsigned long long UiPanelFrameCount();
+unsigned long long InventoryLayerFrameCount();
 float XrRuntimeIpdMetres();
 void ObserveXrBackbuffer(void* renderer);
 bool XrBackbufferReady(unsigned int width=0,unsigned int height=0);

@@ -142,6 +142,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/VrMode.cpp
         src/dll/UiGuide.cpp
         src/dll/HudLayer.cpp
+        src/dll/InventorySwapchain.cpp
         src/dll/UiPointer.cpp
         src/dll/InventoryPointerCapture.cpp
         src/dll/CameraEditHook.cpp
@@ -470,6 +471,15 @@ if(PREYVR_BUILD_TESTS)
         )
 
         if(PREYVR_BUILD_OPENXR_LOADER)
+            add_executable(preyvr_inventory_swapchain_tests tests/InventorySwapchainTests.cpp src/dll/InventorySwapchain.cpp)
+            target_include_directories(preyvr_inventory_swapchain_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/dll"
+                $<TARGET_PROPERTY:openxr_loader,INTERFACE_INCLUDE_DIRECTORIES>)
+            target_compile_definitions(preyvr_inventory_swapchain_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX
+                XR_USE_PLATFORM_WIN32 XR_USE_GRAPHICS_API_D3D11)
+            target_link_libraries(preyvr_inventory_swapchain_tests PRIVATE d3d11)
+            preyvr_enable_warnings(preyvr_inventory_swapchain_tests)
+            add_test(NAME inventory_swapchain COMMAND preyvr_inventory_swapchain_tests)
+
             add_executable(preyvr_openxr_preflight_tests tests/OpenXRPreflightWin32Tests.cpp)
             target_include_directories(preyvr_openxr_preflight_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/dll")
             target_link_libraries(preyvr_openxr_preflight_tests PRIVATE preyvr_win32_bootstrap)

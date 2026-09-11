@@ -4,6 +4,7 @@
 #include "Logger.h"
 #include "HudBridge.h"
 #include "XrSessionHost.h"
+#include "InventorySwapchain.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/LatestSnapshot.h"
 #include "preyvr/UiPanel.h"
@@ -28,15 +29,11 @@ SetTargets originalTargets=nullptr;
 std::mutex installMutex;
 bool installed=false;
 std::atomic<bool> enabled{false};
-// **Off by default, and it must stay that way until a consumer exists.**
-//
-// This capture is not an observation: it REDIRECTS the movie's one draw away
-// from the native target into a private texture. The gameplay HUD has a
-// consumer that submits that texture as a layer. The PDA did not, so switching
-// its capture on rendered the inventory black -- drawn correctly, into a
-// texture nothing showed. Shipping it armed was my error and an entirely
-// predictable one; the flag is the guard against repeating it.
+// Opt-in pending headset acceptance. Redirection consumes the movie's native
+// draw, so it also requires a live, compatible swapchain consumer lease.
 std::atomic<bool> inventoryCapture{false};
+struct InventoryConsumer {D3D11_TEXTURE2D_DESC description{};std::uint64_t stamp=0;};
+LatestSnapshot<InventoryConsumer> inventoryConsumer;
 std::atomic<unsigned long long> refused{0};
 
 // **Generalised by purpose, not by widening a name check.**
@@ -162,9 +159,9 @@ bool EnsureTexture(ID3D11Device* device,ID3D11RenderTargetView* original,
 // while it is not. Sharing one gate is what kept the inventory uncapturable.
 bool WantMovie(Movie movie) {
     switch(movie) {
-        case Movie::hud: return HudGameplayInputAllowed();
+        case Movie::hud: return enabled.load() && HudGameplayInputAllowed();
         case Movie::pda: return inventoryCapture.load(std::memory_order_acquire) &&
-                                HudMenuStateKnown() && HudMenuIsOpen();
+                                HudInventoryIsOpen();
     }
     return false;
 }
@@ -172,14 +169,21 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
     const auto address=reinterpret_cast<std::uintptr_t>(proxy);
     const auto now=MonotonicNanoseconds();
     unsigned which=kMovies;
-    if(enabled.load() && XrSessionStatusValue()==1 && !activeContext) {
+    if((enabled.load() || inventoryCapture.load()) && XrSessionStatusValue()==1 && !activeContext) {
         for(unsigned i=0;i<kMovies;++i) {
             Identity id{};
-            if(seen[i].TryRead(id) && id.proxy==address && FreshSample(now,id.stamp) &&
-               WantMovie(static_cast<Movie>(i))) {which=i;break;}
+            if(seen[i].TryRead(id) && id.proxy==address && FreshSample(now,id.stamp)) {
+                captures[i].stamp=0; // This callback supersedes any older capture, including on refusal.
+                if(WantMovie(static_cast<Movie>(i))) {which=i;break;}
+            }
         }
     }
     if(which==kMovies) {originalFlash(proxy,release);return;}
+    InventoryConsumer consumer{};
+    if(which==static_cast<unsigned>(Movie::pda) &&
+       (!inventoryConsumer.TryRead(consumer) || !FreshSample(now,consumer.stamp))) {
+        originalFlash(proxy,release);return;
+    }
     Capture& capture=captures[which];
     const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
     auto renderer=*reinterpret_cast<std::uintptr_t*>(base+engine::RendererLayout::singletonPointerRva);
@@ -188,7 +192,11 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
     std::array<ID3D11RenderTargetView*,8> saved{};ID3D11DepthStencilView* ds=nullptr;
     context->OMGetRenderTargets(8,saved.data(),&ds);
     bool single=saved[0]!=nullptr;for(unsigned i=1;i<8;++i)single=single && !saved[i];
-    const bool ready=single && EnsureTexture(device,saved[0],ds,capture);
+    bool ready=single && EnsureTexture(device,saved[0],ds,capture);
+    if(ready && which==static_cast<unsigned>(Movie::pda)) {
+        D3D11_TEXTURE2D_DESC d{};capture.texture->GetDesc(&d);
+        ready=InventoryTextureCompatible(consumer.description,d);
+    }
     if(ready) {
         if(ds) {ComPtr<ID3D11Resource> source;ds->GetResource(&source);context->CopyResource(capture.depth.Get(),source.Get());}
         const float clear[4]={0,0,0,0};context->ClearRenderTargetView(capture.target.Get(),clear);
@@ -250,23 +258,31 @@ DWORD SetHudLayerEnabled(unsigned value) {
 bool HudLayerEnabled(){return enabled.load();}
 DWORD SetInventoryCaptureEnabled(unsigned value) {
     if(value>1)return 1;
-    // Arming this without something submitting InventoryLayerTexture() takes
-    // the inventory off the screen, so say so in the log rather than leaving a
-    // black panel to be diagnosed from scratch.
+    std::lock_guard lock(installMutex);
+    if(value && !Install())return 2;
+    if(!value)inventoryConsumer.Clear();
     inventoryCapture.store(value!=0,std::memory_order_release);
     lifecycle::Log(std::string("preyvr_hud_layer inventory_capture=")+(value?"1":"0")+
-                   (value?" note=the_inventory_is_redirected_and_needs_a_consumer":""));
+                   (value?" note=waiting_for_inventory_swapchain_consumer":""));
     return 0;
 }
 bool InventoryCaptureEnabled(){return inventoryCapture.load(std::memory_order_acquire);}
+void RefuseInventoryCapture(const char* reason){
+    inventoryConsumer.Clear();
+    if(inventoryCapture.exchange(false))lifecycle::Log(std::string("preyvr_hud_layer inventory_disabled reason=")+reason);
+}
 void RefuseHudLayer(const char* reason){
     if(enabled.exchange(false))lifecycle::Log(std::string("preyvr_hud_layer disabled reason=")+reason);
 }
 std::string HudLayerReport(){
     // Per movie, because "captured=0" on its own never said which movie was
     // missing, nor whether identification or the gate was the reason.
+    InventoryConsumer consumer{};
+    const bool consumerReady=inventoryConsumer.TryRead(consumer) && FreshSample(MonotonicNanoseconds(),consumer.stamp);
     std::string out="hudLayer="+std::to_string(enabled.load())+
         " inventoryCapture="+std::to_string(inventoryCapture.load())+
+        " inventoryConsumer="+std::to_string(consumerReady)+
+        " inventoryLayerFrames="+std::to_string(InventoryLayerFrameCount())+
         " refused="+std::to_string(refused.load());
     for(unsigned i=0;i<kMovies;++i) {
         out+=std::string(" ")+kMovieNames[i]+"={identified="+std::to_string(identified[i].load())+
@@ -278,8 +294,21 @@ std::string HudLayerReport(){
     }
     return out;
 }
-ID3D11Texture2D* HudLayerTexture(){return BorrowTexture(Movie::hud);}
-ID3D11Texture2D* InventoryLayerTexture(){return BorrowTexture(Movie::pda);}
+ID3D11Texture2D* HudLayerTexture(){
+    auto texture=BorrowTexture(Movie::hud);
+    captures[static_cast<unsigned>(Movie::hud)].stamp=0;
+    return texture;
+}
+ID3D11Texture2D* InventoryLayerTexture(){
+    auto texture=BorrowTexture(Movie::pda);
+    // The host drains this at every render-frame boundary, including skips.
+    captures[static_cast<unsigned>(Movie::pda)].stamp=0;
+    return texture;
+}
+void SetInventoryConsumerReady(const D3D11_TEXTURE2D_DESC* description){
+    if(description)inventoryConsumer.Publish({*description,MonotonicNanoseconds()});
+    else inventoryConsumer.Clear();
+}
 void SetHudLayerPresentation(bool active,float width,float height,float distance){presentation.Publish({width,height,distance,active,MonotonicNanoseconds()});}
 bool HudLayerReticle(float tanX,float tanY,float& x,float& y){
     Presentation p{};if(!enabled.load() || !presentation.TryRead(p) || !p.active ||

@@ -8,10 +8,8 @@ namespace {
 
 // Field offsets, named so a mistake reads as a mistake rather than as a number.
 constexpr std::size_t kOffsetDevice = 0x00;
-constexpr std::size_t kOffsetState = 0x04;
 constexpr std::size_t kOffsetInputChar = 0x08;
 constexpr std::size_t kOffsetKeyName = 0x10;
-constexpr std::size_t kOffsetKeyId = 0x18;
 constexpr std::size_t kOffsetModifiers = 0x1C;
 constexpr std::size_t kOffsetValue = 0x20;
 constexpr std::size_t kOffsetSymbol = 0x28;

@@ -1,4 +1,5 @@
 #include "preyvr/InputQueue.h"
+#include "preyvr/MenuTapDispatch.h"
 
 #include <atomic>
 #include <cstdlib>
@@ -151,6 +152,18 @@ void TestConcurrentProducersNeverTearAnEvent()
 int main()
 {
     {
+        MenuTapDispatch guard;
+        Require(!guard.Allow(1,2,true,kButtonY,kStatePressed),"old menu Y cannot reopen wheel in a newer context");
+        Require(!guard.Allow(1,1,false,kDPadUp,kStatePressed),"queued D-pad cannot enter gameplay");
+        Require(!guard.Allow(1,2,false,kButtonY,kStateReleased),"discard release of a discarded press");
+        Require(guard.Allow(2,2,true,kButtonA,kStatePressed),"current menu accepts press");
+        guard.Delivered(2,kButtonA,kStatePressed);
+        Require(guard.Allow(2,3,false,kButtonA,kStateReleased),"release survives menu closed by its own press");
+        guard.Delivered(2,kButtonA,kStateReleased);
+        Require(!guard.Allow(2,3,false,kButtonA,kStateReleased),"no duplicate release");
+        Require(guard.Allow(0,3,false,kStart,kStatePressed),"unscoped pause/diagnostic input remains usable");
+    }
+    {
         EventQueue queue;
         std::uint8_t pair[kEventSize*2]{};
         Stamp(pair,1); Stamp(pair+kEventSize,2);
@@ -159,9 +172,11 @@ int main()
         Require(!queue.PushPair(pair),"a tap cannot fit in one cell");
         for(unsigned i=0;i<kQueueCapacity-1;++i) Require(queue.Pop(out),"drain singles");
         Require(!queue.Pop(out),"failed pair must leave no orphan press");
-        Require(queue.PushPair(pair),"pair fits across ring wrap");
-        Require(queue.Pop(out) && out[0]==1,"press first");
-        Require(queue.Pop(out) && out[0]==2,"release second");
+        Require(queue.PushPair(pair,42),"pair fits across ring wrap");
+        std::uint64_t scope=0;
+        Require(queue.Pop(out,&scope) && out[0]==1 && scope==42,"press carries scope outside native bytes");
+        Require(queue.Pop(out,&scope) && out[0]==2 && scope==42,"release carries same scope");
+        Require(queue.Push(pair) && queue.Pop(out,&scope) && scope==0,"raw events clear reused scope metadata");
         Require(!queue.Pop(out),"exactly two events");
     }
     TestEmptyAndRoundTrip();

@@ -1,6 +1,7 @@
 #include "preyvr/EngineMap.h"
 #include "preyvr/RuntimeSnapshot.h"
 #include "preyvr/StereoFrame.h"
+#include "preyvr/HudCapturePair.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -478,6 +479,22 @@ void TestAnglesAreArctangents()
 
 int main()
 {
+    {
+        HudCapturePair hud;
+        Require(!hud.CanOverlay(true,true),"startup eyes still contain native HUD");
+        hud.RecordEye(0,true);
+        Require(!hud.CanOverlay(true,true),"one cleaned eye cannot take a binocular HUD layer");
+        hud.RecordEye(1,true);
+        Require(hud.CanOverlay(true,true),"both eyes cleaned allow the current capture");
+        Require(!hud.CanOverlay(true,false),"old HUD must not survive a skipped/refused capture");
+        hud.RecordEye(0,false);
+        Require(!hud.CanOverlay(true,true),"native HUD fallback blocks a duplicate layer");
+        hud.RecordEye(1,true);
+        Require(!hud.CanOverlay(true,true),"refreshing the other eye does not clean the baked HUD");
+        hud.RecordEye(0,true);
+        Require(hud.CanOverlay(true,true),"recovery after both images are clean");
+        Require(hud.CanOverlay(false,true) && !hud.CanOverlay(false,false),"mono also needs this frame's capture");
+    }
     TestProjectionRoundTripsThroughTheEngineFormula();
     TestSymmetricFrustumProducesZeroShifts();
     TestProjectionRejectsBadFrusta();

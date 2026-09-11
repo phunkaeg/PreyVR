@@ -186,6 +186,9 @@ std::string HudLastProbe();
 DWORD HudRefreshMenuOpenState();
 bool HudMenuIsOpen();
 bool HudMenuStateKnown();
+// PDA is visible without another known modal screen/dialog covering it.
+bool HudInventoryIsOpen();
+unsigned long long HudMenuEpoch();
 bool HudGameplayInputAllowed();
 unsigned long long HudMenuStateSampleCount();
 

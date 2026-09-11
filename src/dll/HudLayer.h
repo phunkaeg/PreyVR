@@ -5,20 +5,24 @@
 namespace preyvr::dll {
 DWORD SetHudLayerEnabled(unsigned enabled);
 bool HudLayerEnabled();
-// The PDA capture, separate from the HUD one and OFF by default. Arming it
-// redirects the inventory's only draw into a private texture, so anything that
-// arms it must also submit InventoryLayerTexture() or the inventory disappears.
+// Off by default. Capture also needs a fresh consumer lease, so enabling it
+// cannot redirect the movie into a texture that has no prepared swapchain.
 DWORD SetInventoryCaptureEnabled(unsigned enabled);
 bool InventoryCaptureEnabled();
+void RefuseInventoryCapture(const char* reason);
 void RefuseHudLayer(const char* reason);
 std::string HudLayerReport();
-// Render-thread calls only. The borrowed texture remains owned by the capture.
+// Render-thread frame-boundary calls only. Drain once even when XR skips a frame.
+// The borrowed texture remains owned by the capture.
 ID3D11Texture2D* HudLayerTexture();
 // The inventory/PDA movie, captured on the opposite gate to the gameplay HUD:
 // that one wants gameplay input allowed, this one wants a modal screen up. Null
 // until DaniellePDA has been identified AND captured this frame -- check
 // HudLayerReport() for which of the two is missing rather than assuming.
 ID3D11Texture2D* InventoryLayerTexture();
+// Render-thread consumer lease. Null revokes; format/dimensions must match the
+// native destination before capture can redirect it. Expires during XR stalls.
+void SetInventoryConsumerReady(const D3D11_TEXTURE2D_DESC* description);
 void SetHudLayerPresentation(bool active, float width=0, float height=0, float distance=2);
 bool HudLayerReticle(float tanX, float tanY, float& x, float& y);
 }

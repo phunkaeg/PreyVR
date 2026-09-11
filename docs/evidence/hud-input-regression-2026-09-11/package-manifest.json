@@ -1,0 +1,66 @@
+{
+  "built": "2026-09-11T01:44:02.9374295Z",
+  "files": [
+    {
+      "sha256": "cd5b35fed75714c68a0910e9f94fc2140cf2d564493185f147890c5647f0f1c5",
+      "path": "openxr_loader.dll",
+      "bytes": 655360
+    },
+    {
+      "sha256": "73fa2207d260e588a39c960273f4d0d563a426493d28ff87148845d48c37ec5c",
+      "path": "preyvr_injector.exe",
+      "bytes": 277504
+    },
+    {
+      "sha256": "7f5727292a9ecbcb2d9e21216b2600066691a1f0a34702aea72a8c602537612f",
+      "path": "PreyVR.dll",
+      "bytes": 909824
+    },
+    {
+      "sha256": "3043741d9f98cf7c16f733fc9306d7d5afb275b1d57e32509a75332cf642e84c",
+      "path": "README.md",
+      "bytes": 6904
+    },
+    {
+      "sha256": "cff39ac6f2a38536591f34aa8ba8ddad84b5869cd6192fee986bb9e493839d18",
+      "path": "Send-PreyVR.ps1",
+      "bytes": 5789
+    },
+    {
+      "sha256": "2fb0e50199b90dc8abd3b1c9afc0cb6054985b5573ee5356e47c63c54aab064e",
+      "path": "Start Prey VR.cmd",
+      "bytes": 93
+    },
+    {
+      "sha256": "0b863163532d85131221006c4d7b73a01155f1e98ded27e239349bb19184a2cd",
+      "path": "Start-PreyVR.ps1",
+      "bytes": 12358
+    },
+    {
+      "sha256": "8e62909d3ee890909ce4bebdcc181a5bf2e081c07bd713edf567523295757063",
+      "path": "Tune Prey VR.cmd",
+      "bytes": 96
+    },
+    {
+      "sha256": "5d5d9af7c092781e162b61152834ca95c2a9263e44fad8d16ede0d68a6c2b445",
+      "path": "VALIDATION.md",
+      "bytes": 3853
+    },
+    {
+      "sha256": "4f21f857550d7be854da6ea5f2da4e6775ca4e3fbb535e4f3d961c47d0bf3335",
+      "path": "licenses/MinHook.txt",
+      "bytes": 4446
+    },
+    {
+      "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5",
+      "path": "licenses/OpenXR.txt",
+      "bytes": 11560
+    },
+    {
+      "path": "PreyVR.json",
+      "bytes": 279,
+      "sha256": "58eb9a32fba6302685733fa90f30ac9e2e71a5983529494c71b613dcfd2b63e8"
+    }
+  ],
+  "supportedPreyDll": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+}

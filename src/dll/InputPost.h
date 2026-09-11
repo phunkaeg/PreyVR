@@ -51,7 +51,8 @@ DWORD SetInputPostEnabled(unsigned int enabled);
 // shipping default.
 DWORD SetInputPostForce(unsigned int force);
 
-DWORD PostMenuAction(unsigned int action);
+// Nonzero epoch scopes a controller tap to the menu that produced it.
+DWORD PostMenuAction(unsigned int action, unsigned long long menuEpoch = 0);
 
 // One raw event, for finding out which keys a given screen actually listens to.
 // `valueMilli` is thousandths, so a text channel can carry a float.
@@ -80,6 +81,7 @@ void DrainQueuedInput();
 // because the queue was full, and the thread the drain actually ran on.
 unsigned long long InputPostCount();
 unsigned long long InputPostRefusedCount();
+unsigned long long InputMenuDiscardedCount();
 unsigned long long InputQueueDroppedCount();
 unsigned long long InputQueueDepthEstimate();
 // True while this thread is inside a PostInputEvent this mod issued, so a

@@ -1,0 +1,644 @@
+Start testing: Sep 11 09:48 AUS Eastern Standard Time
+----------------------------------------------------------
+1/39 Testing: vr_math
+1/39 Test: vr_math
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_vr_math_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"vr_math" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR math tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"vr_math" end time: Sep 11 09:48 AUS Eastern Standard Time
+"vr_math" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/39 Testing: engine_map
+2/39 Test: engine_map
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_engine_map_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"engine_map" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR engine-map tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"engine_map" end time: Sep 11 09:48 AUS Eastern Standard Time
+"engine_map" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/39 Testing: aim_state_fixture
+3/39 Test: aim_state_fixture
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_aim_state_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"aim_state_fixture" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR aim-state fixture tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"aim_state_fixture" end time: Sep 11 09:48 AUS Eastern Standard Time
+"aim_state_fixture" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/39 Testing: wrench_query_fixture
+4/39 Test: wrench_query_fixture
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_wrench_query_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"wrench_query_fixture" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR wrench-query fixture tests passed
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"wrench_query_fixture" end time: Sep 11 09:48 AUS Eastern Standard Time
+"wrench_query_fixture" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/39 Testing: interaction_query_fixture
+5/39 Test: interaction_query_fixture
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_interaction_query_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"interaction_query_fixture" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR interaction-query fixture tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"interaction_query_fixture" end time: Sep 11 09:48 AUS Eastern Standard Time
+"interaction_query_fixture" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/39 Testing: runtime_snapshot
+6/39 Test: runtime_snapshot
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_runtime_snapshot_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"runtime_snapshot" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR runtime-snapshot tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"runtime_snapshot" end time: Sep 11 09:48 AUS Eastern Standard Time
+"runtime_snapshot" time elapsed: 00:00:00
+----------------------------------------------------------
+
+7/39 Testing: xr_swapchain_format
+7/39 Test: xr_swapchain_format
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_xr_swapchain_format_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"xr_swapchain_format" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR XR swapchain format tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"xr_swapchain_format" end time: Sep 11 09:48 AUS Eastern Standard Time
+"xr_swapchain_format" time elapsed: 00:00:00
+----------------------------------------------------------
+
+8/39 Testing: xr_frame_contract
+8/39 Test: xr_frame_contract
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_xr_frame_contract_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"xr_frame_contract" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR XR frame contract tests passed
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"xr_frame_contract" end time: Sep 11 09:48 AUS Eastern Standard Time
+"xr_frame_contract" time elapsed: 00:00:00
+----------------------------------------------------------
+
+9/39 Testing: stereo_frame
+9/39 Test: stereo_frame
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_stereo_frame_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"stereo_frame" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR stereo frame tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"stereo_frame" end time: Sep 11 09:48 AUS Eastern Standard Time
+"stereo_frame" time elapsed: 00:00:00
+----------------------------------------------------------
+
+10/39 Testing: motion_controller
+10/39 Test: motion_controller
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_motion_controller_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"motion_controller" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR motion controller tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"motion_controller" end time: Sep 11 09:48 AUS Eastern Standard Time
+"motion_controller" time elapsed: 00:00:00
+----------------------------------------------------------
+
+11/39 Testing: anim_ik
+11/39 Test: anim_ik
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_anim_ik_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"anim_ik" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR anim-ik tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"anim_ik" end time: Sep 11 09:48 AUS Eastern Standard Time
+"anim_ik" time elapsed: 00:00:00
+----------------------------------------------------------
+
+12/39 Testing: weapon_rig_alignment
+12/39 Test: weapon_rig_alignment
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_weapon_rig_alignment_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"weapon_rig_alignment" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+108 native-chain/reticle comparisons passed
+weapon rig alignment fixtures passed (static/offline; no game)
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"weapon_rig_alignment" end time: Sep 11 09:48 AUS Eastern Standard Time
+"weapon_rig_alignment" time elapsed: 00:00:00
+----------------------------------------------------------
+
+13/39 Testing: weapon_aim
+13/39 Test: weapon_aim
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_weapon_aim_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"weapon_aim" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR weapon aim tests passed
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"weapon_aim" end time: Sep 11 09:48 AUS Eastern Standard Time
+"weapon_aim" time elapsed: 00:00:00
+----------------------------------------------------------
+
+14/39 Testing: frustum_coverage
+14/39 Test: frustum_coverage
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_frustum_coverage_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"frustum_coverage" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+frustum coverage tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"frustum_coverage" end time: Sep 11 09:48 AUS Eastern Standard Time
+"frustum_coverage" time elapsed: 00:00:00
+----------------------------------------------------------
+
+15/39 Testing: depth_submission
+15/39 Test: depth_submission
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_depth_submission_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"depth_submission" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+depth submission tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"depth_submission" end time: Sep 11 09:48 AUS Eastern Standard Time
+"depth_submission" time elapsed: 00:00:00
+----------------------------------------------------------
+
+16/39 Testing: frame_clock
+16/39 Test: frame_clock
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_frame_clock_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"frame_clock" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+frame clock tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"frame_clock" end time: Sep 11 09:48 AUS Eastern Standard Time
+"frame_clock" time elapsed: 00:00:00
+----------------------------------------------------------
+
+17/39 Testing: frame_timing
+17/39 Test: frame_timing
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_frame_timing_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"frame_timing" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+frame timing tests passed
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"frame_timing" end time: Sep 11 09:48 AUS Eastern Standard Time
+"frame_timing" time elapsed: 00:00:00
+----------------------------------------------------------
+
+18/39 Testing: input_event
+18/39 Test: input_event
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_input_event_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"input_event" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+input event tests passed
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"input_event" end time: Sep 11 09:48 AUS Eastern Standard Time
+"input_event" time elapsed: 00:00:00
+----------------------------------------------------------
+
+19/39 Testing: input_queue
+19/39 Test: input_queue
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_input_queue_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"input_queue" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+  queue: 3044 pushed, 8956 dropped, 3044 drained, 0 torn
+input queue tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"input_queue" end time: Sep 11 09:48 AUS Eastern Standard Time
+"input_queue" time elapsed: 00:00:00
+----------------------------------------------------------
+
+20/39 Testing: menu_navigator
+20/39 Test: menu_navigator
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_menu_navigator_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"menu_navigator" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+menu navigator tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"menu_navigator" end time: Sep 11 09:48 AUS Eastern Standard Time
+"menu_navigator" time elapsed: 00:00:00
+----------------------------------------------------------
+
+21/39 Testing: inventory_depth
+21/39 Test: inventory_depth
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_inventory_depth_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"inventory_depth" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+Inventory depth mapping passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"inventory_depth" end time: Sep 11 09:48 AUS Eastern Standard Time
+"inventory_depth" time elapsed: 00:00:00
+----------------------------------------------------------
+
+22/39 Testing: ui_panel
+22/39 Test: ui_panel
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_ui_panel_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"ui_panel" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+UI panel geometry passed
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"ui_panel" end time: Sep 11 09:48 AUS Eastern Standard Time
+"ui_panel" time elapsed: 00:00:00
+----------------------------------------------------------
+
+23/39 Testing: locomotion
+23/39 Test: locomotion
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_locomotion_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"locomotion" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+locomotion tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"locomotion" end time: Sep 11 09:48 AUS Eastern Standard Time
+"locomotion" time elapsed: 00:00:00
+----------------------------------------------------------
+
+24/39 Testing: render_frame_table
+24/39 Test: render_frame_table
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_render_frame_table_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"render_frame_table" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+  detector self-check: 5 splice(s) in 1400 read(s) of the old publication
+  seqlock: 0 splices in 146022 read(s), 242363 refusal(s)
+render frame table tests passed
+<end of output>
+Test time =   6.25 sec
+----------------------------------------------------------
+Test Passed.
+"render_frame_table" end time: Sep 11 09:48 AUS Eastern Standard Time
+"render_frame_table" time elapsed: 00:00:06
+----------------------------------------------------------
+
+25/39 Testing: stereo_camera
+25/39 Test: stereo_camera
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_stereo_camera_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"stereo_camera" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR stereo camera tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"stereo_camera" end time: Sep 11 09:48 AUS Eastern Standard Time
+"stereo_camera" time elapsed: 00:00:00
+----------------------------------------------------------
+
+26/39 Testing: camera_edit
+26/39 Test: camera_edit
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_camera_edit_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"camera_edit" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR camera edit tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"camera_edit" end time: Sep 11 09:48 AUS Eastern Standard Time
+"camera_edit" time elapsed: 00:00:00
+----------------------------------------------------------
+
+27/39 Testing: frame_dump
+27/39 Test: frame_dump
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_frame_dump_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"frame_dump" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR frame dump tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"frame_dump" end time: Sep 11 09:48 AUS Eastern Standard Time
+"frame_dump" time elapsed: 00:00:00
+----------------------------------------------------------
+
+28/39 Testing: debug_registers
+28/39 Test: debug_registers
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_debug_registers_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"debug_registers" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+debug register tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"debug_registers" end time: Sep 11 09:48 AUS Eastern Standard Time
+"debug_registers" time elapsed: 00:00:00
+----------------------------------------------------------
+
+29/39 Testing: console_policy
+29/39 Test: console_policy
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_console_policy_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"console_policy" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR console policy tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"console_policy" end time: Sep 11 09:48 AUS Eastern Standard Time
+"console_policy" time elapsed: 00:00:00
+----------------------------------------------------------
+
+30/39 Testing: runtime_bootstrap
+30/39 Test: runtime_bootstrap
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_runtime_bootstrap_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"runtime_bootstrap" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR runtime-bootstrap tests passed
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"runtime_bootstrap" end time: Sep 11 09:48 AUS Eastern Standard Time
+"runtime_bootstrap" time elapsed: 00:00:00
+----------------------------------------------------------
+
+31/39 Testing: ui_pointer_dispatch
+31/39 Test: ui_pointer_dispatch
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_ui_pointer_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"ui_pointer_dispatch" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+ui_pointer_dispatch passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"ui_pointer_dispatch" end time: Sep 11 09:48 AUS Eastern Standard Time
+"ui_pointer_dispatch" time elapsed: 00:00:00
+----------------------------------------------------------
+
+32/39 Testing: inventory_pointer_capture
+32/39 Test: inventory_pointer_capture
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_inventory_capture_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"inventory_pointer_capture" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+inventory_pointer_capture passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"inventory_pointer_capture" end time: Sep 11 09:48 AUS Eastern Standard Time
+"inventory_pointer_capture" time elapsed: 00:00:00
+----------------------------------------------------------
+
+33/39 Testing: near_fov_override
+33/39 Test: near_fov_override
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_near_fov_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"near_fov_override" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+near_fov_override: production callback, native latch, guards and disable passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"near_fov_override" end time: Sep 11 09:48 AUS Eastern Standard Time
+"near_fov_override" time elapsed: 00:00:00
+----------------------------------------------------------
+
+34/39 Testing: dll_load_fail_closed
+34/39 Test: dll_load_fail_closed
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_dll_smoke_host.exe" "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/PreyVR.dll"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"dll_load_fail_closed" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+dll_smoke_host status=unsupported_as_expected hooks=default_off exports=fail_closed
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Pass Reason:
+Required regular expression found. Regex=[dll_smoke_host status=unsupported_as_expected]
+"dll_load_fail_closed" end time: Sep 11 09:48 AUS Eastern Standard Time
+"dll_load_fail_closed" time elapsed: 00:00:00
+----------------------------------------------------------
+
+35/39 Testing: inventory_swapchain
+35/39 Test: inventory_swapchain
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_inventory_swapchain_tests.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"inventory_swapchain" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+inventory_swapchain PASS: real WARP copy/alpha, independent world texture, lifetime, resize, inherited linear/sRGB format, XR failures
+<end of output>
+Test time =   0.14 sec
+----------------------------------------------------------
+Test Passed.
+"inventory_swapchain" end time: Sep 11 09:48 AUS Eastern Standard Time
+"inventory_swapchain" time elapsed: 00:00:00
+----------------------------------------------------------
+
+36/39 Testing: openxr_preflight_files
+36/39 Test: openxr_preflight_files
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_openxr_preflight_tests.exe" "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/_deps/openxr-build/src/loader/Release/openxr_loader.dll" "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/PreyVR.dll"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"openxr_preflight_files" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PreyVR Win32 OpenXR-preflight tests passed
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"openxr_preflight_files" end time: Sep 11 09:48 AUS Eastern Standard Time
+"openxr_preflight_files" time elapsed: 00:00:00
+----------------------------------------------------------
+
+37/39 Testing: dxgi_method_probe
+37/39 Test: dxgi_method_probe
+Command: "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_dxgi_probe.exe"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"dxgi_method_probe" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+dxgi_base=0x7fff8d760000
+IDXGISwapChain::Present address=0x7fff8d779960 dxgi_rva=0x19960
+IDXGISwapChain::ResizeBuffers address=0x7fff8d798530 dxgi_rva=0x38530
+<end of output>
+Test time =   0.32 sec
+----------------------------------------------------------
+Test Pass Reason:
+Required regular expression found. Regex=[IDXGISwapChain::Present.*dxgi_rva=]
+"dxgi_method_probe" end time: Sep 11 09:48 AUS Eastern Standard Time
+"dxgi_method_probe" time elapsed: 00:00:00
+----------------------------------------------------------
+
+38/39 Testing: smoke_log_parser
+38/39 Test: smoke_log_parser
+Command: "C:/Program Files/PowerShell/7/pwsh.exe" "-NoProfile" "-ExecutionPolicy" "Bypass" "-File" "D:/Dev Debug/PreyVR/tools/Test-PreyVRSmokeLog.ps1" "-LogPath" "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Testing/Temporary/preyvr-smoke-host.log" "-ExpectedStatus" "unsupported" "-ExpectedLandmarkCount" "0"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"smoke_log_parser" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+smoke_log_check result=pass status=unsupported landmarks=0 matched=0 dllSha256=C43B2B79EB8F02420A96F26AF88B224A815F832E13A49BEC66039CC59395FDBE path="D:\Dev Debug\PreyVR\build\inventory-swapchain-static-20260911\Testing\Temporary\preyvr-smoke-host.log"
+<end of output>
+Test time =   0.82 sec
+----------------------------------------------------------
+Test Pass Reason:
+Required regular expression found. Regex=[smoke_log_check result=pass]
+"smoke_log_parser" end time: Sep 11 09:48 AUS Eastern Standard Time
+"smoke_log_parser" time elapsed: 00:00:00
+----------------------------------------------------------
+
+39/39 Testing: build_doctor
+39/39 Test: build_doctor
+Command: "C:/Program Files/PowerShell/7/pwsh.exe" "-NoProfile" "-ExecutionPolicy" "Bypass" "-File" "D:/Dev Debug/PreyVR/tools/Invoke-PreyVRDoctor.ps1" "-GameReleasePath" "D:/SteamLibrary/steamapps/common/Prey/Binaries/Danielle/x64/Release" "-EngineMapProbe" "D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911/Release/preyvr_engine_map_probe.exe" "-AllowMissingGame"
+Directory: D:/Dev Debug/PreyVR/build/inventory-swapchain-static-20260911
+"build_doctor" start time: Sep 11 09:48 AUS Eastern Standard Time
+Output:
+----------------------------------------------------------
+PASS: Prey.exe is x86-64/PE32+
+PASS: Prey.exe SHA-256 matches the research baseline
+PASS: PreyDll.dll is x86-64/PE32+
+PASS: PreyDll.dll SHA-256 matches the research baseline
+PASS: PreyDll.dll matches all 34 compiled engine landmarks
+PASS: ReGenny type notebook is present
+PASS: Graphify is available at C:\Users\meise\.local\bin\graphify.exe
+SUMMARY: pass=7 warn=0 fail=0
+<end of output>
+Test time =   0.95 sec
+----------------------------------------------------------
+Test Pass Reason:
+Required regular expression found. Regex=[SUMMARY: pass=.*fail=0]
+"build_doctor" end time: Sep 11 09:48 AUS Eastern Standard Time
+"build_doctor" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Sep 11 09:48 AUS Eastern Standard Time

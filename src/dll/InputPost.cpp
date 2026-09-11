@@ -3,9 +3,12 @@
 #include "CameraEditHook.h"
 #include "InputPathProbe.h"
 #include "Logger.h"
+#include "HudBridge.h"
 
 #include "preyvr/InputEvent.h"
 #include "preyvr/InputQueue.h"
+#include "preyvr/MenuTapDispatch.h"
+#include <cstring>
 
 #include <atomic>
 #include <array>
@@ -26,6 +29,7 @@ using PostInputEventFn = void(__fastcall*)(void*, const void*, bool);
 std::atomic<bool> gEnabled{false};
 std::atomic<unsigned long long> gPosted{0};
 std::atomic<unsigned long long> gRefused{0};
+std::atomic<unsigned long long> gMenuDiscarded{0};
 std::atomic<unsigned long> gDrainThread{0};
 // **Diagnostic.** `PostInputEvent` checks posting-enabled first and drops the
 // event when it is off; `force` bypasses that check. The native producers do not
@@ -139,9 +143,20 @@ void DrainQueuedInput()
     // press and its release collapse into one update and could conclude the
     // button was never held. Real input arrives on separate frames.
     std::array<std::uint8_t, input::kEventSize> event{};
-    if (!gQueue.Pop(event.data())) {
-        return;
+    static input::MenuTapDispatch menuDispatch;
+    std::uint64_t scope=0;
+    int key=-1;unsigned state=0;
+    bool accepted=false;
+    for(unsigned i=0;i<input::kQueueCapacity;++i) {
+        if(!gQueue.Pop(event.data(),&scope))return;
+        std::memcpy(&key,event.data()+input::kOffsetKeyId,sizeof(key));
+        std::memcpy(&state,event.data()+input::kOffsetState,sizeof(state));
+        if(menuDispatch.Allow(scope,HudMenuEpoch(),HudMenuStateKnown()&&HudMenuIsOpen(),key,state)) {
+            accepted=true;break;
+        }
+        gMenuDiscarded.fetch_add(1,std::memory_order_relaxed);
     }
+    if(!accepted)return;
     if (!CallPost(gPost, gInput, event.data(), gForce.load(std::memory_order_acquire))) {
         gRefused.fetch_add(1, std::memory_order_relaxed);
         // Disarmed rather than retried: a fault here means the call target or the
@@ -152,6 +167,7 @@ void DrainQueuedInput()
         return;
     }
     gPosted.fetch_add(1, std::memory_order_relaxed);
+    menuDispatch.Delivered(scope,key,state);
 }
 
 DWORD SetInputPostForce(unsigned int force)
@@ -172,7 +188,7 @@ DWORD SetInputPostEnabled(unsigned int enabled)
     return 0;
 }
 
-DWORD PostMenuAction(unsigned int action)
+DWORD PostMenuAction(unsigned int action, unsigned long long menuEpoch)
 {
     if (action > static_cast<unsigned int>(input::MenuAction::NextPage)) {
         return 2;
@@ -185,7 +201,9 @@ DWORD PostMenuAction(unsigned int action)
     }
     // Both or neither. A press queued without its release would leave the engine
     // believing the button is held for as long as the queue stays short.
-    if (!gEnabled.load(std::memory_order_acquire) || !gQueue.PushPair(buffer.data())) {
+    const auto scope=menuEpoch;
+    if(scope && (scope!=HudMenuEpoch() || !HudMenuStateKnown() || !HudMenuIsOpen()))return 4;
+    if (!gEnabled.load(std::memory_order_acquire) || !gQueue.PushPair(buffer.data(),scope)) {
         return 4;
     }
     return 0;
@@ -261,6 +279,7 @@ DWORD PostRawInputImmediate(int keyId, unsigned int state, int valueMilli)
 
 unsigned long long InputPostCount() { return gPosted.load(std::memory_order_relaxed); }
 unsigned long long InputPostRefusedCount() { return gRefused.load(std::memory_order_relaxed); }
+unsigned long long InputMenuDiscardedCount() { return gMenuDiscarded.load(std::memory_order_relaxed); }
 unsigned long long InputQueueDroppedCount() { return gQueue.Dropped(); }
 unsigned long long InputQueueDepthEstimate() { return gQueue.Pushed() - gQueue.Popped(); }
 bool InputPostDrivingThisThread() { return tPostingOurEvent; }

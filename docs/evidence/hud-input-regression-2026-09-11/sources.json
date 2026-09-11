@@ -1,0 +1,50 @@
+[
+  {
+    "path": "include/preyvr/HudCapturePair.h",
+    "sha256": "0c441ddd1ea0725c3ff330b800786a3f840aa9b6f1e8473b3a0a4077ffb0bf26"
+  },
+  {
+    "path": "include/preyvr/MenuTapDispatch.h",
+    "sha256": "7eb1b9a22226246d55395372f60348bfa57e2f82a767eb249d625e9f089089b2"
+  },
+  {
+    "path": "include/preyvr/InputQueue.h",
+    "sha256": "b026bc0aa15543353c4840cb4f90d3e6e7ff0081b3dbbca7379a111f2dce06b2"
+  },
+  {
+    "path": "src/common/InputQueue.cpp",
+    "sha256": "7fc75725af4d7e53cb077fe8f1d958f89b9731d50dfb8780274a9d5517b7c325"
+  },
+  {
+    "path": "src/dll/HudBridge.cpp",
+    "sha256": "a614f667f196fb10064f88fda5e1a3109633586ba3b5297d569011957146dfd9"
+  },
+  {
+    "path": "src/dll/HudLayer.cpp",
+    "sha256": "89995024ff678eaec0ab2de9af0140368df89d38ed70df022614953b0ee95b62"
+  },
+  {
+    "path": "src/dll/InputPost.cpp",
+    "sha256": "7cddcc9946cf10624d9ec199486b8db4ccafaf0e1f0337ff4c78440552a521aa"
+  },
+  {
+    "path": "src/dll/MoveLane.cpp",
+    "sha256": "03e731d60e01529e07a29643b39b69260fb84c8544f4cfb22165ec7a6b3ff17b"
+  },
+  {
+    "path": "src/dll/XrInput.cpp",
+    "sha256": "9598da6b7169ebf9775f77825de59f40f21cc789d0c6b66760e02b5e704717b4"
+  },
+  {
+    "path": "src/dll/XrSessionHost.cpp",
+    "sha256": "b2dbdf32b2aeacf6d11c64817bfd312bb8b86a691b5a571649a75348deb40b82"
+  },
+  {
+    "path": "tests/InputQueueTests.cpp",
+    "sha256": "7917e96f381ae1cd9c40d972132f4b77ea3c61e02a5f9890dbed01df0dfb04ae"
+  },
+  {
+    "path": "tests/StereoFrameTests.cpp",
+    "sha256": "28fdcb8e28e76dc326d4fcceb9f17fd5cbc5170bb411b9ccae91948ef0852936"
+  }
+]

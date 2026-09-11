@@ -376,6 +376,7 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
         // Read as a value sampled by the main thread; this runs on the frame
         // service and must not enter Scaleform to ask.
         if (gResetNavigator.exchange(false)) { gNavigator.Reset(); }
+        const auto menuEpoch=HudMenuEpoch();
         const bool modal = !gMenuNavGate.load(std::memory_order_acquire) ||
                            (HudMenuStateKnown() && HudMenuIsOpen());
         if (!modal) { gMenuSuppressed.fetch_add(1, std::memory_order_relaxed); }
@@ -409,7 +410,7 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
         for (unsigned int i = 0; i < count; ++i) {
             // Enqueued, not posted: the engine's input walk belongs to the main
             // thread and this runs on the frame service.
-            PostMenuAction(static_cast<unsigned int>(actions[i]));
+            PostMenuAction(static_cast<unsigned int>(actions[i]),actions[i]==input::MenuAction::Start?0:menuEpoch);
             gMenuActions.fetch_add(1, std::memory_order_relaxed);
         }
     }

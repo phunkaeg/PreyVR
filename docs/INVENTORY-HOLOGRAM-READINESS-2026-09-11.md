@@ -2,6 +2,10 @@
 
 Static assessment; no build, injection or live experiment performed.
 
+Later implementation: [inventory swapchain separation](INVENTORY-SWAPCHAIN-STATIC-2026-09-11.md)
+adds the opt-in capture consumer and offline verification. The assessment below
+records the earlier baseline; paused-world rendering remains open.
+
 ## Already available
 
 - Inventory identity and native rendering callback: prior in-game receipt
