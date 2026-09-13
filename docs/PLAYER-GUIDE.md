@@ -33,7 +33,9 @@ Menus and inventory open on a panel about **2 metres** away, anchored where you 
 
 The native gameplay HUD is captured once into a transparent target and displayed at its own depth. Its graphics and interaction prompts stay Prey's own. The reticle is remapped to the smaller HUD canvas; when aiming beyond the panel it clips out instead of marking its edge. This is a HUD reticle at a fixed depth, not a world-surface hit marker. World markers and subtitles remain in the scene.
 
-The default render size is **2560 × 1440 per eye**, independent of monitor DPI. After the first launch, edit `PreyVR.json` beside the launcher to change `Width`, `Height`, or `HudLayer` (`1` floating HUD, `0` native scene HUD). Keep a 16:9 render size for complete native menu framing. For example, 1920×1080 lowers rendering cost; 3200×1800 or 3840×2160 increases detail and GPU cost. Restart Prey after changing size.
+The default render size is **2016 × 2160 per eye**, independent of monitor DPI. This restores the tall aspect used in earlier headset testing; **2688 × 2880** offers more detail at the same aspect and higher GPU cost. Edit `Width` and `Height` in `PreyVR.json`, then restart Prey. Menus can have unused space within their floating panel; do not switch the world render to 16:9 just to fill that panel. This is a starting preset, not automatic headset-resolution detection or a guarantee of complete FOV coverage on every headset.
+
+The launcher migrates the old, unversioned **2560 × 1440** default once, backing up `PreyVR.json` first. Custom sizes remain unchanged. To intentionally retain that old size, add `"ResolutionDefaultsVersion": 1` to the JSON, or launch with both `-Width 2560 -Height 1440`. A single command-line dimension is rejected. `HudLayer` remains `1` for floating HUD or `0` for the native scene HUD.
 
 ## Recovery and support
 

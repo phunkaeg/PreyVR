@@ -41,14 +41,16 @@ After the first launch, edit `PreyVR.json` beside the launcher:
 
 | Setting | Default | Choices |
 | --- | --- | --- |
-| `Width`, `Height` | `2560`, `1440` | Per-eye render size, independent of desktop DPI. Keep 16:9 for complete native menu framing. |
+| `Width`, `Height` | `2016`, `2160` | Per-eye render size, independent of desktop DPI. `2688`, `2880` gives more detail at the same aspect. |
 | `UiCurveDegrees` | `35` | `0` for flat; `1`–`60` for curvature when the runtime supports it. |
 | `PointerHand` | `1` | `0` left beam, `1` right beam, `2` button navigation only. In button-only mode both triggers retain page actions. |
 | `HudLayer` | `1` | `1` floating native gameplay HUD; `0` native scene HUD. |
 | `UiGuide` | `0` | The control card under the menu. `0` hides it and gives its height back to the menu; `1` shows it, which is worth setting when someone is using the mod for the first time. |
 | `UiScalePercent` | `100` | Panel size for the HUD and menus, `20`-`200`. Raise it if the UI sits too small in the headset, lower it if the edges fall outside your view. |
 
-Restart Prey after changing these settings. Lower render sizes such as 1920×1080 reduce GPU cost; 3200×1800 or 3840×2160 increase detail and cost.
+Restart Prey after changing these settings. Scale both render dimensions together to retain vertical view coverage. The default restores the tall aspect used in earlier headset tests; it is a starting preset, not automatic headset detection. Native menus may have unused space within the floating screen. World rendering should not be narrowed to 16:9 to remove that menu space.
+
+Unversioned configurations containing the old `2560`, `1440` default are backed up and migrated once. Custom sizes are preserved. To deliberately keep 2560×1440, add `"ResolutionDefaultsVersion": 1` to `PreyVR.json`, or pass both `-Width 2560 -Height 1440` to the launcher. Command-line overrides must provide both dimensions.
 
 The gameplay HUD stays on its own transparent, flat canvas. Health, ammo, interaction prompts and reticle remain Prey's own graphics. The reticle lies at the HUD's fixed depth; it is not a marker painted onto world geometry. Subtitles and world markers remain in the scene. In-world computer terminals have a separate native interaction path; this menu beam does not replace that path yet.
 

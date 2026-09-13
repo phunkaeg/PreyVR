@@ -4,8 +4,8 @@ param(
     [string]$PackageDir='',
     [string]$Runtime='',
     [string]$RunRoot="$env:LOCALAPPDATA\PreyVR\runs",
-    [int]$Width=2560,
-    [int]$Height=1440,
+    [int]$Width=2016,
+    [int]$Height=2160,
     [int]$HudLayer=1,
     [int]$UiCurveDegrees=35,
     [int]$PointerHand=1,
@@ -23,6 +23,44 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 
+function Resolve-PreyVRRenderSize {
+    param($Saved, [int]$Width, [int]$Height, [bool]$WidthExplicit, [bool]$HeightExplicit)
+    if ($WidthExplicit -ne $HeightExplicit) {
+        throw 'Set both -Width and -Height together; a partial override changes the eye aspect ratio.'
+    }
+    $migrate=$false
+    if ($Saved -and !$WidthExplicit) {
+        if ($Saved.PSObject.Properties['Width']) {$Width=[int]$Saved.Width}
+        if ($Saved.PSObject.Properties['Height']) {$Height=[int]$Saved.Height}
+        # v0.5.0 persisted its widescreen default without recording whether the
+        # user chose it. Migrate only that exact unversioned pair. Explicit CLI
+        # dimensions, custom saved sizes and versioned settings remain choices.
+        $migrate=!$Saved.PSObject.Properties['ResolutionDefaultsVersion'] -and
+            $Saved.PSObject.Properties['Width'] -and $Saved.PSObject.Properties['Height'] -and
+            $Width -eq 2560 -and $Height -eq 1440
+        if ($migrate) {$Width=2016;$Height=2160}
+    }
+    if ($Width -lt 1280 -or $Width -gt 8192 -or $Height -lt 720 -or $Height -gt 8192) {
+        throw 'Render size must be 1280..8192 by 720..8192.'
+    }
+    [pscustomobject]@{Width=$Width;Height=$Height;MigrateLegacy=$migrate}
+}
+
+function Save-PreyVRConfiguration {
+    param([string]$Path, $Saved, [hashtable]$Settings, [bool]$MigrateLegacy)
+    if ($MigrateLegacy) {
+        $backup=$Path+'.before-resolution-fix-'+[guid]::NewGuid().ToString('N')+'.bak'
+        Copy-Item -LiteralPath $Path -Destination $backup -ErrorAction Stop
+        Write-Host "Previous display settings backed up to $backup"
+    }
+    if (!$Saved) {$Saved=[pscustomobject]@{}}
+    foreach ($key in $Settings.Keys) {$Saved | Add-Member -NotePropertyName $key -NotePropertyValue $Settings[$key] -Force}
+    if (!$Saved.PSObject.Properties['ResolutionDefaultsVersion']) {
+        $Saved | Add-Member -NotePropertyName 'ResolutionDefaultsVersion' -NotePropertyValue 1
+    }
+    $Saved | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $Path -Encoding UTF8
+}
+
 # **`$PSScriptRoot` must not be a param default here.** Under Windows PowerShell
 # 5.1, a script with [CmdletBinding()] invoked as `powershell.exe -File`
 # evaluates param defaults in a scope where $PSScriptRoot is still empty --
@@ -37,20 +75,19 @@ if (-not $PackageDir) { $PackageDir = $PSScriptRoot }
 if (-not $PackageDir) { $PackageDir = Split-Path -Parent $PSCommandPath }
 try {
     $config=Join-Path $PackageDir 'PreyVR.json'
+    $saved=$null
     if (Test-Path -LiteralPath $config) {
         $saved=Get-Content -LiteralPath $config -Raw | ConvertFrom-Json
         if (!$GameExe -and $saved.PSObject.Properties['GameExe']) {$GameExe=$saved.GameExe}
-        if (!$PSBoundParameters.ContainsKey('Width') -and $saved.PSObject.Properties['Width']) {$Width=[int]$saved.Width}
-        if (!$PSBoundParameters.ContainsKey('Height') -and $saved.PSObject.Properties['Height']) {$Height=[int]$saved.Height}
         if (!$PSBoundParameters.ContainsKey('HudLayer') -and $saved.PSObject.Properties['HudLayer']) {$HudLayer=[int]$saved.HudLayer}
         if (!$PSBoundParameters.ContainsKey('UiCurveDegrees') -and $saved.PSObject.Properties['UiCurveDegrees']) {$UiCurveDegrees=[int]$saved.UiCurveDegrees}
         if (!$PSBoundParameters.ContainsKey('PointerHand') -and $saved.PSObject.Properties['PointerHand']) {$PointerHand=[int]$saved.PointerHand}
         if (!$PSBoundParameters.ContainsKey('UiScalePercent') -and $saved.PSObject.Properties['UiScalePercent']) {$UiScalePercent=[int]$saved.UiScalePercent}
         if (!$PSBoundParameters.ContainsKey('UiGuide') -and $saved.PSObject.Properties['UiGuide']) {$UiGuide=[int]$saved.UiGuide}
     }
-    if ($Width -lt 1280 -or $Width -gt 8192 -or $Height -lt 720 -or $Height -gt 8192) {
-        throw 'Render size must be 1280..8192 by 720..8192.'
-    }
+    $renderSize=Resolve-PreyVRRenderSize -Saved $saved -Width $Width -Height $Height `
+        -WidthExplicit $PSBoundParameters.ContainsKey('Width') -HeightExplicit $PSBoundParameters.ContainsKey('Height')
+    $Width=$renderSize.Width;$Height=$renderSize.Height
     if ($HudLayer -notin @(0,1)) {throw 'HudLayer must be 0 or 1.'}
     if ($UiCurveDegrees -lt 0 -or $UiCurveDegrees -gt 60) {throw 'UiCurveDegrees must be 0..60 (0 is flat).'}
     if ($PointerHand -notin @(0,1,2)) {throw 'PointerHand must be 0 (left), 1 (right), or 2 (buttons only).'}
@@ -109,13 +146,15 @@ try {
     $running=@(Get-Process -Name $fleetNames -ErrorAction SilentlyContinue)
     if ($running.Count) {throw ('Close the running game first: '+(($running | Select-Object -ExpandProperty ProcessName) -join ', '))}
     Write-Host "Prey VR: $Width x $Height per eye; UI scale $UiScalePercent%; guide $(if($UiGuide){'on'}else{'off'}); runtime: $(if($Runtime){$Runtime}else{'system OpenXR runtime'})"
+    if ($renderSize.MigrateLegacy) {Write-Host 'Replacing the v0.5.0 widescreen default with 2016 x 2160 for greater vertical view coverage.'}
     Write-Host "Mod binaries: $BinDir"
     Write-Host 'Controls: menu button = pause; right stick = navigate; A = select; B = back.'
     Write-Host 'Point + beam-hand trigger = click/drag; grips = tabs; X/Y = actions.'
     Write-Host 'F12 or both grips = reset view. Press A at the title/loading prompt.'
     Write-Host 'Tilde (the key below Esc) opens Prey''s own console, when focused.'
     if ($DryRun) {Write-Host 'Preflight passed. Nothing launched.';exit 0}
-    @{GameExe=$GameExe;Width=$Width;Height=$Height;HudLayer=$HudLayer;UiCurveDegrees=$UiCurveDegrees;PointerHand=$PointerHand;UiScalePercent=$UiScalePercent;UiGuide=$UiGuide} | ConvertTo-Json | Set-Content -LiteralPath $config -Encoding UTF8
+    Save-PreyVRConfiguration -Path $config -Saved $saved -MigrateLegacy $renderSize.MigrateLegacy -Settings `
+        @{GameExe=$GameExe;Width=$Width;Height=$Height;HudLayer=$HudLayer;UiCurveDegrees=$UiCurveDegrees;PointerHand=$PointerHand;UiScalePercent=$UiScalePercent;UiGuide=$UiGuide}
     $run=Join-Path $RunRoot ('player-{0:yyyyMMdd-HHmmss}' -f (Get-Date))
     [void](New-Item -ItemType Directory -Path $run -Force)
     $info=New-Object System.Diagnostics.ProcessStartInfo
