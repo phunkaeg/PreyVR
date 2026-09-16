@@ -88,6 +88,7 @@ add_library(preyvr_core STATIC
     src/common/InventoryDepth.cpp
     src/common/UiPanel.cpp
     src/common/MotionController.cpp
+    src/common/TwoHandedAim.cpp
     src/common/OpenXRBootstrap.cpp
     src/common/RenderFrameTable.cpp
     src/common/RuntimeSnapshot.cpp
@@ -340,6 +341,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_motion_controller_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_motion_controller_tests)
     add_test(NAME motion_controller COMMAND preyvr_motion_controller_tests)
+
+    add_executable(preyvr_two_handed_aim_tests tests/TwoHandedAimTests.cpp)
+    target_link_libraries(preyvr_two_handed_aim_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_two_handed_aim_tests)
+    add_test(NAME two_handed_aim COMMAND preyvr_two_handed_aim_tests)
 
     add_executable(preyvr_anim_ik_tests tests/AnimIkTests.cpp)
     target_link_libraries(preyvr_anim_ik_tests PRIVATE preyvr_core)

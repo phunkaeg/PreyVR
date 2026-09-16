@@ -1,0 +1,85 @@
+Test project D:/Dev Debug/PreyVR/build/inventory-stereo
+      Start  1: vr_math
+ 1/40 Test  #1: vr_math ..........................   Passed    0.01 sec
+      Start  2: engine_map
+ 2/40 Test  #2: engine_map .......................   Passed    0.01 sec
+      Start  3: aim_state_fixture
+ 3/40 Test  #3: aim_state_fixture ................   Passed    0.01 sec
+      Start  4: wrench_query_fixture
+ 4/40 Test  #4: wrench_query_fixture .............   Passed    0.01 sec
+      Start  5: interaction_query_fixture
+ 5/40 Test  #5: interaction_query_fixture ........   Passed    0.02 sec
+      Start  6: runtime_snapshot
+ 6/40 Test  #6: runtime_snapshot .................   Passed    0.02 sec
+      Start  7: xr_swapchain_format
+ 7/40 Test  #7: xr_swapchain_format ..............   Passed    0.01 sec
+      Start  8: xr_frame_contract
+ 8/40 Test  #8: xr_frame_contract ................   Passed    0.01 sec
+      Start  9: stereo_frame
+ 9/40 Test  #9: stereo_frame .....................   Passed    0.01 sec
+      Start 10: motion_controller
+10/40 Test #10: motion_controller ................   Passed    0.02 sec
+      Start 11: two_handed_aim
+11/40 Test #11: two_handed_aim ...................   Passed    0.02 sec
+      Start 12: anim_ik
+12/40 Test #12: anim_ik ..........................   Passed    0.01 sec
+      Start 13: weapon_rig_alignment
+13/40 Test #13: weapon_rig_alignment .............   Passed    0.02 sec
+      Start 14: weapon_aim
+14/40 Test #14: weapon_aim .......................   Passed    0.01 sec
+      Start 15: frustum_coverage
+15/40 Test #15: frustum_coverage .................   Passed    0.02 sec
+      Start 16: depth_submission
+16/40 Test #16: depth_submission .................   Passed    0.01 sec
+      Start 17: frame_clock
+17/40 Test #17: frame_clock ......................   Passed    0.01 sec
+      Start 18: frame_timing
+18/40 Test #18: frame_timing .....................   Passed    0.01 sec
+      Start 19: input_event
+19/40 Test #19: input_event ......................   Passed    0.01 sec
+      Start 20: input_queue
+20/40 Test #20: input_queue ......................   Passed    0.01 sec
+      Start 21: menu_navigator
+21/40 Test #21: menu_navigator ...................   Passed    0.01 sec
+      Start 22: inventory_depth
+22/40 Test #22: inventory_depth ..................   Passed    0.01 sec
+      Start 23: ui_panel
+23/40 Test #23: ui_panel .........................   Passed    0.01 sec
+      Start 24: locomotion
+24/40 Test #24: locomotion .......................   Passed    0.01 sec
+      Start 25: render_frame_table
+25/40 Test #25: render_frame_table ...............   Passed    6.24 sec
+      Start 26: stereo_camera
+26/40 Test #26: stereo_camera ....................   Passed    0.01 sec
+      Start 27: camera_edit
+27/40 Test #27: camera_edit ......................   Passed    0.01 sec
+      Start 28: frame_dump
+28/40 Test #28: frame_dump .......................   Passed    0.01 sec
+      Start 29: debug_registers
+29/40 Test #29: debug_registers ..................   Passed    0.02 sec
+      Start 30: console_policy
+30/40 Test #30: console_policy ...................   Passed    0.01 sec
+      Start 31: runtime_bootstrap
+31/40 Test #31: runtime_bootstrap ................   Passed    0.04 sec
+      Start 32: ui_pointer_dispatch
+32/40 Test #32: ui_pointer_dispatch ..............   Passed    0.01 sec
+      Start 33: inventory_pointer_capture
+33/40 Test #33: inventory_pointer_capture ........   Passed    0.01 sec
+      Start 34: near_fov_override
+34/40 Test #34: near_fov_override ................   Passed    0.01 sec
+      Start 35: dll_load_fail_closed
+35/40 Test #35: dll_load_fail_closed .............   Passed    0.06 sec
+      Start 36: inventory_swapchain
+36/40 Test #36: inventory_swapchain ..............   Passed    0.05 sec
+      Start 37: openxr_preflight_files
+37/40 Test #37: openxr_preflight_files ...........   Passed    0.02 sec
+      Start 38: dxgi_method_probe
+38/40 Test #38: dxgi_method_probe ................   Passed    0.20 sec
+      Start 39: smoke_log_parser
+39/40 Test #39: smoke_log_parser .................   Passed    0.47 sec
+      Start 40: build_doctor
+40/40 Test #40: build_doctor .....................   Passed    0.55 sec
+
+100% tests passed, 0 tests failed out of 40
+
+Total Test time (real) =   8.08 sec

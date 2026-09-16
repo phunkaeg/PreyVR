@@ -1,0 +1,24 @@
+{
+  "runId": "run-20260913-090216",
+  "startedUtc": "2026-09-12T23:02:26.9855911Z",
+  "gameExe": "D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\Prey.exe",
+  "gameRoot": "D:\\SteamLibrary\\steamapps\\common\\Prey",
+  "pid": 89128,
+  "rendererUp": true,
+  "dll": "D:\\Dev Debug\\PreyVR\\build\\inventory-backdrop-9b38d02\\Release\\PreyVR.dll",
+  "dllSha256": "8079BA513861F6B4FC3A275C54B25C0D0597D87A55B1B97D7B79037CB7B0746D",
+  "dllBytes": 912896,
+  "xrsimDir": "D:\\Dev Debug\\PreyVR\\build\\backdrop-test-20260913\\runs\\run-20260913-090216\\xrsim",
+  "tapeDir": "D:\\Dev Debug\\PreyVR\\build\\backdrop-test-20260913\\runs\\run-20260913-090216\\tape",
+  "logDir": "D:\\Dev Debug\\PreyVR\\build\\backdrop-test-20260913\\runs\\run-20260913-090216\\log",
+  "environment": {
+    "SteamAppId": "480490",
+    "XRSIM_DIR": "D:\\Dev Debug\\PreyVR\\build\\backdrop-test-20260913\\runs\\run-20260913-090216\\xrsim",
+    "PREYVR_LOG_PATH": "D:\\Dev Debug\\PreyVR\\build\\backdrop-test-20260913\\runs\\run-20260913-090216\\log\\PreyVR.log",
+    "XR_RUNTIME_JSON": "C:\\Users\\meise\\AppData\\Local\\xr-sim\\runtime\\xrsim-x64.json",
+    "XR_API_LAYER_PATH": "C:\\Users\\meise\\AppData\\Local\\xr-tape\\layer-x64",
+    "XR_ENABLE_API_LAYERS": "XR_APILAYER_XRTAPE_recorder",
+    "XRTAPE_DIR": "D:\\Dev Debug\\PreyVR\\build\\backdrop-test-20260913\\runs\\run-20260913-090216\\tape",
+    "XRTAPE_MAX_FRAMES": "20000"
+  }
+}

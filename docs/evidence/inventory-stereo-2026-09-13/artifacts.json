@@ -1,0 +1,10 @@
+{
+  "source_base": "1ac2d6103d97f1321f991c46f2ccae8bbae6a115",
+  "source_state": "uncommitted opt-in prototype; feature branch not merged",
+  "dll": "D:\\Dev Debug\\PreyVR\\build\\inventory-stereo\\Release\\PreyVR.dll",
+  "sha256": "e44703a24ec2abc664f6ca718c96246757151d7a016a8e0e0ec6ff38c5a66fc0",
+  "bytes": 2521600,
+  "build": "Release",
+  "tests": "39/39",
+  "in_game_tested": false
+}

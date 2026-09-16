@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260913-inventory-stereo-live",
+  "recorded_at": "2026-09-13T02:28:47.739503+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll with PreyVR E49098B03CEDF252AD1EE24D6F211318524E205C73783B720563F67613521880",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Does native dual inventory Display produce layer-dependent binocular disparity with a complete zero-depth equality control?",
+  "claim": "Same-frame raw inventory eyes are byte identical at depth 0. At depths 25 and 100, tab and footer regions shift differently from the inventory grid; stable xr-sim captures show both eye-specific panels. This confirms bounded binocular layer separation, not headset quality or full-path acceptance.",
+  "evidence_grade": "LIVE",
+  "environment": "in_game",
+  "method": "Running Steam Prey with process-scoped xr-sim and xr-tape 0.1.0. Captured native D3D11 RGBA pairs at depth 25, 0 and 100; checked headers, exact zero equality and region horizontal shifts with Python 3.12, NumPy 1.26.4 and Pillow. See docs/INVENTORY-STEREO-LIVE-2026-09-13.md. Supplements 20260913-inventory-stereo-matrix.",
+  "validity": "VALID",
+  "mutation": "temporary",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Tested DLL hash in preserved launch manifest; Steam module identity matches verified supported target."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Validated 48-byte headers, matched native frame IDs and dimensions; nonempty visible inventory in both eyes. Raw pair and compositor sources retained."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Zero-depth complete RGBA pair byte identical; nonzero depth yields nonuniform region disparity with strength response."
+    },
+    "scene": {
+      "status": "PASS",
+      "reason": "Loaded Talos Lobby, selected Disruptor inventory. Native Back key517 opens PDA; observed close and stable reopen."
+    },
+    "restore": {
+      "status": "PASS",
+      "reason": "Disabled stereo and inventory capture, VR teardown logged, then terminated exact owned PID34272 and verified absence. Process-scoped runtime setup."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "FAIL",
+    "reason": "Bounded pixel controls pass, but one black fallback compositor frame after synchronous readback is unresolved. Not approval of the complete VR path. Build and 39 tests pass separately."
+  },
+  "limits": "No headset acceptance, full 6DoF UI reprojection, controller drag or broad Display replay validation. Integer disparity estimates are region-level. Recorder truncated at 20000 frames, quads generic type36; later eye coverage is from xr-sim snapshots. Black frame may be freshness expiry during readback; timing cause not proven. One later context-reference release correction builds/tests but was not live tested.",
+  "artifacts": [
+    {
+      "path": "docs/INVENTORY-STEREO-LIVE-2026-09-13.md",
+      "sha256": "c7ed6deb0dcf95ba41aff1e6e95150a401df3c12b7b537ea619125c765f4a746",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/run.json",
+      "sha256": "b0b1da87108d5dd74bca3237fcb08de0e017f2569b912d37c24d505c3711d67f",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/PreyVR.log",
+      "sha256": "7c360a83459927e3fd2c46ee973c46cd2cdbdd77a33669636b93d53e1239b67e",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/comparison.json",
+      "sha256": "ee2bdc174dc54f7fd1aa4cf66baf2bd5f58250c102b7c09280c6489caf793300",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/compare_pairs.py",
+      "sha256": "b6d545f49386b41f35a97fc19933264fcf6c405763ef0afe7927ecb021c9ffda",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/trace-summary.json",
+      "sha256": "5f7382ecdf8d92fe5c882f4a4dc5eb687fd904f9c04f1beff16138860cd72c9a",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory_depth25_stable.json",
+      "sha256": "987e47e3a302d8713f9b106b0e26dd96efc181019a14ef4f201b723bf1652081",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory_depth25_stable_left.png",
+      "sha256": "5be1ce4e4699ea4bac8012ed256029dc498a00270b3466cf39c6157228aa97b4",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory_depth25_stable_right.png",
+      "sha256": "145f3768587553db87adcbbd1534e6bd4b370f8859fff297fd6288bf38afb00a",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory_reopened.json",
+      "sha256": "d80f4bac163a320ba3279fa85091cea274f3dcb4f0aa3135628ab8a7e826476b",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory_reopened_right.png",
+      "sha256": "d1928004fba7e7c875cf4ada8c253b8e30c636eee52e8127132e9287d60c37f3",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory_reopened_stable.json",
+      "sha256": "19c492303379549f333762ca0f4b74d76e6519c816cf0085dcc827d1060ccd74",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory-16031-tag1100-eye0.pvrframe",
+      "sha256": "700fae4789b76c6171461d13ee1ba352dd84c8c1f4251fe1c865ff48294ffb6b",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory-16031-tag1101-eye1.pvrframe",
+      "sha256": "4d79af2481db93a350f1d3fa9dba2cc6b9ad20ff049602e0a23f1ededbf9bda9",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory-37468-tag1200-eye0.pvrframe",
+      "sha256": "4ae78522f7fb60ab4c2a0e10cbbc1c2be9fb41682343f3d8207f1a241107b36c",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory-37468-tag1201-eye1.pvrframe",
+      "sha256": "9db4d5ccaf220f135a99867553595047eb9972acd2992a2d4258290634845a93",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory-38494-tag1300-eye0.pvrframe",
+      "sha256": "20ae9049aed94a54c99c728024c9f4333a3b88857e99041ec82aab9c9a16c2b0",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory-38494-tag1301-eye1.pvrframe",
+      "sha256": "4ceceefa55e6d47206ac0f52f84e62828a169f7438879f1d393b94ac95d6b923",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory-48348-tag1400-eye0.pvrframe",
+      "sha256": "db6ef728471899be4bb9902381f3a6df5afdf76991706ba361a5dada9ffaddf6",
+      "role": "native pixel control or runtime evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-live-2026-09-13/inventory-48348-tag1401-eye1.pvrframe",
+      "sha256": "a45642fc3ece4933dee588fdca70bff113ec12b982fd1965dd3629d59796f863",
+      "role": "native pixel control or runtime evidence"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Repair diagnostic readback ordering using explicit same-frame staging, then test pointer/dialog paths and headset depth comfort. Keep opt-in. Review as native Scaleform binocular rendering evidence with failed overall baseline."
+}

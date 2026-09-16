@@ -7,6 +7,7 @@
 
 #include <d3d11.h>
 #include <dxgi.h>
+#include <wrl/client.h>
 
 #include <atomic>
 #include <mutex>
@@ -22,6 +23,7 @@ namespace {
 std::atomic<bool> gRequestPending{false};
 std::atomic<std::uint32_t> gRequestTag{0};
 std::atomic<bool> gHudOnly{false};
+std::atomic<bool> gInventoryPair{false};
 std::mutex gRequestMutex;
 std::atomic<DWORD> gLastResult{static_cast<DWORD>(FrameCaptureResult::ok)};
 std::atomic<unsigned long long> gCompleted{0};
@@ -103,6 +105,13 @@ bool WriteDump(
 
 } // namespace
 
+DWORD RequestInventoryPairCapture(std::uint32_t tag) {
+    std::lock_guard lock(gRequestMutex);
+    if(gRequestPending.load())return static_cast<DWORD>(FrameCaptureResult::refused);
+    gRequestTag.store(tag);gInventoryPair.store(true);gHudOnly.store(false);
+    gRequestPending.store(true,std::memory_order_release);
+    return 0;
+}
 DWORD RequestFrameCapture(std::uint32_t tag,bool hudOnly)
 {
     std::lock_guard lock(gRequestMutex);
@@ -111,6 +120,7 @@ DWORD RequestFrameCapture(std::uint32_t tag,bool hudOnly)
     }
     gRequestTag.store(tag, std::memory_order_release);
     gHudOnly.store(hudOnly);
+    gInventoryPair.store(false);
     gRequestPending.store(true,std::memory_order_release);
     return static_cast<DWORD>(FrameCaptureResult::ok);
 }
@@ -158,6 +168,31 @@ void ServiceFrameCapture(void* renderer, unsigned long long frameIndex)
     if (swapChain == nullptr || device == nullptr) {
         Finish(FrameCaptureResult::unavailable, "swapchain_or_device_null");
         return;
+    }
+
+    if(gInventoryPair.load()) {
+        ID3D11Texture2D* eyes[2]{};
+        if(!PeekInventoryPair(&eyes[0],&eyes[1])) {
+            Finish(FrameCaptureResult::unavailable,"no_fresh_inventory_pair");return;
+        }
+        Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;device->GetImmediateContext(&context);
+        if(!context) {Finish(FrameCaptureResult::unavailable,"no_context");return;}
+        for(unsigned eye=0;eye<2;++eye) {
+            D3D11_TEXTURE2D_DESC d{};eyes[eye]->GetDesc(&d);
+            d.Usage=D3D11_USAGE_STAGING;d.BindFlags=0;d.CPUAccessFlags=D3D11_CPU_ACCESS_READ;d.MiscFlags=0;
+            Microsoft::WRL::ComPtr<ID3D11Texture2D> staging;
+            if(FAILED(device->CreateTexture2D(&d,nullptr,&staging))) {Finish(FrameCaptureResult::failed,"inventory_staging");return;}
+            context->CopyResource(staging.Get(),eyes[eye]);
+            D3D11_MAPPED_SUBRESOURCE mapped{};
+            if(FAILED(context->Map(staging.Get(),0,D3D11_MAP_READ,0,&mapped))) {Finish(FrameCaptureResult::failed,"inventory_map");return;}
+            framedump::Header h{};h.width=d.Width;h.height=d.Height;h.dxgiFormat=d.Format;
+            h.rowPitch=mapped.RowPitch;h.frameIndex=frameIndex;h.tag=gRequestTag.load()+eye;
+            const auto path=CaptureDirectory()/("inventory-"+std::to_string(frameIndex)+"-tag"+std::to_string(h.tag)+"-eye"+std::to_string(eye)+".pvrframe");
+            const bool written=WriteDump(h,static_cast<const std::uint8_t*>(mapped.pData),mapped.RowPitch,path);
+            context->Unmap(staging.Get(),0);
+            if(!written) {Finish(FrameCaptureResult::failed,"inventory_write");return;}
+        }
+        gCompleted.fetch_add(1);Finish(FrameCaptureResult::ok,"inventory_pair_written");return;
     }
 
     ID3D11Texture2D* backBuffer = nullptr;

@@ -1,0 +1,188 @@
+{
+  "evidence": "Source anchor checks plus synthetic Python arithmetic controls only",
+  "source_checks": [
+    {
+      "file": "D:\\Dev Debug\\PreyVR\\src\\dll\\AimTakeover.cpp",
+      "anchor": "gOriginMode{0}",
+      "line": 69,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\PreyVR\\src\\dll\\AimTakeover.cpp",
+      "anchor": "SolveTwoHandedFrame",
+      "line": 99,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\PreyVR\\src\\dll\\AimTakeover.cpp",
+      "anchor": "SetAimOriginFromHand",
+      "line": 544,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\PreyVR\\src\\dll\\ReticleFollow.cpp",
+      "anchor": "kDefaultConvergenceMm = 10000",
+      "line": 67,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\PreyVR\\src\\dll\\XrSessionHost.cpp",
+      "anchor": "gHost.eyePose[target] = views[target].pose;",
+      "line": 951,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\PreyVR\\src\\dll\\XrSessionHost.cpp",
+      "anchor": "CopyResource(gHost.eyeImage[target], backBuffer)",
+      "line": 946,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\PreyVR\\src\\dll\\HudLayer.cpp",
+      "anchor": "void __fastcall StereoDisplay",
+      "line": 119,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\PreyVR\\src\\dll\\HudLayer.cpp",
+      "anchor": "void __fastcall CaptureFlash",
+      "line": 227,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\XRSession.cpp",
+      "anchor": "sx = (unsigned)x0; sy = (unsigned)y0;",
+      "line": 519,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\XRSession.cpp",
+      "anchor": "projViews[i].fov = g.views[i].fov;",
+      "line": 677,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\XRSession.cpp",
+      "anchor": "const XrPosef& rp = g.views[i].pose;",
+      "line": 637,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\XRRenderHook.cpp",
+      "anchor": "return m_LastEye;",
+      "line": 388,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\XRRenderHook.cpp",
+      "anchor": "m_Session.EndFrameNoRender();",
+      "line": 358,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\ModMain.cpp",
+      "anchor": "void ModMain::UpdatePhysicalCrouch",
+      "line": 795,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\ModMain.cpp",
+      "anchor": "void ModMain::UpdateTurn",
+      "line": 1292,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\ModMain.cpp",
+      "anchor": "bool ModMain::UpdateWheelPointing",
+      "line": 841,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\XRGameHooks.cpp",
+      "anchor": "GroundMovementInput_Hook",
+      "line": 112,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\XRGameHooks.cpp",
+      "anchor": "PsiCamSwap",
+      "line": 191,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\XRWeaponHook.cpp",
+      "anchor": "GetReticleInfoForFiring_Hook",
+      "line": 424,
+      "result": "anchor present; interpretation requires surrounding source"
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\XRWeaponHook.cpp",
+      "anchor": "IsMuzzleSpawn(_position) && MuzzleShot(p, d)",
+      "line": 213,
+      "result": "anchor present; interpretation requires surrounding source"
+    }
+  ],
+  "crop_controls": {
+    "aligned": {
+      "width": 1000,
+      "source_tangents": [
+        -1,
+        1
+      ],
+      "requested_tangents": [
+        -1,
+        1
+      ],
+      "integer_bounds": [
+        0,
+        1000
+      ],
+      "actual_tangents": [
+        -1.0,
+        1.0
+      ],
+      "max_tangent_error": 0.0
+    },
+    "odd_resolution": {
+      "width": 1511,
+      "source_tangents": [
+        -1.5,
+        1.5
+      ],
+      "requested_tangents": [
+        -1.0,
+        1.19175359259421
+      ],
+      "integer_bounds": [
+        251,
+        1355
+      ],
+      "actual_tangents": [
+        -1.0016545334215752,
+        1.1902713434811383
+      ],
+      "max_tangent_error": 0.0016545334215751772
+    },
+    "missing_coverage": {
+      "width": 1000,
+      "source_tangents": [
+        -1.0,
+        1.0
+      ],
+      "requested_tangents": [
+        -1.3,
+        0.9
+      ],
+      "integer_bounds": [
+        0,
+        950
+      ],
+      "actual_tangents": [
+        -1.0,
+        0.8999999999999999
+      ],
+      "max_tangent_error": 0.30000000000000004
+    }
+  },
+  "limits": "Does not execute donor C++, measure FPS, prove ABI, or show headset appearance."
+}

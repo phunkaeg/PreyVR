@@ -1,0 +1,104 @@
+{
+  "target": "D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\PreyDll.dll",
+  "sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "image_base": "0x180000000",
+  "method": "Unicorn 2.1.4 execution of unmodified Steam CalcTransMat3D and its matrix multiply callee",
+  "anchors": {
+    "display": "0x18ab710",
+    "calc": "0xdb9620",
+    "world_view": "0xdb968a",
+    "zero_projection_offsets": "0xdb96ce"
+  },
+  "fixtures": [
+    {
+      "world_z": 0,
+      "expected_w": 36882.85546875,
+      "matrix": [
+        1.920982003211975,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -3.415079116821289,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        36882.85546875
+      ]
+    },
+    {
+      "world_z": -1000,
+      "expected_w": 35882.85546875,
+      "matrix": [
+        1.920982003211975,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -3.415079116821289,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        35882.85546875
+      ]
+    },
+    {
+      "world_z": -15000,
+      "expected_w": 21882.85546875,
+      "matrix": [
+        1.920982003211975,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -3.415079116821289,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        21882.85546875
+      ]
+    },
+    {
+      "world_z": 15000,
+      "expected_w": 51882.85546875,
+      "matrix": [
+        1.920982003211975,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -3.415079116821289,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        51882.85546875
+      ]
+    }
+  ],
+  "in_game_tested": false,
+  "claim": "Output is row-major; origin homogeneous W=C+worldZ. Negative native Z is closer."
+}

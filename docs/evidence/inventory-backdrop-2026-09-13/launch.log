@@ -1,0 +1,39 @@
+mod: D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\PreyVR.dll
+     912896 bytes, SHA-256 8079BA513861F6B4FC3A275C54B25C0D0597D87A55B1B97D7B79037CB7B0746D
+
+run: run-20260913-090216
+  state:  D:\Dev Debug\PreyVR\build\backdrop-test-20260913\runs\run-20260913-090216\xrsim
+  tape:   D:\Dev Debug\PreyVR\build\backdrop-test-20260913\runs\run-20260913-090216\tape
+  log:    D:\Dev Debug\PreyVR\build\backdrop-test-20260913\runs\run-20260913-090216\log\PreyVR.log
+
+child environment:
+  SteamAppId = 480490
+  XRSIM_DIR = D:\Dev Debug\PreyVR\build\backdrop-test-20260913\runs\run-20260913-090216\xrsim
+  PREYVR_LOG_PATH = D:\Dev Debug\PreyVR\build\backdrop-test-20260913\runs\run-20260913-090216\log\PreyVR.log
+  XR_RUNTIME_JSON = C:\Users\meise\AppData\Local\xr-sim\runtime\xrsim-x64.json
+  XR_API_LAYER_PATH = C:\Users\meise\AppData\Local\xr-tape\layer-x64
+  XR_ENABLE_API_LAYERS = XR_APILAYER_XRTAPE_recorder
+  XRTAPE_DIR = D:\Dev Debug\PreyVR\build\backdrop-test-20260913\runs\run-20260913-090216\tape
+  XRTAPE_MAX_FRAMES = 20000
+
+arguments: +r_Width 1920 +r_Height 1080 +r_Fullscreen 0
+
+launched PID 89128
+waiting for renderer initialisation...
+renderer up.
+
+injecting:
+Loaded D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\PreyVR.dll into Prey PID 89128
+  ok   PreyVR.dll loaded
+
+PID:      89128
+manifest: D:\Dev Debug\PreyVR\build\backdrop-test-20260913\runs\run-20260913-090216\run.json
+
+the mod is loaded. Bring VR up with either:
+  F11 in the game window (F12 recenters, as do both grips), or
+  echo vr.enable > 'D:\Dev Debug\PreyVR\build\backdrop-test-20260913\runs\run-20260913-090216\log\commands.txt'
+
+F11 needs the Prey DESKTOP window focused, which is awkward in a
+headset -- the command channel is the reliable route while worn.
+observe with
+  ./tools/Invoke-PreyVRControllerSweep.ps1 -StateDir 'D:\Dev Debug\PreyVR\build\backdrop-test-20260913\runs\run-20260913-090216\xrsim'

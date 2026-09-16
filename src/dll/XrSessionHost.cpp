@@ -87,6 +87,7 @@ struct Host {
     bool pointerReady=false,pointerAttempted=false,cylinderSupported=false;
     XrSwapchain hudSwapchain = XR_NULL_HANDLE;
     std::unique_ptr<InventorySwapchain> inventorySwapchain;
+    std::unique_ptr<InventorySwapchain> inventoryRightSwapchain;
     std::vector<XrSwapchainImageD3D11KHR> hudImages;
     D3D11_TEXTURE2D_DESC hudDesc{};
     bool guideReady = false, guideAttempted = false;
@@ -612,6 +613,7 @@ void Teardown()
     SetHudLayerPresentation(false);
     SetInventoryConsumerReady(nullptr);
     gHost.inventorySwapchain.reset(); // XR images die before their session.
+    gHost.inventoryRightSwapchain.reset();
     DestroyXrInput();
     for (auto*& image : gHost.eyeImage) {
         if (image != nullptr) {
@@ -1167,7 +1169,8 @@ void ServiceXrFrame(void* renderer)
     const int renderedEye = dll::ConsumeRenderedEye();
     // Take each capture once, even on skipped submissions; never reuse a PDA
     // image after a dialog or another menu has replaced it.
-    ID3D11Texture2D* inventoryTexture = InventoryLayerTexture();
+    ID3D11Texture2D* inventoryRightTexture=nullptr;
+    ID3D11Texture2D* inventoryTexture = InventoryLayerTexture(&inventoryRightTexture);
     ID3D11Texture2D* hudTexture = HudLayerTexture();
     SetInventoryConsumerReady(nullptr);
     if (gStatus.load(std::memory_order_acquire) != static_cast<DWORD>(XrSessionStatus::running)) {
@@ -1317,7 +1320,11 @@ void ServiceXrFrame(void* renderer)
         Log(std::string("result=0 detail=ui_panel active=")+(wantPanel?"1":"0"));
     }
     const auto reference=HeadTrackingReferenceGeneration();
-    const float curve=gHost.cylinderSupported?static_cast<float>(gUiCurveDegrees.load())*.01745329252f:0;
+    // Stereo inventory uses a planar disparity contract. Include this in the
+    // fit/serial decision so switching modes also cancels an old curved drag.
+    const bool planarInventory=(InventoryStereoEnabled() && HudInventoryIsOpen()) || inventoryRightTexture;
+    const float curve=gHost.cylinderSupported && !planarInventory?
+        static_cast<float>(gUiCurveDegrees.load())*.01745329252f:0;
     if (wantPanel && (!gHost.menuPanel || curve!=gHost.panelAngle || (reference%2==0 && reference!=gHost.panelReference))) {
         std::array<ui::Eye,2> optical{};
         for(int eye=0;eye<2;++eye) {
@@ -1413,8 +1420,10 @@ void ServiceXrFrame(void* renderer)
     bool rendered = false;
     bool stereoPair = false;
     bool inventorySubmitted = false, inventoryPrepared = false;
+    bool inventoryStereoSubmitted=false,inventoryStereoPrepared=false;
     D3D11_TEXTURE2D_DESC inventoryDescription{};
     if (!InventoryCaptureEnabled() && !inventoryTexture) gHost.inventorySwapchain.reset();
+    if (!InventoryStereoEnabled() && !inventoryRightTexture) gHost.inventoryRightSwapchain.reset();
 
     if (gHost.contract.ShouldRenderThisFrame()) {
         IDXGISwapChain* swapChain = *reinterpret_cast<IDXGISwapChain**>(
@@ -1462,6 +1471,12 @@ void ServiceXrFrame(void* renderer)
                         xrAcquireSwapchainImage, xrWaitSwapchainImage, xrReleaseSwapchainImage, xrDestroySwapchain});
                 }
                 inventoryPrepared = gHost.inventorySwapchain->Prepare(gHost.session, backDesc, gHost.colorFormat);
+                if(inventoryPrepared && (InventoryStereoEnabled() || inventoryRightTexture)) {
+                    if(!gHost.inventoryRightSwapchain)gHost.inventoryRightSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
+                        xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
+                        xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
+                    inventoryStereoPrepared=gHost.inventoryRightSwapchain->Prepare(gHost.session,backDesc,gHost.colorFormat);
+                }
                 inventoryDescription = backDesc;
                 if (inventoryTexture) {
                     // This draw was redirected already. If XR upload fails,
@@ -1471,8 +1486,19 @@ void ServiceXrFrame(void* renderer)
                     ID3D11DeviceContext* context = nullptr; gHost.device->GetImmediateContext(&context);
                     const auto upload = inventoryPrepared ? gHost.inventorySwapchain->Copy(context, inventoryTexture)
                                                           : InventorySwapchain::Upload::failed;
-                    if (context) context->Release();
                     inventorySubmitted = upload == InventorySwapchain::Upload::ready;
+                    if(inventorySubmitted && inventoryRightTexture && inventoryStereoPrepared) {
+                        const auto rightUpload=gHost.inventoryRightSwapchain->Copy(context,inventoryRightTexture);
+                        inventoryStereoSubmitted=rightUpload==InventorySwapchain::Upload::ready;
+                        if(!inventoryStereoSubmitted) {
+                            SetInventoryStereoEnabled(0);
+                            inventoryStereoPrepared=false;
+                            if(rightUpload==InventorySwapchain::Upload::sessionFault)gStopRequested.store(true);
+                            Log("result=refused detail=inventory_right_upload mono_fallback=1");
+                        }
+                    }
+                    // Keep our context reference through both eye uploads.
+                    if (context) context->Release();
                     rendered = inventorySubmitted;
                     if (!inventorySubmitted) {
                         RefuseInventoryCapture("swapchain_upload_failed");
@@ -1580,6 +1606,7 @@ void ServiceXrFrame(void* renderer)
     layer.viewCount = 2;
     layer.views = projViews;
     XrCompositionLayerQuad panelLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    XrCompositionLayerQuad rightPanelLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
     if (panelActive) {
         const auto& p=*gHost.menuPanel;
         panelLayer.space=gHost.space;
@@ -1591,13 +1618,21 @@ void ServiceXrFrame(void* renderer)
         if(inventorySubmitted)panelLayer.layerFlags=XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
         panelLayer.subImage.imageArrayIndex=0;
         panelLayer.subImage.imageRect={{0,0},{static_cast<int>(gHost.width),static_cast<int>(gHost.height)}};
+        if(inventoryStereoSubmitted) {
+            rightPanelLayer=panelLayer;
+            panelLayer.eyeVisibility=XR_EYE_VISIBILITY_LEFT;
+            rightPanelLayer.eyeVisibility=XR_EYE_VISIBILITY_RIGHT;
+            rightPanelLayer.subImage.swapchain=gHost.inventoryRightSwapchain->Handle();
+        }
     }
     XrCompositionLayerQuad guideLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
     XrCompositionLayerCylinderKHR cylinderLayer{XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR};
     ui::Surface surface{};
     if(panelActive) {
+        // The prototype's disparity and pointer mapping are defined on a plane.
+        // Do not wrap stereo imagery onto a cylinder with a different geometry.
         surface={*gHost.menuPanel,gHost.panelAngle};
-        if(gHost.panelAngle>0) {
+        if(surface.angle>0) {
             const auto axis=ui::CylinderAxis(surface);
             cylinderLayer.space=panelLayer.space;cylinderLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
             cylinderLayer.subImage=panelLayer.subImage;
@@ -1728,9 +1763,10 @@ void ServiceXrFrame(void* renderer)
     }
     if(!hudActive)SetHudLayerPresentation(false);
     std::vector<const XrCompositionLayerBaseHeader*> layers;
-    if(panelActive)layers.push_back(gHost.panelAngle>0?reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cylinderLayer):
+    if(panelActive)layers.push_back(surface.angle>0?reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cylinderLayer):
         reinterpret_cast<const XrCompositionLayerBaseHeader*>(&panelLayer));
     else layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&layer));
+    if(inventoryStereoSubmitted)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&rightPanelLayer));
     if(guideActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&guideLayer));
     else if(hudActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hudLayer));
     if(beamActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&beamLayer));
@@ -1745,8 +1781,13 @@ void ServiceXrFrame(void* renderer)
     const auto endResult=xrEndFrame(gHost.session, &endInfo);
     // Arm only after a complete successful frame. Until then the native movie
     // keeps rendering normally and the existing full-menu panel remains usable.
-    if (rendered && endResult == XR_SUCCESS && inventoryPrepared && !gStopRequested.load() && InventoryCaptureEnabled())
-        SetInventoryConsumerReady(&inventoryDescription);
+    if (rendered && endResult == XR_SUCCESS && inventoryPrepared && !gStopRequested.load() && InventoryCaptureEnabled()) {
+        const auto dx=views[1].pose.position.x-views[0].pose.position.x;
+        const auto dy=views[1].pose.position.y-views[0].pose.position.y;
+        const auto dz=views[1].pose.position.z-views[0].pose.position.z;
+        SetInventoryConsumerReady(&inventoryDescription,gHost.menuPanel?gHost.menuPanel->width:0,
+            std::sqrt(dx*dx+dy*dy+dz*dz),inventoryStereoPrepared);
+    }
     if (timing) {
         const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
         gEndFrame.AddNanoseconds(now - endStart);

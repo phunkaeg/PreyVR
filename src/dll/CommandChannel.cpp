@@ -365,6 +365,12 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         // the path that arms it is the same mistake twice in one session.
         out << "input.hotkeys result=" << (args.size()>1?SetHotkeysEnabled(arg(1,1)):0)
             << " consoleToggles=" << HotkeyConsoleToggles();
+    } else if (verb == "ui.stereo") {
+        out << "ui.stereo result=" << (args.size()>1?SetInventoryStereoEnabled(arg(1,0)):0)
+            << ' ' << InventoryStereoReport();
+    } else if (verb == "ui.depth") {
+        out << "ui.depth result=" << (args.size()>1?SetInventoryDepthPercent(arg(1,25)):0)
+            << ' ' << InventoryStereoReport();
     } else if (verb == "ui.inventory") {
         // Opt-in separate inventory layer; native redirection is additionally
         // gated on a compatible, recently serviced XR swapchain consumer.
@@ -600,6 +606,9 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << " nativeFailed=" << ReticleNativeCanvasFailedCount();
     } else if (verb == "aim.reticlestage") {
         out << "aim.reticlestage result=" << SetReticleStageScaleMode(arg(1, 0));
+    } else if (verb == "aim.twohand") {
+        out << "aim.twohand result=" << (args.size()>1?SetTwoHandedAim(arg(1,1)):0)
+            << TwoHandedAimStatus();
     } else if (verb == "aim.bodyyaw") {
         // 1 rotates head-relative offsets by the BODY yaw (camera - head), 0 by
         // the camera yaw. 0 makes the hand and weapon swing with the headset.
@@ -637,6 +646,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "weapon.calibrate result=" << CalibrateWeaponRotation();
     } else if (verb == "capture.hud") {
         out << "capture.hud result=" << RequestFrameCapture(static_cast<std::uint32_t>(arg(1,900)),true);
+    } else if (verb == "capture.inventory") {
+        out << "capture.inventory result=" << RequestInventoryPairCapture(static_cast<std::uint32_t>(arg(1,1000)));
     } else if (verb == "capture") {
         // A one-shot readback of the backbuffer -- which is exactly the image
         // submitted to the headset -- so "is X visible in the HMD" becomes a

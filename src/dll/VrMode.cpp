@@ -158,7 +158,7 @@ void TickVrMode() {
         if(GetTickCount64()>deadline) { Fail("no_rendered_frames"); return; }
         if(XrSubmittedFrameCount()<firstFrame+3 || XrResolutionChain(14)!=0)return;
         phase=Phase::active;
-        Log("state=active panel=automatic recenter=F12_or_both_grips");
+        Log("state=active panel=automatic recenter=F12_or_grips_and_left_Y");
     }
     if(phase==Phase::active) {
         if(XrSessionStatusValue()!=1) {Fail("openxr_session_ended");return;}

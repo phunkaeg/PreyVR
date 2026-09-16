@@ -77,7 +77,7 @@ try {
         'ui.pointer 1          laser hand: 0 left, 1 right, 2 buttons only'
         'hud.layer 1           draw the HUD as its own layer (0 = in-world)'
         'vr.status             where VR setup got to'
-        'vr.recenter           re-centre the view (F12 and both grips do this too)'
+        'vr.recenter           re-centre the view (F12 and both grips + left Y do this too)'
         'vr.enable / vr.disable'
         'ik.anchor 1           1 = camera-anchored hands (0 restores the crosstalk, for A/B)'
         'move.turn 1           snap turn on the right stick'

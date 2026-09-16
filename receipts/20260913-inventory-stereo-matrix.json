@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260913-inventory-stereo-matrix",
+  "recorded_at": "2026-09-13T01:10:46.937608+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll CalcTransMat3D",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Which way do negative inventory layer depths project, and where can stereo correction survive native matrix assembly?",
+  "claim": "The verified Steam matrix routine produces homogeneous W=C+worldZ, so negative native Z is closer. It clears horizontal projection offsets before multiplication; final output correction survives that native calculation.",
+  "evidence_grade": "LIVE",
+  "environment": "harness",
+  "method": "Offline PE landmark checks and Unicorn 2.1.4 execution of unmodified Steam CalcTransMat3D plus its native matrix-multiply callee. Four Z fixtures with known centre projection, explicit return address and callee-saved register control. Reproduce with Python tools/re/verify_inventory_stereo.py. No game process was launched or instrumented.",
+  "validity": "VALID",
+  "mutation": "persistent",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "SHA-256, x64 image base, vtable target and instruction anchors checked against Steam bytes."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "All four bounded emulations return correctly and preserve seeded callee-saved register; projected centre and W match independently calculated fixtures."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Z=0 gives W=C; both negative and positive offsets produce expected monotonic opposite changes. C++ zero-depth test is bit exact."
+    },
+    "scene": {
+      "status": "PASS",
+      "reason": "Explicit synthetic native matrix fixtures using previously captured PDA view basis; not an in-game scene."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "Emulator-only execution; source prototype changes are persistent, disabled by default."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Release build and 39/39 tests pass. No native Display replay, GPU pixel or headset validation claimed."
+  },
+  "limits": "Harness arithmetic only. Viewport identity and explicit projection fixtures; no live Display replay acceptance. Prototype internal parallax uses symmetric horizontal eye separation on a planar panel; internal head-motion reprojection, cursor depth, curved stereo and world backdrop are not validated or complete.",
+  "artifacts": [
+    {
+      "path": "docs/INVENTORY-STEREO-PROTOTYPE-2026-09-13.md",
+      "sha256": "2fc87d63b6f188d7171a07493fa501909cd32e88492336c7df243a39a3a3de26",
+      "role": "native arithmetic or implementation validation evidence"
+    },
+    {
+      "path": "tools/re/verify_inventory_stereo.py",
+      "sha256": "cba8fb998c0f62c18dd87806c1152a287c253b205971fc4b907e6667123b2e24",
+      "role": "native arithmetic or implementation validation evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-2026-09-13/native-matrix-emulation.json",
+      "sha256": "061fbb637e3d8ff39560e00f60a6e59a84af46f9d69ad4e3d6d81fccf100138e",
+      "role": "native arithmetic or implementation validation evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-2026-09-13/db9620.asm",
+      "sha256": "9422ab18de7816b67ab3bb611d0134d6d6acfa48bb4ebf63fc17486f9747535f",
+      "role": "native arithmetic or implementation validation evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-2026-09-13/e8c5e0.asm",
+      "sha256": "e8ff2f5c830212d70e7c05b20828958575eb0dc3241489d2c5edd61d057d7f8e",
+      "role": "native arithmetic or implementation validation evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-2026-09-13/artifacts.json",
+      "sha256": "954b22d2023888a30902433f124d9c80055b9f0dab6fe3cdcffd2955a737db7d",
+      "role": "native arithmetic or implementation validation evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-stereo-2026-09-13/tests.log",
+      "sha256": "3cffb48d6c6f2e6fd9a5f20a7d8b38bfff50ca7135ee15764c3efb0128b8fe8f",
+      "role": "native arithmetic or implementation validation evidence"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "After other fleet game processes close, run zero-parallax same-frame native-eye equality control, then nonzero-depth pixel comparison and XR submission validation. Leave stereo off by default until runtime/headset acceptance."
+}

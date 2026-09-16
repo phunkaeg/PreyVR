@@ -1,0 +1,131 @@
+{
+  "records": [
+    {
+      "r": "header",
+      "schema": 1,
+      "layer": "XR_APILAYER_XRTAPE_recorder",
+      "layerVersion": "0.1.0",
+      "exe": "D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\Prey.exe",
+      "pid": 89128,
+      "utc": "20260912-230255",
+      "qpcFreq": 10000000,
+      "maxFrames": 20000,
+      "pointerBits": 64
+    },
+    {
+      "r": "instance",
+      "appName": "PreyVR",
+      "appVersion": 1,
+      "engineName": "CryEngine",
+      "apiVersion": 281479271678012,
+      "extensions": [
+        "XR_KHR_D3D11_enable"
+      ]
+    },
+    {
+      "r": "runtime",
+      "name": "xr-sim",
+      "version": 281474976710656
+    },
+    {
+      "r": "session",
+      "binding": "d3d11",
+      "bindingType": 1000027000,
+      "systemId": 1,
+      "result": 0
+    },
+    {
+      "capture": "inventory_before",
+      "r": "end",
+      "seq": 7704,
+      "displayTime": 244587272772686,
+      "blendMode": 1,
+      "layerCount": 1,
+      "layers": [
+        {
+          "type": "other",
+          "structType": 36,
+          "flags": 2
+        }
+      ],
+      "qpc": 2445872643084,
+      "result": 0
+    },
+    {
+      "capture": "inventory_magenta",
+      "r": "end",
+      "seq": 9171,
+      "displayTime": 244603572772523,
+      "blendMode": 1,
+      "layerCount": 2,
+      "layers": [
+        {
+          "type": "other",
+          "structType": 36,
+          "flags": 0
+        },
+        {
+          "type": "other",
+          "structType": 36,
+          "flags": 2
+        }
+      ],
+      "qpc": 2446035624026,
+      "result": 0
+    },
+    {
+      "capture": "inventory_opaque_control",
+      "r": "end",
+      "seq": 11152,
+      "displayTime": 244625583883414,
+      "blendMode": 1,
+      "layerCount": 2,
+      "layers": [
+        {
+          "type": "other",
+          "structType": 36,
+          "flags": 0
+        },
+        {
+          "type": "other",
+          "structType": 36,
+          "flags": 0
+        }
+      ],
+      "qpc": 2446255752909,
+      "result": 0
+    },
+    {
+      "capture": "inventory_magenta_repeat",
+      "r": "end",
+      "seq": 12734,
+      "displayTime": 244643161661016,
+      "blendMode": 1,
+      "layerCount": 2,
+      "layers": [
+        {
+          "type": "other",
+          "structType": 36,
+          "flags": 0
+        },
+        {
+          "type": "other",
+          "structType": 36,
+          "flags": 2
+        }
+      ],
+      "qpc": 2446431506288,
+      "result": 0
+    },
+    {
+      "r": "footer",
+      "records": 73143,
+      "recordedFrames": 18281,
+      "truncated": false,
+      "maxFrames": 20000
+    }
+  ],
+  "end_errors": {},
+  "source": "D:\\Dev Debug\\PreyVR\\build\\backdrop-test-20260913\\runs\\run-20260913-090216\\tape\\trace-Prey.exe-89128-20260912-230255.ndjson",
+  "sha256": "b3b572ccb938ea5e2554941565f3a8fbe266c1fca707992e27b3f507818f2514"
+}

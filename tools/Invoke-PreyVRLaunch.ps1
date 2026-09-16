@@ -361,7 +361,7 @@ Write-Host "manifest: $manifestPath"
 Write-Host ''
 if ($injected) {
     Write-Host 'the mod is loaded. Bring VR up with either:'
-    Write-Host '  F11 in the game window (F12 recenters, as do both grips), or'
+    Write-Host '  F11 in the game window (F12 recenters, as do both grips + left Y), or'
     Write-Host ("  echo vr.enable > '{0}\commands.txt'" -f $logDir)
     Write-Host ''
     Write-Host 'F11 needs the Prey DESKTOP window focused, which is awkward in a'

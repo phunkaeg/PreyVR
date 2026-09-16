@@ -1,0 +1,106 @@
+{
+  "recorded_at": "2026-09-16T08:09:33.232875+00:00",
+  "source_evidence": [
+    {
+      "file": "D:\\Dev Debug\\PreyVR\\src\\dll\\XrSessionHost.cpp",
+      "sha256": "6216c4e48ed86990af7673cf1f87db123d4efcda50bdcca722628c825d475477",
+      "anchors": [
+        {
+          "text": "declaredFov ? *declaredFov : views[target].fov",
+          "line": 952
+        },
+        {
+          "text": "hudLayer.space=gHost.space",
+          "line": 1754
+        }
+      ]
+    },
+    {
+      "file": "D:\\Dev Debug\\PreyVR\\src\\dll\\ConsoleBridgeWin32.cpp",
+      "sha256": "b6ba6c6073b158c70b1852896a61012e47dc763b082b6d0f8a5229eb95dd8215",
+      "anchors": [
+        {
+          "text": "execute(console, command.c_str(), false, true)",
+          "line": 173
+        },
+        {
+          "text": "queued_to_engine",
+          "line": 176
+        }
+      ]
+    },
+    {
+      "file": "D:\\Dev Debug\\PreyVR\\src\\dll\\XrInput.cpp",
+      "sha256": "5bb53c406553491cc72468551eeb55c51f8dcb85d4fbf2335da6436d15085747",
+      "anchors": [
+        {
+          "text": "\"squeeze\"",
+          "line": 160
+        },
+        {
+          "text": "spaceInfo.subactionPath",
+          "line": 222
+        }
+      ]
+    },
+    {
+      "file": "D:\\Dev Debug\\PreyVR\\tools\\Start-PreyVR.ps1",
+      "sha256": "f4c90eae8ad127abdb15c0ce0ce344e033d2608b2d775849580f73ba58660e41",
+      "anchors": [
+        {
+          "text": "[int]$Width=2016",
+          "line": 7
+        },
+        {
+          "text": "[int]$Height=2160",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\ModMain.cpp",
+      "sha256": "177fa8403929fa9f00d77f023742bec25710667731efce2fcb7e84cfe4ca0573",
+      "anchors": [
+        {
+          "text": "viewPitchDeg += RAD2DEG(headPitch)",
+          "line": 579
+        },
+        {
+          "text": "* m_Ipd * m_WorldScale",
+          "line": 687
+        },
+        {
+          "text": "bool ModMain::UpdateWheelPointing",
+          "line": 841
+        }
+      ]
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\src\\Src\\XRCameraHook.cpp",
+      "sha256": "9abc5fe4c610ce5bddc96c2bcd9b141fab86caa6c517dc3d242e07e94016bb3f",
+      "anchors": [
+        {
+          "text": "Ang3 add(DEG2RAD(pitch), 0.0f, DEG2RAD(yaw))",
+          "line": 87
+        }
+      ]
+    },
+    {
+      "file": "D:\\Dev Debug\\Other VR Mods\\prey-vr\\mockxr\\mock_runtime.cpp",
+      "sha256": "6885f6f406b7f87fd4c9575241e5277f7402cd5029d2d9ad65129da490a7e70e",
+      "anchors": [
+        {
+          "text": "a->name == \"grip_l\"",
+          "line": 376
+        },
+        {
+          "text": "a->name.back() == 'r'",
+          "line": 360
+        }
+      ]
+    }
+  ],
+  "hands_branch_is_ancestor_exit": 0,
+  "ctest_enumeration_only": "Test project D:/Dev Debug/PreyVR/build/inventory-stereo\n  Test  #1: vr_math\n  Test  #2: engine_map\n  Test  #3: aim_state_fixture\n  Test  #4: wrench_query_fixture\n  Test  #5: interaction_query_fixture\n  Test  #6: runtime_snapshot\n  Test  #7: xr_swapchain_format\n  Test  #8: xr_frame_contract\n  Test  #9: stereo_frame\n  Test #10: motion_controller\n  Test #11: two_handed_aim\n  Test #12: anim_ik\n  Test #13: weapon_rig_alignment\n  Test #14: weapon_aim\n  Test #15: frustum_coverage\n  Test #16: depth_submission\n  Test #17: frame_clock\n  Test #18: frame_timing\n  Test #19: input_event\n  Test #20: input_queue\n  Test #21: menu_navigator\n  Test #22: inventory_depth\n  Test #23: ui_panel\n  Test #24: locomotion\n  Test #25: render_frame_table\n  Test #26: stereo_camera\n  Test #27: camera_edit\n  Test #28: frame_dump\n  Test #29: debug_registers\n  Test #30: console_policy\n  Test #31: runtime_bootstrap\n  Test #32: ui_pointer_dispatch\n  Test #33: inventory_pointer_capture\n  Test #34: near_fov_override\n  Test #35: dll_load_fail_closed\n  Test #36: inventory_swapchain\n  Test #37: openxr_preflight_files\n  Test #38: dxgi_method_probe\n  Test #39: smoke_log_parser\n  Test #40: build_doctor\n\nTotal Tests: 40\n",
+  "limits": "Source anchors plus git ancestry and test enumeration; no test execution, build, game or headset session."
+}

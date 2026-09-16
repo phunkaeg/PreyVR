@@ -14,14 +14,22 @@ The launcher starts Prey, loads the mod, waits for the requested render size, an
 | Left X | Open inventory | X action shown by Prey |
 | Left Y | — | Y action shown by Prey |
 | Right grip | Native use / reload button | Next tab, on release |
-| Left grip | — | Previous tab, on release |
+| Left grip | Hold a long weapon's support grip | Previous tab, on release |
 | Triggers | Right: fire | Previous / next page (LT / RT) |
 | Left menu button | Pause | Pause / resume |
-| Both grips together | Reset VR view | Reset and bring the panel in front of you |
+| Both grips + left Y | Reset VR view | Reset and bring the panel in front of you |
 | F11 | Enable VR or retry setup | Enable VR or retry setup |
 | F12 | Reset VR view | Reset and reposition the panel |
 
 Release a held stick, trigger, or button after closing a menu before using it in gameplay. This prevents an inventory input from immediately moving, turning, firing, or jumping.
+
+For two-handed aiming, bring your left hand to the weapon's foregrip and squeeze
+the left grip. Keep it squeezed while aiming with both hands; release to return
+smoothly to one hand. A squeeze away from the weapon does nothing. Changing
+weapons, opening a menu or losing tracking requires releasing and grabbing again.
+Use/reload remains on the right grip when the left grip is released. To recenter,
+hold both grips, then press left Y; F12 also works.
+`aim.twohand 0` disables support aiming; `aim.twohand 1` enables it (default).
 
 To equip a weapon, open inventory with **X**, highlight it with the right stick, press **X** for Prey's Equip action, then **B** to return to the game. Follow the native button prompts for other items. B backs out one level at a time in nested screens.
 
@@ -33,7 +41,9 @@ Menus and inventory open on a panel about **2 metres** away, anchored where you 
 
 The native gameplay HUD is captured once into a transparent target and displayed at its own depth. Its graphics and interaction prompts stay Prey's own. The reticle is remapped to the smaller HUD canvas; when aiming beyond the panel it clips out instead of marking its edge. This is a HUD reticle at a fixed depth, not a world-surface hit marker. World markers and subtitles remain in the scene.
 
-The default render size is **2560 × 1440 per eye**, independent of monitor DPI. After the first launch, edit `PreyVR.json` beside the launcher to change `Width`, `Height`, or `HudLayer` (`1` floating HUD, `0` native scene HUD). Keep a 16:9 render size for complete native menu framing. For example, 1920×1080 lowers rendering cost; 3200×1800 or 3840×2160 increases detail and GPU cost. Restart Prey after changing size.
+The default render size is **2016 × 2160 per eye**, independent of monitor DPI. This restores the tall aspect used in earlier headset testing; **2688 × 2880** offers more detail at the same aspect and higher GPU cost. Edit `Width` and `Height` in `PreyVR.json`, then restart Prey. Menus can have unused space within their floating panel; do not switch the world render to 16:9 just to fill that panel. This is a starting preset, not automatic headset-resolution detection or a guarantee of complete FOV coverage on every headset.
+
+The launcher migrates the old, unversioned **2560 × 1440** default once, backing up `PreyVR.json` first. Custom sizes remain unchanged. To intentionally retain that old size, add `"ResolutionDefaultsVersion": 1` to the JSON, or launch with both `-Width 2560 -Height 1440`. A single command-line dimension is rejected. `HudLayer` remains `1` for floating HUD or `0` for the native scene HUD.
 
 ## Recovery and support
 

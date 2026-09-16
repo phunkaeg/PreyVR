@@ -29,6 +29,7 @@ struct ControllerState {
     float triggerValue = 0.0f;
     bool triggerPressed = false;
     bool gripPressed = false;
+    float squeezeValue = 0.0f;
     // Menu buttons. A controller that cannot confirm a choice leaves the mod
     // stopped at the main menu, which is why these are part of the product and
     // not a debug affordance.

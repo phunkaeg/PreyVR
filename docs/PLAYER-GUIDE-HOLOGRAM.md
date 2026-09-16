@@ -8,7 +8,7 @@ Press **A** at the title screen. Point the right controller at **Continue** or *
 
 Menus and inventory appear on a screen about **2 metres away**, anchored where you opened them. A cyan beam and dot show where you are pointing. Squeeze the beam hand's trigger to click; hold it while moving to drag, then release. Moving outside the screen cancels an inventory drag and stops hovering. Release the trigger before trying again. **B** backs out one screen at a time.
 
-The screen has a gentle curve when the runtime supports OpenXR cylinder layers and uses a flat panel otherwise. The menu and its control card fit inside both runtime eye frusta with room around the edges. **Both grips together**, or **F12**, reset the VR view and bring the screen back in front of you.
+The screen has a gentle curve when the runtime supports OpenXR cylinder layers and uses a flat panel otherwise. The menu and its control card fit inside both runtime eye frusta with room around the edges. **Both grips + left Y**, or **F12**, reset the VR view and bring the screen back in front of you.
 
 | Control | Gameplay | Menu / inventory |
 | --- | --- | --- |
@@ -19,11 +19,11 @@ The screen has a gentle curve when the runtime supports OpenXR cylinder layers a
 | Left X | Open inventory | Prey's X action, including Equip |
 | Left Y | — | Prey's Y action |
 | Right grip | Use / reload | Next tab, on release |
-| Left grip | — | Previous tab, on release |
+| Left grip | Hold a long weapon's support grip | Previous tab, on release |
 | Beam-hand trigger | Right hand: fire | Click / hold to drag |
 | Other trigger | Existing gameplay mapping | Its native LT / RT page action |
 | Left menu button | Pause | Pause / resume |
-| Both grips together | Reset view | Reset view and screen position |
+| Both grips + left Y | Reset view | Reset view and screen position |
 | F11 | Enable VR or retry startup | Enable VR or retry startup |
 | F12 | Reset view | Reset view and screen position |
 
@@ -41,14 +41,16 @@ After the first launch, edit `PreyVR.json` beside the launcher:
 
 | Setting | Default | Choices |
 | --- | --- | --- |
-| `Width`, `Height` | `2560`, `1440` | Per-eye render size, independent of desktop DPI. Keep 16:9 for complete native menu framing. |
+| `Width`, `Height` | `2016`, `2160` | Per-eye render size, independent of desktop DPI. `2688`, `2880` gives more detail at the same aspect. |
 | `UiCurveDegrees` | `35` | `0` for flat; `1`–`60` for curvature when the runtime supports it. |
 | `PointerHand` | `1` | `0` left beam, `1` right beam, `2` button navigation only. In button-only mode both triggers retain page actions. |
 | `HudLayer` | `1` | `1` floating native gameplay HUD; `0` native scene HUD. |
 | `UiGuide` | `0` | The control card under the menu. `0` hides it and gives its height back to the menu; `1` shows it, which is worth setting when someone is using the mod for the first time. |
 | `UiScalePercent` | `100` | Panel size for the HUD and menus, `20`-`200`. Raise it if the UI sits too small in the headset, lower it if the edges fall outside your view. |
 
-Restart Prey after changing these settings. Lower render sizes such as 1920×1080 reduce GPU cost; 3200×1800 or 3840×2160 increase detail and cost.
+Restart Prey after changing these settings. Scale both render dimensions together to retain vertical view coverage. The default restores the tall aspect used in earlier headset tests; it is a starting preset, not automatic headset detection. Native menus may have unused space within the floating screen. World rendering should not be narrowed to 16:9 to remove that menu space.
+
+Unversioned configurations containing the old `2560`, `1440` default are backed up and migrated once. Custom sizes are preserved. To deliberately keep 2560×1440, add `"ResolutionDefaultsVersion": 1` to `PreyVR.json`, or pass both `-Width 2560 -Height 1440` to the launcher. Command-line overrides must provide both dimensions.
 
 The gameplay HUD stays on its own transparent, flat canvas. Health, ammo, interaction prompts and reticle remain Prey's own graphics. The reticle lies at the HUD's fixed depth; it is not a marker painted onto world geometry. Subtitles and world markers remain in the scene. In-world computer terminals have a separate native interaction path; this menu beam does not replace that path yet.
 
@@ -74,7 +76,7 @@ gives back about a sixth of the panel.
 The useful one for fit is `ui.scale` (20-200);
 once you find your number, put it in `PreyVR.json` as `UiScalePercent` and every
 later launch starts there. `vr.recenter` re-centres, and so do F12 and squeezing
-both grips -- the grips are the ones that work with the headset on, since F12
+both grips + left Y -- the grips are the ones that work with the headset on, since F12
 needs the Prey desktop window focused.
 
 You can also pass a command straight in: `Tune Prey VR.cmd ui.scale 130`.

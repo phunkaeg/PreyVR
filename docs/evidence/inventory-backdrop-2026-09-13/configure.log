@@ -1,0 +1,52 @@
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26200.
+CMake Deprecation Warning at D:/Dev Debug/PreyVR/build/headless/_deps/minhook-src/CMakeLists.txt:27 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- Found Python3: C:/Python314/python.exe (found version "3.14.4") found components: Interpreter
+-- EGL disabled
+-- Found OpenGL: opengl32
+-- Enabling OpenGL support
+-- Could NOT find Vulkan (missing: Vulkan_LIBRARY Vulkan_INCLUDE_DIR) (found version "")
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - not found
+-- Found Threads: TRUE
+-- Could NOT find JsonCpp (missing: JsonCpp_INCLUDE_DIR JsonCpp_LIBRARY) 
+-- Could NOT find glslc, using precompiled .spv files
+-- Looking for secure_getenv
+-- Looking for secure_getenv - not found
+-- Looking for __secure_getenv
+-- Looking for __secure_getenv - not found
+-- Looking for timespec_get
+-- Looking for timespec_get - found
+-- OpenXR 1.1.60
+-- Found and will use pre-generated xr_generated_dispatch_table.h in source tree
+-- Found and will use pre-generated xr_generated_dispatch_table.c in source tree
+-- Found and will use pre-generated xr_generated_dispatch_table_core.h in source tree
+-- Found and will use pre-generated xr_generated_dispatch_table_core.c in source tree
+-- Found and will use pre-generated xr_generated_loader.hpp in source tree
+-- Found and will use pre-generated xr_generated_loader.cpp in source tree
+-- Performing Test HAVE_MISSING_PROTOTYPES
+-- Performing Test HAVE_MISSING_PROTOTYPES - Failed
+-- Performing Test HAVE_UNDEF
+-- Performing Test HAVE_UNDEF - Failed
+-- Performing Test HAVE_TAUTOLOGICAL_TYPE_LIMIT
+-- Performing Test HAVE_TAUTOLOGICAL_TYPE_LIMIT - Failed
+-- Performing Test HAVE_MISSING_BRACES
+-- Performing Test HAVE_MISSING_BRACES - Failed
+-- Performing Test HAVE_UNREACHABLE_CODE
+-- Performing Test HAVE_UNREACHABLE_CODE - Failed
+-- Performing Test HAVE_CPP20_EXTENSIONS
+-- Performing Test HAVE_CPP20_EXTENSIONS - Failed
+-- Configuring done (10.6s)
+-- Generating done (1.2s)
+-- Build files have been written to: D:/Dev Debug/PreyVR/build/inventory-backdrop-9b38d02

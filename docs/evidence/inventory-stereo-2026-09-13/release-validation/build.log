@@ -1,0 +1,220 @@
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  buffer.c
+  AimState.cpp
+  hook.c
+  DllSmokeHost.cpp
+  trampoline.c
+  main.cpp
+  android_utilities.cpp
+  api_layer_interface.cpp
+  AnimIk.cpp
+  main.cpp
+  hde64.c
+  WeaponRigAlignment.cpp
+  Generating Code...
+  CameraEdit.cpp
+  ConsolePolicy.cpp
+  minhook.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\_deps\minhook-build\Release\minhook.x64.lib
+  DebugRegisters.cpp
+  loader_core.cpp
+  EngineMap.cpp
+  InventorySwapchainTests.cpp
+  FrameDump.cpp
+  preyvr_dxgi_probe.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_dxgi_probe.exe
+  FrameObserver.cpp
+  InventoryPointerCaptureTests.cpp
+  loader_init_data.cpp
+  InputEvent.cpp
+  preyvr_dll_smoke_host.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_dll_smoke_host.exe
+  InputQueue.cpp
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(355,31): warning C4459: declaration of 'r' hides global declaration [D:\Dev Debug\PreyVR\build\inventory-stereo\preyvr_inventory_swapchain_tests.vcxproj]
+  (compiling source file '../../tests/InventorySwapchainTests.cpp')
+      D:\Dev Debug\PreyVR\tests\InventorySwapchainTests.cpp(26,3):
+      see declaration of '`anonymous-namespace'::r'
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(355,31):
+      the template instantiation context (the oldest one first) is
+          D:\Dev Debug\PreyVR\tests\InventorySwapchainTests.cpp(17,29):
+          see reference to class template instantiation 'Microsoft::WRL::ComPtr<ID3D11Texture2D>' being compiled
+          C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(355,10):
+          while compiling class template member function 'void Microsoft::WRL::ComPtr<ID3D11Texture2D>::Swap(Microsoft::WRL::ComPtr<ID3D11Texture2D> &) noexcept'
+              C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(335,50):
+              see the first reference to 'Microsoft::WRL::ComPtr<ID3D11Texture2D>::Swap' in 'Microsoft::WRL::ComPtr<ID3D11Texture2D>::operator ='
+              D:\Dev Debug\PreyVR\tests\InventorySwapchainTests.cpp(60,12):
+              see the first reference to 'Microsoft::WRL::ComPtr<ID3D11Texture2D>::operator =' in '`anonymous-namespace'::Create'
+  
+  InteractionQuery.cpp
+  InventorySwapchain.cpp
+  NearFovOverrideTests.cpp
+  preyvr_injector.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_injector.exe
+  Locomotion.cpp
+  MenuNavigator.cpp
+  InventoryDepth.cpp
+  loader_instance.cpp
+  UiPanel.cpp
+  Generating Code...
+  MotionController.cpp
+  OpenXRBootstrap.cpp
+  preyvr_inventory_swapchain_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_inventory_swapchain_tests.exe
+  RenderFrameTable.cpp
+  loader_logger.cpp
+  RuntimeSnapshot.cpp
+  preyvr_inventory_capture_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_inventory_capture_tests.exe
+  Generating Code...
+  preyvr_near_fov_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_near_fov_tests.exe
+  loader_logger_recorders.cpp
+  Compiling...
+  StereoCamera.cpp
+  StereoFrame.cpp
+  loader_properties.cpp
+  VrMath.cpp
+  DepthSubmission.cpp
+  FrameClock.cpp
+  FrameTiming.cpp
+  manifest_file.cpp
+  FrustumCoverage.cpp
+  runtime_interface.cpp
+  WeaponAim.cpp
+  WrenchQuery.cpp
+  XrFrameContract.cpp
+  object_info.cpp
+  XrSwapchainFormat.cpp
+  Generating Code...
+  xr_generated_loader.cpp
+  preyvr_core.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_core.lib
+  AnimIkTests.cpp
+  InventoryDepthTests.cpp
+  InputEventTests.cpp
+  EngineMapTests.cpp
+  VrMathTests.cpp
+  filesystem_utils.cpp
+  StereoCameraTests.cpp
+  preyvr_vr_math_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_vr_math_tests.exe
+  preyvr_input_event_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_input_event_tests.exe
+  preyvr_engine_map_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_engine_map_tests.exe
+  json_reader.cpp
+  main.cpp
+  RenderFrameTableTests.cpp
+  MenuNavigatorTests.cpp
+  json_value.cpp
+  XrFrameContractTests.cpp
+  preyvr_stereo_camera_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_stereo_camera_tests.exe
+  WeaponAimTests.cpp
+  main.cpp
+  preyvr_ray_probe.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_ray_probe.exe
+  json_writer.cpp
+  preyvr_menu_navigator_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_menu_navigator_tests.exe
+  WeaponRigAlignmentTests.cpp
+  preyvr_xr_frame_contract_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_xr_frame_contract_tests.exe
+  UiPanelTests.cpp
+  Generating Code...
+  preyvr_anim_ik_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_anim_ik_tests.exe
+  FrustumCoverageTests.cpp
+  preyvr_weapon_aim_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_weapon_aim_tests.exe
+  preyvr_frame_diff.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_frame_diff.exe
+  DebugRegistersTests.cpp
+  preyvr_render_frame_table_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_render_frame_table_tests.exe
+  StereoFrameTests.cpp
+  MotionControllerTests.cpp
+  preyvr_weapon_rig_alignment_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_weapon_rig_alignment_tests.exe
+  InputQueueTests.cpp
+  preyvr_frustum_coverage_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_frustum_coverage_tests.exe
+  FrameClockTests.cpp
+  preyvr_debug_registers_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_debug_registers_tests.exe
+  preyvr_stereo_frame_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_stereo_frame_tests.exe
+  preyvr_ui_panel_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_ui_panel_tests.exe
+  preyvr_inventory_depth_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_inventory_depth_tests.exe
+  RuntimeBootstrapTests.cpp
+  InteractionQueryTests.cpp
+  FrameTimingTests.cpp
+  XrSwapchainFormatTests.cpp
+  preyvr_input_queue_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_input_queue_tests.exe
+  preyvr_frame_clock_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_frame_clock_tests.exe
+  preyvr_motion_controller_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_motion_controller_tests.exe
+  preyvr_frame_timing_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_frame_timing_tests.exe
+  preyvr_interaction_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_interaction_query_tests.exe
+  OpenXRPreflightWin32.cpp
+  preyvr_runtime_bootstrap_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_runtime_bootstrap_tests.exe
+  preyvr_xr_swapchain_format_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_xr_swapchain_format_tests.exe
+  FrameDumpTests.cpp
+  WrenchQueryTests.cpp
+  UiPointerTests.cpp
+  main.cpp
+  preyvr_wrench_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_wrench_query_tests.exe
+  RuntimeSnapshotWin32.cpp
+  preyvr_frame_dump_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_frame_dump_tests.exe
+  RuntimeSnapshotTests.cpp
+  LocomotionTests.cpp
+  Generating Code...
+  preyvr_win32_bootstrap.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_win32_bootstrap.lib
+  preyvr_engine_map_probe.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_engine_map_probe.exe
+  preyvr_ui_pointer_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_ui_pointer_tests.exe
+  xr_generated_dispatch_table_core.c
+  OpenXRPreflightWin32Tests.cpp
+  preyvr_locomotion_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_locomotion_tests.exe
+     Creating library D:/Dev Debug/PreyVR/build/inventory-stereo/_deps/openxr-build/src/loader/Release/openxr_loader.lib and object D:/Dev Debug/PreyVR/build/inventory-stereo/_deps/openxr-build/src/loader/Release/openxr_loader.exp
+  DepthSubmissionTests.cpp
+  ConsolePolicyTests.cpp
+  CameraEditTests.cpp
+  openxr_loader.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  D:\Dev Debug\PreyVR\build\inventory-stereo\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  D:\Dev Debug\PreyVR\build\inventory-stereo\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  D:\Dev Debug\PreyVR\build\inventory-stereo\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  preyvr_runtime_snapshot_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_runtime_snapshot_tests.exe
+  main.cpp
+  AimStateTests.cpp
+  main.cpp
+  AimRayProbe.cpp
+  preyvr_depth_submission_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_depth_submission_tests.exe
+  preyvr_camera_edit_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_camera_edit_tests.exe
+  preyvr_xr_adapter_probe.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_xr_adapter_probe.exe
+  preyvr_aim_state_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_aim_state_tests.exe
+  preyvr_openxr_preflight_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_openxr_preflight_tests.exe
+  preyvr_console_policy_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_console_policy_tests.exe
+  preyvr_xr_session_probe.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\preyvr_xr_session_probe.exe
+  AimTakeover.cpp
+  AnimIkTakeover.cpp
+  Bootstrap.cpp
+  VrMode.cpp
+  UiGuide.cpp
+  HudLayer.cpp
+  InventorySwapchain.cpp
+  UiPointer.cpp
+  InventoryPointerCapture.cpp
+  CameraEditHook.cpp
+  ConsoleBridgeWin32.cpp
+  DebugWatch.cpp
+  DllMain.cpp
+  FrameCaptureWin32.cpp
+  FrameObserverHook.cpp
+  HeadTrackingHook.cpp
+  HudBridge.cpp
+  HotkeyBridge.cpp
+  IkTargetProbe.cpp
+  Generating Code...
+  Compiling...
+  InputPathProbe.cpp
+  InputPost.cpp
+  MinHookInit.cpp
+  MoveLane.cpp
+  CommandChannel.cpp
+  HandRigTakeover.cpp
+  NearFovOverride.cpp
+  NearViewStereo.cpp
+  RenderFrame.cpp
+  WeaponAttachment.cpp
+  PassCameraProbe.cpp
+  ReticleFollow.cpp
+  XrInput.cpp
+D:\Dev Debug\PreyVR\src\dll\XrInput.cpp(113,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\inventory-stereo\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\src\dll\XrInput.cpp(114,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\inventory-stereo\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\src\dll\XrInput.cpp(136,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\inventory-stereo\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\src\dll\XrInput.cpp(137,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\inventory-stereo\preyvr.vcxproj]
+  XrSessionHost.cpp
+  Logger.cpp
+  Generating Code...
+     Creating library D:/Dev Debug/PreyVR/build/inventory-stereo/Release/PreyVR.lib and object D:/Dev Debug/PreyVR/build/inventory-stereo/Release/PreyVR.exp
+  preyvr.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-stereo\Release\PreyVR.dll
