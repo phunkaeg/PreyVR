@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260916-integration-contract",
+  "recorded_at": "2026-09-16T09:05:15.597010+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Can source render-pose records and verified startup CVar readback survive native gameplay and recenter?",
+  "claim": "Native candidate verified both startup CVars and submitted 7414 projection frames; recenter rejected two stale records and recovered. Six trace samples preserve older submitted poses instead of latest locate poses.",
+  "evidence_grade": "LIVE",
+  "environment": "in_game",
+  "method": "Process-scoped xr-sim and xr-tape, supported launcher/injector, static-head control then position/yaw/pitch step and recenter; 41 CTest tests. DLL identities are separated in trace-summary.json.",
+  "validity": "VALID",
+  "mutation": "temporary",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Supported Steam landmarks and manifest DLL hash recorded."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "xr-sim D3D11 session and xr-tape PID 116452; baseline and moved captures."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Static-head baseline, deliberate head transform change and recenter."
+    },
+    "scene": {
+      "status": "PASS",
+      "reason": "Talos Lobby confirmed in capture."
+    },
+    "restore": {
+      "status": "PASS",
+      "reason": "Cleared simulated inputs, disabled VR, closed owned process; no Prey remains."
+    }
+  },
+  "fact_verdict": "CONFIRMED",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Visible gameplay captures, zero xrEndFrame errors, native candidate active; headset and inventory acceptance excluded."
+  },
+  "limits": "No headset acceptance or exhaustive GPU frame identity proof. Final failure-path review changes were rebuilt/unit-tested but not rerun natively. See report for local/world translation failed control.",
+  "artifacts": [
+    {
+      "path": "docs/INTEGRATION-CORRECTNESS-2026-09-16.md",
+      "sha256": "589007d07276fa083ca1b3dd44529b8549a584eb9d24ffe5864543f49b477c25"
+    },
+    {
+      "path": "docs/evidence/integration-contract-20260916/trace-summary.json",
+      "sha256": "71056107d41fbca582326cffca9f1c008cd47df1c6e7f4a3693d3eea4cda6173"
+    },
+    {
+      "path": "docs/evidence/integration-contract-20260916/PreyVR.log",
+      "sha256": "c3932fc5fbe7172c67ee21f10b51ced02204896bf7c185e4a6acbab5215b27ca"
+    },
+    {
+      "path": "docs/evidence/integration-contract-20260916/trace.ndjson.gz",
+      "sha256": "f552d6f9a31470ddac870b9db903232e33ecf8b1e57071939d2add2ff37116c0"
+    },
+    {
+      "path": "docs/evidence/integration-contract-20260916/integration-tests.log",
+      "sha256": "d8d5793c1d8eb7a144cc22179f26ff17d8687b3e7075ee99405386986c1979a0"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Review integration branch and test in headset; queue fleet receipt after evidence is available at the canonical project root."
+}

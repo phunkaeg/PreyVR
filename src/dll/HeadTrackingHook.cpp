@@ -61,7 +61,7 @@ std::atomic<unsigned long long> gLastPoseAgeMicroseconds{0};
 std::atomic<unsigned long long> gMaxPoseAgeMicroseconds{0};
 
 // Atomic publication of the complete payload; render readers never wait.
-struct PoseSlot { Pose pose{}; std::int64_t publishedQpc = 0; };
+struct PoseSlot { Pose pose{}; std::int64_t publishedQpc = 0; long long displayTime = 0; };
 LatestSnapshot<PoseSlot> gPoseSlot;
 
 std::atomic<bool> gHaveReference{false};
@@ -88,11 +88,12 @@ std::int64_t QpcFrequency()
     return frequency;
 }
 
-bool ReadPose(Pose& out, std::int64_t& publishedQpc)
+bool ReadPose(Pose& out, std::int64_t& publishedQpc, long long& displayTime)
 {
     PoseSlot value{};
     if (!gPoseSlot.TryRead(value)) { return false; }
     out = value.pose;
+    displayTime = value.displayTime;
     publishedQpc = value.publishedQpc;
     return true;
 }
@@ -198,7 +199,7 @@ bool EnsureHook()
 // untracked view for one frame -- rare, and violent when it happens. The last
 // pose this thread read is the better answer while it is recent. Thread-local,
 // so no reader shares it and nothing can tear.
-struct HeadLastGood { Pose pose{}; std::int64_t publishedQpc = 0; bool valid = false; };
+struct HeadLastGood { Pose pose{}; std::int64_t publishedQpc = 0; long long displayTime = 0; bool valid = false; };
 thread_local HeadLastGood tHeadLastGood;
 std::atomic<unsigned long long> gHeadPoseReadFallbacks{0};
 constexpr unsigned long long kHeadFallbackMaxMicroseconds = 100000ull;
@@ -207,7 +208,8 @@ bool TryReadHeadPose(Pose& out, unsigned long long& ageMicroseconds)
 {
     Pose pose{};
     std::int64_t publishedQpc = 0;
-    if (!ReadPose(pose, publishedQpc)) {
+    long long displayTime = 0;
+    if (!ReadPose(pose, publishedQpc, displayTime)) {
         if (!tHeadLastGood.valid) {
             return false;
         }
@@ -222,6 +224,7 @@ bool TryReadHeadPose(Pose& out, unsigned long long& ageMicroseconds)
     } else {
         tHeadLastGood.pose = pose;
         tHeadLastGood.publishedQpc = publishedQpc;
+        tHeadLastGood.displayTime = displayTime;
         tHeadLastGood.valid = true;
     }
     const auto age = static_cast<unsigned long long>(
@@ -275,6 +278,33 @@ bool ApplyHeadRotation(std::uint8_t* camera, std::size_t size)
     return cameraedit::RotationIsSafeToWrite(span);
 }
 
+struct HeadRenderPose { Pose pose{}, world{}; long long time=0; unsigned long long reference=0; bool valid=false; };
+thread_local HeadRenderPose tRenderedHead;
+bool ConsumeHeadRenderPose(const unsigned char* camera, Pose& pose, long long& displayTime, unsigned long long& reference) {
+    const auto record=tRenderedHead; tRenderedHead.valid=false;
+    if(!record.valid || record.reference!=HeadTrackingReferenceGeneration()) {
+        static unsigned refused=0;
+        if(++refused%300==1) lifecycle::Log("preyvr_render_contract head_missing valid="+std::to_string(record.valid)+" thread="+std::to_string(GetCurrentThreadId()));
+        return false;
+    }
+    const auto actual=stereo::ReadMatrix(std::span<const std::uint8_t>(camera,cameraedit::kCameraSize));
+    const auto expected=stereo::MatrixFromPose(record.world);
+    // SViewParams position here is relative to the player's world origin.
+    // CSystem camera has that origin added later (live: -0.037496 -> 314.963531).
+    // Verify the complete orientation; comparing the two translations directly
+    // would reject every valid gameplay camera. Unit position scaling is gated
+    // at publication; the XR head translation is retained from that same sample.
+    for(std::size_t i=0;i<actual.size();++i) {
+        if(i%4==3) {if(!std::isfinite(actual[i])) return false;continue;}
+        if(!std::isfinite(actual[i]) || std::abs(actual[i]-expected[i])>.001f) {
+            static unsigned refused=0;
+            if(++refused%300==1) lifecycle::Log("preyvr_render_contract camera_mismatch index="+std::to_string(i)+" actual="+std::to_string(actual[i])+" expected="+std::to_string(expected[i]));
+            return false;
+        }
+    }
+    pose=record.pose;displayTime=record.time;reference=record.reference;return true;
+}
+
 // ---------------------------------------------------------------------------
 // The view seam
 // ---------------------------------------------------------------------------
@@ -323,6 +353,8 @@ float ReadFloat(const std::uint8_t* base, std::size_t offset)
 
 void __fastcall UpdateViewObserved(void* camera, std::uint8_t* viewParams)
 {
+    tRenderedHead.valid=false;
+    const auto renderReference=HeadTrackingReferenceGeneration();
     const UpdateViewFn original = gOriginal.load(std::memory_order_acquire);
     if (original != nullptr) {
         original(camera, viewParams);   // let the game compute its own view first
@@ -421,6 +453,11 @@ void __fastcall UpdateViewObserved(void* camera, std::uint8_t* viewParams)
         return;
     }
     std::memcpy(viewParams + kViewPosition, &world.position, sizeof(world.position));
+    // Publish only after BOTH rotation and position were accepted. Partial,
+    // rotation-only and non-unit-scale research modes have no world contract.
+    if (gPositionScale.load()==1.f && renderReference%2==0 &&
+        renderReference==HeadTrackingReferenceGeneration())
+        tRenderedHead={headPose,world,tHeadLastGood.displayTime,renderReference,true};
     gPositionApplied.fetch_add(1, std::memory_order_relaxed);
     gLastOffsetMillimetres.store(
         static_cast<unsigned int>(std::sqrt(offsetSquared) * 1000.0f + 0.5f),
@@ -554,9 +591,9 @@ DWORD SetViewHookApplying(unsigned int enabled)
     return 0;
 }
 
-void PublishHeadPose(const Pose& openXrHeadPose)
+void PublishHeadPose(const Pose& openXrHeadPose, long long displayTime)
 {
-    gPoseSlot.Publish(PoseSlot{openXrHeadPose, QpcNow()});
+    gPoseSlot.Publish(PoseSlot{openXrHeadPose, QpcNow(), displayTime});
 }
 
 DWORD RecenterHeadTracking()

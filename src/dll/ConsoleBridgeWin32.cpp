@@ -1,6 +1,7 @@
 #include "ConsoleBridgeWin32.h"
 
 #include "Logger.h"
+#include "preyvr/SettingReadback.h"
 #include "preyvr/ConsolePolicy.h"
 #include "preyvr/EngineMap.h"
 
@@ -40,11 +41,18 @@ using ExecuteStringFn = void(__fastcall*)(
 std::timed_mutex gQueueMutex;
 constexpr auto kQueueLockTimeout = std::chrono::milliseconds(100);
 std::string gQueued;
+const char* gVerifyName=nullptr;
+int gVerifyValue=0;
+bool gAwaitingReadback=false;
+SettingReadback gReadback;
+std::atomic<unsigned long long> gVerifiedCompleted{0};
+std::atomic<DWORD> gVerifiedResult{0};
+
 std::atomic<bool> gHasQueued{false};
 std::atomic<DWORD> gLastResult{static_cast<DWORD>(ConsoleBridgeResult::ok)};
 std::atomic<unsigned long long> gSubmitted{0};
 
-void Finish(ConsoleBridgeResult result, const char* detail, const std::string& command)
+DWORD Finish(ConsoleBridgeResult result, const char* detail, const std::string& command)
 {
     gLastResult.store(static_cast<DWORD>(result), std::memory_order_release);
     std::ostringstream line;
@@ -52,6 +60,7 @@ void Finish(ConsoleBridgeResult result, const char* detail, const std::string& c
          << " detail=" << detail
          << " command=\"" << command << '"';
     lifecycle::Log(line.str());
+    return static_cast<DWORD>(result);
 }
 
 // Verified locally rather than added to the load-time landmark table: that table
@@ -93,6 +102,30 @@ void* ResolveConsole()
     return console;
 }
 
+// R-052, freshly checked in the Steam binary: F50A1A calls console vtable
+// +B8; F50A2F tail-calls the returned ICVar's +10 (GetIVal). The live
+// 2026-08-29 capture independently exercised both slots. Never use header order.
+bool ReadRendererSetting(const char* name,int& value) {
+    __try {
+        auto* console=ResolveConsole();
+        if(!console) return false;
+        auto get=(*reinterpret_cast<void***>(console))[0xB8/sizeof(void*)];
+        MEMORY_BASIC_INFORMATION m{};
+        const auto executable=[](void* address,MEMORY_BASIC_INFORMATION& info) {
+            return VirtualQuery(address,&info,sizeof(info))==sizeof(info) &&
+                info.State==MEM_COMMIT && info.AllocationBase==GetModuleHandleW(L"PreyDll.dll") &&
+                (info.Protect&(PAGE_EXECUTE|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY));
+        };
+        if(!executable(get,m)) return false;
+        auto* variable=reinterpret_cast<void*(__fastcall*)(void*,const char*)>(get)(console,name);
+        if(!variable) return false;
+        auto read=(*reinterpret_cast<void***>(variable))[0x10/sizeof(void*)];
+        if(!executable(read,m)) return false;
+        value=reinterpret_cast<int(__fastcall*)(void*)>(read)(variable);
+        return true;
+    } __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
+}
+
 } // namespace
 
 DWORD QueueConsoleCommand(const char* command)
@@ -115,10 +148,25 @@ DWORD QueueConsoleCommand(const char* command)
     if (!lock.owns_lock() || gHasQueued.load(std::memory_order_acquire)) {
         return static_cast<DWORD>(ConsoleBridgeResult::busy);
     }
+    gVerifyName=nullptr;gAwaitingReadback=false;
     gQueued = text;
     gHasQueued.store(true, std::memory_order_release);
     return static_cast<DWORD>(ConsoleBridgeResult::ok);
 }
+
+DWORD QueueVerifiedRendererSetting(const char* command) {
+    const char* name=nullptr;int expected=0;
+    if(command && std::strcmp(command,"r_MotionBlur 0")==0) name="r_MotionBlur";
+    else if(command && std::strcmp(command,"r_AntialiasingMode 1")==0) {name="r_AntialiasingMode";expected=1;}
+    else return static_cast<DWORD>(ConsoleBridgeResult::denied);
+    std::unique_lock lock(gQueueMutex,kQueueLockTimeout);
+    if(!lock.owns_lock() || gHasQueued.load()) return static_cast<DWORD>(ConsoleBridgeResult::busy);
+    gQueued=command;gVerifyName=name;gVerifyValue=expected;gAwaitingReadback=false;
+    gHasQueued.store(true,std::memory_order_release);return 0;
+}
+
+unsigned long long VerifiedRendererSettingCount() {return gVerifiedCompleted.load(std::memory_order_acquire);}
+DWORD VerifiedRendererSettingResult() {return gVerifiedResult.load(std::memory_order_acquire);}
 
 DWORD LastConsoleBridgeResult()
 {
@@ -136,34 +184,45 @@ void ServiceConsoleQueue()
         return; // the hot path
     }
 
-    std::string command;
-    {
-        // The render thread never waits; a skipped service is picked up next frame.
-        std::unique_lock lock(gQueueMutex, std::try_to_lock);
-        if (!lock.owns_lock()) {
-            return;
-        }
-        command = gQueued;
-        gQueued.clear();
-        gHasQueued.store(false, std::memory_order_release);
+    std::unique_lock lock(gQueueMutex,std::try_to_lock);
+    if(!lock.owns_lock() || !gHasQueued.load()) return;
+    const std::string command=gQueued;
+    if(gAwaitingReadback) {
+        int value=0;
+        const bool readable=ReadRendererSetting(gVerifyName,value);
+        const auto state=gReadback.Observe(readable,value,GetTickCount64());
+        if(state==ReadbackResult::verified) {
+            Finish(ConsoleBridgeResult::ok,"verified_readback",command);
+        } else if(state==ReadbackResult::pending) return;
+        else Finish(ConsoleBridgeResult::unavailable,"readback_timeout_or_mismatch",command);
+        gVerifiedResult.store(static_cast<DWORD>(state==ReadbackResult::verified ? ConsoleBridgeResult::ok : ConsoleBridgeResult::unavailable));
+        gVerifiedCompleted.fetch_add(1,std::memory_order_release);
+        gAwaitingReadback=false;gHasQueued.store(false);gQueued.clear();
+        gSubmitted.fetch_add(1,std::memory_order_release);return;
     }
+    // Count refused dequeues too so a waiting owner sees failure immediately.
+    struct Completion {
+        bool deferred=false;
+        DWORD result=static_cast<DWORD>(ConsoleBridgeResult::unavailable);
+        ~Completion() {if(!deferred) {if(gVerifyName) {gVerifiedResult.store(result);gVerifiedCompleted.fetch_add(1,std::memory_order_release);} gHasQueued=false;gQueued.clear();gSubmitted.fetch_add(1,std::memory_order_release);}}
+    } completion;
 
     // Re-checked after dequeue rather than trusting the enqueue-time decision:
     // the buffer left the caller's hands in between, and a gate that is only
     // consulted once is a gate that can be raced.
     if (console::Classify(command) == console::Classification::denied) {
-        Finish(ConsoleBridgeResult::denied, "not_allowlisted_on_dequeue", command);
+        completion.result=Finish(ConsoleBridgeResult::denied, "not_allowlisted_on_dequeue", command);
         return;
     }
 
     void* console = ResolveConsole();
     if (console == nullptr) {
-        Finish(ConsoleBridgeResult::unavailable, "console_null", command);
+        completion.result=Finish(ConsoleBridgeResult::unavailable, "console_null", command);
         return;
     }
     const ExecuteStringFn execute = ResolveExecuteString();
     if (execute == nullptr) {
-        Finish(ConsoleBridgeResult::signatureMismatch, "prologue_or_module_mismatch", command);
+        completion.result=Finish(ConsoleBridgeResult::signatureMismatch, "prologue_or_module_mismatch", command);
         return;
     }
 
@@ -172,7 +231,10 @@ void ServiceConsoleQueue()
     // instead of running it here.
     execute(console, command.c_str(), false, true);
 
-    gSubmitted.fetch_add(1, std::memory_order_relaxed);
+    if(gVerifyName) {
+        gAwaitingReadback=true;gReadback={gVerifyValue,GetTickCount64()+10000};
+        completion.deferred=true;
+    }
     Finish(ConsoleBridgeResult::ok, "queued_to_engine", command);
 }
 

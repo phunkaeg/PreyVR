@@ -283,53 +283,16 @@ bool PrologueMatches(std::uintptr_t address, const std::uint8_t* expected, std::
 // in a queue, and would be miserable to diagnose from inside a headset.
 namespace eyehandoff {
 
-constexpr std::size_t kSlots = 64;   // power of two, so the wrap is a mask
-std::array<std::atomic<int>, kSlots> gSlots{};
-std::atomic<unsigned long long> gPushed{0};
-std::atomic<unsigned long long> gPopped{0};
-std::atomic<unsigned long long> gStarved{0};
-std::atomic<unsigned long long> gDropped{0};
-
-void Publish(int eye)
-{
-    const unsigned long long seq = gPushed.load(std::memory_order_relaxed);
-    gSlots[seq & (kSlots - 1)].store(eye, std::memory_order_relaxed);
-    gPushed.store(seq + 1, std::memory_order_release);
+RenderContractQueue gQueue;
+std::atomic<unsigned long long> gPushed{0}, gPopped{0}, gStarved{0}, gDropped{0};
+void Publish(const RenderContract& contract) {
+    if(gQueue.Push(contract)) ++gPushed; else ++gDropped;
 }
-
-// Returns the eye for the frame just finished, or -1 if nothing is queued.
-//
-// If the queue has run long -- the render thread fell behind and the game thread
-// kept going -- the stale entries are discarded rather than shown. An old eye is
-// worse than a repeated one: it is a frame from a different camera position, so
-// it reads as a jolt rather than as a dropped update.
-int Consume()
-{
-    const unsigned long long pushed = gPushed.load(std::memory_order_acquire);
-    unsigned long long popped = gPopped.load(std::memory_order_relaxed);
-    if (popped >= pushed) {
-        gStarved.fetch_add(1, std::memory_order_relaxed);
-        return -1;
-    }
-    // Keep at most a couple of frames of slack; skip the rest.
-    constexpr unsigned long long kMaxLag = 4;
-    if (pushed - popped > kMaxLag) {
-        const unsigned long long skip = (pushed - popped) - kMaxLag;
-        gDropped.fetch_add(skip, std::memory_order_relaxed);
-        popped += skip;
-    }
-    const int eye = gSlots[popped & (kSlots - 1)].load(std::memory_order_relaxed);
-    gPopped.store(popped + 1, std::memory_order_release);
-    return eye;
+bool Consume(RenderContract& contract) {
+    if(!gQueue.Pop(contract)) {++gStarved;return false;}
+    ++gPopped;return true;
 }
-
-void Reset()
-{
-    gPushed.store(0, std::memory_order_relaxed);
-    gPopped.store(0, std::memory_order_relaxed);
-    gStarved.store(0, std::memory_order_relaxed);
-    gDropped.store(0, std::memory_order_relaxed);
-}
+void Reset() {gQueue.Reset();gPushed=0;gPopped=0;gStarved=0;gDropped=0;}
 
 } // namespace eyehandoff
 
@@ -938,6 +901,13 @@ DWORD WINAPI DoubleRenderWatchdog(LPVOID)
 void __fastcall RenderWithCameraEdit(void* system)
 {
     const SystemRenderFn original = gOriginal.load(std::memory_order_acquire);
+    RenderContract renderContract{};
+    const auto renderOriginal = [&](void* target) {
+        // One record per native render, including refusals and flat/menu frames.
+        // A missing record would shift every subsequent image's metadata.
+        if(gStereoIpd.load()>0.f) eyehandoff::Publish(renderContract);
+        original(target);
+    };
 
     // One-shot, and ahead of the armed check because the probe is independent of
     // any edit -- it needs this thread, not an armed camera.
@@ -953,20 +923,20 @@ void __fastcall RenderWithCameraEdit(void* system)
             gFrameShape.store(false, std::memory_order_release);
             lifecycle::Log("preyvr_frame_shape result=0 detail=budget_exhausted");
             if (original != nullptr) {
-                original(system);
+                renderOriginal(system);
             }
             return;
         }
         gFrameShapeBudget.store(remaining - 1, std::memory_order_release);
 
         Step("frame_shape:eye0");
-        original(system);
+        renderOriginal(system);
         // The line the Crysis VR source calls not optional. Without it the second
         // pass inherits state the first left behind, and culling breaks first.
         Step("frame_shape:render_begin");
         renderBegin(system);
         Step("frame_shape:eye1");
-        original(system);
+        renderOriginal(system);
         Step("frame_shape:done");
 
         const unsigned long long done =
@@ -991,7 +961,7 @@ void __fastcall RenderWithCameraEdit(void* system)
             gStereoIpd.store(0.0f, std::memory_order_release);
             lifecycle::Log("preyvr_second_pass result=0 detail=budget_exhausted");
             if (original != nullptr) {
-                original(system);
+                renderOriginal(system);
             }
             return;
         }
@@ -1000,7 +970,7 @@ void __fastcall RenderWithCameraEdit(void* system)
         gSecondPassBudget.store(remaining - 1, std::memory_order_release);
 
         if (original != nullptr) {
-            original(system);
+            renderOriginal(system);
         }
         if (RunSecondPass(system)) {
             gSecondPassStatus.store(static_cast<DWORD>(SecondPassStatus::ranAtLeastOnce),
@@ -1042,7 +1012,7 @@ void __fastcall RenderWithCameraEdit(void* system)
          !gHeadRotationArmed.load(std::memory_order_acquire)) || system == nullptr) {
         if (original != nullptr) {
             UpdateAimReticleForRender();
-            original(system);
+            renderOriginal(system);
         }
         return;
     }
@@ -1054,7 +1024,7 @@ void __fastcall RenderWithCameraEdit(void* system)
     cameraedit::RestorePoint restore{};
     if (!cameraedit::Capture(live, restore)) {
         if (original != nullptr) {
-            original(system);
+            renderOriginal(system);
         }
         return;
     }
@@ -1078,7 +1048,7 @@ void __fastcall RenderWithCameraEdit(void* system)
             SetFrameCaptureTagOverride(-1);
             lifecycle::Log("preyvr_camera_edit result=0 detail=double_render_budget_exhausted");
             if (original != nullptr) {
-                original(system);
+                renderOriginal(system);
             }
             return;
         }
@@ -1107,7 +1077,7 @@ void __fastcall RenderWithCameraEdit(void* system)
             SetFrameCaptureTagOverride(eye);
             if (original != nullptr) {
                 UpdateAimReticleForRender();
-                original(system);
+                renderOriginal(system);
             }
         }
 
@@ -1154,6 +1124,9 @@ void __fastcall RenderWithCameraEdit(void* system)
     // A refusal here is not fatal: the camera is simply left as the engine built
     // it for this frame, which is a frame without head tracking rather than a
     // broken one.
+    Pose renderHead{};
+    const bool haveRenderHead=ConsumeHeadRenderPose(edited.data(),renderHead,
+        renderContract.displayTime,renderContract.reference);
     bool headRotationApplied = false;
     if (gHeadRotationArmed.load(std::memory_order_acquire)) {
         headRotationApplied = ApplyHeadRotation(edited.data(), edited.size());
@@ -1176,8 +1149,9 @@ void __fastcall RenderWithCameraEdit(void* system)
         const int eye = (locked == 0 || locked == 1)
             ? locked
             : static_cast<int>(gEyeCounter.fetch_add(1, std::memory_order_relaxed) & 1ull);
+        const float renderIpd = gStereoIpd.load(std::memory_order_acquire);
         built = BuildSyntheticEye(edited, eye,
-                                  gStereoIpd.load(std::memory_order_acquire),
+                                  renderIpd,
                                   gStereoHalfFov.load(std::memory_order_acquire));
         if (built) {
             // Publish the eye WITH the camera it produced, so a downstream
@@ -1199,7 +1173,12 @@ void __fastcall RenderWithCameraEdit(void* system)
             SetFrameCaptureTagOverride(eye);
             // Hand the eye to the render thread alongside the frame it belongs
             // to, so submission never has to wait to find out which one it got.
-            eyehandoff::Publish(eye);
+            renderContract.eye=eye;
+            renderContract.pose=Compose(renderHead,Pose{Quaternion{},Vec3{
+                (eye==0 ? -.5f : .5f)*renderIpd,0,0}});
+            const auto fov=stereoframe::TangentsFromCamera(edited);
+            if(fov) renderContract.tangents={fov->tanLeft,fov->tanRight,fov->tanUp,fov->tanDown};
+            renderContract.valid=haveRenderHead && !headRotationApplied && fov.has_value();
         }
     } else if (!headRotationApplied) {
         // The research yaw edit is an *alternative* to head tracking, not
@@ -1212,8 +1191,9 @@ void __fastcall RenderWithCameraEdit(void* system)
     }
 
     if (!built || updateFrustum == nullptr) {
+        renderContract.valid=false;
         if (original != nullptr) {
-            original(system);
+            renderOriginal(system);
         }
         return;
     }
@@ -1230,7 +1210,7 @@ void __fastcall RenderWithCameraEdit(void* system)
         gStereoIpd.store(0.0f, std::memory_order_release);
         SetFrameCaptureTagOverride(-1);
         if (original != nullptr) {
-            original(system);
+            renderOriginal(system);
         }
         return;
     }
@@ -1250,7 +1230,7 @@ void __fastcall RenderWithCameraEdit(void* system)
     }
 
     if (original != nullptr) {
-        original(system);
+        renderOriginal(system);
     }
 
     // **Head rotation is deliberately left in place; everything else is restored.**
@@ -1999,8 +1979,10 @@ DWORD SetStereoEyeLock(unsigned int eye)
 
 int ConsumeRenderedEye()
 {
-    return eyehandoff::Consume();
+    RenderContract out{}; return eyehandoff::Consume(out) ? out.eye : -1;
 }
+
+bool ConsumeRenderedContract(RenderContract& out) { return eyehandoff::Consume(out); }
 
 void ResetEyeHandoff()
 {

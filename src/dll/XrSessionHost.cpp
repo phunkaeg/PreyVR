@@ -155,6 +155,7 @@ struct Host {
     // the moment the view seam lands -- which is why this is fixed before that
     // rather than after.
     XrPosef eyePose[2]{};
+    unsigned long long eyeReference = ~0ull;
     XrFovf eyeFov[2]{};
     // What the runtime asked for, kept beside what we declared. The two are
     // different frusta and the gap between them is spent pixels: comparing them
@@ -788,46 +789,6 @@ std::atomic<bool> gDivergenceLogged{false};
 // Read-only and advisory. It counts and logs; it never edits a submission,
 // because a wrong declaration is a bug to fix at its source, not to paper over
 // at the boundary.
-void AssertDeclaredMatchesRendered(const XrFovf& declared)
-{
-    float tanLeft = 0.0f, tanRight = 0.0f, tanUp = 0.0f, tanDown = 0.0f;
-    if (!dll::RenderedEyeTangents(tanLeft, tanRight, tanUp, tanDown)) {
-        return;   // no eye built yet; silence is correct, not a pass
-    }
-    const float declaredTan[4] = {
-        std::tan(declared.angleLeft), std::tan(declared.angleRight),
-        std::tan(declared.angleUp), std::tan(declared.angleDown)};
-    const float renderedTan[4] = {tanLeft, tanRight, tanUp, tanDown};
-
-    float worst = 0.0f;
-    for (int i = 0; i < 4; ++i) {
-        if (!std::isfinite(declaredTan[i]) || !std::isfinite(renderedTan[i])) {
-            return;
-        }
-        worst = std::max(worst, std::abs(declaredTan[i] - renderedTan[i]));
-    }
-    // 0.01 in tangent is well under a degree near the axis and still catches the
-    // 50-vs-60 degree half-angle case, which differs by 0.54.
-    if (worst <= 0.01f) {
-        gFovAgree.fetch_add(1, std::memory_order_relaxed);
-        return;
-    }
-    gFovDiverge.fetch_add(1, std::memory_order_relaxed);
-    gWorstDivergenceMilliTan.store(
-        static_cast<unsigned int>(worst * 1000.0f + 0.5f), std::memory_order_relaxed);
-    // Logged once. A per-frame line would bury the thing it is reporting.
-    if (!gDivergenceLogged.exchange(true, std::memory_order_relaxed)) {
-        std::ostringstream line;
-        line << "result=warning detail=declared_fov_differs_from_rendered"
-             << " worstTanDelta=" << worst
-             << " declaredTan=[" << declaredTan[0] << "," << declaredTan[1]
-             << "," << declaredTan[2] << "," << declaredTan[3] << "]"
-             << " renderedTan=[" << renderedTan[0] << "," << renderedTan[1]
-             << "," << renderedTan[2] << "," << renderedTan[3] << "]";
-        Log(line.str());
-    }
-}
-
 // **Why the flat mirror looks small, and the one knob for it.**
 //
 // Without a held eye pair -- at the main menu, or any time Prey is not rendering
@@ -907,8 +868,7 @@ bool SubmitStereoPair(
     ID3D11Texture2D* backBuffer,
     std::uint32_t imageIndex,
     const XrView* views,
-    const std::optional<XrFovf>& declaredFov,
-    XrTime displayTime, int renderedEye, bool hudCaptured)
+    const RenderContract& contract, bool hudCaptured)
 {
     D3D11_TEXTURE2D_DESC desc{};
     backBuffer->GetDesc(&desc);
@@ -940,7 +900,28 @@ bool SubmitStereoPair(
     // -1 means the game thread has not published yet -- starting up, or the
     // render thread ran ahead. Hold the existing pair for a frame rather than
     // copying a backbuffer whose eye is unknown, which would be a coin flip.
-    const int eye = renderedEye;
+    if(!ValidRenderContract(contract) || contract.reference!=dll::HeadTrackingReferenceGeneration()) {
+        gFovDiverge.fetch_add(1);
+        static unsigned refused=0;
+        if(++refused%300==1) Log("result=refused detail=render_contract eye="+std::to_string(contract.eye)+
+            " valid="+std::to_string(contract.valid)+" time="+std::to_string(contract.displayTime)+
+            " lag="+std::to_string(dll::EyeHandoffLag())+" dropped="+std::to_string(dll::EyeHandoffDroppedCount()));
+        gHost.eyeImageValid[0]=gHost.eyeImageValid[1]=false;
+        return false;
+    }
+    if(gHost.eyeReference!=contract.reference) {
+        gHost.eyeImageValid[0]=gHost.eyeImageValid[1]=false;
+        gHost.eyeReference=contract.reference;
+    }
+    static unsigned accepted=0;
+    if(++accepted<=4 || accepted%1000==0) {
+        std::ostringstream receipt;
+        receipt<<"render_contract accepted eye="<<contract.eye<<" sourceTime="<<contract.displayTime
+            <<" pose="<<contract.pose.position.x<<","<<contract.pose.position.y<<","<<contract.pose.position.z
+            <<" q="<<contract.pose.orientation.x<<","<<contract.pose.orientation.y<<","<<contract.pose.orientation.z<<","<<contract.pose.orientation.w;
+        Log(receipt.str());
+    }
+    const int eye = contract.eye;
     if (eye == 0 || eye == 1) {
         const int target = gSwapEyes.load(std::memory_order_acquire) ? (1 - eye) : eye;
         context->CopyResource(gHost.eyeImage[target], backBuffer);
@@ -948,8 +929,11 @@ bool SubmitStereoPair(
         // Publish the pixels and the contract that produced them together. The
         // copy and these three writes are the one publication unit; nothing
         // downstream may pair this image with any other frame's pose or FOV.
-        gHost.eyePose[target] = views[target].pose;
-        gHost.eyeFov[target] = declaredFov ? *declaredFov : views[target].fov;
+        gHost.eyePose[target] = {{contract.pose.orientation.x,contract.pose.orientation.y,
+            contract.pose.orientation.z,contract.pose.orientation.w},
+            {contract.pose.position.x,contract.pose.position.y,contract.pose.position.z}};
+        gHost.eyeFov[target] = {std::atan(contract.tangents[0]),std::atan(contract.tangents[1]),
+            std::atan(contract.tangents[2]),std::atan(contract.tangents[3])};
         // Stored in the SAME publication unit as the declaration it is compared
         // against, so a coverage figure can never pair this frame's request with
         // another frame's render.
@@ -957,8 +941,8 @@ bool SubmitStereoPair(
         gHost.requestedFovValid[target] = true;
         // Checked here, at the one point the declaration is bound to the pixels
         // it describes -- the same publication unit FAIL-STR-044 established.
-        AssertDeclaredMatchesRendered(gHost.eyeFov[target]);
-        gHost.eyeDisplayTime[target] = displayTime;
+        gFovAgree.fetch_add(1, std::memory_order_relaxed); // same immutable camera record
+        gHost.eyeDisplayTime[target] = contract.displayTime;
         gHost.eyeImageValid[target] = true;
     }
 
@@ -1166,7 +1150,8 @@ void ServiceXrFrame(void* renderer)
     // Renderer-frame obligation, independent of whether XR submits this frame.
     // Menu/flat paths still build cameras. Leaving their labels queued changed
     // alternating-eye parity when the backlog was eventually discarded.
-    const int renderedEye = dll::ConsumeRenderedEye();
+    RenderContract renderContract{};
+    dll::ConsumeRenderedContract(renderContract);
     // Take each capture once, even on skipped submissions; never reuse a PDA
     // image after a dialog or another menu has replaced it.
     ID3D11Texture2D* inventoryRightTexture=nullptr;
@@ -1291,7 +1276,7 @@ void ServiceXrFrame(void* renderer)
         inputHeadValidity.positionValid = inputHeadValidity.orientationValid = true;
         inputHeadValidity.positionTracked = (viewState.viewStateFlags & XR_VIEW_STATE_POSITION_TRACKED_BIT) != 0;
         inputHeadValidity.orientationTracked = (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_TRACKED_BIT) != 0;
-        dll::PublishHeadPose(inputHead);
+        dll::PublishHeadPose(inputHead, frameState.predictedDisplayTime);
     }
 
     UpdateXrInput(gHost.session, gHost.space,
@@ -1524,8 +1509,7 @@ void ServiceXrFrame(void* renderer)
                     if (gStereoSubmission.load(std::memory_order_acquire) && !panelActive) {
                         stereoPair = SubmitStereoPair(
                             context, backBuffer, imageIndex,
-                            views, DeclaredFovFromLiveCamera(),
-                            frameState.predictedDisplayTime, renderedEye, hudTexture!=nullptr);
+                            views, renderContract, hudTexture!=nullptr);
                     } else {
                         // First light is a **flat mirror**: the same backbuffer
                         // into both eyes. It proves the whole path -- device,
@@ -1578,6 +1562,7 @@ void ServiceXrFrame(void* renderer)
                         haveDeclared = true;
                     }
                 }
+                if(!stereoPair && !panelActive && !haveDeclared) rendered=false;
                 for (int eye = 0; eye < 2; ++eye) {
                     projViews[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
                     projViews[eye].pose = stereoPair ? gHost.eyePose[eye] : views[eye].pose;
