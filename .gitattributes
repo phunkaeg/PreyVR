@@ -1,0 +1,3 @@
+# Preserve byte hashes of this integration receipt's frozen evidence.
+docs/INTEGRATION-CORRECTNESS-2026-09-16.md -text
+docs/evidence/integration-contract-20260916/** -text

@@ -37,7 +37,7 @@
       "reason": "Cleared simulated inputs, disabled VR, closed owned process; no Prey remains."
     }
   },
-  "fact_verdict": "CONFIRMED",
+  "fact_verdict": "CONFIRM",
   "baseline": {
     "verdict": "PASS",
     "reason": "Visible gameplay captures, zero xrEndFrame errors, native candidate active; headset and inventory acceptance excluded."
@@ -46,23 +46,28 @@
   "artifacts": [
     {
       "path": "docs/INTEGRATION-CORRECTNESS-2026-09-16.md",
-      "sha256": "589007d07276fa083ca1b3dd44529b8549a584eb9d24ffe5864543f49b477c25"
+      "sha256": "589007d07276fa083ca1b3dd44529b8549a584eb9d24ffe5864543f49b477c25",
+      "role": "Implementation report and validation limits"
     },
     {
       "path": "docs/evidence/integration-contract-20260916/trace-summary.json",
-      "sha256": "71056107d41fbca582326cffca9f1c008cd47df1c6e7f4a3693d3eea4cda6173"
+      "sha256": "71056107d41fbca582326cffca9f1c008cd47df1c6e7f4a3693d3eea4cda6173",
+      "role": "Trace counts, retained-pose examples and binary hashes"
     },
     {
       "path": "docs/evidence/integration-contract-20260916/PreyVR.log",
-      "sha256": "c3932fc5fbe7172c67ee21f10b51ced02204896bf7c185e4a6acbab5215b27ca"
+      "sha256": "c3932fc5fbe7172c67ee21f10b51ced02204896bf7c185e4a6acbab5215b27ca",
+      "role": "Native CVar and render-contract observations"
     },
     {
       "path": "docs/evidence/integration-contract-20260916/trace.ndjson.gz",
-      "sha256": "f552d6f9a31470ddac870b9db903232e33ecf8b1e57071939d2add2ff37116c0"
+      "sha256": "f552d6f9a31470ddac870b9db903232e33ecf8b1e57071939d2add2ff37116c0",
+      "role": "Complete compressed native OpenXR trace"
     },
     {
       "path": "docs/evidence/integration-contract-20260916/integration-tests.log",
-      "sha256": "d8d5793c1d8eb7a144cc22179f26ff17d8687b3e7075ee99405386986c1979a0"
+      "sha256": "d8d5793c1d8eb7a144cc22179f26ff17d8687b3e7075ee99405386986c1979a0",
+      "role": "Final CTest results"
     }
   ],
   "routes": [],
