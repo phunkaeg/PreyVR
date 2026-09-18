@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260916-source-comparison",
+  "recorded_at": "2026-09-16T07:57:04.926760+00:00",
+  "target": {
+    "name": "J prey-vr current source compared with P PreyVR development source (manifest identifies both)",
+    "identity_kind": "git_commit",
+    "identity": "b680f8bcb70d2deb6910c497d38e54d26683f933"
+  },
+  "question": "Do these two current codebases already contain complementary integration mechanisms, or can one be adopted wholesale?",
+  "claim": "Source inspection finds complementary capabilities: P original-rig/two-hand/UI contracts and J locomotion/crouch/psi/weapon-consumer mechanisms. Both normal stereo paths alternate eyes; both attach newly located XR poses at completed-image publication rather than carrying a complete source render record. A wholesale merge does not solve shared provenance and unfinished-feature gaps.",
+  "evidence_grade": "SOURCE",
+  "environment": "source",
+  "method": "Read-only git/source inspection and existing P graph query. Reproduce identity, 20 source anchors and three synthetic crop arithmetic controls with Python 3.12: python -E -B docs/evidence/prey-vr-comparison-20260916/audit.py. Numeric controls are not compiled target execution. See comparison report for ranking method and source map.",
+  "validity": "VALID",
+  "mutation": "none",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Both full git commits, donor clean status, P dirty status and source-file SHA-256 inventory recorded."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Direct source reads checked call paths beyond comments; git/graph leads cross-checked; 20 anchors and three arithmetic controls reproduced."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Compared current callers/defaults with older docs and helper-only features. Crop arithmetic has exact-aligned positive control, odd-resolution case and deliberate missing-coverage case."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Source comparison; no live scene required or claimed."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "No game/runtime/source implementation mutation. Only local review artifacts added."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "NOT_MEASURED",
+    "reason": "No new build, game, GPU benchmark or headset session. Historical P baseline band and J reported pairing gaps remain separately documented."
+  },
+  "limits": "Feature scores and proposed developer allocation are reviewer judgments, not experimental performance results. Donor runtime reports remain author evidence. J binary ABI/hash not independently verified; P tree is dirty and identified by source hashes. Private branches outside local refs not assessed. Neither successful synthetic math nor source anchors establishes visual quality.",
+  "artifacts": [
+    {
+      "path": "docs/PREY-VR-COMPARISON-2026-09-16.md",
+      "role": "Source review, ranked feature comparison, integration dependency graph and proposed ownership",
+      "sha256": "44a73afa7aeb2e7de89bab086886ad9cd420b0c459ac16b58fb35a7b5c7c3569"
+    },
+    {
+      "path": "docs/evidence/prey-vr-comparison-20260916/manifest.json",
+      "role": "Git identities and hashes of source inventory; not copied donor code",
+      "sha256": "3a8a0573128b3840ec5384483754214ae3457569d1386526cbd3ccfb7e318e7c"
+    },
+    {
+      "path": "docs/evidence/prey-vr-comparison-20260916/checks.json",
+      "role": "Source locations and synthetic crop controls with explicit limits",
+      "sha256": "17d73b40a1b7c591bd49d1d8f3cb5cf68dbba5c39ab3aaf963d9024c0636ead4"
+    },
+    {
+      "path": "docs/evidence/prey-vr-comparison-20260916/audit.py",
+      "role": "Reproduction script",
+      "sha256": "594f5ba1bbf536fe0289ccae1d2f414f1ef3c9e7691bf5ef1d6fc4c86a3e6a3f"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Review the comparison for Prey fleet integration guidance; agree reuse terms, target adapter and coherent render/gameplay contracts before adapting features. Do not promote scores or author HMD claims into runtime acceptance."
+}

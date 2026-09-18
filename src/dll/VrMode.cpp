@@ -111,13 +111,13 @@ void TickVrMode() {
     if(phase==Phase::settings) {
         if(GetTickCount64()>deadline) { Fail("renderer_settings_timeout"); return; }
         if(consolePending) {
-            if(SubmittedConsoleCommandCount()==consoleCount) return;
-            if(LastConsoleBridgeResult()!=0) { Fail("renderer_settings"); return; }
+            if(VerifiedRendererSettingCount()==consoleCount) return;
+            if(VerifiedRendererSettingResult()!=0) { Fail("renderer_settings"); return; }
             consolePending=false; ++setting;
         }
         if(setting<std::size(settings)) {
-            consoleCount=SubmittedConsoleCommandCount();
-            const auto result=QueueConsoleCommand(settings[setting]);
+            consoleCount=VerifiedRendererSettingCount();
+            const auto result=QueueVerifiedRendererSetting(settings[setting]);
             if(result==4) return;
             if(result!=0) { Fail("queue_renderer_settings"); return; }
             consolePending=true; return;
@@ -158,7 +158,7 @@ void TickVrMode() {
         if(GetTickCount64()>deadline) { Fail("no_rendered_frames"); return; }
         if(XrSubmittedFrameCount()<firstFrame+3 || XrResolutionChain(14)!=0)return;
         phase=Phase::active;
-        Log("state=active panel=automatic recenter=F12_or_both_grips");
+        Log("state=active panel=automatic recenter=F12_or_grips_and_left_Y");
     }
     if(phase==Phase::active) {
         if(XrSessionStatusValue()!=1) {Fail("openxr_session_ended");return;}

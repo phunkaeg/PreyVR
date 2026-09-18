@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260913-inventory-alpha-backdrop",
+  "recorded_at": "2026-09-12T23:07:40.823826+00:00",
+  "target": {
+    "name": "Steam Prey.exe / PreyDll.dll with PreyVR backdrop 9b38d02",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Does the separately captured PDA contain alpha that reveals a background through its interior?",
+  "claim": "Yes: magenta appears through the item grid and description in both simulated eyes; disabling separate capture leaves only a border, and re-enabling restores the interior effect.",
+  "evidence_grade": "LIVE",
+  "environment": "in_game",
+  "method": "Unmodified branch 9b38d025b865e67d56b0a7ce097c087163321f1a; xr-sim D3D11 image capture and xr-tape 0.1.0. Launch with tools/Invoke-PreyVRLaunch.ps1 and process-scoped runtime; vr.enable; native menu taps to load existing save and open inventory; ui.inventory 1; ui.backdrop 1; shot inventory_magenta; ui.inventory 0; shot inventory_opaque_control; ui.inventory 1; shot inventory_magenta_repeat. See report for exact run/build, same-display-time tape correlation and pixel control.",
+  "validity": "VALID",
+  "mutation": "temporary",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "DLL hash recorded at launch; retail module hash measured; PID 89128 and trace header agree."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Both-eye images and same-display-time xr-tape end result 0; nontruncated trace."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Opaque panel with backdrop gives border only; re-enabled separate inventory gives magenta interior again."
+    },
+    "scene": {
+      "status": "PASS",
+      "reason": "Existing Talos Lobby save, Items inventory with Disruptor selected visible in both eye captures."
+    },
+    "restore": {
+      "status": "PASS",
+      "reason": "Backdrop and inventory capture disabled, vr.disable logged teardown, owned Prey process closed and no Prey remained."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Release build and 39/39 tests passed; requested inventory sequence completed; no xrEndFrame errors in 18281 recorded frames. This is not full headset acceptance."
+  },
+  "limits": "Quad fallback on simulated Quest optics; no real headset or cylinder validation. Alpha exists in the tested PDA interior, not necessarily everywhere. No world render or world re-entry implemented. Counters alone are not alpha or successful submission proof.",
+  "artifacts": [
+    {
+      "path": "docs/INVENTORY-BACKDROP-HEADLESS-2026-09-13.md",
+      "sha256": "b6813302e66d65190363764ef32cb694b85633b212d2f80fbfa230fefd34106f",
+      "role": "experiment evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-backdrop-2026-09-13/inventory_magenta_left.png",
+      "sha256": "3b271779075241f844df3ab16aecfe1c97d6be0051ab9db7e1426c324e91412b",
+      "role": "experiment evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-backdrop-2026-09-13/inventory_magenta_repeat_right.png",
+      "sha256": "d29877d2f80c96a72d906e8f479b4ad03a2c9441326704b0f64a52433d482621",
+      "role": "experiment evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-backdrop-2026-09-13/inventory_opaque_control_left.png",
+      "sha256": "58ad8a119d42197b686fcfcdf8b42253c54a2b8d2b4075d4004aaced111fadc0",
+      "role": "experiment evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-backdrop-2026-09-13/inventory_magenta.json",
+      "sha256": "75d4c9485e236c5ed3984f0fe82db30674b5447c8731c84d6c365e1ee9c3dafb",
+      "role": "experiment evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-backdrop-2026-09-13/inventory_opaque_control.json",
+      "sha256": "bc8fdba3a94ec94644e0c838db59a177db4320c7d49da364ae0e54fe853b255f",
+      "role": "experiment evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-backdrop-2026-09-13/inventory_magenta_repeat.json",
+      "sha256": "6a204a2e9dfe18220d35cac8e48070987ed386b667d13ecb8e6f61cf549324f8",
+      "role": "experiment evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-backdrop-2026-09-13/trace-extract.json",
+      "sha256": "8abf43047b1f9428d23f987a7667afbedab416ca4b88e6a184a7fb0060c34076",
+      "role": "experiment evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-backdrop-2026-09-13/pixel-comparison.json",
+      "sha256": "16f2553b7ac2691ef544775e63a215eb26077faea0b71fd996003689e2b151ee",
+      "role": "experiment evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-backdrop-2026-09-13/PreyVR.log",
+      "sha256": "31eaebc7d061eb25853566d616a45e1b23f709595d8f588db218f1efca5339c1",
+      "role": "experiment evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-backdrop-2026-09-13/results.txt",
+      "sha256": "a3e32b1ef487b484899a2814eec92a67cf711de15c199b2ed5badd90d8c33a0c",
+      "role": "experiment evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-backdrop-2026-09-13/ctest.log",
+      "sha256": "4082724dab2a80db6df0eae01746005e6d5e8458eada938b3c2683a7b3a7bd90",
+      "role": "experiment evidence"
+    },
+    {
+      "path": "docs/evidence/inventory-backdrop-2026-09-13/launch.log",
+      "sha256": "6325e54eda5e83ec95335ca21090f1831f66751d30924c32854b1a79401101da",
+      "role": "experiment evidence"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Render or retain gameplay world behind the existing alpha inventory. Queue as a Prey UI compositing finding; world-render safety and headset contrast are separate acceptance steps."
+}

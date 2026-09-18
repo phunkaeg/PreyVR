@@ -1,0 +1,44 @@
+{
+  "left": {
+    "roi": [
+      420,
+      550,
+      560,
+      620
+    ],
+    "pixels": 9800,
+    "pixels_with_red_and_blue_increase_gt30": 9796,
+    "fraction": 0.9995918367346939,
+    "centre_opaque_rgb": [
+      20,
+      23,
+      16
+    ],
+    "centre_alpha_rgb": [
+      141,
+      23,
+      140
+    ]
+  },
+  "right": {
+    "roi": [
+      420,
+      550,
+      560,
+      620
+    ],
+    "pixels": 9800,
+    "pixels_with_red_and_blue_increase_gt30": 9793,
+    "fraction": 0.9992857142857143,
+    "centre_opaque_rgb": [
+      20,
+      22,
+      16
+    ],
+    "centre_alpha_rgb": [
+      141,
+      21,
+      140
+    ]
+  }
+}

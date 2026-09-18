@@ -150,7 +150,7 @@ try {
     Write-Host "Mod binaries: $BinDir"
     Write-Host 'Controls: menu button = pause; right stick = navigate; A = select; B = back.'
     Write-Host 'Point + beam-hand trigger = click/drag; grips = tabs; X/Y = actions.'
-    Write-Host 'F12 or both grips = reset view. Press A at the title/loading prompt.'
+    Write-Host 'F12 or both grips + left Y = reset view. Press A at the title/loading prompt.'
     Write-Host 'Tilde (the key below Esc) opens Prey''s own console, when focused.'
     if ($DryRun) {Write-Host 'Preflight passed. Nothing launched.';exit 0}
     Save-PreyVRConfiguration -Path $config -Saved $saved -MigrateLegacy $renderSize.MigrateLegacy -Settings `

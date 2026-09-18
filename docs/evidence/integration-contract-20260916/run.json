@@ -1,0 +1,24 @@
+{
+  "runId": "run-20260916-185943",
+  "startedUtc": "2026-09-16T08:59:53.5993575Z",
+  "gameExe": "D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\Prey.exe",
+  "gameRoot": "D:\\SteamLibrary\\steamapps\\common\\Prey",
+  "pid": 116452,
+  "rendererUp": true,
+  "dll": "D:\\Dev Debug\\PreyVR-integration\\build\\integration\\Release\\PreyVR.dll",
+  "dllSha256": "65BEAFB45BD76963A98BD9356AF3AD24E389B7C0DBB4C4D48201C4A64EB3697F",
+  "dllBytes": 949760,
+  "xrsimDir": "D:\\Dev Debug\\PreyVR-integration\\build\\live\\runs\\run-20260916-185943\\xrsim",
+  "tapeDir": "D:\\Dev Debug\\PreyVR-integration\\build\\live\\runs\\run-20260916-185943\\tape",
+  "logDir": "D:\\Dev Debug\\PreyVR-integration\\build\\live\\runs\\run-20260916-185943\\log",
+  "environment": {
+    "SteamAppId": "480490",
+    "XRSIM_DIR": "D:\\Dev Debug\\PreyVR-integration\\build\\live\\runs\\run-20260916-185943\\xrsim",
+    "PREYVR_LOG_PATH": "D:\\Dev Debug\\PreyVR-integration\\build\\live\\runs\\run-20260916-185943\\log\\PreyVR.log",
+    "XR_RUNTIME_JSON": "C:\\Users\\meise\\AppData\\Local\\xr-sim\\runtime\\xrsim-x64.json",
+    "XR_API_LAYER_PATH": "C:\\Users\\meise\\AppData\\Local\\xr-tape\\layer-x64",
+    "XR_ENABLE_API_LAYERS": "XR_APILAYER_XRTAPE_recorder",
+    "XRTAPE_DIR": "D:\\Dev Debug\\PreyVR-integration\\build\\live\\runs\\run-20260916-185943\\tape",
+    "XRTAPE_MAX_FRAMES": "20000"
+  }
+}

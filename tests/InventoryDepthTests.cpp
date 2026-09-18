@@ -38,19 +38,17 @@ int main()
     // mapping is off by a constant and every plane behind it inherits that.
     Require(Near(PlaneMetres(*mapping, 0.f), 2.f), "the zero plane sits at the panel");
 
-    // The eight observed planes, in order, must recede monotonically. This is
-    // the property that makes the finding useful: they are layers, not noise.
-    float previous = -1.f;
+    // Recorded view m22=-1, m32=-C and RH projection W=-viewZ imply W=C+worldZ.
+    // Negative authored offsets approach the viewer, not recede from it.
+    float previous = 100.f;
     for (const float offset : kObservedPlaneOffsets) {
         const float metres = PlaneMetres(*mapping, offset);
-        Require(metres > previous, "each observed plane sits further away than the last");
+        Require(metres < previous, "negative authored offsets approach the viewer");
         previous = metres;
     }
-    // And the total spread is a comfort-relevant quantity, not a rounding
-    // artefact: about 0.81 m behind the panel at these settings.
-    const float farthest = PlaneMetres(*mapping, kObservedPlaneOffsets.back());
-    Require(farthest > 2.7f && farthest < 2.9f,
-        "the deepest observed plane lands about 0.8 m behind the panel");
+    const float nearest = PlaneMetres(*mapping, kObservedPlaneOffsets.back());
+    Require(nearest > 1.1f && nearest < 1.3f,
+        "the most negative plane maps about 0.8 m in front of the panel");
 
     // depthScale is the comfort dial. Zero must produce two identical images --
     // the honest way to switch stereo off, rather than a very small separation
@@ -108,6 +106,27 @@ int main()
     Require(Near(PlaneMetres(*mapping, std::nanf("")), 2.f),
         "a bad offset falls back to the panel plane");
 
-    std::cout << "Inventory depth mapping passed\n";
+    // Independent projection fixture: at a 2m-wide panel, eyes +/-32mm,
+    // C=40000. A vertex at W=C has no texture disparity; W=C/2 receives
+    // crossed disparity and W=2C uncrossed disparity. Check after divide.
+    for(float w:{20000.f,40000.f,80000.f}) {
+        std::array<float,16> native{1,0,0,12000,0,1,0,9000,0,0,0,0,0,0,0,w};
+        auto left=native,right=native,control=native;
+        Require(ApplyStereoParallax(left,40000,2,-.032f,1) &&
+                ApplyStereoParallax(right,40000,2,.032f,1),"stereo projection accepted");
+        const float disparity=left[3]/w-right[3]/w;
+        Require(Near(disparity,.064f*(40000.f/w-1.f)),"disparity sign and magnitude after homogeneous divide");
+        for(unsigned i=4;i<16;++i)Require(left[i]==native[i],"Y/Z/W and native clipping are unchanged");
+        Require(ApplyStereoParallax(control,40000,2,-.032f,0) && control==native,"zero depth is bit-exact native output");
+        Require(!ApplyStereoParallax(control,40000,0,-.032f,1) && control==native,"invalid geometry refuses without mutation");
+    }
+    // Tilted geometry has varying W across a triangle. Correct every column,
+    // not only the translation; otherwise the triangle distorts incorrectly.
+    std::array<float,16> tilted{1,0,0,0,0,1,0,0,0,0,0,0,.2f,-.3f,0,40000};
+    auto eye=tilted;
+    Require(ApplyStereoParallax(eye,40000,2,-.032f,.5f),"tilted transform accepted");
+    Require(Near(eye[0],1.f-.016f*.2f) && Near(eye[1],.016f*.3f) && eye[3]==0,
+        "tilted homogeneous depth contributes to the full X row");
+    std::cout << "Inventory depth mapping and stereo projection passed\n";
     return 0;
 }

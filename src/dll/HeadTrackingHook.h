@@ -42,7 +42,7 @@ namespace preyvr::dll {
 // be exact, so it needed a queue that preserved order. A pose does not: an older
 // pose is simply a worse answer to the same question, so the newest available is
 // always the right one to use and a backlog would be pure latency.
-void PublishHeadPose(const Pose& openXrHeadPose);
+void PublishHeadPose(const Pose& openXrHeadPose, long long displayTime = 0);
 
 // Reads the latest published head pose, and how old it is in microseconds.
 //
@@ -181,3 +181,8 @@ unsigned long long HeadTrackingMaxPoseAgeMicroseconds();
 DWORD HeadTrackingHasReference();
 
 } // namespace preyvr::dll
+
+namespace preyvr::dll {
+// Consumes only the pose whose world transform matches this camera.
+bool ConsumeHeadRenderPose(const unsigned char* camera, Pose& pose, long long& displayTime, unsigned long long& reference);
+}

@@ -41,6 +41,10 @@ enum class ConsoleBridgeResult : DWORD {
 // Queues one command. It is submitted to the engine from the next observed
 // frame, so the observer must be enabled for anything to happen.
 DWORD QueueConsoleCommand(const char* command);
+// Completion is reported only after engine CVar readback equals the requested value.
+DWORD QueueVerifiedRendererSetting(const char* command);
+unsigned long long VerifiedRendererSettingCount();
+DWORD VerifiedRendererSettingResult();
 
 // Called from the frame observer; returns immediately when nothing is queued.
 void ServiceConsoleQueue();

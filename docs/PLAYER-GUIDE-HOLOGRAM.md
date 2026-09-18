@@ -8,7 +8,7 @@ Press **A** at the title screen. Point the right controller at **Continue** or *
 
 Menus and inventory appear on a screen about **2 metres away**, anchored where you opened them. A cyan beam and dot show where you are pointing. Squeeze the beam hand's trigger to click; hold it while moving to drag, then release. Moving outside the screen cancels an inventory drag and stops hovering. Release the trigger before trying again. **B** backs out one screen at a time.
 
-The screen has a gentle curve when the runtime supports OpenXR cylinder layers and uses a flat panel otherwise. The menu and its control card fit inside both runtime eye frusta with room around the edges. **Both grips together**, or **F12**, reset the VR view and bring the screen back in front of you.
+The screen has a gentle curve when the runtime supports OpenXR cylinder layers and uses a flat panel otherwise. The menu and its control card fit inside both runtime eye frusta with room around the edges. **Both grips + left Y**, or **F12**, reset the VR view and bring the screen back in front of you.
 
 | Control | Gameplay | Menu / inventory |
 | --- | --- | --- |
@@ -19,11 +19,11 @@ The screen has a gentle curve when the runtime supports OpenXR cylinder layers a
 | Left X | Open inventory | Prey's X action, including Equip |
 | Left Y | — | Prey's Y action |
 | Right grip | Use / reload | Next tab, on release |
-| Left grip | — | Previous tab, on release |
+| Left grip | Hold a long weapon's support grip | Previous tab, on release |
 | Beam-hand trigger | Right hand: fire | Click / hold to drag |
 | Other trigger | Existing gameplay mapping | Its native LT / RT page action |
 | Left menu button | Pause | Pause / resume |
-| Both grips together | Reset view | Reset view and screen position |
+| Both grips + left Y | Reset view | Reset view and screen position |
 | F11 | Enable VR or retry startup | Enable VR or retry startup |
 | F12 | Reset view | Reset view and screen position |
 
@@ -76,7 +76,7 @@ gives back about a sixth of the panel.
 The useful one for fit is `ui.scale` (20-200);
 once you find your number, put it in `PreyVR.json` as `UiScalePercent` and every
 later launch starts there. `vr.recenter` re-centres, and so do F12 and squeezing
-both grips -- the grips are the ones that work with the headset on, since F12
+both grips + left Y -- the grips are the ones that work with the headset on, since F12
 needs the Prey desktop window focused.
 
 You can also pass a command straight in: `Tune Prey VR.cmd ui.scale 130`.

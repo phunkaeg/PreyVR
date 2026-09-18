@@ -1,0 +1,272 @@
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/Dev Debug/PreyVR/build/headless/_deps/minhook-src/CMakeLists.txt
+  buffer.c
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/headless/_deps/openxr-src/src/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/headless/_deps/openxr-src/include/openxr/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  hook.c
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  AimState.cpp
+  DllSmokeHost.cpp
+  trampoline.c
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  main.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/build/headless/_deps/openxr-src/src/loader/CMakeLists.txt
+  main.cpp
+  AnimIk.cpp
+  hde64.c
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Generating Code...
+  WeaponRigAlignment.cpp
+  InventorySwapchainTests.cpp
+  CameraEdit.cpp
+  ConsolePolicy.cpp
+  minhook.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\_deps\minhook-build\Release\minhook.x64.lib
+  DebugRegisters.cpp
+  EngineMap.cpp
+  android_utilities.cpp
+  FrameDump.cpp
+  api_layer_interface.cpp
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(355,31): warning C4459: declaration of 'r' hides global declaration [D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\preyvr_inventory_swapchain_tests.vcxproj]
+  (compiling source file '../inventory-backdrop-source-9b38d02/tests/InventorySwapchainTests.cpp')
+      D:\Dev Debug\PreyVR\build\inventory-backdrop-source-9b38d02\tests\InventorySwapchainTests.cpp(26,3):
+      see declaration of '`anonymous-namespace'::r'
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(355,31):
+      the template instantiation context (the oldest one first) is
+          D:\Dev Debug\PreyVR\build\inventory-backdrop-source-9b38d02\tests\InventorySwapchainTests.cpp(17,29):
+          see reference to class template instantiation 'Microsoft::WRL::ComPtr<ID3D11Texture2D>' being compiled
+          C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(355,10):
+          while compiling class template member function 'void Microsoft::WRL::ComPtr<ID3D11Texture2D>::Swap(Microsoft::WRL::ComPtr<ID3D11Texture2D> &) noexcept'
+              C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(335,50):
+              see the first reference to 'Microsoft::WRL::ComPtr<ID3D11Texture2D>::Swap' in 'Microsoft::WRL::ComPtr<ID3D11Texture2D>::operator ='
+              D:\Dev Debug\PreyVR\build\inventory-backdrop-source-9b38d02\tests\InventorySwapchainTests.cpp(60,12):
+              see the first reference to 'Microsoft::WRL::ComPtr<ID3D11Texture2D>::operator =' in '`anonymous-namespace'::Create'
+  
+  InventorySwapchain.cpp
+  preyvr_dxgi_probe.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_dxgi_probe.exe
+  FrameObserver.cpp
+  preyvr_dll_smoke_host.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_dll_smoke_host.exe
+  InputEvent.cpp
+  InputQueue.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Generating Code...
+  InteractionQuery.cpp
+  preyvr_injector.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_injector.exe
+  InventoryPointerCaptureTests.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  loader_core.cpp
+  Locomotion.cpp
+  MenuNavigator.cpp
+  InventoryDepth.cpp
+  NearFovOverrideTests.cpp
+  preyvr_inventory_swapchain_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_inventory_swapchain_tests.exe
+  UiPanel.cpp
+  MotionController.cpp
+  loader_init_data.cpp
+  OpenXRBootstrap.cpp
+  RenderFrameTable.cpp
+  RuntimeSnapshot.cpp
+  loader_instance.cpp
+  Generating Code...
+  preyvr_inventory_capture_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_inventory_capture_tests.exe
+  Compiling...
+  StereoCamera.cpp
+  preyvr_near_fov_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_near_fov_tests.exe
+  StereoFrame.cpp
+  loader_logger.cpp
+  VrMath.cpp
+  DepthSubmission.cpp
+  FrameClock.cpp
+  FrameTiming.cpp
+  loader_logger_recorders.cpp
+  loader_properties.cpp
+  FrustumCoverage.cpp
+  WeaponAim.cpp
+  manifest_file.cpp
+  WrenchQuery.cpp
+  XrFrameContract.cpp
+  XrSwapchainFormat.cpp
+  Generating Code...
+  runtime_interface.cpp
+  preyvr_core.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_core.lib
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  object_info.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  xr_generated_loader.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  filesystem_utils.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  InventoryDepthTests.cpp
+  AimStateTests.cpp
+  XrSwapchainFormatTests.cpp
+  WrenchQueryTests.cpp
+  InteractionQueryTests.cpp
+  json_reader.cpp
+  DepthSubmissionTests.cpp
+  VrMathTests.cpp
+  StereoFrameTests.cpp
+  json_value.cpp
+  preyvr_inventory_depth_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_inventory_depth_tests.exe
+  preyvr_xr_swapchain_format_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_xr_swapchain_format_tests.exe
+  preyvr_interaction_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_interaction_query_tests.exe
+  preyvr_wrench_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_wrench_query_tests.exe
+  WeaponAimTests.cpp
+  json_writer.cpp
+  UiPanelTests.cpp
+  RuntimeSnapshotTests.cpp
+  preyvr_depth_submission_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_depth_submission_tests.exe
+  preyvr_vr_math_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_vr_math_tests.exe
+  DebugRegistersTests.cpp
+  ConsolePolicyTests.cpp
+  Generating Code...
+  CameraEditTests.cpp
+  AnimIkTests.cpp
+  preyvr_debug_registers_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_debug_registers_tests.exe
+  preyvr_stereo_frame_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_stereo_frame_tests.exe
+  InputQueueTests.cpp
+  InputEventTests.cpp
+  preyvr_console_policy_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_console_policy_tests.exe
+  FrustumCoverageTests.cpp
+  preyvr_camera_edit_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_camera_edit_tests.exe
+  FrameDumpTests.cpp
+  preyvr_input_event_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_input_event_tests.exe
+  preyvr_runtime_snapshot_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_runtime_snapshot_tests.exe
+  preyvr_aim_state_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_aim_state_tests.exe
+  XrFrameContractTests.cpp
+  preyvr_input_queue_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_input_queue_tests.exe
+  preyvr_ui_panel_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_ui_panel_tests.exe
+  preyvr_anim_ik_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_anim_ik_tests.exe
+  WeaponRigAlignmentTests.cpp
+  UiPointerTests.cpp
+  preyvr_frustum_coverage_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_frustum_coverage_tests.exe
+  preyvr_weapon_aim_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_weapon_aim_tests.exe
+  RenderFrameTableTests.cpp
+  preyvr_frame_dump_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_frame_dump_tests.exe
+  MotionControllerTests.cpp
+  FrameClockTests.cpp
+  EngineMapTests.cpp
+  preyvr_frame_clock_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_frame_clock_tests.exe
+  preyvr_motion_controller_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_motion_controller_tests.exe
+  LocomotionTests.cpp
+  main.cpp
+  preyvr_render_frame_table_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_render_frame_table_tests.exe
+  OpenXRPreflightWin32.cpp
+  preyvr_engine_map_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_engine_map_tests.exe
+  preyvr_ui_pointer_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_ui_pointer_tests.exe
+  preyvr_weapon_rig_alignment_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_weapon_rig_alignment_tests.exe
+  preyvr_locomotion_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_locomotion_tests.exe
+  preyvr_xr_frame_contract_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_xr_frame_contract_tests.exe
+  xr_generated_dispatch_table_core.c
+  StereoCameraTests.cpp
+  RuntimeBootstrapTests.cpp
+  main.cpp
+     Creating library D:/Dev Debug/PreyVR/build/inventory-backdrop-9b38d02/_deps/openxr-build/src/loader/Release/openxr_loader.lib and object D:/Dev Debug/PreyVR/build/inventory-backdrop-9b38d02/_deps/openxr-build/src/loader/Release/openxr_loader.exp
+  openxr_loader.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  MenuNavigatorTests.cpp
+  RuntimeSnapshotWin32.cpp
+  preyvr_engine_map_probe.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_engine_map_probe.exe
+  D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  preyvr_ray_probe.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_ray_probe.exe
+  D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  Generating Code...
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  preyvr_runtime_bootstrap_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_runtime_bootstrap_tests.exe
+  main.cpp
+  main.cpp
+  preyvr_win32_bootstrap.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_win32_bootstrap.lib
+  preyvr_menu_navigator_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_menu_navigator_tests.exe
+  preyvr_stereo_camera_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_stereo_camera_tests.exe
+  FrameTimingTests.cpp
+  main.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  preyvr_xr_adapter_probe.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_xr_adapter_probe.exe
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt
+  preyvr_xr_session_probe.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_xr_session_probe.exe
+  OpenXRPreflightWin32Tests.cpp
+  AimRayProbe.cpp
+  preyvr_frame_timing_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_frame_timing_tests.exe
+  preyvr_frame_diff.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_frame_diff.exe
+  AimTakeover.cpp
+  preyvr_openxr_preflight_tests.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\preyvr_openxr_preflight_tests.exe
+  AnimIkTakeover.cpp
+  Bootstrap.cpp
+  VrMode.cpp
+  UiGuide.cpp
+  HudLayer.cpp
+  InventorySwapchain.cpp
+  UiPointer.cpp
+  InventoryPointerCapture.cpp
+  CameraEditHook.cpp
+  ConsoleBridgeWin32.cpp
+  DebugWatch.cpp
+  DllMain.cpp
+  FrameCaptureWin32.cpp
+  FrameObserverHook.cpp
+  HeadTrackingHook.cpp
+  HudBridge.cpp
+  HotkeyBridge.cpp
+  IkTargetProbe.cpp
+  Generating Code...
+  Compiling...
+  InputPathProbe.cpp
+  InputPost.cpp
+  MinHookInit.cpp
+  MoveLane.cpp
+  CommandChannel.cpp
+  HandRigTakeover.cpp
+  NearFovOverride.cpp
+  NearViewStereo.cpp
+  RenderFrame.cpp
+  WeaponAttachment.cpp
+  PassCameraProbe.cpp
+  ReticleFollow.cpp
+  XrInput.cpp
+D:\Dev Debug\PreyVR\build\inventory-backdrop-source-9b38d02\src\dll\XrInput.cpp(113,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\build\inventory-backdrop-source-9b38d02\src\dll\XrInput.cpp(114,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\build\inventory-backdrop-source-9b38d02\src\dll\XrInput.cpp(136,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\build\inventory-backdrop-source-9b38d02\src\dll\XrInput.cpp(137,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\preyvr.vcxproj]
+  XrSessionHost.cpp
+  Logger.cpp
+  Generating Code...
+     Creating library D:/Dev Debug/PreyVR/build/inventory-backdrop-9b38d02/Release/PreyVR.lib and object D:/Dev Debug/PreyVR/build/inventory-backdrop-9b38d02/Release/PreyVR.exp
+  preyvr.vcxproj -> D:\Dev Debug\PreyVR\build\inventory-backdrop-9b38d02\Release\PreyVR.dll
+  Building Custom Rule D:/Dev Debug/PreyVR/build/inventory-backdrop-source-9b38d02/CMakeLists.txt

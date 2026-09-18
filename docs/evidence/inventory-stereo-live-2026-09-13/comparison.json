@@ -1,0 +1,116 @@
+[
+  {
+    "depth": 25,
+    "frame": 16031,
+    "files": [
+      "build\\inventory-stereo\\Release\\inventory-16031-tag1100-eye0.pvrframe",
+      "build\\inventory-stereo\\Release\\inventory-16031-tag1101-eye1.pvrframe"
+    ],
+    "identical": false,
+    "mean_absolute": 1.0609001253858024,
+    "changed_fraction": 0.6717655285493828,
+    "regions": {
+      "tab": {
+        "right_minus_left_pixels": -1,
+        "mae": 0.5708641975308641,
+        "zero_shift_mae": 6.581543209876544
+      },
+      "grid": {
+        "right_minus_left_pixels": 0,
+        "mae": 0.581587855861099,
+        "zero_shift_mae": 0.581587855861099
+      },
+      "title": {
+        "right_minus_left_pixels": 0,
+        "mae": 0.7898660714285715,
+        "zero_shift_mae": 0.7898660714285715
+      },
+      "description": {
+        "right_minus_left_pixels": 0,
+        "mae": 0.7584027169149868,
+        "zero_shift_mae": 0.7584027169149868
+      },
+      "footer": {
+        "right_minus_left_pixels": -1,
+        "mae": 3.3961695906432747,
+        "zero_shift_mae": 8.012017543859649
+      }
+    }
+  },
+  {
+    "depth": 0,
+    "frame": 37468,
+    "files": [
+      "build\\inventory-stereo\\Release\\inventory-37468-tag1200-eye0.pvrframe",
+      "build\\inventory-stereo\\Release\\inventory-37468-tag1201-eye1.pvrframe"
+    ],
+    "identical": true,
+    "mean_absolute": 0.0,
+    "changed_fraction": 0.0,
+    "regions": {
+      "tab": {
+        "right_minus_left_pixels": 0,
+        "mae": 0.0,
+        "zero_shift_mae": 0.0
+      },
+      "grid": {
+        "right_minus_left_pixels": 0,
+        "mae": 0.0,
+        "zero_shift_mae": 0.0
+      },
+      "title": {
+        "right_minus_left_pixels": 0,
+        "mae": 0.0,
+        "zero_shift_mae": 0.0
+      },
+      "description": {
+        "right_minus_left_pixels": 0,
+        "mae": 0.0,
+        "zero_shift_mae": 0.0
+      },
+      "footer": {
+        "right_minus_left_pixels": 0,
+        "mae": 0.0,
+        "zero_shift_mae": 0.0
+      }
+    }
+  },
+  {
+    "depth": 100,
+    "frame": 38494,
+    "files": [
+      "build\\inventory-stereo\\Release\\inventory-38494-tag1300-eye0.pvrframe",
+      "build\\inventory-stereo\\Release\\inventory-38494-tag1301-eye1.pvrframe"
+    ],
+    "identical": false,
+    "mean_absolute": 2.18318359375,
+    "changed_fraction": 0.7739385609567901,
+    "regions": {
+      "tab": {
+        "right_minus_left_pixels": -4,
+        "mae": 1.7225308641975308,
+        "zero_shift_mae": 12.872314814814814
+      },
+      "grid": {
+        "right_minus_left_pixels": 0,
+        "mae": 1.301823560793443,
+        "zero_shift_mae": 1.301823560793443
+      },
+      "title": {
+        "right_minus_left_pixels": 0,
+        "mae": 1.064717261904762,
+        "zero_shift_mae": 1.064717261904762
+      },
+      "description": {
+        "right_minus_left_pixels": 0,
+        "mae": 1.2008216476774758,
+        "zero_shift_mae": 1.2008216476774758
+      },
+      "footer": {
+        "right_minus_left_pixels": -3,
+        "mae": 1.8102631578947368,
+        "zero_shift_mae": 22.90856725146199
+      }
+    }
+  }
+]

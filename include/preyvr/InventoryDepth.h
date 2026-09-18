@@ -38,10 +38,10 @@ inline constexpr std::array<float, 8> kObservedPlaneOffsets{
 struct DepthMapping {
     // One native UI unit in metres. Always positive.
     float metresPerUnit = 0;
-    // How far to translate the movie's 3D view per eye, in native UI units, to
-    // produce a left and a right image. Positive; the left eye moves negative.
-    // Zero when depthScale is zero, which yields two identical images -- a flat
-    // panel, and the honest way to switch the effect off.
+    // Magnitude of eye displacement expressed in native units. This is NOT
+    // directly a SetView3D translation: inverse-view signs and a zero-plane
+    // projection correction must also be accounted for. The runtime prototype
+    // uses ApplyStereoParallax after the native matrix calculation instead.
     float halfSeparationUnits = 0;
     // The distance the zero plane is presented at, in metres. Equal to the
     // caller's panelMetres; carried so a consumer needs only this struct.
@@ -54,8 +54,8 @@ struct DepthMapping {
 // `ipdMetres`    the wearer's interpupillary distance, 0.04..0.09. Taken from
 //                the runtime's eye poses rather than assumed.
 // `depthScale`   0..1. **A comfort control, not a correctness one.** 1 is the
-//                geometrically faithful separation; the far plane sits about
-//                0.8 m behind the near one at a 2 m panel, and that much
+//                geometrically faithful separation; the most negative plane
+//                sits about 0.8 m in front of a 2 m panel, and that much
 //                parallax on a UI a wearer reads for minutes is a comfort
 //                question no amount of maths settles. 0 collapses to mono.
 //
@@ -66,9 +66,20 @@ struct DepthMapping {
 std::optional<DepthMapping> MapDepth(float cameraUnits, float panelMetres,
                                      float ipdMetres, float depthScale);
 
-// Where a plane at `offsetUnits` sits, in metres from the wearer. Offsets are
-// negative going away, so the result grows as the plane recedes. The zero plane
-// returns exactly `panelMetres`.
+// Axial plane distance for the observed unrotated native basis: view Z is
+// -world Z-cameraUnits and clip W=-view Z. Negative world Z is CLOSER.
+// This does not undo the movie's common tilt or identify individual widgets.
 float PlaneMetres(const DepthMapping& mapping, float offsetUnits);
+
+// Post-transform stereo correction for the Steam CalcTransMat3D output:
+// row-major Matrix44, column vectors, row 3 contains homogeneous clip W.
+// eyeOnPanel is the signed eye displacement in panel metres (left negative).
+// Xclip += 2*eyeOnPanel/panelWidth * depthScale * (W-cameraUnits).
+// This leaves the zero-depth plane fixed and preserves native clipping/masks.
+// It avoids SetPerspective3D: Steam explicitly zeros its horizontal shifts.
+// Returns false without modifying output on invalid input. Binocular panel
+// prototype only; this is not a head-motion reprojection or a cylinder mapping.
+bool ApplyStereoParallax(std::array<float,16>& clip, float cameraUnits,
+                         float panelWidth, float eyeOnPanel, float depthScale);
 
 } // namespace preyvr::inventory

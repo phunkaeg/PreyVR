@@ -4,6 +4,12 @@ The running Steam Prey inventory contains authored layered 3D transforms, not
 only a flat picture rotated by the mouse. This is a rendering-data finding;
 stereo UI presentation has not been implemented or accepted in the headset.
 
+Update September 13: an opt-in stereo prototype and native arithmetic verifier
+are described in [the prototype report](INVENTORY-STEREO-PROTOTYPE-2026-09-13.md).
+The eight measured planes remain valid. Their negative native offsets approach
+the native camera; the later depth-mapping helper's opposite sign was corrected.
+Runtime replay and headset acceptance of the prototype remain pending.
+
 ## Target and bounded observation
 
 User authorized inspecting running PID 18188 and opened inventory. Steam

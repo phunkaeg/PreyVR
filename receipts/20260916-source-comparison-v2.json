@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260916-source-comparison-v2",
+  "recorded_at": "2026-09-16T08:09:33.232875+00:00",
+  "target": {
+    "name": "J prey-vr current source compared with P PreyVR development source (manifest identifies both)",
+    "identity_kind": "git_commit",
+    "identity": "b680f8bcb70d2deb6910c497d38e54d26683f933"
+  },
+  "question": "Which claims in the peer comparison correct or contradict the original source review?",
+  "claim": "Peer review correctly identifies P FOV fallback and omitted J head-roll/runtime-IPD and HUD-space distinctions. Current source/git contradict its unmerged-branch, fixed-resolution and drop-in-mock assumptions; v2 corrects the plan and scopes evidence and allocations.",
+  "evidence_grade": "SOURCE",
+  "environment": "source",
+  "method": "Direct source/caller reads; git merge-base --is-ancestor; CTest -N enumeration only. Reproduce with docs/evidence/prey-vr-comparison-20260916/check_peer.py. Original SOURCE receipt preserved unchanged.",
+  "validity": "VALID",
+  "mutation": "none",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Both full git commits, donor clean status, P dirty status and source-file SHA-256 inventory recorded."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Direct source reads checked call paths beyond comments; git/graph leads cross-checked; 20 anchors and three arithmetic controls reproduced."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Checked alleged unmerged branch with git ancestry and source presence; configured tests by enumeration; inspected actual action names and callers instead of relying on comments."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Source comparison; no live scene required or claimed."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "No game/runtime/source implementation mutation. Only local review artifacts added."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "NOT_MEASURED",
+    "reason": "No new build, game, GPU benchmark or headset session. Historical P baseline band and J reported pairing gaps remain separately documented."
+  },
+  "limits": "Scores and allocations remain reviewer judgments. FOV defect identified, not fixed or observed live. No new runtime, build, test pass or performance claim. Revision supersedes recommendations in 20260916-source-comparison, not its frozen evidence.",
+  "artifacts": [
+    {
+      "path": "docs/PREY-VR-COMPARISON-2026-09-16-v2.md",
+      "role": "Corrected plan and detailed peer claim assessment",
+      "sha256": "9ab2fbff155f26e50a0e2ab6e49f805b450dcda822530f4ee9e49a10c207f2e5"
+    },
+    {
+      "path": "docs/evidence/prey-vr-comparison-20260916/peer-checks.json",
+      "role": "Source hashes/anchors, git ancestry, test enumeration",
+      "sha256": "e5f9aa81d4ae4be284aaefea47168c94a201f959ce4bd81d469a3dd5b8fb3b82"
+    },
+    {
+      "path": "docs/evidence/prey-vr-comparison-20260916/check_peer.py",
+      "role": "Reproduction script",
+      "sha256": "2f925e82c91366eda5a7a8c918e39fa6679b39efb2d698a909f320e459d5f31b"
+    },
+    {
+      "path": "docs/evidence/prey-vr-comparison-20260916/revise_from_peer.py",
+      "role": "Revision generator preserving original report",
+      "sha256": "2fe2bdefb198ce77dfc506eb319a9de150e497991081c651e70a2d66395ac5b5"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Review v2 integration plan and peer corrections; first implementation work should enforce valid rendered FOV and coherent image provenance. Original receipt remains an immutable historical review."
+}

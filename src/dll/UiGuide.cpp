@@ -23,7 +23,7 @@ std::vector<std::uint8_t> MakeMenuGuide() {
     TextOutW(dc,30,13,title,lstrlenW(title));
     SetTextColor(dc,RGB(240,244,248));
     const wchar_t* line1=L"Point + trigger: click / drag   A: select   B: back";
-    const wchar_t* line2=L"Stick: navigate   Grips: tabs   Both grips: reset view";
+    const wchar_t* line2=L"Stick: navigate   Grips: tabs   Grips + Y: reset view";
     TextOutW(dc,30,57,line1,lstrlenW(line1));
     TextOutW(dc,30,103,line2,lstrlenW(line2));
     GdiFlush();

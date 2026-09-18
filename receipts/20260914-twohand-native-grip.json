@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260914-twohand-native-grip",
+  "recorded_at": "2026-09-13T21:59:49.546625+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll with PreyVR BFCDBB272FFF37663233F5631D1741EEE386FAFF2CF01584E74C6E8D47FA01E4",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Can the existing native wrist/barrel alignment supply a support region and drive coherent two-handed GLOO aim?",
+  "claim": "The native GLOO wrists provide a repeatable support region. A fresh squeeze delivered through the documented xr-sim alias acquires it; moving only the support controller steers the native aim direction and visible gun/hand together. Release restores one-hand aim; empty-air, modal and wrench controls refuse support.",
+  "evidence_grade": "LIVE",
+  "environment": "in_game",
+  "method": "MSVC Release, CMake/CTest (40/40), Python 3.12 comparison; injected Steam Prey under process-scoped xr-sim and xr-tape. See docs/TWO-HANDED-AIM-2026-09-14.md. Installed simulator ignores float-action subactionPath; right squeeze is explicitly a harness alias, not independent physical-controller proof.",
+  "validity": "VALID",
+  "mutation": "temporary",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Target module hash verified; tested injected DLL and launch manifest preserved."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Prey diagnostic measures actual squeeze and weapon-local hand position. Simulator alias is identified and accounted for; pixels and native ray reports independently change."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Primary pose fixed across held, steered and released reports. Empty-air/held-drift refuse acquisition; inventory cancels and wrench has no support region."
+    },
+    "scene": {
+      "status": "PASS",
+      "reason": "Loaded Talos Lobby, observed GLOO gun and wrench in retained captures."
+    },
+    "restore": {
+      "status": "PASS",
+      "reason": "Cleared simulated inputs, disabled VR, observed torn_down in both logs, terminated only owned PID38828 and verified absence; runtime selection was process scoped."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "FAIL",
+    "reason": "Feature controls and all 40 tests pass, but captured baseline has an unresolved horizontal rendering band already present before acquisition. Complete renderer/headset acceptance is not established."
+  },
+  "limits": "Only GLOO support and wrench exclusion observed live. No projectile fired; no physical-controller separation, headset comfort, shotgun/Q-Beam coverage or broad renderer acceptance. Geometry is derived from native wrist positions, not authored per-weapon contact metadata. Tape capped at 20000 frames; later evidence uses mod reports and xr-sim captures.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/twohand-20260914/build.log",
+      "sha256": "4b99eec30f28edec1ed10f1f02169bb4306e3848e52ba7ba8d4943be20772cb4",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/compare_and_freeze.py",
+      "sha256": "767b90667602141d3c748ab04d3b6cdaf137501d5e8e9cc14fd800a02f21d9af",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/comparison.json",
+      "sha256": "03b472e0650c61e4a22a664d257f5149ca0f6491126164786bafeb276e826012",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/include__preyvr__TwoHandedAim.h",
+      "sha256": "2f67a1c805e47de41a0297997a269ce2f18e1957e702fc3b311fb8032cc805f9",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/lifecycle.txt",
+      "sha256": "afc0a271cf0f0b20dfdc3d864ee85a9b1b8a5571cb5d31abaeec339886436e8a",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/PreyVR-tested.dll",
+      "sha256": "bfcdbb272fff37663233f5631d1741eee386faff2cf01584e74c6e8d47fa01e4",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/PreyVR.log",
+      "sha256": "724f58bf02715c4c13938063c77a8ace78c5ce83473476cb916c61e1112cd70f",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/report-final.txt",
+      "sha256": "58c11375b84b41e4cd391cc24af5ef8b9430f33d59a2fd8086574991ea26d7ba",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/report-held-positive.txt",
+      "sha256": "80d49d7bb4e1f0e54060c4f3fd673704c929dabc127c9b623cede830d8e0656c",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/report-released.txt",
+      "sha256": "358390a68fbc4c743ea758e18ae544edc0bc3d6ab4c6182740178e8e62a61dec",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/report-steered.txt",
+      "sha256": "8fac894ca27e2aba7c8bb138a2982057fd3c243169aac05a6cf7a492086f8e5c",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/run.json",
+      "sha256": "db1be34d12d62855aab48fe0183c6c15f41729e4cbdc2827ae02f1ca86fe5a2b",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/src__common__TwoHandedAim.cpp",
+      "sha256": "dcb3d7999be05b3a8927997085cc4987954db8901f55f06bd3aa71c28e8db69a",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/src__dll__AimTakeover.cpp",
+      "sha256": "3298c63534a77416a1cc3223a6d1c9de5a2c2a573ec367b713071b3bb0555be1",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/src__dll__AimTakeover.h",
+      "sha256": "62ed5726ad97da69880d88267c35c2be45628cb4f8b0bc3caf4e07ab837bd185",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/src__dll__AnimIkTakeover.cpp",
+      "sha256": "948582fa8f7cf227e65d4402469dfa5344ead620847089c729da9ec5ec1b9013",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/src__dll__MoveLane.cpp",
+      "sha256": "adc9896047314377ee0e1b66f3056ef3eea62a1045e8e308928359607a04dbf9",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/src__dll__XrInput.cpp",
+      "sha256": "5bb53c406553491cc72468551eeb55c51f8dcb85d4fbf2335da6436d15085747",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/tests.log",
+      "sha256": "9d3bcb58a8884321904dc9375b9ad867f86ea553b683b68061e47776be0ea583",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/tests__TwoHandedAimTests.cpp",
+      "sha256": "206f3c36ee9991780a694caab4e718e31aa4b472491652e1bf46982e9f978af7",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/twohand_held_v2.json",
+      "sha256": "37115a1eddca77df02993711b093c1fc54c882efe270f9a547de9bb77aa82720",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/twohand_held_v2_left.png",
+      "sha256": "e47d384b38dffcccbf79c814be448c4352823ecabf709d000b437603d6ad449a",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/twohand_held_v2_right.png",
+      "sha256": "e83ef3483cd63974729e6ce0418566d10e8340c00371e7a5a6139738abe4cc12",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/twohand_positive.json",
+      "sha256": "b94053f9b8a66cb2a0072474e020bf2eefd5da0ff30c7e014c5e73a7e6e9b898",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/twohand_positive_left.png",
+      "sha256": "916299b7dec275c39e734e24dcdd112410d8bbbe0c30d7f49d611cbb1650244b",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/twohand_positive_right.png",
+      "sha256": "bbd216288ca1aadf13167740b913a30fbe447af7947b3f2824294d1b6055b1e8",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/twohand_second_weapon.json",
+      "sha256": "2a834c5b6069b63528a938b8dbc0ce16e6fd57bb375f2e563dd2d930a76ef1cd",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/twohand_second_weapon_left.png",
+      "sha256": "f28a801cc7d5d53b510e365992d521ecfd68725b208c36b40a6a20664a9e0ed8",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/twohand_second_weapon_right.png",
+      "sha256": "822ba0e385f2e14fc312e4e2b043dd02545501ac3276bdfcf4a6505c4efb80e8",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/twohand_steered.json",
+      "sha256": "de7a63ca4661ab0d845b95121c06ef3ef6ef99276deb2eef20dc84866924c2ca",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/twohand_steered_left.png",
+      "sha256": "9be9d7ea685b68ee1ec3b33e94934b880834ef82259a85e4e797bcacf05de2e1",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/twohand_steered_right.png",
+      "sha256": "a3d90972145d1dde662e36e0ff46323eeb85029cf25f557db96006895e71aa11",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/xrsim-final.json",
+      "sha256": "cd9889691317145e8f87ce5e7f5339e426da6bb2d60f09f552747b12f488bc48",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/evidence/twohand-20260914/xrsim.log",
+      "sha256": "fc44d69d144c75117be40fd9f6a976ebf00b9d2c6449f11896c48ee4d8b3a2e8",
+      "role": "frozen native support evidence or tested implementation"
+    },
+    {
+      "path": "docs/TWO-HANDED-AIM-2026-09-14.md",
+      "sha256": "f4b9a4ebcb56d61f2cd11cebe34f2127e1ec6d94834add61cadf976838e8acb6",
+      "role": "method, result and limits"
+    }
+  ],
+  "routes": [
+    "HAND-017"
+  ],
+  "do_not_repeat": [
+    {
+      "approach": "Treating xr-sim grip l state as proof that Prey received a left-only squeeze",
+      "reason": "Installed simulator caches one shared float-action value and ignores requested subactionPath. Left rig=1 produced Prey squeeze=0; right rig=1 produced the positive control.",
+      "reopen_when": "The installed runtime supplies per-subaction action state, or separate left/right actions are independently validated."
+    }
+  ],
+  "next_action": "Headset-check GLOO grip feel and explicit recenter chord; collect native support diagnostics for shotgun and Q-Beam. Repair/validate xr-sim subaction semantics before claiming independent controller input tests."
+}

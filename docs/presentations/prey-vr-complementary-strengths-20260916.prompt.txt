@@ -1,0 +1,30 @@
+Generated using the built-in image_gen tool.
+
+Use case: productivity-visual.
+Create one polished widescreen 16:9 presentation slide image, high resolution, for two collaborating developers comparing their native Prey (2017) VR codebases. A diplomatic, technically accurate summary of complementary strengths, not a competition or score chart.
+Visual design: premium restrained sci-fi engineering presentation inspired by a space-station terminal, graphite/navy background, crisp ivory typography, teal accents for left team and amber accents for right team. Fine architectural lines, understated technical blueprint graphics, beautifully aligned grid, abundant negative space. Flat front-facing slide, no monitor mockup. Large highly legible sans-serif text. Avoid paragraphs, tiny type, numeric rankings, FPS claims, logos, guns as decorative hero art, fake statistics, and visual clutter.
+Composition:
+Top 18%: small eyebrow "PREY VR / COLLABORATION", then large title "Complementary strengths. One stronger mod."
+Two equal beautifully spaced columns occupying middle 52%, neither visually favored. Each column has repo label, short strength headline and four icon-led lines. Subtle original line-art motifs behind each column: left articulated hand and floating curved UI panel; right tracked footsteps, turning arc and targeting ray. Graphics must remain secondary to text.
+Left column exact text:
+"phunkaeg / PreyVR"
+"Rig, interface & integration"
+"Original arms + weapon rig"
+"Two-handed aiming"
+"Isolated HUD + controller-ray UI"
+"XR lifecycle + regression tests"
+Right column exact text:
+"jordicalsina / prey-vr"
+"Movement & gameplay"
+"Snap turn + locomotion correction"
+"Physical crouch foundation"
+"Weapon-specific firing + psi hooks"
+"Native wheel selection + settings UX"
+Bottom 25%: thin teal and amber lines from the columns converge into one central integration strip, exact text:
+"KEEP PreyVR AS THE BASE"
+"Adapt Jordi’s gameplay features through shared pose, aim and input contracts."
+Below this, three understated sequential pills linked by arrows:
+"1  Stereo correctness"   "2  Gameplay integration"   "3  Shared headset validation"
+Small legible footer:
+"Source review • 16 Sep 2026 • Strengths indicate implementation leads, not completed validation."
+Preserve exact wording, clear correct spelling, sharp typography. Do not imply all features are fully validated or that full-rate stereo/physical melee is implemented. Make the slide feel respectful, balanced, professional, and suitable to send directly to Jordi.

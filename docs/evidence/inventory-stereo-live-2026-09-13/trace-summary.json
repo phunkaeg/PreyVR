@@ -1,0 +1,19 @@
+{
+  "end_frames": 20000,
+  "end_results": {
+    "0": 20000
+  },
+  "layer_counts": {
+    "1": 2303,
+    "2": 17695,
+    "0": 2
+  },
+  "footer": {
+    "r": "footer",
+    "records": 80019,
+    "recordedFrames": 20000,
+    "truncated": true,
+    "maxFrames": 20000
+  },
+  "quad_decoder_limitation": "xr-tape 0.1.0 records quad type 36 as other; use xr-sim shot metadata and eye pixels for quad coverage."
+}

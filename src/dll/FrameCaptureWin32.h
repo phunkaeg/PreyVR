@@ -32,6 +32,7 @@ enum class FrameCaptureResult : DWORD {
 // not queued, because a queue would silently spread one experiment across
 // frames that are not adjacent.
 DWORD RequestFrameCapture(std::uint32_t tag, bool hudOnly=false);
+DWORD RequestInventoryPairCapture(std::uint32_t tag);
 
 // Called from the frame observer. Returns immediately when nothing is armed.
 void ServiceFrameCapture(void* renderer, unsigned long long frameIndex);

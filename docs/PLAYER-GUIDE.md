@@ -14,14 +14,22 @@ The launcher starts Prey, loads the mod, waits for the requested render size, an
 | Left X | Open inventory | X action shown by Prey |
 | Left Y | — | Y action shown by Prey |
 | Right grip | Native use / reload button | Next tab, on release |
-| Left grip | — | Previous tab, on release |
+| Left grip | Hold a long weapon's support grip | Previous tab, on release |
 | Triggers | Right: fire | Previous / next page (LT / RT) |
 | Left menu button | Pause | Pause / resume |
-| Both grips together | Reset VR view | Reset and bring the panel in front of you |
+| Both grips + left Y | Reset VR view | Reset and bring the panel in front of you |
 | F11 | Enable VR or retry setup | Enable VR or retry setup |
 | F12 | Reset VR view | Reset and reposition the panel |
 
 Release a held stick, trigger, or button after closing a menu before using it in gameplay. This prevents an inventory input from immediately moving, turning, firing, or jumping.
+
+For two-handed aiming, bring your left hand to the weapon's foregrip and squeeze
+the left grip. Keep it squeezed while aiming with both hands; release to return
+smoothly to one hand. A squeeze away from the weapon does nothing. Changing
+weapons, opening a menu or losing tracking requires releasing and grabbing again.
+Use/reload remains on the right grip when the left grip is released. To recenter,
+hold both grips, then press left Y; F12 also works.
+`aim.twohand 0` disables support aiming; `aim.twohand 1` enables it (default).
 
 To equip a weapon, open inventory with **X**, highlight it with the right stick, press **X** for Prey's Equip action, then **B** to return to the game. Follow the native button prompts for other items. B backs out one level at a time in nested screens.
 

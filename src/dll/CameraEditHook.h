@@ -1,6 +1,7 @@
 #pragma once
 
 #include "preyvr/VrMath.h"
+#include "preyvr/RenderContract.h"
 
 #include <Windows.h>
 
@@ -156,6 +157,7 @@ DWORD SetStereoEyeLock(unsigned int eye);
 // Call exactly once per finished frame. Consuming twice would advance past a
 // frame and swap the eyes from then on.
 int ConsumeRenderedEye();
+bool ConsumeRenderedContract(RenderContract& out);
 
 // Clears the queue. Call when arming, so a stale backlog from a previous run
 // cannot decide the first few frames' eyes.

@@ -1,0 +1,50 @@
+[07:50:51.512] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[07:50:51.524] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[07:50:51.524] xrsim: control channel live at D:\Dev Debug\PreyVR\build\twohand-live\runs\run-20260914-075011\xrsim
+[07:50:51.594] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-0001584E (15995 MB)
+[07:50:51.622] xrsim: compositor ready
+[07:50:51.622] xrsim: session state -> IDLE
+[07:50:51.622] xrsim: session created with D3D11 graphics
+[07:50:51.622] xrsim: action set 'preyvr' created
+[07:50:51.622] xrsim: 16 binding(s) suggested on the touch profile, 16 driven
+[07:50:51.622] xrsim: 16 binding(s) suggested on the index profile, 16 driven
+[07:50:51.622] xrsim: action set(s) attached to the session
+[07:50:51.623] xrsim: swapchain 0 created 1344x1440x2 fmt 29 (3 images)
+[07:50:51.852] xrsim: session state -> READY
+[07:50:51.852] xrsim: session state -> SYNCHRONIZED
+[07:50:51.852] xrsim: session running - the app is now paced by the simulated headset
+[07:50:51.856] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[07:50:51.857] xrsim: swapchain 2 created 32x32x1 fmt 29 (3 images)
+[07:50:51.857] xrsim: session state -> VISIBLE
+[07:50:51.875] xrsim: session state -> FOCUSED
+[07:51:29.780] xrsim: applied 7 command(s): head pose 0 1.65 0 0 0 0 | hand r follow off | hand l follow off | hand r grip pose 0.18 1.3 -0.35 0 0 0 | hand r aimtrim 0 0 | hand l grip pose 0.034 1.325 -0.561 0 0 0 | hand l aimtrim 0 0
+[07:53:23.709] xrsim: swapchain 3 created 1344x1440x1 fmt 28 (3 images)
+[07:53:40.127] xrsim: applied 1 command(s): grip l 1
+[07:53:40.750] xrsim: applied 1 command(s): shot twohand_held_v2
+[07:53:41.086] xrsim: capture written twohand_held_v2 (1032x1104)
+[07:55:01.378] xrsim: applied 1 command(s): grip r 1
+[07:55:02.002] xrsim: applied 1 command(s): shot twohand_positive
+[07:55:02.339] xrsim: capture written twohand_positive (1032x1104)
+[07:55:22.004] xrsim: applied 1 command(s): hand l grip pos 0.20 1.4 -0.56
+[07:55:22.897] xrsim: applied 1 command(s): shot twohand_steered
+[07:55:23.266] xrsim: capture written twohand_steered (1032x1104)
+[07:56:34.103] xrsim: applied 2 command(s): grip l 0 | grip r 0
+[07:56:34.748] xrsim: applied 2 command(s): hand l grip pos -0.5 1.3 -0.3 | grip r 1
+[07:56:35.105] xrsim: applied 1 command(s): hand l grip pos 0.034 1.325 -0.561
+[07:56:35.458] xrsim: applied 1 command(s): grip r 0
+[07:57:00.583] xrsim: applied 1 command(s): grip r 1
+[07:57:01.682] xrsim: applied 1 command(s): shot twohand_switch
+[07:57:02.008] xrsim: capture written twohand_switch (1032x1104)
+[07:57:55.783] xrsim: applied 1 command(s): grip r 0
+[07:57:56.879] xrsim: applied 1 command(s): shot twohand_inventory
+[07:57:57.190] xrsim: capture written twohand_inventory (1032x1104)
+[07:58:36.874] xrsim: applied 1 command(s): shot twohand_inventory_open
+[07:58:37.178] xrsim: capture written twohand_inventory_open (1032x1104)
+[07:59:13.669] xrsim: applied 1 command(s): shot inventory_stable
+[07:59:13.773] xrsim: capture written inventory_stable (1032x1104)
+[08:00:25.935] xrsim: applied 1 command(s): shot twohand_second_weapon
+[08:00:26.252] xrsim: capture written twohand_second_weapon (1032x1104)
+[08:02:25.717] xrsim: applied 1 command(s): grip r 1
+[08:02:26.588] xrsim: applied 1 command(s): input clear
+[08:02:26.767] xrsim: session torn down
+[08:02:26.767] xrsim: instance destroyed

@@ -1,0 +1,13 @@
+aim.twohand result=0 enabled=1 held=0 regionReady=1 frames=8345 owner=4 supportMm=-143.227,352.215,-16.4844 usable=1 near=0 squeeze=0 dt=0.01107 handLocalMm=22.5088,390.591,58.9905
+aim.twohand result=0 enabled=1 held=0 regionReady=1 frames=8345 owner=4 supportMm=-143.317,352.217,-16.8178 usable=1 near=0 squeeze=1 dt=0.0119905 handLocalMm=-677.489,130.594,-41.0156
+aim.twohand result=0 enabled=1 held=0 regionReady=1 frames=8345 owner=4 supportMm=-143.232,352.213,-16.632 usable=1 near=1 squeeze=1 dt=0.0106611 handLocalMm=-143.446,391.613,-16.0217
+aim.twohand result=0 enabled=1 held=1 regionReady=1 frames=8362 owner=4 supportMm=-141.393,352.367,-14.8636 usable=1 near=1 squeeze=1 dt=0.0109012 handLocalMm=-143.446,391.613,-16.0217
+aim.twohand result=0 enabled=1 held=1 regionReady=1 frames=8437 owner=4 supportMm=-141.963,352.313,-15.6331 usable=1 near=1 squeeze=1 dt=0.0142399 handLocalMm=-143.446,391.613,-16.0217
+aim.twohand result=0 enabled=1 held=0 regionReady=0 frames=10161 owner=4 supportMm=-143.016,352.21,-16.1338 usable=0 near=0 squeeze=1 dt=0.0107595 handLocalMm=-145.989,211.002,24.9939
+aim.twohand result=0 enabled=1 held=0 regionReady=0 frames=10161 owner=4 supportMm=-143.016,352.21,-16.1338 usable=0 near=0 squeeze=1 dt=0.0110836 handLocalMm=-145.989,211.002,24.9939
+aim.twohand result=0 enabled=1 held=0 regionReady=0 frames=10161 owner=4 supportMm=-143.016,352.21,-16.1338 usable=0 near=0 squeeze=0 dt=0.0107131 handLocalMm=-145.989,211.002,24.9939
+aim.twohand result=0 enabled=1 held=0 regionReady=1 frames=10161 owner=5 supportMm=-143.193,352.177,-15.623 usable=1 near=1 squeeze=0 dt=0.0081522 handLocalMm=-143.502,391.596,-16.0217
+aim.twohand result=0 enabled=1 held=0 regionReady=0 frames=10161 owner=5 supportMm=-142.772,352.334,-16.15 usable=0 near=0 squeeze=0 dt=0.013623 handLocalMm=-145.989,211.002,24.9939
+aim.twohand result=0 enabled=1 held=0 regionReady=0 frames=10161 owner=0 supportMm=0,0,0 usable=0 near=0 squeeze=0 dt=0.0113588 handLocalMm=-145.989,211.002,24.9939
+aim.twohand result=0 enabled=1 held=0 regionReady=0 frames=10161 owner=0 supportMm=0,0,0 usable=0 near=0 squeeze=1 dt=0.0116708 handLocalMm=-145.989,211.002,24.9939
+ik.align result=0 enabled=1 status=applied basis=wrench_model helper=none socket=47 generation=6 sequence=57563 applied=39106 refused=0
