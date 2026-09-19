@@ -194,6 +194,7 @@ std::string XrTimingReport();
 // as if it were the headset's own.
 bool XrRequestedEyeFov(int eye, float* left, float* right, float* up, float* down);
 
+const char* XrTrackingSpaceName();
 std::string XrCoverageReport();
 
 DWORD XrResolutionChain(unsigned int field);

@@ -445,6 +445,8 @@ unsigned long long MenuNavigationActionCount()
     return gMenuActions.load(std::memory_order_relaxed);
 }
 
+void InvalidateTrackingSamples() { gTrackingEpoch.fetch_add(1); gTrackingFrame.Clear(); }
+
 void DestroyXrInput()
 {
     for (auto& hand : gHands) {
