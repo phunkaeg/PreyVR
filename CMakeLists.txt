@@ -337,6 +337,11 @@ if(PREYVR_BUILD_TESTS)
     preyvr_enable_warnings(preyvr_stereo_frame_tests)
     add_test(NAME stereo_frame COMMAND preyvr_stereo_frame_tests)
 
+    add_executable(preyvr_comfort_controls_tests tests/ComfortControlsTests.cpp)
+    target_link_libraries(preyvr_comfort_controls_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_comfort_controls_tests)
+    add_test(NAME comfort_controls COMMAND preyvr_comfort_controls_tests)
+
     add_executable(preyvr_motion_controller_tests tests/MotionControllerTests.cpp)
     target_link_libraries(preyvr_motion_controller_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_motion_controller_tests)

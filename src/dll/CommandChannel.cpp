@@ -438,6 +438,10 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "xr.submit status=" << XrStatusName(status) << "(" << status << ")";
     } else if (verb == "view.observe") {
         out << "view.observe result=" << SetViewHookObserving(arg(1, 1));
+    } else if (verb == "view.calibrate") {
+        out << "view.calibrate result=" << RecenterHeadTracking(true) << ' ' << HeadHeightReport();
+    } else if (verb == "view.height") {
+        out << "view.height " << HeadHeightReport();
     } else if (verb == "view.recenter") {
         out << "view.recenter result=" << RecenterHeadTracking();
     } else if (verb == "view.apply") {
@@ -788,6 +792,12 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         const int requested = arg(1, 0);
         out << "move.mode result=" << SetMoveLaneMode(requested) << " mode=" << requested
             << (requested == 0 ? "(off)" : requested == 1 ? "(observe)" : requested == 2 ? "(apply)" : "(unknown)");
+    } else if (verb == "move.snap") {
+        out << "move.snap result=" << (args.size()>1?SetSnapTurnDegrees(arg(1,SnapTurnDegrees())):0) << " degrees=" << SnapTurnDegrees();
+    } else if (verb == "move.headrelative") {
+        out << "move.headrelative result=" << SetHeadRelativeMovement(arg(1,1));
+    } else if (verb == "move.scales") {
+        out << "move.scales result=" << SetMovementAxisScales(arg(1,100),arg(2,100));
     } else if (verb == "move.turn") {
         out << "move.turn result=" << SetTurnLaneEnabled(arg(1, 1))
             << " enabled=" << TurnLaneEnabled();

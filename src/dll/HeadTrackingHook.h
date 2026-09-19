@@ -1,6 +1,7 @@
 #pragma once
 
 #include "preyvr/VrMath.h"
+#include <string>
 
 #include <windows.h>
 
@@ -159,7 +160,11 @@ DWORD SetHeadTrackingEnabled(unsigned int enabled);
 // Refused when the head is near-vertical, per RecenterYawFromHeadPose: looking
 // straight up or down carries no usable yaw, and inventing one would face the
 // player somewhere arbitrary. A refusal leaves the previous reference in place.
-DWORD RecenterHeadTracking();
+DWORD RecenterHeadTracking(bool recalibrateHeight = false);
+DWORD SnapTurnHeadTracking(int steps, unsigned degrees);
+void ResetHeadTrackingReference();
+bool RebaseHeadTrackingSpace(const Pose& previousFromNew, bool valid);
+std::string HeadHeightReport();
 
 // Frames the detour ran with the edit armed and applied.
 unsigned long long HeadTrackingAppliedCount();

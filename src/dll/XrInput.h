@@ -77,6 +77,7 @@ unsigned long long MenuNavigationActionCount();
 void SetMenuNavigationGate(unsigned int enabled);
 unsigned long long MenuNavigationSuppressedCount();
 
+void InvalidateTrackingSamples();
 void DestroyXrInput();
 
 // Latest state for one hand. Returns false before anything has been published.

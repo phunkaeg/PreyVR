@@ -65,7 +65,7 @@ try {
         return '(no reply -- is the mod loaded and running?)'
     }
 
-    # Only verbs that are wired and were exercised in a headset. The channel
+    # Common wired controls; individual feature validation is recorded in docs. The channel
     # accepts many more; the full set is in docs/, and an unknown verb answers
     # with an error rather than doing something surprising.
     $help=@(
@@ -80,7 +80,12 @@ try {
         'vr.recenter           re-centre the view (F12 and both grips + left Y do this too)'
         'vr.enable / vr.disable'
         'ik.anchor 1           1 = camera-anchored hands (0 restores the crosstalk, for A/B)'
-        'move.turn 1           snap turn on the right stick'
+        'move.turn 1           enable right-stick turning'
+        'move.snap 45          snap angle 15..90 degrees; 0 = smooth turning'
+        'move.headrelative 1   move relative to head yaw (0 = native body axes)'
+        'move.scales 100 100    optional strafe/backward correction percentages'
+        'view.height           report reference space and calibrated height'
+        'view.calibrate        explicitly reset standing/seated height baseline'
         'report                a block of counters'
     )
 

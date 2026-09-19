@@ -1,0 +1,8 @@
+{
+  "InitialDetectionTime": "2026-09-19T11:56:26.632+10:00",
+  "ThreatID": 2147749377,
+  "ActionSuccess": true,
+  "Resources": [
+    "file:_D:\\Dev Debug\\PreyVR-integration\\build\\integration\\Release\\preyvr_injector.exe"
+  ]
+}
