@@ -1,0 +1,737 @@
+{
+  "environment": "offline",
+  "movie_sha256": "35974883f152e345834ca690c8f6cb280152cee0ae724280e3cc98f75fb9c9dc",
+  "definition_sha256": "57b89b80082a6dc93ae4b947739acf0cfb2c7c6e07edac137daac584925eb1df",
+  "exporter": "JPEXS Free Flash Decompiler v.26.3.0",
+  "movie_xml_sha256": "b84d85513d65a479a98b1ed684e3671c52c34c53e668fb58aa3d9bbdb3bf35a7",
+  "widgets": {
+    "health": {
+      "path": "_root.safe.quadrant_SW.health_mc",
+      "placement": {
+        "name": "health_mc",
+        "sprite_id": 1263,
+        "depth": 54,
+        "matrix": {
+          "type": "MATRIX",
+          "hasRotate": "false",
+          "hasScale": "true",
+          "nRotateBits": "0",
+          "nScaleBits": "18",
+          "nTranslateBits": "13",
+          "scaleX": "1.0",
+          "scaleY": "0.99998474",
+          "translateX": "2560",
+          "translateY": "-1930"
+        }
+      },
+      "ancestor_placements": [
+        {
+          "name": "safe",
+          "sprite_id": 1593,
+          "depth": 5,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "false",
+            "nRotateBits": "0",
+            "nScaleBits": "0",
+            "nTranslateBits": "16",
+            "translateX": "19200",
+            "translateY": "10800"
+          }
+        },
+        {
+          "name": "quadrant_SW",
+          "sprite_id": 1305,
+          "depth": 201,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "false",
+            "nRotateBits": "0",
+            "nScaleBits": "0",
+            "nTranslateBits": "16",
+            "translateX": "-19200",
+            "translateY": "10800"
+          }
+        }
+      ],
+      "children": {
+        "inner_mc": {
+          "sprite_id": 1262,
+          "depth": 1,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "true",
+            "hasScale": "true",
+            "nRotateBits": "2",
+            "nScaleBits": "18",
+            "nTranslateBits": "0",
+            "rotateSkew0": "0.0",
+            "rotateSkew1": "-1.5258789E-5",
+            "scaleX": "1.0",
+            "scaleY": "0.99998474",
+            "translateX": "0",
+            "translateY": "0"
+          }
+        },
+        "noiseMask_mc": {
+          "sprite_id": 759,
+          "depth": 39,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "true",
+            "nRotateBits": "0",
+            "nScaleBits": "19",
+            "nTranslateBits": "13",
+            "scaleX": "2.0",
+            "scaleY": "2.0",
+            "translateX": "3160",
+            "translateY": "200"
+          }
+        },
+        "noise_mc": {
+          "sprite_id": 771,
+          "depth": 41,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "true",
+            "nRotateBits": "0",
+            "nScaleBits": "18",
+            "nTranslateBits": "13",
+            "scaleX": "1.4570312",
+            "scaleY": "0.4765625",
+            "translateX": "3721",
+            "translateY": "320"
+          }
+        }
+      },
+      "script": "Health.as",
+      "script_sha256": "98ebd4092aec0e38075b4e5551a5cc831962264c6e02398b6edc35b835026d9c"
+    },
+    "psi": {
+      "path": "_root.safe.quadrant_SW.psi_mc",
+      "placement": {
+        "name": "psi_mc",
+        "sprite_id": 1283,
+        "depth": 107,
+        "matrix": {
+          "type": "MATRIX",
+          "hasRotate": "false",
+          "hasScale": "true",
+          "nRotateBits": "0",
+          "nScaleBits": "18",
+          "nTranslateBits": "12",
+          "scaleX": "1.0",
+          "scaleY": "0.99998474",
+          "translateX": "1997",
+          "translateY": "-630"
+        }
+      },
+      "ancestor_placements": [
+        {
+          "name": "safe",
+          "sprite_id": 1593,
+          "depth": 5,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "false",
+            "nRotateBits": "0",
+            "nScaleBits": "0",
+            "nTranslateBits": "16",
+            "translateX": "19200",
+            "translateY": "10800"
+          }
+        },
+        {
+          "name": "quadrant_SW",
+          "sprite_id": 1305,
+          "depth": 201,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "false",
+            "nRotateBits": "0",
+            "nScaleBits": "0",
+            "nTranslateBits": "16",
+            "translateX": "-19200",
+            "translateY": "10800"
+          }
+        }
+      ],
+      "children": {
+        "inner_mc": {
+          "sprite_id": 1282,
+          "depth": 1,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "false",
+            "nRotateBits": "0",
+            "nScaleBits": "0",
+            "nTranslateBits": "0",
+            "translateX": "0",
+            "translateY": "0"
+          }
+        },
+        "noiseMask_mc": {
+          "sprite_id": 759,
+          "depth": 40,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "true",
+            "nRotateBits": "0",
+            "nScaleBits": "18",
+            "nTranslateBits": "14",
+            "scaleX": "1.6099854",
+            "scaleY": "1.0699921",
+            "translateX": "4500",
+            "translateY": "180"
+          }
+        },
+        "noise_mc": {
+          "sprite_id": 771,
+          "depth": 42,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "true",
+            "nRotateBits": "0",
+            "nScaleBits": "18",
+            "nTranslateBits": "13",
+            "scaleX": "1.171875",
+            "scaleY": "0.3125",
+            "translateX": "3021",
+            "translateY": "160"
+          }
+        }
+      },
+      "script": "PsiMeter.as",
+      "script_sha256": "6e0b96b2e544e81d06d78bfeb22b6a920d92007ec52cec51c1cfe8d62c005cf8"
+    },
+    "suit": {
+      "path": "_root.safe.quadrant_SW.armor_mc",
+      "placement": {
+        "name": "armor_mc",
+        "sprite_id": 1289,
+        "depth": 150,
+        "matrix": {
+          "type": "MATRIX",
+          "hasRotate": "true",
+          "hasScale": "true",
+          "nRotateBits": "2",
+          "nScaleBits": "18",
+          "nTranslateBits": "13",
+          "rotateSkew0": "0.0",
+          "rotateSkew1": "-1.5258789E-5",
+          "scaleX": "1.0",
+          "scaleY": "0.99998474",
+          "translateX": "2260",
+          "translateY": "-1280"
+        }
+      },
+      "ancestor_placements": [
+        {
+          "name": "safe",
+          "sprite_id": 1593,
+          "depth": 5,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "false",
+            "nRotateBits": "0",
+            "nScaleBits": "0",
+            "nTranslateBits": "16",
+            "translateX": "19200",
+            "translateY": "10800"
+          }
+        },
+        {
+          "name": "quadrant_SW",
+          "sprite_id": 1305,
+          "depth": 201,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "false",
+            "nRotateBits": "0",
+            "nScaleBits": "0",
+            "nTranslateBits": "16",
+            "translateX": "-19200",
+            "translateY": "10800"
+          }
+        }
+      ],
+      "children": {
+        "inner_mc": {
+          "sprite_id": 1288,
+          "depth": 1,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "false",
+            "nRotateBits": "0",
+            "nScaleBits": "0",
+            "nTranslateBits": "0",
+            "translateX": "0",
+            "translateY": "0"
+          }
+        },
+        "noiseMask_mc": {
+          "sprite_id": 759,
+          "depth": 29,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "true",
+            "nRotateBits": "0",
+            "nScaleBits": "18",
+            "nTranslateBits": "13",
+            "scaleX": "1.6099854",
+            "scaleY": "1.0699921",
+            "translateX": "2300",
+            "translateY": "280"
+          }
+        },
+        "noise_mc": {
+          "sprite_id": 771,
+          "depth": 31,
+          "matrix": {
+            "type": "MATRIX",
+            "hasRotate": "false",
+            "hasScale": "true",
+            "nRotateBits": "0",
+            "nScaleBits": "18",
+            "nTranslateBits": "13",
+            "scaleX": "1.171875",
+            "scaleY": "0.3125",
+            "translateX": "2121",
+            "translateY": "260"
+          }
+        }
+      },
+      "script": "Armor.as",
+      "script_sha256": "9483f5ba9cb098f56c5e373779b1f2cab25a175f058a2a67537ba0d0ef7f13ab"
+    }
+  },
+  "common_parent": "_root.safe.quadrant_SW",
+  "siblings": {
+    "bg_mc": {
+      "sprite_id": 1184,
+      "depth": 1,
+      "matrix": {
+        "type": "MATRIX",
+        "hasRotate": "true",
+        "hasScale": "true",
+        "nRotateBits": "16",
+        "nScaleBits": "18",
+        "nTranslateBits": "13",
+        "rotateSkew0": "0.0",
+        "rotateSkew1": "-0.27114868",
+        "scaleX": "1.0",
+        "scaleY": "0.7517395",
+        "translateX": "200",
+        "translateY": "-2100"
+      }
+    },
+    "bg2_mc": {
+      "sprite_id": 1185,
+      "depth": 3,
+      "matrix": {
+        "type": "MATRIX",
+        "hasRotate": "false",
+        "hasScale": "true",
+        "nRotateBits": "0",
+        "nScaleBits": "18",
+        "nTranslateBits": "13",
+        "scaleX": "0.75",
+        "scaleY": "1.2142944",
+        "translateX": "-2390",
+        "translateY": "-2096"
+      }
+    },
+    "line_mc": {
+      "sprite_id": 1186,
+      "depth": 5,
+      "matrix": {
+        "type": "MATRIX",
+        "hasRotate": "false",
+        "hasScale": "true",
+        "nRotateBits": "0",
+        "nScaleBits": "18",
+        "nTranslateBits": "13",
+        "scaleX": "0.74998474",
+        "scaleY": "1.0",
+        "translateX": "0",
+        "translateY": "-2100"
+      }
+    },
+    "power_mc": {
+      "sprite_id": 1202,
+      "depth": 7,
+      "matrix": {
+        "type": "MATRIX",
+        "hasRotate": "false",
+        "hasScale": "true",
+        "nRotateBits": "0",
+        "nScaleBits": "17",
+        "nTranslateBits": "11",
+        "scaleX": "0.8999939",
+        "scaleY": "0.8999939",
+        "translateX": "920",
+        "translateY": "-920"
+      }
+    },
+    "climb_mc": {
+      "sprite_id": 1209,
+      "depth": 52,
+      "matrix": {
+        "type": "MATRIX",
+        "hasRotate": "false",
+        "hasScale": "false",
+        "nRotateBits": "0",
+        "nScaleBits": "0",
+        "nTranslateBits": "15",
+        "translateX": "9600",
+        "translateY": "-3500"
+      }
+    },
+    "health_mc": {
+      "sprite_id": 1263,
+      "depth": 54,
+      "matrix": {
+        "type": "MATRIX",
+        "hasRotate": "false",
+        "hasScale": "true",
+        "nRotateBits": "0",
+        "nScaleBits": "18",
+        "nTranslateBits": "13",
+        "scaleX": "1.0",
+        "scaleY": "0.99998474",
+        "translateX": "2560",
+        "translateY": "-1930"
+      }
+    },
+    "status_effects": {
+      "sprite_id": 1268,
+      "depth": 96,
+      "matrix": {
+        "type": "MATRIX",
+        "hasRotate": "false",
+        "hasScale": "false",
+        "nRotateBits": "0",
+        "nScaleBits": "0",
+        "nTranslateBits": "14",
+        "translateX": "200",
+        "translateY": "-4140"
+      }
+    },
+    "psi_mc": {
+      "sprite_id": 1283,
+      "depth": 107,
+      "matrix": {
+        "type": "MATRIX",
+        "hasRotate": "false",
+        "hasScale": "true",
+        "nRotateBits": "0",
+        "nScaleBits": "18",
+        "nTranslateBits": "12",
+        "scaleX": "1.0",
+        "scaleY": "0.99998474",
+        "translateX": "1997",
+        "translateY": "-630"
+      }
+    },
+    "armor_mc": {
+      "sprite_id": 1289,
+      "depth": 150,
+      "matrix": {
+        "type": "MATRIX",
+        "hasRotate": "true",
+        "hasScale": "true",
+        "nRotateBits": "2",
+        "nScaleBits": "18",
+        "nTranslateBits": "13",
+        "rotateSkew0": "0.0",
+        "rotateSkew1": "-1.5258789E-5",
+        "scaleX": "1.0",
+        "scaleY": "0.99998474",
+        "translateX": "2260",
+        "translateY": "-1280"
+      }
+    },
+    "flashlight_mc": {
+      "sprite_id": 1299,
+      "depth": 182,
+      "matrix": {
+        "type": "MATRIX",
+        "hasRotate": "false",
+        "hasScale": "false",
+        "nRotateBits": "0",
+        "nScaleBits": "0",
+        "nTranslateBits": "13",
+        "translateX": "1500",
+        "translateY": "-2500"
+      }
+    },
+    "stealth": {
+      "sprite_id": 1304,
+      "depth": 196,
+      "matrix": {
+        "type": "MATRIX",
+        "hasRotate": "false",
+        "hasScale": "true",
+        "nRotateBits": "0",
+        "nScaleBits": "17",
+        "nTranslateBits": "13",
+        "scaleX": "0.75",
+        "scaleY": "0.75",
+        "translateX": "900",
+        "translateY": "-2200"
+      }
+    },
+    "pickup": {
+      "sprite_id": 706,
+      "depth": 200,
+      "matrix": {
+        "type": "MATRIX",
+        "hasRotate": "false",
+        "hasScale": "false",
+        "nRotateBits": "0",
+        "nScaleBits": "0",
+        "nTranslateBits": "14",
+        "translateX": "0",
+        "translateY": "-4400"
+      }
+    }
+  },
+  "proposed_capture_children": [
+    "bg_mc",
+    "bg2_mc",
+    "line_mc",
+    "health_mc",
+    "status_effects",
+    "psi_mc",
+    "armor_mc"
+  ],
+  "exclude_siblings": [
+    "climb_mc",
+    "flashlight_mc",
+    "pickup",
+    "power_mc",
+    "stealth"
+  ],
+  "functions": {
+    "setSafeFrame": {
+      "target": "sf.initStage",
+      "parameters": [
+        {
+          "name": "Width",
+          "desc": "Screen Width",
+          "type": "int"
+        },
+        {
+          "name": "Height",
+          "desc": "Screen Height",
+          "type": "int"
+        },
+        {
+          "name": "SafeFrame",
+          "desc": "Percentage of area.  Typically 85-90",
+          "type": "int"
+        }
+      ]
+    },
+    "setWidgetsScale": {
+      "target": "sf.resizeWidgets",
+      "parameters": [
+        {
+          "name": "Scale",
+          "desc": "0-100%",
+          "type": "int"
+        }
+      ]
+    },
+    "healthUpdate": {
+      "target": "health.healthUpdate",
+      "parameters": [
+        {
+          "name": "HealthValue",
+          "desc": "",
+          "type": "int"
+        },
+        {
+          "name": "HealthMax",
+          "desc": "",
+          "type": "int"
+        },
+        {
+          "name": "RegenValue",
+          "desc": "",
+          "type": "int"
+        },
+        {
+          "name": "Animate",
+          "desc": "",
+          "type": "bool"
+        },
+        {
+          "name": "isRed",
+          "desc": "true=red",
+          "type": "bool"
+        },
+        {
+          "name": "LimitedValue",
+          "desc": "",
+          "type": "int"
+        },
+        {
+          "name": "DamageValue",
+          "desc": "",
+          "type": "int"
+        }
+      ]
+    },
+    "healthOpen": {
+      "target": "health.healthOpen",
+      "parameters": []
+    },
+    "healthClose": {
+      "target": "health.healthClose",
+      "parameters": []
+    },
+    "healthStatic": {
+      "target": "health.setIsStatic",
+      "parameters": [
+        {
+          "name": "isStatic",
+          "desc": "",
+          "type": "bool"
+        }
+      ]
+    },
+    "bleedUpdate": {
+      "target": "health.bleedUpdate",
+      "parameters": [
+        {
+          "name": "BleedVisible",
+          "desc": "",
+          "type": "bool"
+        },
+        {
+          "name": "BleedValue",
+          "desc": "",
+          "type": "int"
+        },
+        {
+          "name": "HealthMax",
+          "desc": "",
+          "type": "int"
+        }
+      ]
+    },
+    "healthLastChance": {
+      "target": "health.lastChance",
+      "parameters": []
+    },
+    "psiUpdate": {
+      "target": "psiM.psiUpdate",
+      "parameters": [
+        {
+          "name": "PsiValue",
+          "desc": "",
+          "type": "int"
+        },
+        {
+          "name": "PsiMax",
+          "desc": "",
+          "type": "int"
+        },
+        {
+          "name": "PsiCostPreview",
+          "desc": "",
+          "type": "int"
+        },
+        {
+          "name": "LimitedValue",
+          "desc": "",
+          "type": "int"
+        }
+      ]
+    },
+    "psiOpen": {
+      "target": "psiM.psiOpen",
+      "parameters": []
+    },
+    "psiClose": {
+      "target": "psiM.psiClose",
+      "parameters": []
+    },
+    "psiStatic": {
+      "target": "psiM.setIsStatic",
+      "parameters": [
+        {
+          "name": "isStatic",
+          "desc": "",
+          "type": "bool"
+        }
+      ]
+    },
+    "psiFlash": {
+      "target": "psiM.psiFlash",
+      "parameters": []
+    },
+    "psiBlocked": {
+      "target": "psiM.psiBlocked",
+      "parameters": [
+        {
+          "name": "isBlocked",
+          "desc": "",
+          "type": "bool"
+        }
+      ]
+    },
+    "armorOpen": {
+      "target": "armor.armorOpen",
+      "parameters": []
+    },
+    "armorClose": {
+      "target": "armor.armorClose",
+      "parameters": []
+    },
+    "armorUpdate": {
+      "target": "armor.armorUpdate",
+      "parameters": [
+        {
+          "name": "Value",
+          "desc": "0-100",
+          "type": "int"
+        },
+        {
+          "name": "Max",
+          "desc": "",
+          "type": "int"
+        }
+      ]
+    },
+    "armorFlash": {
+      "target": "armor.armorFlash",
+      "parameters": []
+    },
+    "armorStatic": {
+      "target": "armor.setIsStatic",
+      "parameters": [
+        {
+          "name": "isStatic",
+          "desc": "",
+          "type": "bool"
+        }
+      ]
+    }
+  },
+  "limits": "Initial authored placements and decoded script references; not live transforms, widget visibility, final bounds, or a render-isolation implementation."
+}

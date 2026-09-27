@@ -3614,3 +3614,18 @@ User confirmed candidate 09 corrected stereo and a curved in-game popup. That se
 ## 2026-09-11 — inventory native 3D depth confirmed live
 
 Running user-owned PID18188: bounded read-only-data Frida observers identified DaniellePDA and eight parallel planes after removing common tilt. Three complete sampled displays each contained 403 unique transforms. No mod change or stereo acceptance claim. Observers detached; game remained responsive. See [live depth evidence](RE-INVENTORY-DEPTH-2026-09-11.md).
+## 2026-09-27 — Native wrist HUD assets extracted offline
+
+A bounded read-only decoder now extracts the installed Steam base and patched
+DanielleHUD movie and UI definition. Both encrypted directories decode completely
+(5,455 base / 517 patch entries); all four requested files pass size and CRC checks.
+The patched movie's script references and named placements agree on
+`_root.safe.quadrant_SW.health_mc`, `psi_mc` and `armor_mc`. The shared parent also
+contains climb/pickup and other indicators, so moving the entire quadrant is not
+an appropriate status-only wrist implementation.
+
+Nine synthetic offline tests pass, including corrupt-input controls. Original
+game files remain unchanged; no game process or headset was used. Native widget
+capture and wrist submission remain unimplemented; the default-off prototype
+card is unchanged. See [native HUD extraction and integration boundary](NATIVE-WRIST-HUD-2026-09-27.md)
+and [static receipt](../receipts/20260927-native-hud-extraction.json).

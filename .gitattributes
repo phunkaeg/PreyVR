@@ -15,3 +15,10 @@ docs/evidence/body-equipment-2026-09-27/** text eol=lf
 include/preyvr/EquipmentNative.h text eol=lf
 tools/re/verify_body_equipment.py text eol=lf
 receipts/20260927-equipment-static.json text eol=lf
+
+# Offline native HUD extraction evidence and reproducible tools.
+tools/re/extract_native_hud.py text eol=lf
+tools/re/map_native_hud.py text eol=lf
+tests/test_extract_native_hud.py text eol=lf
+docs/evidence/native-hud-2026-09-27/** text eol=lf
+receipts/20260927-native-hud-extraction.json text eol=lf

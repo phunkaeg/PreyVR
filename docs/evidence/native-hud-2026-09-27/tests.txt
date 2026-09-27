@@ -1,0 +1,16 @@
+test_ctr_endianness_and_partial_block (__main__.ExtractionTests.test_ctr_endianness_and_partial_block) ... ok
+test_oaep_roundtrip_and_corruption (__main__.ExtractionTests.test_oaep_roundtrip_and_corruption) ... ok
+test_read_bounds_and_unsupported_dll (__main__.ExtractionTests.test_read_bounds_and_unsupported_dll) ... ok
+test_stored_and_deflated_entries (__main__.ExtractionTests.test_stored_and_deflated_entries) ... ok
+test_twofish_known_answer (__main__.ExtractionTests.test_twofish_known_answer) ... ok
+test_untrusted_paths_refused (__main__.ExtractionTests.test_untrusted_paths_refused) ... ok
+test_wrong_crc_and_truncated_archive_refused (__main__.ExtractionTests.test_wrong_crc_and_truncated_archive_refused) ... ok
+test_xml_cycle_refused (__main__.ExtractionTests.test_xml_cycle_refused) ... ok
+test_xml_valid_and_corrupt_bounds (__main__.ExtractionTests.test_xml_valid_and_corrupt_bounds) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.231s
+
+OK
+
+Exit code: 0
