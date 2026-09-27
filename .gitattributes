@@ -11,3 +11,7 @@ docs/evidence/vr-options-2026-09-27/** -text
 include/preyvr/PsychoscopeNative.h text eol=lf
 tools/re/verify_psychoscope.py text eol=lf
 receipts/20260927-psychoscope-static.json -text
+docs/evidence/body-equipment-2026-09-27/** text eol=lf
+include/preyvr/EquipmentNative.h text eol=lf
+tools/re/verify_body_equipment.py text eol=lf
+receipts/20260927-equipment-static.json text eol=lf

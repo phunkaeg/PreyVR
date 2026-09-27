@@ -42,7 +42,7 @@ void MenuChecks(){
  m={};i=Base();Open(m,i);i.valid=false;m.Update(i);Check(!m.Open(),"tracking loss closes");
  i.valid=true;i.accept=true;m.Update(i);Check(!m.Open(),"regained held input cannot open");
  m={};i=Base();Open(m,i);i.epoch++;m.Update(i);Check(!m.Open(),"session transition closes");
- Check(Hit(.5f,310.f/Height)==0&&Hit(.5f,200.f/Height)==5&&Hit(.5f,1010.f/Height)==7,"shared hit layout");
+ Check(Hit(.5f,310.f/Height)==0&&Hit(.5f,200.f/Height)==6&&Hit(.5f,1010.f/Height)==CloseHit,"shared hit layout");
  Check(Hit(-.1f,.4f)==-1&&Hit(.5f,.82f)==-1&&Hit(NAN,.4f)==-1,"outside and help text not actionable");
 }
 void SettingsChecks(){
@@ -57,6 +57,13 @@ void SettingsChecks(){
  Check(Valid(Turn,75)&&Adjust(Turn,75,1)==90&&Adjust(Turn,75,-1)==60,"custom command angle displays and adjusts correctly");
  Check(Adjust(UiScale,200,1)==200&&Adjust(UiScale,20,-1)==20,"scale limits");
  Check(Defaults()[Psychoscope]==0,"gesture opt in");
+ Check(Defaults()[Holsters]==0&&Defaults()[Wrist]==0,"equipment features opt in");
+ Check(Parse("version=1\nturn=45\n",parsed)&&parsed[Holsters]==0&&parsed[WristSize]==100,"old settings upgrade safely");
+ Check(Item(3,0)==Holsters&&Item(3,1)==Wrist&&Item(3,3)==-3,"equipment page layout");
+ Menu menu;Input input=Base();Open(menu,input);input.trigger=true;input.hover=7;menu.Update(input);
+ Check(menu.Open()&&menu.page==3,"fourth tab is not mistaken for close");
+ input.trigger=false;menu.Update(input);input.trigger=true;input.hover=3;
+ Check(menu.Update(input).clearHolsters,"clear assignments distinct from recenter");
 }
 void GestureChecks(){
  PsychoscopeGesture g;const Vec3 high{-.12f,.18f,-.12f},low{-.12f,-.02f,-.12f};

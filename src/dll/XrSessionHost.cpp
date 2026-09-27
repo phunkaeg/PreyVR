@@ -17,6 +17,9 @@
 #include "InventorySwapchain.h"
 #include "VrOptionsRuntime.h"
 #include "VrOptionsPanel.h"
+#include "BodyEquipment.h"
+#include "WristPanel.h"
+#include "AimTakeover.h"
 #include "preyvr/UiPanel.h"
 #include "preyvr/LatestSnapshot.h"
 #include "preyvr/HudCapturePair.h"
@@ -99,6 +102,11 @@ struct Host {
     std::unique_ptr<InventorySwapchain> inventoryRightSwapchain;
     std::unique_ptr<InventorySwapchain> optionsSwapchain;
     ID3D11Texture2D* optionsTexture=nullptr;
+    std::unique_ptr<InventorySwapchain> wristSwapchain;
+    ID3D11Texture2D* wristTexture=nullptr;
+    DXGI_FORMAT wristFormat=DXGI_FORMAT_UNKNOWN;
+    equipment::Vitals wristPainted{};
+    bool wristReady=false,wristVisible=false,wristAttempted=false;
     DXGI_FORMAT optionsFormat=DXGI_FORMAT_UNKNOWN;
     std::optional<ui::Panel> optionsPanel;
     std::uint64_t optionsReference=0;
@@ -657,6 +665,9 @@ void Teardown()
     gHost.inventoryRightSwapchain.reset();
     gHost.optionsSwapchain.reset();
     if(gHost.optionsTexture)gHost.optionsTexture->Release();
+    gHost.wristSwapchain.reset();
+    if(gHost.wristTexture)gHost.wristTexture->Release();
+    ClearHolsters();
     ResetVrOptionsSession();
     DestroyXrInput();
     ResetHeadTrackingReference();
@@ -1921,6 +1932,65 @@ void ServiceXrFrame(void* renderer)
         }
     }
     if(!hudActive)SetHudLayerPresentation(false);
+    XrCompositionLayerQuad wristLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    bool wristActive=false;
+    TrackingFrame wristFrame{};equipment::Vitals vitals{};
+    const bool wristInput=WristDisplayEnabled()&&haveViews&&rendered&&!panelActive&&!optionsActive&&
+        HudGameplayInputAllowed()&&!TwoHandedAimHeld()&&!(reference&1)&&
+        TryGetTrackingFrame(wristFrame)&&wristFrame.displayTime==frameState.predictedDisplayTime&&
+        FreshSample(MonotonicNanoseconds(),wristFrame.publishedNs)&&
+        IsPoseUsable(wristFrame.head,wristFrame.headValidity,200000000)&&
+        IsPoseUsable(wristFrame.hands[0].gripPose,wristFrame.hands[0].gripValidity,200000000)&&
+        ReadWristVitals(vitals,wristFrame.epoch);
+    const auto wristPose=equipment::WristPose(wristFrame.hands[0].gripPose);
+    gHost.wristVisible=wristInput&&equipment::WristVisible(wristFrame.head,wristPose,gHost.wristVisible);
+    if(gHost.wristVisible){
+        if(!gHost.wristAttempted){
+            gHost.wristAttempted=true;uint32_t count=0;
+            if(XR_SUCCEEDED(xrEnumerateSwapchainFormats(gHost.session,0,&count,nullptr))&&count&&count<256){
+                std::vector<int64_t> formats(count);
+                if(XR_SUCCEEDED(xrEnumerateSwapchainFormats(gHost.session,count,&count,formats.data())))
+                    for(auto f:{DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB})
+                        if(std::find(formats.begin(),formats.end(),f)!=formats.end()){gHost.wristFormat=f;break;}
+            }
+            if(gHost.wristFormat!=DXGI_FORMAT_UNKNOWN){
+                D3D11_TEXTURE2D_DESC d{};d.Width=WristWidth;d.Height=WristHeight;d.Format=gHost.wristFormat;
+                d.SampleDesc.Count=1;d.ArraySize=d.MipLevels=1;d.BindFlags=D3D11_BIND_SHADER_RESOURCE;
+                if(SUCCEEDED(gHost.device->CreateTexture2D(&d,nullptr,&gHost.wristTexture))){
+                    gHost.wristSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
+                        xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
+                        xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
+                    if(!gHost.wristSwapchain->Prepare(gHost.session,d,gHost.wristFormat))gHost.wristSwapchain.reset();
+                }
+            }
+        }
+        if(gHost.wristSwapchain&&(!gHost.wristReady||vitals!=gHost.wristPainted)){
+            auto pixels=DrawWristPanel(vitals);
+            if(gHost.wristFormat==DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
+                for(size_t n=0;n+3<pixels.size();n+=4)std::swap(pixels[n],pixels[n+2]);
+            ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+            gHost.wristReady=false;
+            if(context&&!pixels.empty()){
+                context->UpdateSubresource(gHost.wristTexture,0,nullptr,pixels.data(),WristWidth*4,0);
+                const auto result=gHost.wristSwapchain->Copy(context,gHost.wristTexture);
+                gHost.wristReady=result==InventorySwapchain::Upload::ready;
+                if(result==InventorySwapchain::Upload::sessionFault)gStopRequested.store(true);
+                if(gHost.wristReady)gHost.wristPainted=vitals;
+            }
+            if(context)context->Release();
+        }
+        wristActive=gHost.wristReady&&reference==HeadTrackingReferenceGeneration();
+        if(wristActive){
+            const auto& p=wristPose;
+            wristLayer.space=gHost.space;wristLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+            wristLayer.pose={{p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w},
+                {p.position.x,p.position.y,p.position.z}};
+            const float width=.18f*WristSizePercent()*.01f;
+            wristLayer.size={width,width*WristHeight/WristWidth};
+            wristLayer.subImage.swapchain=gHost.wristSwapchain->Handle();
+            wristLayer.subImage.imageRect={{0,0},{WristWidth,WristHeight}};
+        }
+    }
     std::vector<const XrCompositionLayerBaseHeader*> layers;
     if(optionsActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&optionsLayer));
     else if(panelActive)layers.push_back(surface.angle>0?reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cylinderLayer):
@@ -1931,6 +2001,7 @@ void ServiceXrFrame(void* renderer)
     else if(!optionsActive&&hudActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hudLayer));
     if(beamActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&beamLayer));
     if(cursorActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cursorLayer));
+    if(wristActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&wristLayer));
 
     XrFrameEndInfo endInfo{XR_TYPE_FRAME_END_INFO};
     endInfo.displayTime = frameState.predictedDisplayTime;
@@ -1957,6 +2028,7 @@ void ServiceXrFrame(void* renderer)
     PublishResolution();
 
     if (rendered && XR_SUCCEEDED(endResult)) {
+        if(wristActive)RecordWristLayerFrame();
         if (inventorySubmitted) {
             if (gInventoryLayerFrames.fetch_add(1)==0)
                 Log("result=0 detail=first_inventory_layer_submitted separate_swapchain=1 array_size=1 world_copy=0");

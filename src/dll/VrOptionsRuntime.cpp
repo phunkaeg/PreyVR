@@ -1,5 +1,6 @@
 #include "VrOptionsRuntime.h"
 #include "AimTakeover.h"
+#include "BodyEquipment.h"
 #include "HeadTrackingHook.h"
 #include "HudBridge.h"
 #include "MoveLane.h"
@@ -19,6 +20,8 @@ namespace {
 options::Menu menu; // XR thread only
 std::array<std::atomic<int>,options::Count> values{};
 std::atomic<bool> ready{false},open{false},owned{false},saveFailed{false},scope{false};
+std::atomic<bool> holsters{false},wrist{false};
+std::atomic<unsigned> wristSize{100};
 std::atomic<unsigned> dirty{0},page{0},row{0};
 std::atomic<int> request{0};
 std::atomic<bool> recenter{false};
@@ -39,6 +42,9 @@ void Apply(unsigned id,int v){
  case options::GripToggle:SetTwoHandGripToggle(v);break;
  case options::SupportSnap:SetTwoHandSupportSnap(v);break;
  case options::Psychoscope:scope.store(v!=0);break;
+ case options::Holsters:holsters.store(v!=0);ClearHolsters();break;
+ case options::Wrist:wrist.store(v!=0);break;
+ case options::WristSize:wristSize=v;break;
  case options::UiScale:SetUiScalePercent(v);break;
  case options::UiMargin:SetUiFitMarginPercent(v);break;
  case options::UiCurve:SetUiCurveDegrees(v);break;
@@ -64,6 +70,7 @@ options::Values VrOptionsValues(){
  v[options::UiScale]=UiScalePercent();v[options::UiMargin]=UiFitMarginPercent();
  v[options::UiCurve]=UiCurveDegrees();v[options::UiGuide]=UiGuideEnabled();
  v[options::Psychoscope]=scope.load();
+ v[options::Holsters]=holsters.load();v[options::Wrist]=wrist.load();v[options::WristSize]=wristSize.load();
  // Read the actual lane settings, including changes made through the command
  // channel. Pending menu edits override only their own row until applied.
  const auto pending=dirty.load();
@@ -115,6 +122,7 @@ bool ProcessVrOptionsInput(const TrackingFrame& f){
  const auto change=menu.Update(i);
  if(menu.PauseTap())PostMenuAction(static_cast<unsigned>(input::MenuAction::Start),0);
  if(change.recenter)recenter=true;
+ if(change.clearHolsters)ClearHolsters();
  if(change.setting>=0){
   const auto id=static_cast<unsigned>(change.setting);
   values[id]=options::Adjust(id,VrOptionsValues()[id],change.direction);dirty.fetch_or(1u<<id);
@@ -145,6 +153,11 @@ unsigned VrOptionsPage(){return page.load();}
 unsigned VrOptionsRow(){return row.load();}
 bool VrOptionsSaveFailed(){return saveFailed.load();}
 bool PsychoscopeGestureEnabled(){return scope.load();}
+bool HolstersEnabled(){return holsters.load();}
+bool WristDisplayEnabled(){return wrist.load();}
+unsigned WristSizePercent(){return wristSize.load();}
 std::string VrOptionsReport(){return " open="+std::to_string(open.load())+" inputOwned="+std::to_string(owned.load())+
- " saved="+std::to_string(!saveFailed.load())+" psychoscope="+std::to_string(scope.load());}
+ " saved="+std::to_string(!saveFailed.load())+" psychoscope="+std::to_string(scope.load())+
+ " holsters="+std::to_string(holsters.load())+" wrist="+std::to_string(wrist.load())+
+ " wristSize="+std::to_string(wristSize.load());}
 }

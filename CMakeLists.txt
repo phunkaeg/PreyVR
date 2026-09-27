@@ -146,6 +146,8 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/VrOptionsPanel.cpp
         src/dll/VrOptionsRuntime.cpp
         src/dll/Psychoscope.cpp
+        src/dll/BodyEquipment.cpp
+        src/dll/WristPanel.cpp
         src/dll/HudLayer.cpp
         src/dll/InventorySwapchain.cpp
         src/dll/UiPointer.cpp
@@ -359,6 +361,10 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_vr_options_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_vr_options_tests)
     add_test(NAME vr_options_contracts COMMAND preyvr_vr_options_tests)
+    add_executable(preyvr_body_equipment_tests tests/BodyEquipmentTests.cpp)
+    target_link_libraries(preyvr_body_equipment_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_body_equipment_tests)
+    add_test(NAME body_equipment_contracts COMMAND preyvr_body_equipment_tests)
 
     add_executable(preyvr_anim_ik_tests tests/AnimIkTests.cpp)
     target_link_libraries(preyvr_anim_ik_tests PRIVATE preyvr_core)
@@ -476,6 +482,11 @@ if(PREYVR_BUILD_TESTS)
         target_link_libraries(preyvr_vr_options_panel_tests PRIVATE preyvr_core gdi32 user32)
         preyvr_enable_warnings(preyvr_vr_options_panel_tests)
         add_test(NAME vr_options_panel COMMAND preyvr_vr_options_panel_tests)
+        add_executable(preyvr_wrist_panel_tests tests/WristPanelTests.cpp src/dll/WristPanel.cpp)
+        target_compile_definitions(preyvr_wrist_panel_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        target_link_libraries(preyvr_wrist_panel_tests PRIVATE preyvr_core gdi32 user32)
+        preyvr_enable_warnings(preyvr_wrist_panel_tests)
+        add_test(NAME wrist_panel COMMAND preyvr_wrist_panel_tests)
         add_executable(preyvr_vr_options_runtime_tests tests/VrOptionsRuntimeTests.cpp)
         target_include_directories(preyvr_vr_options_runtime_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
         target_compile_definitions(preyvr_vr_options_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)

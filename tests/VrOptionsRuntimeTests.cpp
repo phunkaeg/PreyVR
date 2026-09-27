@@ -4,12 +4,13 @@
 #include <cstdlib>
 namespace {
 preyvr::options::Values applied=preyvr::options::Defaults();
-bool nativeModal=true;unsigned pauseTaps=0,recenters=0,clears=0;
+bool nativeModal=true;unsigned pauseTaps=0,recenters=0,clears=0,holsterClears=0;
 preyvr::dll::TrackingFrame currentFrame{};
 void Check(bool ok,const char* why){if(!ok){std::cerr<<why<<'\n';std::exit(1);}}
 }
 namespace preyvr::lifecycle { void Log(std::string_view){} }
 namespace preyvr::dll {
+void ClearHolsters(){++holsterClears;}
 DWORD SetSnapTurnDegrees(unsigned v){applied[options::Turn]=v;return 0;}
 unsigned SnapTurnDegrees(){return applied[options::Turn];}
 DWORD SetHeadRelativeMovement(unsigned v){applied[options::HeadRelative]=v;return 0;}
@@ -64,6 +65,17 @@ int main(){
  for(int n=0;n<2;++n){r.thumbstickY=-1;tick();r.thumbstickY=0;tick();}
  r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
  Check(PsychoscopeGestureEnabled(),"gesture opt-in through menu reaches consumer");
+ for(int n=0;n<2;++n){r.gripPressed=true;tick();r.gripPressed=false;tick();}
+ Check(VrOptionsPage()==3,"equipment page reached");
+ r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+ Check(HolstersEnabled(),"holster opt-in reaches input consumer");
+ r.thumbstickY=-1;tick();r.thumbstickY=0;tick();
+ r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+ Check(WristDisplayEnabled()&&WristSizePercent()==100,"wrist opt-in reaches layer consumer");
+ for(int n=0;n<2;++n){r.thumbstickY=-1;tick();r.thumbstickY=0;tick();}
+ const auto clearBefore=holsterClears;
+ r.menuAccept=true;tick();r.menuAccept=false;tick();
+ Check(holsterClears==clearBefore+1,"clear holsters invokes its own action");
  // Native menu changes behind us: held confirm cannot leak to the game.
  r.menuAccept=true;nativeModal=false;Check(tick()&&!VrOptionsOpen(),"native menu closes options");
  Check(tick(),"held input quarantined");r.menuAccept=false;tick();Check(!tick(),"neutral releases ownership");

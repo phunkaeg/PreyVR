@@ -21,5 +21,8 @@ unsigned VrOptionsPage();
 unsigned VrOptionsRow();
 bool VrOptionsSaveFailed();
 bool PsychoscopeGestureEnabled();
+bool HolstersEnabled();
+bool WristDisplayEnabled();
+unsigned WristSizePercent();
 std::string VrOptionsReport();
 }

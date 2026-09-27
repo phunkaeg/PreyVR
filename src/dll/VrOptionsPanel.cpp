@@ -24,24 +24,24 @@ std::vector<std::uint8_t> DrawVrOptions(const options::Values& values,unsigned p
  text(83,78,1070,75,L"VIRTUAL REALITY",55,ink,true);
  text(1120,70,230,80,L"CONFIGURATION\n01 / TALOS I",21,muted);
  for(unsigned p=0;p<Pages;++p){
-  const int x=56+static_cast<int>(p)*429;
-  fill(x,174,421,72,p==page?amber:RGB(27,37,45));
-  text(x+26,193,375,45,PageName(p),30,p==page?bg:muted,true);
+  const int span=1288/Pages,x=56+static_cast<int>(p)*span;
+  fill(x,174,span-8,72,p==page?amber:RGB(27,37,45));
+  text(x+22,193,span-36,45,PageName(p),30,p==page?bg:muted,true);
  }
  for(unsigned r=0;r<Rows;++r){
   const int y=280+static_cast<int>(r)*116;const bool active=r==selected;
   fill(56,y,1288,108,active?RGB(47,48,40):RGB(22,30,37));
   if(active)fill(56,y,6,108,amber);
   const int id=Item(page,r);
-  text(83,y+24,710,65,id<0?L"RESET VR VIEW":Describe(id).label,32,active?amber:ink,true);
-  const auto value=id<0?L"RECENTER":Display(id,values[id]);
+  text(83,y+24,710,65,id==-3?L"CLEAR HOLSTER ASSIGNMENTS":id<0?L"RESET VR VIEW":Describe(id).label,32,active?amber:ink,true);
+  const auto value=id==-3?L"CLEAR":id<0?L"RECENTER":Display(id,values[id]);
   text(813,y+27,44,55,L"<",30,muted);
   text(874,y+27,382,63,value,29,ink,true);
   text(1290,y+27,38,55,L">",30,muted);
  }
  fill(56,778,1288,2,RGB(69,80,83));
  const int selectedId=Item(page,selected);
- text(80,808,1240,103,selectedId<0?
+ text(80,808,1240,103,selectedId==-3?L"Forget both session holsters. Your weapons stay in the native inventory.":selectedId<0?
       L"Look straight ahead and select to reset the view and controller reference together.":
       Describe(selectedId).help,29,ink);
  text(80,914,1250,52,saveFailed?L"SETTINGS ACTIVE / COULD NOT SAVE TO DISK":

@@ -1,7 +1,9 @@
 # VR options, foregrip preferences and psychoscope gesture
 
 Base: integration commit `8270bbc435e6670fef0d76ff0449c6bc1fe6f9b0`.
-Work branch: `codex/vr-options`. Holsters and wrist status remain the next batch.
+Work branch: `codex/vr-options`. The subsequent holster/wrist batch is documented
+in [Body equipment](BODY-EQUIPMENT-2026-09-27.md); the evidence below covers the
+original options/foregrip/psychoscope batch.
 No game launch, injection, live process attachment or headset test was performed.
 
 ## Implemented

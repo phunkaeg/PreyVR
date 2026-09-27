@@ -57,6 +57,26 @@ native menu is already open; `vr.options 1` is the diagnostic equivalent.
 - **Hands:** two-hand aim on/off, hold/toggle foregrip, snapped/free support hand,
   and the optional psychoscope gesture.
 - **Interface:** size, visible-area limit, panel curvature and controls guide.
+- **Equipment:** optional body holsters, wrist status, wrist-card size and clear
+  holster assignments. Both new features default off.
+
+**Holsters:** with a weapon equipped, bring the right controller to your right
+hip or across to your left chest, release grip, then squeeze. An empty slot stores
+that weapon and requests its normal stow animation. Squeeze the same slot again
+to draw it. If its weapon is already equipped, the squeeze stows it. Drawing a
+different slot switches through Prey's native equipment transition. Release
+between actions; drifting into a slot with grip held does nothing. Two-handed
+aiming, menus and recenter take priority. Clear assignments on the Equipment tab
+to bind different weapons; weapons remain in your inventory. Assignments are
+session-local, not saved. This first version uses inferred hip/chest positions,
+not tracked torso/hip hardware, and has no visible holstered weapon props.
+
+**Wrist status:** turn the left palm up and look at the wrist. A small TranStar
+card shows health, psi and suit integrity; unavailable values display `--`.
+Size adjusts from 80% to 140%. The card hides in menus, during two-handed aiming,
+on tracking loss and when looking away. It supplements the native HUD; reticles,
+prompts and native status widgets are unchanged. No headset acceptance yet.
+See [implementation and test details](BODY-EQUIPMENT-2026-09-27.md).
 
 **Toggle foregrip:** squeeze near the foregrip to attach; release the grip button
 and squeeze again to detach. **Free support hand** keeps its visual position on

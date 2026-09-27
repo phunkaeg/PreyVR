@@ -2,6 +2,7 @@
 #include "VrMode.h"
 #include "VrOptionsRuntime.h"
 #include "Psychoscope.h"
+#include "BodyEquipment.h"
 
 #include "AimTakeover.h"
 #include "AnimIkTakeover.h"
@@ -350,7 +351,7 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
 
     if (verb == "vr.options") {
         if(args.size()>1)RequestVrOptions(arg(1,0)!=0);
-        out << "vr.options" << VrOptionsReport() << PsychoscopeReport();
+        out << "vr.options" << VrOptionsReport() << PsychoscopeReport() << BodyEquipmentReport();
     } else if (verb == "vr.enable") {
         EnableVrMode(); out << VrModeReport();
     } else if (verb == "vr.disable") {
