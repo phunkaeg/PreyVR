@@ -5,7 +5,9 @@ Research and implementation workspace for an OpenXR VR mod for **Prey (2017)**. 
 **VR options candidate (2026-09-27):** adds an in-headset settings panel, hold/toggle
 foregrip and free/snapped support-hand preferences, plus an opt-in psychoscope
 gesture. The Equipment tab also adds optional hip/chest holsters and a left-wrist
-health/psi/suit card. Static/offline validation only; no game run for this batch.
+health/psi/suit display. The [September 28 native HUD wrist candidate](docs/NATIVE-WRIST-IMPLEMENTATION-2026-09-28.md)
+replaces its custom graphics with a separate capture of the game's status widgets.
+Static/offline validation only; no game run for this batch.
 See [options](docs/VR-OPTIONS-2026-09-27.md) and
 [body equipment controls and evidence](docs/BODY-EQUIPMENT-2026-09-27.md).
 

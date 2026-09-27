@@ -1,0 +1,17 @@
+{
+  "target_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "checks": [
+    "SpriteDisplay complete bytes and mutation refusal",
+    "GetVariable complete bytes and mutation refusal",
+    "ReleaseValue complete bytes and mutation refusal",
+    "ConvertValue complete bytes and mutation refusal",
+    "CharacterHandle complete bytes and mutation refusal",
+    "ConstructHandle complete bytes and mutation refusal",
+    "DisplayList complete bytes and mutation refusal",
+    "SpriteSetVisible complete bytes and mutation refusal",
+    "SpriteOwner complete bytes and mutation refusal",
+    "concrete root/sprite vtables and sprite owner accessor"
+  ],
+  "game_launched": false,
+  "limit": "Byte identity and inspected static contracts, not native replay execution or headset acceptance."
+}

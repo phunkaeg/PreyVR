@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260928-native-wrist-candidate",
+  "recorded_at": "2026-09-27T21:11:14.223420+00:00",
+  "target": {
+    "name": "Steam Prey 2017 x64 PreyDll.dll",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Can native HUD status be isolated without SetVisible animation-playlist side effects?",
+  "claim": "Steam Sprite SetVisible can change optimized animation-playlist membership. The implemented candidate instead resolves native sprite handles and filters only their Display entries during an additive locked replay, then fits the pixels on the GPU. Nine static native body/accessor identities verified; 50/50 offline tests pass. Native replay has not been executed in Prey.",
+  "evidence_grade": "STATIC",
+  "environment": "static",
+  "method": "Ghidra Steam target decompilation and concrete vtable/handle-constructor inspection, independent PE SHA/FNV verifier with altered-byte negative controls; C++ ownership/filter harness and production compute shaders on D3D11 WARP. No game process.",
+  "validity": "VALID",
+  "mutation": "none",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Exact Steam SHA256 and raw function bytes/vtables match."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Native body extents/constructor/consumer inspected; shader pixels verified by offline D3D11 readback."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Changed-byte refusal, every partial resolution failure, duplicate handles, missing positive traversal, blank images, format and device changes tested."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Static scope; no live scene claimed."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "No game mutation. Offline handles and compute-state restoration tested."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "NOT_MEASURED",
+    "reason": "No game run; the offline suite is not a game baseline."
+  },
+  "limits": "Static native contracts and offline GPU pixels only. Game callback execution, native meter visibility, colour/animation, headset ergonomics and performance remain unverified. Native visibility is preserved; the original HUD is never suppressed. Fleet intake/graph refresh deferred for integration worktree root.",
+  "artifacts": [
+    {
+      "path": "include/preyvr/NativeHudIsolation.h",
+      "sha256": "ca726ff3d33d3ffb981e3966fc4f7f3d2e61b6a523b250c9db4281e871d52ed5",
+      "role": "Native wrist implementation/evidence"
+    },
+    {
+      "path": "include/preyvr/NativeWristNative.h",
+      "sha256": "f3187f246f19e8e152e8ab1b9926db59a432fd30da63523345587f3319c32836",
+      "role": "Native wrist implementation/evidence"
+    },
+    {
+      "path": "src/dll/NativeHudValue.h",
+      "sha256": "1d09df87abf8bcfb2eef25b37801b16b7f9c8840b967a1b4827717cd68dec4d3",
+      "role": "Native wrist implementation/evidence"
+    },
+    {
+      "path": "src/dll/NativeWristTexture.h",
+      "sha256": "18f77bbae187f72b6cd15ebbade4859a269a31b91ec92bc7cf00e01f258c66e4",
+      "role": "Native wrist implementation/evidence"
+    },
+    {
+      "path": "src/dll/NativeWristTexture.cpp",
+      "sha256": "157ca469e87a87576f764ddcede3890250b9dba0de194100e92dd0260c4a9da1",
+      "role": "Native wrist implementation/evidence"
+    },
+    {
+      "path": "tests/NativeWristTests.cpp",
+      "sha256": "eb1a5f405bc68ccc9ed6cb20b0de29715c8435f62065cf12469da211c91ac1ab",
+      "role": "Native wrist implementation/evidence"
+    },
+    {
+      "path": "tools/re/verify_native_wrist.py",
+      "sha256": "c8624f90d7a7014bed5c8b803c16332082eb102ddccd5f60a90e55fe378e0ff5",
+      "role": "Native wrist implementation/evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-2026-09-28/build.json",
+      "sha256": "53db892226d3269efe3ff220b8cdaa569b41f0bdf1bea42a0cdd84d1adf99cd7",
+      "role": "Native wrist implementation/evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-2026-09-28/ctest.txt",
+      "sha256": "935f92d0f5a27df3de54d4396fbfa9341c8bd93109f309cf694318abd74bbf94",
+      "role": "Native wrist implementation/evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-2026-09-28/native-contract.json",
+      "sha256": "eebfc88a71615715a5535ce6683170169b9ec1c3d7342fdb30092883ce79ea57",
+      "role": "Native wrist implementation/evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-2026-09-28/README.md",
+      "sha256": "e591e8a4d3330bf8c6f979e955cf0ae95f5da8fbc0d197e9ddda814bc75670e2",
+      "role": "Native wrist implementation/evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-2026-09-28/verification.json",
+      "sha256": "324e6b5554191de122d219151110454c85a848f7ca0c4b01b825cc616a6be96e",
+      "role": "Native wrist implementation/evidence"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [
+    {
+      "approach": "Use temporary _visible writes as a pure render filter",
+      "reason": "Steam SetVisible also changes optimized animation-playlist membership under a movie flag.",
+      "reopen_when": "A complete target-specific side-effect restoration contract is demonstrated; final implementation uses draw filtering instead."
+    }
+  ],
+  "next_action": "When runtime scope permits, test the native copy beside the unchanged forward HUD across health/psi/suit changes and menus/save-load; then verify readability, colour, size stability and frame cost in headset."
+}

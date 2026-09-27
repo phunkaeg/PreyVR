@@ -142,13 +142,11 @@ void UpdateBodyEquipment(const GameplayPoseFrame& frame,bool valid){
     request.reference==frame.referenceGeneration&&!frame.twoHand.held)slot=request.slot;
   request={};
  }
- static std::uint64_t lastStats=0;
- const bool stats=WristDisplayEnabled()&&!FreshSample(now,lastStats,100000000ull);
- // Keep owner continuity even when stats are off, but do not enter native code
- // at all with both features disabled.
- if(!HolstersEnabled()&&!WristDisplayEnabled()){status.Clear();return;}
- Status sample{};const auto result=Native(frame,slot,stats,&sample);
- if(stats){lastStats=now;if(!result){status.Publish(sample);++wristSamples;}else status.Clear();}
+ // Wrist status now uses native HUD pixels; do not poll duplicate vitals or
+ // make a health-read failure disable otherwise independent holster controls.
+ status.Clear();
+ if(!HolstersEnabled())return;
+ Status sample{};const auto result=Native(frame,slot,false,&sample);
  if(slot>=0){if(!result)++dispatched;else ++refused;}
  if(result!=0&&result!=ERROR_NOT_READY){fault=true;status.Clear();}
 }

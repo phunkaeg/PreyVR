@@ -9,6 +9,8 @@
 #include "preyvr/LatestSnapshot.h"
 #include "preyvr/UiPanel.h"
 #include "preyvr/InventoryDepth.h"
+#include "preyvr/NativeHudIsolation.h"
+#include "NativeHudValue.h"
 #include <MinHook.h>
 #include <wrl/client.h>
 #include <array>
@@ -73,6 +75,21 @@ struct Capture {
 };
 Capture captures[kMovies];
 Capture inventoryRight;
+Capture nativeWrist;
+std::atomic<std::uint64_t> wristRequest{0};
+std::atomic<unsigned long long> wristCaptured{0},wristRefused{0};
+std::atomic<bool> wristFault{false};
+bool displayInstalled=false,wristInstallAttempted=false;
+thread_local void* wristRoot=nullptr;
+using SpriteDisplay=void(__fastcall*)(void*,void*);
+SpriteDisplay originalSpriteDisplay=nullptr;
+bool spriteInstalled=false;
+thread_local hud::Isolation<NativeHudApi>* wristFilter=nullptr;
+void __fastcall FilterStatusSprite(void* sprite,void* context){
+    if(wristFilter&&wristFilter->Excludes(sprite))return;
+    if(wristFilter)wristFilter->Observe(sprite);
+    originalSpriteDisplay(sprite,context);
+}
 std::atomic<bool> inventoryStereo{false};
 std::atomic<unsigned> inventoryDepthPercent{25};
 std::atomic<unsigned long long> stereoPairs{0},stereoMatrices{0},stereoRefused{0};
@@ -98,6 +115,46 @@ thread_local ID3D11DeviceContext* activeContext=nullptr;
 thread_local ID3D11RenderTargetView* activeTarget=nullptr;
 thread_local ID3D11DepthStencilView* activeDepthView=nullptr;
 
+bool WantWrist(){return !wristFault.load()&&FreshSample(MonotonicNanoseconds(),wristRequest.load());}
+bool DrawStatusGuarded(void* root){
+    __try {originalDisplay(root);return true;}
+    __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+}
+void CaptureNativeStatus(void* root){
+    NativeHudApi api{root,reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"))};
+    if(!api.Valid()){++wristRefused;return;}
+    hud::Isolation isolation(api);
+    bool produced=false,coverage=false;
+    if(isolation.Begin()){
+        const auto previousTarget=activeTarget;
+        const auto previousDepth=activeDepthView;
+        activeTarget=nativeWrist.target.Get();activeDepthView=nativeWrist.depthView.Get();
+        const float clear[4]{};activeContext->ClearRenderTargetView(activeTarget,clear);
+        originalTargets(activeContext,1,&activeTarget,activeDepthView);
+        wristFilter=&isolation;
+        produced=DrawStatusGuarded(root);
+        wristFilter=nullptr;
+        // Require traversal below the common SW ancestor; cached ancestors
+        // could otherwise contribute pixels without passing the sprite filter.
+        coverage=isolation.Complete();
+        activeTarget=previousTarget;activeDepthView=previousDepth;
+        originalTargets(activeContext,1,&activeTarget,activeDepthView);
+    }
+    const bool restored=isolation.Release();
+    if(!restored||!produced){
+        ++wristRefused;
+        // A failed transaction disables replay until the XR session restarts.
+        // Release attempts ALL handles. A faulting native release is never retried.
+        wristFault=true;
+        lifecycle::Log(std::string("preyvr_native_wrist refused restored=")+std::to_string(restored));
+        return;
+    }
+    // Native visibility may hide every meter. Retry on a future requested frame;
+    // missing traversal is not a process fault or proof that the HUD is empty.
+    if(!coverage){++wristRefused;return;}
+    nativeWrist.stamp=MonotonicNanoseconds();nativeWrist.thread=GetCurrentThreadId();++wristCaptured;
+}
+
 void __fastcall StereoMatrix(void* renderer,const void* source,float* output) {
     originalCalc(renderer,source,output);
     if(stereoEye<0 || !activeContext || !output)return;
@@ -117,6 +174,11 @@ void __fastcall StereoMatrix(void* renderer,const void* source,float* output) {
     } else stereoRefused.fetch_add(1,std::memory_order_relaxed);
 }
 void __fastcall StereoDisplay(void* root) {
+    if(root==wristRoot && activeContext){
+        // First preserve the normal draw. Replay stays inside the ONE native
+        // proxy callback and its locks; no extra Advance or player release.
+        originalDisplay(root);CaptureNativeStatus(root);return;
+    }
     if(root!=stereoRoot || !activeContext || stereoEye>=0) {originalDisplay(root);return;}
     // Entered from the ONE native Flash callback, inside both native locks.
     // Each Display builds/destroys its own draw context. No Advance, input,
@@ -212,7 +274,7 @@ bool EnsureTexture(ID3D11Device* device,ID3D11RenderTargetView* original,
 // while it is not. Sharing one gate is what kept the inventory uncapturable.
 bool WantMovie(Movie movie) {
     switch(movie) {
-        case Movie::hud: return enabled.load() && HudGameplayInputAllowed();
+        case Movie::hud: return (enabled.load()||WantWrist()) && HudGameplayInputAllowed();
         case Movie::pda: return inventoryCapture.load(std::memory_order_acquire) &&
                                 HudInventoryIsOpen();
     }
@@ -228,12 +290,13 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
     const auto address=reinterpret_cast<std::uintptr_t>(proxy);
     const auto now=MonotonicNanoseconds();
     unsigned which=kMovies;
-    if((enabled.load() || inventoryCapture.load()) && XrSessionStatusValue()==1 && !activeContext) {
+    if((enabled.load() || inventoryCapture.load() || WantWrist()) && XrSessionStatusValue()==1 && !activeContext) {
         for(unsigned i=0;i<kMovies;++i) {
             Identity id{};
             if(seen[i].TryRead(id) && id.proxy==address && FreshSample(now,id.stamp)) {
                 captures[i].stamp=0; // This callback supersedes any older capture, including on refusal.
                 if(i==1)inventoryRight.stamp=0;
+                if(i==0&&WantWrist())nativeWrist.stamp=0;
                 if(WantMovie(static_cast<Movie>(i))) {which=i;break;}
             }
         }
@@ -245,6 +308,7 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
         originalFlash(proxy,release);return;
     }
     Capture& capture=captures[which];
+    const bool captureNormal=which!=0||enabled.load();
     const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
     auto renderer=*reinterpret_cast<std::uintptr_t*>(base+engine::RendererLayout::singletonPointerRva);
     auto device=*reinterpret_cast<ID3D11Device**>(renderer+engine::RendererLayout::device);
@@ -252,7 +316,15 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
     std::array<ID3D11RenderTargetView*,8> saved{};ID3D11DepthStencilView* ds=nullptr;
     context->OMGetRenderTargets(8,saved.data(),&ds);
     bool single=saved[0]!=nullptr;for(unsigned i=1;i<8;++i)single=single && !saved[i];
-    bool ready=single && EnsureTexture(device,saved[0],ds,capture);
+    bool ready=single && (!captureNormal||EnsureTexture(device,saved[0],ds,capture));
+    if(ready&&which==0&&WantWrist()){
+        wristRequest=0; // At most one extra HUD draw per XR consumer request.
+        if(EnsureTexture(device,saved[0],ds,nativeWrist)){
+            wristRoot=InventoryRoot(proxy,base);
+            if(ds){ComPtr<ID3D11Resource> source;ds->GetResource(&source);context->CopyResource(nativeWrist.depth.Get(),source.Get());}
+        }
+        if(!wristRoot)++wristRefused;
+    }
     if(ready && which==static_cast<unsigned>(Movie::pda)) {
         D3D11_TEXTURE2D_DESC d{};capture.texture->GetDesc(&d);
         ready=InventoryTextureCompatible(consumer.description,d);
@@ -266,21 +338,22 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
         stereoScale=inventoryDepthPercent.load()*.01f;
     }
     if(ready) {
-        if(ds) {ComPtr<ID3D11Resource> source;ds->GetResource(&source);context->CopyResource(capture.depth.Get(),source.Get());}
-        const float clear[4]={0,0,0,0};context->ClearRenderTargetView(capture.target.Get(),clear);
+        if(captureNormal){
+            if(ds) {ComPtr<ID3D11Resource> source;ds->GetResource(&source);context->CopyResource(capture.depth.Get(),source.Get());}
+            const float clear[4]={0,0,0,0};context->ClearRenderTargetView(capture.target.Get(),clear);
+        }
         originalDestination=saved[0];originalDepth=ds;activeContext=context.Get();
-        activeTarget=capture.target.Get();activeDepthView=capture.depthView.Get();
-        auto rt=capture.target.Get();originalTargets(context.Get(),1,&rt,capture.depthView.Get());
+        activeTarget=captureNormal?capture.target.Get():saved[0];activeDepthView=captureNormal?capture.depthView.Get():ds;
+        originalTargets(context.Get(),1,&activeTarget,activeDepthView);
     } else refused.fetch_add(1);
     // Exactly one outer call. The opt-in Display hook draws inside its locks.
     originalFlash(proxy,release);
-    stereoRoot=nullptr;
+    stereoRoot=nullptr;wristRoot=nullptr;
     if(ready) {
         activeContext=nullptr;originalDestination=nullptr;originalDepth=nullptr;
         activeTarget=nullptr;activeDepthView=nullptr;
         originalTargets(context.Get(),8,saved.data(),ds);
-        capture.stamp=MonotonicNanoseconds();capture.thread=GetCurrentThreadId();
-        captured[which].fetch_add(1);
+        if(captureNormal){capture.stamp=MonotonicNanoseconds();capture.thread=GetCurrentThreadId();captured[which].fetch_add(1);}
         if(which==1 && stereoProduced) {
             inventoryRight.stamp=capture.stamp;inventoryRight.thread=capture.thread;
             stereoPairs.fetch_add(1);
@@ -312,24 +385,39 @@ bool Install() {
     if(MH_ApplyQueued()!=MH_OK)return false;
     installed=true;return true;
 }
-bool InstallStereo() {
-    if(stereoInstalled)return true;
+bool InstallDisplay() {
+    if(displayInstalled)return true;
     if(SmokeStatus()!=2)return false; // Complete supported-module gate, not only a DLL pin.
     if(!Install())return false;
     const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
     constexpr unsigned char displayBytes[]={0x40,0x55,0x56,0x48,0x81,0xEC,0x68,0x03,0,0};
-    constexpr unsigned char calcBytes[]={0x48,0x8B,0xC4,0x55,0x53,0x56,0x57,0x48,0x8D,0xA8,0x48,0xFF,0xFF,0xFF};
     const auto display=reinterpret_cast<void*>(base+0x18AB710);
-    const auto calc=reinterpret_cast<void*>(base+0xDB9620);
-    if(std::memcmp(display,displayBytes,sizeof(displayBytes)) ||
-       std::memcmp(calc,calcBytes,sizeof(calcBytes)))return false;
+    if(std::memcmp(display,displayBytes,sizeof(displayBytes)))return false;
     if(MH_CreateHook(display,reinterpret_cast<void*>(StereoDisplay),reinterpret_cast<void**>(&originalDisplay))!=MH_OK)return false;
-    if(MH_CreateHook(calc,reinterpret_cast<void*>(StereoMatrix),reinterpret_cast<void**>(&originalCalc))!=MH_OK) {
-        MH_RemoveHook(display);return false;
-    }
-    if(MH_EnableHook(calc)!=MH_OK) {MH_RemoveHook(calc);MH_RemoveHook(display);return false;}
-    if(MH_EnableHook(display)!=MH_OK) {MH_DisableHook(calc);MH_RemoveHook(calc);MH_RemoveHook(display);return false;}
+    if(MH_EnableHook(display)!=MH_OK){MH_RemoveHook(display);return false;}
+    displayInstalled=true;return true;
+}
+bool InstallStereo() {
+    if(stereoInstalled)return true;
+    if(!InstallDisplay())return false;
+    const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
+    constexpr unsigned char calcBytes[]={0x48,0x8B,0xC4,0x55,0x53,0x56,0x57,0x48,0x8D,0xA8,0x48,0xFF,0xFF,0xFF};
+    const auto calc=reinterpret_cast<void*>(base+0xDB9620);
+    if(std::memcmp(calc,calcBytes,sizeof(calcBytes)))return false;
+    if(MH_CreateHook(calc,reinterpret_cast<void*>(StereoMatrix),reinterpret_cast<void**>(&originalCalc))!=MH_OK)return false;
+    if(MH_EnableHook(calc)!=MH_OK){MH_RemoveHook(calc);return false;}
     stereoInstalled=true;return true;
+}
+bool InstallStatus(){
+    if(spriteInstalled)return true;
+    if(!InstallDisplay())return false;
+    const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
+    if(!VerifyNativeWrist(base))return false;
+    if(*reinterpret_cast<std::uintptr_t*>(base+0x1EB57E8)!=base+0x18BABA0)return false;
+    auto at=reinterpret_cast<void*>(base+0x18BABA0);
+    if(MH_CreateHook(at,reinterpret_cast<void*>(FilterStatusSprite),reinterpret_cast<void**>(&originalSpriteDisplay))!=MH_OK)return false;
+    if(MH_EnableHook(at)!=MH_OK){MH_RemoveHook(at);return false;}
+    spriteInstalled=true;return true;
 }
 ID3D11Texture2D* BorrowTexture(Movie movie) {
     Capture& capture=captures[static_cast<unsigned>(movie)];
@@ -372,6 +460,8 @@ std::string HudLayerReport(){
         " inventoryConsumer="+std::to_string(consumerReady)+
         " inventoryLayerFrames="+std::to_string(InventoryLayerFrameCount())+
         " refused="+std::to_string(refused.load());
+    out+=" nativeWrist={captured="+std::to_string(wristCaptured.load())+" refused="+
+        std::to_string(wristRefused.load())+" fault="+std::to_string(wristFault.load())+"}";
     for(unsigned i=0;i<kMovies;++i) {
         out+=std::string(" ")+kMovieNames[i]+"={identified="+std::to_string(identified[i].load())+
              " captured="+std::to_string(captured[i].load());
@@ -386,6 +476,22 @@ ID3D11Texture2D* HudLayerTexture(){
     auto texture=BorrowTexture(Movie::hud);
     captures[static_cast<unsigned>(Movie::hud)].stamp=0;
     return texture;
+}
+void RequestNativeWristCapture(bool active){
+    if(!active){wristRequest=0;return;}
+    if(!wristInstallAttempted){
+        std::lock_guard lock(installMutex);wristInstallAttempted=true;
+        if(!InstallStatus()){wristFault=true;lifecycle::Log("preyvr_native_wrist install=refused");}
+    }
+    if(!wristFault.load())wristRequest=MonotonicNanoseconds();
+}
+ID3D11Texture2D* NativeWristLayerTexture(){
+    const bool fresh=nativeWrist.thread==GetCurrentThreadId()&&FreshSample(MonotonicNanoseconds(),nativeWrist.stamp);
+    nativeWrist.stamp=0;
+    return fresh&&!wristFault.load()?nativeWrist.texture.Get():nullptr;
+}
+void ResetNativeWristCapture(){
+    wristRequest=0;nativeWrist={};wristFault=false;wristInstallAttempted=false;
 }
 ID3D11Texture2D* InventoryLayerTexture(ID3D11Texture2D** rightEye){
     auto texture=BorrowTexture(Movie::pda);

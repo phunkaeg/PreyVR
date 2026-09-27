@@ -3,6 +3,12 @@
 Built on `codex/vr-options`, following commit `14c1075`. No Prey launch,
 injection, game attachment or headset testing was performed in this batch.
 
+**September 28 update:** the custom wrist card described below is superseded by
+the [native HUD capture candidate](NATIVE-WRIST-IMPLEMENTATION-2026-09-28.md).
+That path uses native pixels, not the stats polling/GDI painter documented here.
+Holster controls are unchanged. Historical validation below belongs to this
+September 27 prototype; see the new note for the current wrist implementation.
+
 ## Controls and presentation
 
 The fourth **Equipment** tab enables holsters and wrist status independently,

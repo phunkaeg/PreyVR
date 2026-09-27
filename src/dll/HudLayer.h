@@ -32,4 +32,9 @@ void SetInventoryConsumerReady(const D3D11_TEXTURE2D_DESC* description,
                               float panelWidth=0, float eyeSeparation=0, bool stereo=false);
 void SetHudLayerPresentation(bool active, float width=0, float height=0, float distance=2);
 bool HudLayerReticle(float tanX, float tanY, float& x, float& y);
+// Additive native status copy. Request expires if XR stops consuming; no native
+// status is removed. Calls and borrowed texture consumption are render-thread only.
+void RequestNativeWristCapture(bool active);
+ID3D11Texture2D* NativeWristLayerTexture();
+void ResetNativeWristCapture(); // render-thread session teardown
 }

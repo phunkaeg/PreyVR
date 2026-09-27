@@ -1,0 +1,75 @@
+{
+  "target_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "image_base": "0x180000000",
+  "method": "Ghidra contiguous function bodies and raw Steam PE bytes; owner accessor is two instructions, 8 bytes.",
+  "functions": [
+    {
+      "name": "SpriteDisplay",
+      "rva": "0x18baba0",
+      "size": 799,
+      "sha256": "49dbe3fd289a5d10fce7b0b5d25cb1ff4588d3f55a7956b24d4f86ce2ff31751",
+      "fnv1a64": "0x9f87bba79dd8fdb1"
+    },
+    {
+      "name": "GetVariable",
+      "rva": "0x18abe10",
+      "size": 236,
+      "sha256": "4c1b9d3047e597c49f843c4bbaf00b9044ea7d103ff051d03c1f9f3508bc7fe1",
+      "fnv1a64": "0x834aa285258f2231"
+    },
+    {
+      "name": "ReleaseValue",
+      "rva": "0x183bde0",
+      "size": 155,
+      "sha256": "53d752a2fbfe368b0d7c135d94ecf46eaccf51ff9a38fae5dd9ed3ba8557bf6f",
+      "fnv1a64": "0x33da6756774d21f1"
+    },
+    {
+      "name": "ConvertValue",
+      "rva": "0x183f680",
+      "size": 654,
+      "sha256": "6896aa18c31dd10804318f626bcf32c78e54cd89892ca935034778f8cf1090f1",
+      "fnv1a64": "0xb433b16833b799aa"
+    },
+    {
+      "name": "CharacterHandle",
+      "rva": "0x1894a30",
+      "size": 448,
+      "sha256": "b02ec49c8fc7ec95728501aed4c3fada137f190497df8308a120f1ade9b93bcc",
+      "fnv1a64": "0x59b5592ecbe9cbb5"
+    },
+    {
+      "name": "ConstructHandle",
+      "rva": "0x1894530",
+      "size": 300,
+      "sha256": "3de6719fc1c348d7ca40d3bb3e35347ef1e8ec156e6679649c3955bc27147b0e",
+      "fnv1a64": "0xe3153b243dafba7f"
+    },
+    {
+      "name": "DisplayList",
+      "rva": "0x189e270",
+      "size": 680,
+      "sha256": "db75f73149213649a913c5fcc66dd772ccfd95068e8f3dbfb91f13265a0b63c8",
+      "fnv1a64": "0xc2beaeeb8b2de361"
+    },
+    {
+      "name": "SpriteSetVisible",
+      "rva": "0x18bf0c0",
+      "size": 217,
+      "sha256": "557650dd2434a05e8f6cba7a714cb01b271c4841d0ef8ad555ee1fa3cae50219",
+      "fnv1a64": "0x805d7ca10465abee"
+    },
+    {
+      "name": "SpriteOwner",
+      "rva": "0x18b8ed0",
+      "size": 8,
+      "sha256": "e01c88480b56d05a62fd41326537df405a74ae44c04ae50a9647d45afc242106",
+      "fnv1a64": "0xd06ecf8f398db06d"
+    }
+  ],
+  "sprite_vtable": "0x1eb5700",
+  "sprite_display_slot": "0xe8",
+  "root_get_variable_slot": "0x88",
+  "character_handle_pointer_offset": "0x8",
+  "sprite_owner_offset": "0x118"
+}

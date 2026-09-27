@@ -22,3 +22,14 @@ tools/re/map_native_hud.py text eol=lf
 tests/test_extract_native_hud.py text eol=lf
 docs/evidence/native-hud-2026-09-27/** text eol=lf
 receipts/20260927-native-hud-extraction.json text eol=lf
+
+# Native wrist implementation receipts use stable bytes across checkouts.
+include/preyvr/NativeHudIsolation.h text eol=lf
+include/preyvr/NativeWristNative.h text eol=lf
+src/dll/NativeHudValue.h text eol=lf
+src/dll/NativeWristTexture.h text eol=lf
+src/dll/NativeWristTexture.cpp text eol=lf
+tests/NativeWristTests.cpp text eol=lf
+tools/re/verify_native_wrist.py text eol=lf
+docs/evidence/native-wrist-2026-09-28/** text eol=lf
+receipts/20260928-native-wrist-candidate.json text eol=lf

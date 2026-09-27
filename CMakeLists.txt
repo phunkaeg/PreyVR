@@ -147,7 +147,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/VrOptionsRuntime.cpp
         src/dll/Psychoscope.cpp
         src/dll/BodyEquipment.cpp
-        src/dll/WristPanel.cpp
+        src/dll/NativeWristTexture.cpp
         src/dll/HudLayer.cpp
         src/dll/InventorySwapchain.cpp
         src/dll/UiPointer.cpp
@@ -184,7 +184,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         "${CMAKE_CURRENT_BINARY_DIR}/generated"
     )
     target_compile_definitions(preyvr PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
-    target_link_libraries(preyvr PRIVATE preyvr_core preyvr_win32_bootstrap minhook bcrypt psapi shell32 d3d11 dxgi gdi32)
+    target_link_libraries(preyvr PRIVATE preyvr_core preyvr_win32_bootstrap minhook bcrypt psapi shell32 d3d11 dxgi d3dcompiler gdi32)
     if(PREYVR_BUILD_OPENXR_LOADER AND TARGET openxr_loader)
         # The in-process session host needs the loader. The DLL already ships
         # openxr_loader.dll beside itself for the preflight, so this adds a link
@@ -487,6 +487,11 @@ if(PREYVR_BUILD_TESTS)
         target_link_libraries(preyvr_wrist_panel_tests PRIVATE preyvr_core gdi32 user32)
         preyvr_enable_warnings(preyvr_wrist_panel_tests)
         add_test(NAME wrist_panel COMMAND preyvr_wrist_panel_tests)
+        add_executable(preyvr_native_wrist_tests tests/NativeWristTests.cpp src/dll/NativeWristTexture.cpp)
+        target_compile_definitions(preyvr_native_wrist_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        target_link_libraries(preyvr_native_wrist_tests PRIVATE preyvr_core d3d11 d3dcompiler)
+        preyvr_enable_warnings(preyvr_native_wrist_tests)
+        add_test(NAME native_wrist COMMAND preyvr_native_wrist_tests)
         add_executable(preyvr_vr_options_runtime_tests tests/VrOptionsRuntimeTests.cpp)
         target_include_directories(preyvr_vr_options_runtime_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
         target_compile_definitions(preyvr_vr_options_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)

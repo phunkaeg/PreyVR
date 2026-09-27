@@ -182,6 +182,11 @@ after visibility and failure recovery have been verified.
 
 ## Current outcome
 
+**Superseded September 28:** native sprite filtering, transparent capture and
+wrist submission are now implemented in the [native wrist candidate](NATIVE-WRIST-IMPLEMENTATION-2026-09-28.md).
+The outcome below records the extraction-only milestone; the candidate still
+awaits in-game/headset verification.
+
 Native asset extraction and widget mapping are implemented and verified offline.
 Native-widget render isolation and wrist submission are not wired yet. The
 optional, default-off prototype card is unchanged. The native HUD remains intact.
