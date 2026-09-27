@@ -1,4 +1,5 @@
 #include "MoveLane.h"
+#include "AimTakeover.h"
 
 #include "InputPost.h"
 #include "HeadTrackingHook.h"
@@ -514,7 +515,7 @@ void UpdateTurnAndFireLanes()
             // A paired squeeze is a hold, not use/reload. Require the right
             // grip to release before use returns, including after support release.
             if(slot==0&&right.gripPressed&&
-               (gRecenterHeld||(haveLeftHand&&leftHand.squeezeValue>=.45f))) blocked[slot]=true;
+               (gRecenterHeld||TwoHandedAimHeld()||(haveLeftHand&&leftHand.squeezeValue>=.45f))) blocked[slot]=true;
             if (!HudGameplayInputAllowed() && sources[slot]) blocked[slot]=true;
             if (!sources[slot]) blocked[slot]=false;
             ActionBinding& binding = gActions[slot];
@@ -564,6 +565,7 @@ DWORD SetTurnLaneScale(unsigned int percent)
     gTurnScalePercent.store(percent, std::memory_order_relaxed);
     return 0;
 }
+unsigned TurnLaneScalePercent(){return gTurnScalePercent.load();}
 
 DWORD SetFireLaneEnabled(unsigned int enabled)
 {

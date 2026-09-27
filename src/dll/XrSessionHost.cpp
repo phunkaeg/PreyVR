@@ -15,6 +15,8 @@
 #include "UiPointer.h"
 #include "HudLayer.h"
 #include "InventorySwapchain.h"
+#include "VrOptionsRuntime.h"
+#include "VrOptionsPanel.h"
 #include "preyvr/UiPanel.h"
 #include "preyvr/LatestSnapshot.h"
 #include "preyvr/HudCapturePair.h"
@@ -95,6 +97,14 @@ struct Host {
     XrSwapchain hudSwapchain = XR_NULL_HANDLE;
     std::unique_ptr<InventorySwapchain> inventorySwapchain;
     std::unique_ptr<InventorySwapchain> inventoryRightSwapchain;
+    std::unique_ptr<InventorySwapchain> optionsSwapchain;
+    ID3D11Texture2D* optionsTexture=nullptr;
+    DXGI_FORMAT optionsFormat=DXGI_FORMAT_UNKNOWN;
+    std::optional<ui::Panel> optionsPanel;
+    std::uint64_t optionsReference=0;
+    options::Values optionsPainted{};
+    unsigned optionsPage=~0u,optionsRow=~0u;
+    bool optionsReady=false,optionsSaveFailed=false;
     std::vector<XrSwapchainImageD3D11KHR> hudImages;
     D3D11_TEXTURE2D_DESC hudDesc{};
     bool guideReady = false, guideAttempted = false;
@@ -645,6 +655,9 @@ void Teardown()
     SetInventoryConsumerReady(nullptr);
     gHost.inventorySwapchain.reset(); // XR images die before their session.
     gHost.inventoryRightSwapchain.reset();
+    gHost.optionsSwapchain.reset();
+    if(gHost.optionsTexture)gHost.optionsTexture->Release();
+    ResetVrOptionsSession();
     DestroyXrInput();
     ResetHeadTrackingReference();
     gTrackingSpaceType=XR_REFERENCE_SPACE_TYPE_MAX_ENUM;
@@ -1722,7 +1735,76 @@ void ServiceXrFrame(void* renderer)
         }
         if(rendered)EnsurePointerTexture();
     }
-    const auto pointer=PublishUiPointer(panelActive&&rendered&&gHost.pointerReady?&surface:nullptr,
+    XrCompositionLayerQuad optionsLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    bool optionsActive=false;
+    if(VrOptionsOpen()&&haveViews&&rendered) {
+        if(!gHost.optionsPanel||gHost.optionsReference!=reference) {
+            std::array<ui::Eye,2> optical{};
+            for(unsigned eye=0;eye<2;++eye) {
+                const auto& p=views[eye].pose;const auto& f=views[eye].fov;
+                optical[eye]={Pose{{p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w},
+                    {p.position.x,p.position.y,p.position.z}},f.angleLeft,f.angleRight,f.angleUp,f.angleDown};
+            }
+            // Independent fit keeps the settings escape hatch readable even if
+            // the wearer makes the game's UI very large or small.
+            gHost.optionsPanel=ui::FitPanel(inputHead,optical,static_cast<float>(options::Width)/options::Height,1.5f,1.f,.68f);
+            gHost.optionsReference=reference;
+        }
+        if(!gHost.optionsTexture) {
+            uint32_t count=0;
+            if(xrEnumerateSwapchainFormats(gHost.session,0,&count,nullptr)==XR_SUCCESS&&count&&count<256) {
+                std::vector<int64_t> formats(count);
+                if(xrEnumerateSwapchainFormats(gHost.session,count,&count,formats.data())==XR_SUCCESS) {
+                    for(auto format:{DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB}) {
+                        if(std::find(formats.begin(),formats.end(),format)!=formats.end()){gHost.optionsFormat=format;break;}
+                    }
+                }
+            }
+            if(gHost.optionsFormat!=DXGI_FORMAT_UNKNOWN) {
+                D3D11_TEXTURE2D_DESC d{};d.Width=options::Width;d.Height=options::Height;
+                d.Format=gHost.optionsFormat;d.SampleDesc.Count=1;d.ArraySize=d.MipLevels=1;d.BindFlags=D3D11_BIND_SHADER_RESOURCE;
+                if(SUCCEEDED(gHost.device->CreateTexture2D(&d,nullptr,&gHost.optionsTexture))) {
+                    gHost.optionsSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
+                        xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
+                        xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
+                    if(!gHost.optionsSwapchain->Prepare(gHost.session,d,gHost.optionsFormat))RequestVrOptions(false);
+                }
+            }
+        }
+        const auto values=VrOptionsValues();const auto optionPage=VrOptionsPage(),optionRow=VrOptionsRow();const bool failed=VrOptionsSaveFailed();
+        if(gHost.optionsTexture&&gHost.optionsSwapchain&&
+           (!gHost.optionsReady||values!=gHost.optionsPainted||optionPage!=gHost.optionsPage||optionRow!=gHost.optionsRow||failed!=gHost.optionsSaveFailed)) {
+            auto pixels=DrawVrOptions(values,optionPage,optionRow,failed);
+            if(gHost.optionsFormat==DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
+                for(size_t n=0;n+3<pixels.size();n+=4)std::swap(pixels[n],pixels[n+2]);
+            ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+            if(context&&!pixels.empty()) {
+                context->UpdateSubresource(gHost.optionsTexture,0,nullptr,pixels.data(),options::Width*4,0);
+                const auto upload=gHost.optionsSwapchain->Copy(context,gHost.optionsTexture);
+                gHost.optionsReady=upload==InventorySwapchain::Upload::ready;
+                if(upload==InventorySwapchain::Upload::sessionFault)gStopRequested.store(true);
+                if(gHost.optionsReady){gHost.optionsPainted=values;gHost.optionsPage=optionPage;gHost.optionsRow=optionRow;gHost.optionsSaveFailed=failed;}
+            }
+            if(context)context->Release();
+        }
+        optionsActive=gHost.optionsReady&&gHost.optionsPanel.has_value();
+        if(optionsActive) {
+            const auto& p=*gHost.optionsPanel;
+            optionsLayer.space=gHost.space;optionsLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+            optionsLayer.pose={{p.pose.orientation.x,p.pose.orientation.y,p.pose.orientation.z,p.pose.orientation.w},
+                {p.pose.position.x,p.pose.position.y,p.pose.position.z}};
+            optionsLayer.size={p.width,p.height};optionsLayer.subImage.swapchain=gHost.optionsSwapchain->Handle();
+            optionsLayer.subImage.imageRect={{0,0},{options::Width,options::Height}};
+            surface={p,0};SetVrOptionsSurface(&surface,reference);EnsurePointerTexture();
+        } else {
+            RequestVrOptions(false);Log("result=refused detail=vr_options_layer native_menu_retained=1");
+        }
+    } else {gHost.optionsPanel.reset();SetVrOptionsSurface(nullptr,reference);}
+    UiPointerVisual pointer;
+    if(optionsActive) {
+        PublishUiPointer(nullptr,0,0,0);
+        if(gHost.pointerReady)pointer=OptionsPointer(surface);
+    } else pointer=PublishUiPointer(panelActive&&rendered&&gHost.pointerReady&&!VrOptionsInputOwned()?&surface:nullptr,
         gHost.width,gHost.height,gHost.surfaceSerial);
     XrCompositionLayerQuad cursorLayer{XR_TYPE_COMPOSITION_LAYER_QUAD},beamLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
     const bool cursorActive=pointer.active&&pointer.hit&&pointer.hit->inside;
@@ -1840,12 +1922,13 @@ void ServiceXrFrame(void* renderer)
     }
     if(!hudActive)SetHudLayerPresentation(false);
     std::vector<const XrCompositionLayerBaseHeader*> layers;
-    if(panelActive)layers.push_back(surface.angle>0?reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cylinderLayer):
+    if(optionsActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&optionsLayer));
+    else if(panelActive)layers.push_back(surface.angle>0?reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cylinderLayer):
         reinterpret_cast<const XrCompositionLayerBaseHeader*>(&panelLayer));
     else layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&layer));
-    if(inventoryStereoSubmitted)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&rightPanelLayer));
-    if(guideActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&guideLayer));
-    else if(hudActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hudLayer));
+    if(!optionsActive&&inventoryStereoSubmitted)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&rightPanelLayer));
+    if(!optionsActive&&guideActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&guideLayer));
+    else if(!optionsActive&&hudActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hudLayer));
     if(beamActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&beamLayer));
     if(cursorActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cursorLayer));
 
@@ -1919,6 +2002,7 @@ DWORD SetUiCurveDegrees(unsigned int degrees) {
     if(degrees>60)return ERROR_INVALID_PARAMETER;
     gUiCurveDegrees.store(degrees);return 0;
 }
+unsigned UiCurveDegrees(){return gUiCurveDegrees.load();}
 unsigned int UiPanelMode() { return gUiPanelMode.load(); }
 unsigned long long UiPanelFrameCount() { return gUiPanelFrames.load(); }
 unsigned long long InventoryLayerFrameCount() { return gInventoryLayerFrames.load(); }

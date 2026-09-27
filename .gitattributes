@@ -5,3 +5,9 @@ docs/evidence/integration-contract-20260916/** -text
 # Preserve frozen comfort-control evidence hashes across Windows checkouts.
 docs/COMFORT-CONTROLS-2026-09-19.md -text
 docs/evidence/comfort-controls-20260919/** -text
+
+# Keep the static scope receipt reproducible across Windows checkouts.
+docs/evidence/vr-options-2026-09-27/** -text
+include/preyvr/PsychoscopeNative.h text eol=lf
+tools/re/verify_psychoscope.py text eol=lf
+receipts/20260927-psychoscope-static.json -text

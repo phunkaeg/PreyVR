@@ -12,12 +12,14 @@ struct Input {
     float squeeze = 0, dt = 0;
     std::uint64_t owner = 0, reference = 0, epoch = 0;
     bool usable = false;
+    bool toggleGrip = false;
 };
 struct Output {
     Quaternion orientation{}, correction{}, supportOrientation{};
     Vec3 socket{};
     float blend = 0;
     bool held = false;
+    bool snapSupport = true;
 };
 class Solver {
 public:
@@ -25,6 +27,7 @@ public:
 private:
     std::uint64_t owner_ = 0, reference_ = 0, epoch_ = 0;
     bool held_ = false, armed_ = false;
+    bool toggleGrip_ = false;
     float blend_ = 0;
     Vec3 socket_{};
     Quaternion swing_{}, supportInAim_{};

@@ -63,6 +63,7 @@ DWORD SetTurnLaneDeadzone(unsigned int hundredths);
 // Scales the stick before posting, in percent. The engine applies its own turn
 // speed on top, so this trims rather than defines the rate.
 DWORD SetTurnLaneScale(unsigned int percent);
+unsigned TurnLaneScalePercent();
 unsigned int TurnLaneEnabled();
 unsigned long long TurnLanePosted();
 unsigned long long TurnLaneRefused();

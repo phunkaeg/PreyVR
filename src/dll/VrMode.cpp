@@ -1,4 +1,5 @@
 #include "VrMode.h"
+#include "VrOptionsRuntime.h"
 #include "Logger.h"
 #include "XrSessionHost.h"
 #include "XrInput.h"
@@ -67,6 +68,7 @@ void EnableVrMode() {
     if(curveLength>0 && curveLength<24)SetUiCurveDegrees(static_cast<unsigned>(_wtoi(value)));
     const auto pointerLength=GetEnvironmentVariableW(L"PREYVR_POINTER_HAND",value,24);
     if(pointerLength>0 && pointerLength<24)SetUiPointerHand(static_cast<unsigned>(_wtoi(value)));
+    LoadVrOptions();
     phase=Phase::preparing;deadline=GetTickCount64()+120000;nextInputProbe=0;
     Log("state=waiting_for_renderer controls=F11_enable,F12_recenter");
 }
@@ -76,16 +78,19 @@ void DisableVrMode() {
 void TickVrMode() {
     // Poll the current process's foreground window only. Refocus with a key held
     // must not trigger activation or recenter; an actual new press is required.
-    static bool focusWas=false, f11Was=false, f12Was=false;
+    static bool focusWas=false, f10Was=false, f11Was=false, f12Was=false;
     DWORD pid=0; GetWindowThreadProcessId(GetForegroundWindow(),&pid);
     const bool focus=pid==GetCurrentProcessId();
     const bool f11=(GetAsyncKeyState(VK_F11)&0x8000)!=0;
     const bool f12=(GetAsyncKeyState(VK_F12)&0x8000)!=0;
+    const bool f10=(GetAsyncKeyState(VK_F10)&0x8000)!=0;
     if(focus && focusWas) {
+        if(f10 && !f10Was)RequestVrOptions(!VrOptionsOpen());
         if(f11 && !f11Was) EnableVrMode();
         if(f12 && !f12Was) RecenterHeadTracking();
     }
     focusWas=focus; f11Was=f11; f12Was=f12;
+    f10Was=f10;
     if(XrSessionLossPending()) {Fail("openxr_session_ended");return;}
     if(phase==Phase::preparing) {
         if(GetTickCount64()>deadline) { Fail("render_size_timeout"); return; }

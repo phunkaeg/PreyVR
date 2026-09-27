@@ -1,5 +1,7 @@
 #include "CommandChannel.h"
 #include "VrMode.h"
+#include "VrOptionsRuntime.h"
+#include "Psychoscope.h"
 
 #include "AimTakeover.h"
 #include "AnimIkTakeover.h"
@@ -346,7 +348,10 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         return value;
     };
 
-    if (verb == "vr.enable") {
+    if (verb == "vr.options") {
+        if(args.size()>1)RequestVrOptions(arg(1,0)!=0);
+        out << "vr.options" << VrOptionsReport() << PsychoscopeReport();
+    } else if (verb == "vr.enable") {
         EnableVrMode(); out << VrModeReport();
     } else if (verb == "vr.disable") {
         DisableVrMode(); out << VrModeReport();
@@ -905,6 +910,7 @@ DWORD WINAPI PollThread(LPVOID)
         "\" results=\"" + results.string() + "\"");
     while (gRunning.load(std::memory_order_acquire)) {
         TickVrMode();
+        ServiceVrOptions();
         // Keys and startup progress are serviced at 50 Hz; disk polling stays 5 Hz.
         static unsigned poll=0;
         if (++poll%10!=0) { Sleep(20); continue; }

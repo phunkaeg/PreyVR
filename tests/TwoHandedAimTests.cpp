@@ -13,6 +13,20 @@ Input Base() { Input i{};i.owner=1;i.epoch=1;i.reference=2;i.usable=true;i.dt=.0
     i.region.start={0,.25f,0};i.region.end={0,.45f,0};i.support.position={0,.35f,0};return i; }
 Output Hold(Solver& s,Input& i) { s.Update(i);i.squeeze=1; Output out{};for(int n=0;n<60;++n)out=s.Update(i);return out; }
 int main() {
+    {
+        auto toggle=Base();toggle.toggleGrip=true;Solver solver;
+        Check(Hold(solver,toggle).held,"toggle grip acquires");
+        toggle.squeeze=0;Check(solver.Update(toggle).held,"toggle remains attached after release");
+        toggle.squeeze=1;Check(!solver.Update(toggle).held,"second squeeze detaches");
+        Check(!solver.Update(toggle).held,"held detach cannot immediately reacquire");
+        toggle.squeeze=0;solver.Update(toggle);toggle.squeeze=1;Check(solver.Update(toggle).held,"fresh squeeze reacquires");
+        toggle.owner++;Check(!solver.Update(toggle).held,"weapon switch clears toggle");
+        Check(!solver.Update(toggle).held,"switch with held grip cannot latch");
+        toggle.squeeze=0;solver.Update(toggle);toggle.squeeze=1;Check(solver.Update(toggle).held,"new weapon fresh grip");
+        toggle.toggleGrip=false;Check(!solver.Update(toggle).held,"switching grip preference releases");
+        Check(!solver.Update(toggle).held,"mode switch needs release");
+        toggle.usable=false;Check(!solver.Update(toggle).held,"disabled resets");
+    }
     auto i=Base();Solver s;auto out=Hold(s,i);
     Check(out.held&&out.blend>.99f,"grip enters in region");
     Check(std::fabs(out.socket.y-.35f)<.001f,"nearest point locks within capsule");

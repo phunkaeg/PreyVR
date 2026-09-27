@@ -1,4 +1,5 @@
 #include "XrInput.h"
+#include "VrOptionsRuntime.h"
 #include "UiPointer.h"
 #include "preyvr/LatestSnapshot.h"
 
@@ -366,6 +367,10 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
     frame.epoch = gTrackingEpoch.load();
     frame.publishedNs = MonotonicNanoseconds();
     gTrackingFrame.Publish(frame);
+    if((gMenuNavigation.load()||VrOptionsInputOwned())&&VrOptionsReady()&&ProcessVrOptionsInput(frame)) {
+        gNavigator.Reset();gLastDisplayTime.store(predictedDisplayTime);
+        return;
+    }
 
     // --- controller-driven menus ---------------------------------------------
     //
@@ -396,7 +401,8 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
         menu.stickY = rightState.thumbstickY;
         menu.accept = rightState.menuAccept;
         menu.cancel = rightState.menuCancel;
-        menu.start = rightState.menuStart || leftStart;
+        // Short menu taps / long options holds share one tested owner.
+        menu.start = !VrOptionsReady()&&(rightState.menuStart||leftStart);
         const auto& left = frame.hands[0];
         // Paired grips suppress tab clicks in ModalMenuNavigator. When left Y
         // completes recenter, consume it until release as well.
@@ -436,6 +442,7 @@ void SetMenuNavigation(unsigned int enabled)
 {
     const bool on = enabled != 0u;
     gMenuNavigation.store(on, std::memory_order_release);
+    if(!on)RequestVrOptions(false);
     gResetNavigator.store(true);
     Log(std::string("result=0 detail=menu_navigation value=") + (on ? "1" : "0"));
 }

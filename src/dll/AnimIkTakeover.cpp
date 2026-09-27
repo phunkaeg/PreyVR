@@ -408,7 +408,7 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
     Quaternion candidateOffset{};
     SupportGripGeometry supportGeometry{};
     const bool twoHand=frame.weaponGeneration==owner.generation&&frame.twoHand.blend>0&&TwoHandedAimEnabled();
-    const bool supportLocked=hand==1&&twoHand&&supportPrimary;
+    const bool supportLocked=hand==1&&twoHand&&frame.twoHand.snapSupport&&supportPrimary;
 
     // Hoisted purely so the trace can see them: the controller values are built
     // inside the drive branch, while the reach maths that consumes the goal sits

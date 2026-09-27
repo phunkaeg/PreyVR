@@ -1,4 +1,5 @@
 #include "InputPost.h"
+#include "VrOptionsRuntime.h"
 
 #include "CameraEditHook.h"
 #include "InputPathProbe.h"
@@ -151,7 +152,7 @@ void DrainQueuedInput()
         if(!gQueue.Pop(event.data(),&scope))return;
         std::memcpy(&key,event.data()+input::kOffsetKeyId,sizeof(key));
         std::memcpy(&state,event.data()+input::kOffsetState,sizeof(state));
-        if(menuDispatch.Allow(scope,HudMenuEpoch(),HudMenuStateKnown()&&HudMenuIsOpen(),key,state)) {
+        if(menuDispatch.Allow(scope,HudMenuEpoch(),!VrOptionsInputOwned()&&HudMenuStateKnown()&&HudMenuIsOpen(),key,state)) {
             accepted=true;break;
         }
         gMenuDiscarded.fetch_add(1,std::memory_order_relaxed);

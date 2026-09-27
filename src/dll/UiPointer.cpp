@@ -1,4 +1,5 @@
 #include "UiPointer.h"
+#include "VrOptionsRuntime.h"
 #include "HudBridge.h"
 #include "InputPost.h"
 #include "InventoryPointerCapture.h"
@@ -102,7 +103,7 @@ void DrainPointerSample(const Sample* incoming,std::uint64_t now) {
     // sample through contention, while explicit clears invalidate it immediately.
     const auto s=gRetainedSample;
     bool active=s.generation==gClearGeneration.load()&&FreshSample(now,s.stamp)&&s.active&&
-        UiPointerHand()<2&&HudMenuStateKnown()&&HudMenuIsOpen();
+        !VrOptionsInputOwned()&&UiPointerHand()<2&&HudMenuStateKnown()&&HudMenuIsOpen();
     if(gFault.load())return;
     bool cancelled=false;
     if(active&&(gEpoch!=s.epoch||gReference!=s.reference)) {

@@ -1,4 +1,5 @@
 #include "AimTakeover.h"
+#include "Psychoscope.h"
 #include "WeaponAttachment.h"
 #include "preyvr/AnimIk.h"
 #include "MinHookInit.h"
@@ -44,6 +45,7 @@ LatestSnapshot<preyvr::aim::Sample> gAimSample;
 LatestSnapshot<SupportGripGeometry> gSupportGeometry;
 LatestSnapshot<twohand::Input> gSupportInput;
 std::atomic<bool> gTwoHandEnabled{true};
+std::atomic<bool> gTwoHandToggle{false},gTwoHandSnap{true};
 std::atomic<unsigned int> gTwoHandReset{0};
 std::atomic<bool> gTwoHandHeld{false}, gTwoHandRegionReady{false};
 std::atomic<unsigned long long> gTwoHandFrames{0};
@@ -106,6 +108,7 @@ void SolveTwoHandedFrame(GameplayPoseFrame& frame, bool tracking)
     input.primary=animik::ControllerWorldFromHead(frame.yaw,anchor,frame.tracking.head,right.gripPose).position;
     input.support=animik::ControllerWorldFromHead(frame.yaw,anchor,frame.tracking.head,left.gripPose);
     input.squeeze=left.squeezeValue;
+    input.toggleGrip=gTwoHandToggle.load();
     input.reference=frame.referenceGeneration;input.epoch=frame.tracking.epoch;
     EquippedRig owner{};
     if(TryGetEquippedRig(frame.player,owner)) input.owner=owner.generation;
@@ -131,6 +134,7 @@ void SolveTwoHandedFrame(GameplayPoseFrame& frame, bool tracking)
         IsPoseUsable(right.gripPose,right.gripValidity,200000000ull)&&
         IsPoseUsable(left.gripPose,left.gripValidity,200000000ull);
     frame.twoHand=gTwoHandSolver.Update(input);
+    frame.twoHand.snapSupport=gTwoHandSnap.load();
     gSupportInput.Publish(input);
     gTwoHandHeld.store(frame.twoHand.held);
     if(frame.twoHand.held) ++gTwoHandFrames;
@@ -285,6 +289,7 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     SolveTwoHandedFrame(frame,haveTracking);
     frame.publishedNs = MonotonicNanoseconds();
     gGameplayFrame.Publish(frame);
+    UpdatePsychoscopeGesture(frame,haveTracking&&gEnabled.load());
     if (!haveTracking) { gRejNoPose.fetch_add(1); return; }
     // A frame whose play-space yaw is unknown cannot aim, and must not silently
     // aim with the camera-relative yaw the body-yaw mode exists to replace.
@@ -484,6 +489,18 @@ DWORD SetTwoHandedAim(unsigned int enabled) {
     return 0;
 }
 unsigned int TwoHandedAimEnabled() { return gTwoHandEnabled.load()?1u:0u; }
+DWORD SetTwoHandGripToggle(unsigned enabled) {
+    if(enabled>1)return ERROR_INVALID_PARAMETER;
+    if(gTwoHandToggle.exchange(enabled!=0)!=(enabled!=0))++gTwoHandReset;
+    return 0;
+}
+DWORD SetTwoHandSupportSnap(unsigned enabled) {
+    if(enabled>1)return ERROR_INVALID_PARAMETER;
+    gTwoHandSnap.store(enabled!=0);return 0;
+}
+bool TwoHandGripToggle(){return gTwoHandToggle.load();}
+bool TwoHandSupportSnap(){return gTwoHandSnap.load();}
+bool TwoHandedAimHeld(){return gTwoHandEnabled.load()&&gTwoHandHeld.load();}
 std::string TwoHandedAimStatus() {
     std::ostringstream out;
     out<<" enabled="<<TwoHandedAimEnabled()<<" held="<<gTwoHandHeld.load()

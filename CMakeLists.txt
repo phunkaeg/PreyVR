@@ -89,6 +89,7 @@ add_library(preyvr_core STATIC
     src/common/UiPanel.cpp
     src/common/MotionController.cpp
     src/common/TwoHandedAim.cpp
+    src/common/VrOptions.cpp
     src/common/OpenXRBootstrap.cpp
     src/common/RenderFrameTable.cpp
     src/common/RuntimeSnapshot.cpp
@@ -142,6 +143,9 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/Bootstrap.cpp
         src/dll/VrMode.cpp
         src/dll/UiGuide.cpp
+        src/dll/VrOptionsPanel.cpp
+        src/dll/VrOptionsRuntime.cpp
+        src/dll/Psychoscope.cpp
         src/dll/HudLayer.cpp
         src/dll/InventorySwapchain.cpp
         src/dll/UiPointer.cpp
@@ -351,6 +355,10 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_two_handed_aim_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_two_handed_aim_tests)
     add_test(NAME two_handed_aim COMMAND preyvr_two_handed_aim_tests)
+    add_executable(preyvr_vr_options_tests tests/VrOptionsTests.cpp)
+    target_link_libraries(preyvr_vr_options_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_vr_options_tests)
+    add_test(NAME vr_options_contracts COMMAND preyvr_vr_options_tests)
 
     add_executable(preyvr_anim_ik_tests tests/AnimIkTests.cpp)
     target_link_libraries(preyvr_anim_ik_tests PRIVATE preyvr_core)
@@ -463,6 +471,17 @@ if(PREYVR_BUILD_TESTS)
         target_link_libraries(preyvr_ui_pointer_tests PRIVATE preyvr_core)
         preyvr_enable_warnings(preyvr_ui_pointer_tests)
         add_test(NAME ui_pointer_dispatch COMMAND preyvr_ui_pointer_tests)
+        add_executable(preyvr_vr_options_panel_tests tests/VrOptionsPanelTests.cpp src/dll/VrOptionsPanel.cpp)
+        target_compile_definitions(preyvr_vr_options_panel_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        target_link_libraries(preyvr_vr_options_panel_tests PRIVATE preyvr_core gdi32 user32)
+        preyvr_enable_warnings(preyvr_vr_options_panel_tests)
+        add_test(NAME vr_options_panel COMMAND preyvr_vr_options_panel_tests)
+        add_executable(preyvr_vr_options_runtime_tests tests/VrOptionsRuntimeTests.cpp)
+        target_include_directories(preyvr_vr_options_runtime_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
+        target_compile_definitions(preyvr_vr_options_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        target_link_libraries(preyvr_vr_options_runtime_tests PRIVATE preyvr_core)
+        preyvr_enable_warnings(preyvr_vr_options_runtime_tests)
+        add_test(NAME vr_options_runtime COMMAND preyvr_vr_options_runtime_tests)
 
         add_executable(preyvr_inventory_capture_tests tests/InventoryPointerCaptureTests.cpp)
         target_include_directories(preyvr_inventory_capture_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
