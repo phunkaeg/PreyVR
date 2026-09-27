@@ -12,12 +12,16 @@ param(
     # **The HUD/menu panel size, 20..200 percent.** Runtime-only until now: it
     # could be sent by hand while playing but was gone the next launch, so a
     # wearer had to rediscover their number every session. Persisted with the
-    # rest below and re-sent once VR is up.
+    # rest below and sent before VR is enabled.
     [int]$UiScalePercent=100,
     # The onboarding card under the menu. Off by default since 2026-09-11: it is
     # read once and then costs about a sixth of the panel on every menu after.
     # Set to 1 when handing the package to someone who has not seen the controls.
     [int]$UiGuide=0,
+    [int]$SnapTurnDegrees=45,
+    [int]$HeadRelativeMovement=1,
+    # auto prefers LOCAL_FLOOR, then STAGE, with LOCAL fallback.
+    [string]$ReferenceSpace='auto',
     [switch]$DryRun
 )
 Set-StrictMode -Version Latest
@@ -44,6 +48,31 @@ function Resolve-PreyVRRenderSize {
         throw 'Render size must be 1280..8192 by 720..8192.'
     }
     [pscustomobject]@{Width=$Width;Height=$Height;MigrateLegacy=$migrate}
+}
+
+function Resolve-PreyVRComfortSettings {
+    param($Saved, $Overrides, [int]$SnapTurnDegrees, [int]$HeadRelativeMovement, [string]$ReferenceSpace)
+    if ($Saved) {
+        if (!$Overrides.ContainsKey('SnapTurnDegrees') -and $Saved.PSObject.Properties['SnapTurnDegrees']) {$SnapTurnDegrees=[int]$Saved.SnapTurnDegrees}
+        if (!$Overrides.ContainsKey('HeadRelativeMovement') -and $Saved.PSObject.Properties['HeadRelativeMovement']) {$HeadRelativeMovement=[int]$Saved.HeadRelativeMovement}
+        if (!$Overrides.ContainsKey('ReferenceSpace') -and $Saved.PSObject.Properties['ReferenceSpace']) {$ReferenceSpace=[string]$Saved.ReferenceSpace}
+    }
+    if ($SnapTurnDegrees -ne 0 -and ($SnapTurnDegrees -lt 15 -or $SnapTurnDegrees -gt 90)) {throw 'SnapTurnDegrees must be 0 (smooth) or 15..90.'}
+    if ($HeadRelativeMovement -notin @(0,1)) {throw 'HeadRelativeMovement must be 0 or 1.'}
+    if ($ReferenceSpace -notin @('auto','local')) {throw 'ReferenceSpace must be auto (prefer floor) or local.'}
+    [pscustomobject]@{SnapTurnDegrees=$SnapTurnDegrees;HeadRelativeMovement=$HeadRelativeMovement;ReferenceSpace=$ReferenceSpace.ToLowerInvariant()}
+}
+
+function Get-PreyVRStartupCommands {
+    param($Comfort, [int]$UiScalePercent, [int]$UiGuide)
+    # One ordered batch, before enabling VR. Successive writes separated by a
+    # guessed sleep can overwrite commands while the channel is busy.
+    "move.snap $($Comfort.SnapTurnDegrees)"
+    "move.headrelative $($Comfort.HeadRelativeMovement)"
+    "ui.scale $UiScalePercent"
+    "ui.guide $UiGuide"
+    'input.hotkeys 1'
+    'vr.enable'
 }
 
 function Save-PreyVRConfiguration {
@@ -88,6 +117,7 @@ try {
     $renderSize=Resolve-PreyVRRenderSize -Saved $saved -Width $Width -Height $Height `
         -WidthExplicit $PSBoundParameters.ContainsKey('Width') -HeightExplicit $PSBoundParameters.ContainsKey('Height')
     $Width=$renderSize.Width;$Height=$renderSize.Height
+    $comfort=Resolve-PreyVRComfortSettings $saved $PSBoundParameters $SnapTurnDegrees $HeadRelativeMovement $ReferenceSpace
     if ($HudLayer -notin @(0,1)) {throw 'HudLayer must be 0 or 1.'}
     if ($UiCurveDegrees -lt 0 -or $UiCurveDegrees -gt 60) {throw 'UiCurveDegrees must be 0..60 (0 is flat).'}
     if ($PointerHand -notin @(0,1,2)) {throw 'PointerHand must be 0 (left), 1 (right), or 2 (buttons only).'}
@@ -148,13 +178,14 @@ try {
     Write-Host "Prey VR: $Width x $Height per eye; UI scale $UiScalePercent%; guide $(if($UiGuide){'on'}else{'off'}); runtime: $(if($Runtime){$Runtime}else{'system OpenXR runtime'})"
     if ($renderSize.MigrateLegacy) {Write-Host 'Replacing the v0.5.0 widescreen default with 2016 x 2160 for greater vertical view coverage.'}
     Write-Host "Mod binaries: $BinDir"
+    Write-Host "Comfort: snap $($comfort.SnapTurnDegrees) degrees (0 = smooth); head-relative $($comfort.HeadRelativeMovement); reference $($comfort.ReferenceSpace)"
     Write-Host 'Controls: menu button = pause; right stick = navigate; A = select; B = back.'
     Write-Host 'Point + beam-hand trigger = click/drag; grips = tabs; X/Y = actions.'
     Write-Host 'F12 or both grips + left Y = reset view. Press A at the title/loading prompt.'
     Write-Host 'Tilde (the key below Esc) opens Prey''s own console, when focused.'
     if ($DryRun) {Write-Host 'Preflight passed. Nothing launched.';exit 0}
     Save-PreyVRConfiguration -Path $config -Saved $saved -MigrateLegacy $renderSize.MigrateLegacy -Settings `
-        @{GameExe=$GameExe;Width=$Width;Height=$Height;HudLayer=$HudLayer;UiCurveDegrees=$UiCurveDegrees;PointerHand=$PointerHand;UiScalePercent=$UiScalePercent;UiGuide=$UiGuide}
+        @{GameExe=$GameExe;Width=$Width;Height=$Height;HudLayer=$HudLayer;UiCurveDegrees=$UiCurveDegrees;PointerHand=$PointerHand;UiScalePercent=$UiScalePercent;UiGuide=$UiGuide;SnapTurnDegrees=$comfort.SnapTurnDegrees;HeadRelativeMovement=$comfort.HeadRelativeMovement;ReferenceSpace=$comfort.ReferenceSpace}
     $run=Join-Path $RunRoot ('player-{0:yyyyMMdd-HHmmss}' -f (Get-Date))
     [void](New-Item -ItemType Directory -Path $run -Force)
     $info=New-Object System.Diagnostics.ProcessStartInfo
@@ -169,6 +200,7 @@ try {
     $info.EnvironmentVariables['PREYVR_HUD_LAYER']="$HudLayer"
     $info.EnvironmentVariables['PREYVR_UI_CURVE_DEGREES']="$UiCurveDegrees"
     $info.EnvironmentVariables['PREYVR_POINTER_HAND']="$PointerHand"
+    $info.EnvironmentVariables['PREYVR_REFERENCE_SPACE']=$comfort.ReferenceSpace
     # Runtime overrides and simulator state remain process-scoped. The normal
     # double-click path uses the player's selected runtime (VDXR/SteamVR/etc.).
     if ($Runtime) {$info.EnvironmentVariables['XR_RUNTIME_JSON']=(Resolve-Path -LiteralPath $Runtime).Path}
@@ -199,7 +231,8 @@ try {
         if ((Get-Date) -gt $deadline) {throw "Mod startup did not finish. See $log"}
         Start-Sleep -Milliseconds 200
     } while ($true)
-    'vr.enable' | Set-Content -LiteralPath (Join-Path $run 'commands.txt') -Encoding ASCII
+    Get-PreyVRStartupCommands $comfort $UiScalePercent $UiGuide |
+        Set-Content -LiteralPath (Join-Path $run 'commands.txt') -Encoding ASCII
     $deadline=(Get-Date).AddSeconds(150)
     Write-Host 'Put on the headset. Enabling VR...'
     do {
@@ -210,23 +243,11 @@ try {
         if ((Get-Date) -gt $deadline) {throw "Waiting for VR timed out. See $log"}
         Start-Sleep -Milliseconds 250
     } while ($true)
-    # Only after `state=active`: the panels are rebuilt from the fit, and a scale
-    # sent before the session exists has nothing to rebuild.
-    if ($UiScalePercent -ne 100) {
-        "ui.scale $UiScalePercent" | Set-Content -LiteralPath (Join-Path $run 'commands.txt') -Encoding ASCII
-        Start-Sleep -Milliseconds 400
-    }
-    if ($UiGuide -ne 0) {
-        "ui.guide 1" | Set-Content -LiteralPath (Join-Path $run 'commands.txt') -Encoding ASCII
-        Start-Sleep -Milliseconds 400
-    }
-    # Starts the keyboard bridge, which nothing else does. Without it the ~
-    # console key and the Ctrl+Alt adjustments are all inert.
-    "input.hotkeys 1" | Set-Content -LiteralPath (Join-Path $run 'commands.txt') -Encoding ASCII
     Write-Host "VR is ready. Diagnostics: $run"
     Write-Host ''
     Write-Host 'To adjust while playing, run "Tune Prey VR.cmd" beside this launcher'
-    Write-Host 'and type e.g.  ui.scale 130   (20..200; the value is remembered).'
+    Write-Host 'and type e.g.  ui.scale 130   (20..200, current session only).'
+    Write-Host 'For future launches, edit the saved settings in PreyVR.json.'
 } catch {
     Write-Host $_.Exception.Message -ForegroundColor Red
     if (!$DryRun) {Read-Host 'Press Enter to close' | Out-Null}

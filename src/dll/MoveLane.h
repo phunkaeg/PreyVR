@@ -135,5 +135,6 @@ namespace preyvr::dll {
 DWORD SetSnapTurnDegrees(unsigned degrees);
 unsigned SnapTurnDegrees();
 DWORD SetHeadRelativeMovement(unsigned enabled);
+bool HeadRelativeMovementEnabled();
 DWORD SetMovementAxisScales(unsigned strafePercent,unsigned backwardPercent);
 }

@@ -367,9 +367,12 @@ void UpdateMoveLane()
 
 void UpdateTurnAndFireLanes()
 {
-    ControllerState right{};
-    const bool haveInput = TryGetControllerState(Hand::right, right);
-    if (!haveInput) { right = {}; }
+    // Read both hands from one publication: separate latest reads can invent a
+    // recenter/support chord that was never held at the same instant.
+    TrackingFrame inputFrame{};
+    const bool haveInput = TryGetTrackingFrame(inputFrame);
+    const ControllerState right = haveInput ? inputFrame.hands[1] : ControllerState{};
+    const ControllerState leftHand = haveInput ? inputFrame.hands[0] : ControllerState{};
 
     // Both grips + left Y: both grips alone are a natural two-handed hold.
     // Requiring Y keeps recenter deliberate and independent of grab timing.
@@ -377,9 +380,7 @@ void UpdateTurnAndFireLanes()
     // Edge-triggered: held grips must recentre ONCE, not every frame, or the
     // reference would be rebuilt continuously and the view would never settle.
     {
-        ControllerState leftGrip{};
-        const bool haveLeft = TryGetControllerState(Hand::left, leftGrip);
-        const bool both = haveInput && haveLeft && leftGrip.gripPressed && right.gripPressed && leftGrip.menuCancel;
+        const bool both = haveInput && leftHand.gripPressed && right.gripPressed && leftHand.menuCancel;
         if (both && !gRecenterHeld) {
             // This bumps the head-tracking reference generation, which
             // deliberately invalidates the IK calibration -- the hands were
@@ -500,11 +501,7 @@ void UpdateTurnAndFireLanes()
                            HudGameplayInputAllowed();
     const bool releaseActions = gActionsNeutralize.exchange(false, std::memory_order_acq_rel);
     {
-        // The left hand is fetched here rather than reused from the recenter
-        // chord's scope: that one is only read when the chord is being checked,
-        // and an inventory button must not depend on it.
-        ControllerState leftHand{};
-        const bool haveLeftHand = TryGetControllerState(Hand::left, leftHand);
+        const bool haveLeftHand = haveInput;
         const bool sources[kActionCount] = {
             right.gripPressed,                        // use/reload; support chord suppresses below
             haveLeftHand && leftHand.menuAccept,      // inventory <- left X
@@ -645,7 +642,11 @@ DWORD SetSnapTurnDegrees(unsigned degrees) {
     gSnapDegrees=degrees;gTurnNeutralize=true;return 0;
 }
 unsigned SnapTurnDegrees() {return gSnapDegrees.load();}
-DWORD SetHeadRelativeMovement(unsigned enabled) {gHeadRelative=enabled!=0;gMoveNeutralize=true;return 0;}
+DWORD SetHeadRelativeMovement(unsigned enabled) {
+    if(enabled>1) return 1;
+    gHeadRelative=enabled!=0;gMoveNeutralize=true;return 0;
+}
+bool HeadRelativeMovementEnabled() {return gHeadRelative.load();}
 DWORD SetMovementAxisScales(unsigned strafe,unsigned backward) {
     if(strafe<1 || strafe>200 || backward<1 || backward>200) return 1;
     gStrafeScale=strafe/100.f;gBackwardScale=backward/100.f;gMoveNeutralize=true;return 0;

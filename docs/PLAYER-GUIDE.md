@@ -1,5 +1,8 @@
 # Prey VR player preview
 
+This guide describes the integration branch, including changes after the released
+v0.5.1 preview. New comfort settings below require an integration build.
+
 Start your headset connection and its OpenXR runtime, then double-click **Start Prey VR.cmd** in the extracted package. For Quest with Virtual Desktop, connect to the PC first and use your configured OpenXR runtime. Steam must be running. The launcher finds the Steam installation or asks you to select `Prey.exe` once.
 
 The launcher starts Prey, loads the mod, waits for the requested render size, and enables VR. Put on the headset when prompted. Press **A** at the title screen, select **Continue** or **Load Game**, and press **A** at the loading-screen prompt. No desktop mouse is needed for this route.
@@ -8,8 +11,9 @@ The launcher starts Prey, loads the mod, waits for the requested render size, an
 
 | Control | Gameplay | Menu / inventory |
 | --- | --- | --- |
-| Left stick | Existing locomotion | — |
-| Right stick | Existing turning | Navigate |
+| Left stick | Head-relative locomotion | — |
+| Right stick | 45-degree snap turn (default) | Navigate |
+| Right stick click | Quick weapon wheel | — |
 | Right A / B | Jump / crouch | Select / back |
 | Left X | Open inventory | X action shown by Prey |
 | Left Y | — | Y action shown by Prey |
@@ -35,9 +39,30 @@ To equip a weapon, open inventory with **X**, highlight it with the right stick,
 
 The Touch profile has been tested in the injected game through xr-sim; physical controller acceptance remains. Index bindings are included: left A/B correspond to X/Y, and **left stick click** opens pause. Other controller profiles do not yet have dedicated mappings. Headset rendering uses OpenXR; the panel fits both runtime eye frusta, including their asymmetry.
 
+## Comfort settings
+
+The launcher saves these options in `PreyVR.json` beside the launcher. Edit the
+existing fields with Prey closed, or pass the corresponding PowerShell parameter
+to `Start-PreyVR.ps1`. Explicit parameters override saved values.
+
+| Setting | Default | Accepted values |
+| --- | --- | --- |
+| `SnapTurnDegrees` | `45` | `15`..`90`; `0` selects smooth turning |
+| `HeadRelativeMovement` | `1` | `1` follows headset yaw; `0` uses native body axes |
+| `ReferenceSpace` | `"auto"` | `"auto"` prefers LOCAL_FLOOR, then STAGE, then LOCAL; `"local"` forces LOCAL |
+
+For this session only, use `move.snap 30` or `move.headrelative 0` in
+**Tune Prey VR.cmd**. Their bare commands report the current setting. Runtime
+commands do not update the JSON. Return the stick to neutral after changing modes.
+
+`view.height` reports the chosen reference space and calibrated height.
+`view.calibrate` sets a new standing/seated baseline from the current tracked
+head position. Ordinary recenter preserves that height baseline. Floor tracking
+does not yet implement physical crouch, avatar-height matching or a vignette.
+
 ## Display
 
-Menus and inventory open on a panel about **2 metres** away, anchored where you opened them. Reset view to bring a panel back in front of you. A separate card shows the menu controls. The combined layout stays within conservative limits of **60° horizontally and 40° vertically**, shrinking further for narrower runtime frusta.
+Menus and inventory open on a panel about **2 metres** away, anchored where you opened them. Reset view to bring a panel back in front of you. An optional card shows the menu controls (`UiGuide: 1`; hidden by default). The combined layout stays within conservative limits of **60° horizontally and 40° vertically**, shrinking further for narrower runtime frusta.
 
 The native gameplay HUD is captured once into a transparent target and displayed at its own depth. Its graphics and interaction prompts stay Prey's own. The reticle is remapped to the smaller HUD canvas; when aiming beyond the panel it clips out instead of marking its edge. This is a HUD reticle at a fixed depth, not a world-surface hit marker. World markers and subtitles remain in the scene.
 

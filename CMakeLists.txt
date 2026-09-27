@@ -516,6 +516,12 @@ if(PREYVR_BUILD_TESTS)
     endif()
 
     find_program(PREYVR_POWERSHELL_EXECUTABLE NAMES pwsh powershell)
+    if(PREYVR_POWERSHELL_EXECUTABLE)
+        add_test(NAME launcher_resolution COMMAND "${PREYVR_POWERSHELL_EXECUTABLE}"
+            -NoProfile -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/LauncherResolution.Tests.ps1")
+        add_test(NAME launcher_comfort COMMAND "${PREYVR_POWERSHELL_EXECUTABLE}"
+            -NoProfile -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/LauncherComfort.Tests.ps1")
+    endif()
     if(PREYVR_POWERSHELL_EXECUTABLE AND PREYVR_BUILD_SMOKE_DLL AND WIN32)
         add_test(
             NAME smoke_log_parser

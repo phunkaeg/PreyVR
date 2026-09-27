@@ -132,6 +132,7 @@ struct Host {
     std::optional<ui::Panel> menuPanel;
     std::optional<ui::Panel> guidePanel;
     unsigned long long panelReference = 0;
+    unsigned long long panelSettingsGeneration = 0;
     bool panelWasActive = false;
     float panelAngle=0;
     unsigned long long surfaceSerial=0;
@@ -719,6 +720,9 @@ std::atomic<unsigned long long> gEyeSkewSamples{0};
 // constant. Applied to the menu panel and the HUD alike, because they are the
 // same presentation and one dial is easier to reason about than two.
 std::atomic<unsigned int> gUiScalePercent{100};
+// Command threads only publish settings. Cached panels belong to the XR frame
+// thread under gMutex; touching their optionals from a setter is a data race.
+std::atomic<unsigned long long> gPanelSettingsGeneration{0};
 // **The two things that actually cap panel size, both reported as `ui.scale`
 // doing nothing above ~130.**
 //
@@ -1351,8 +1355,16 @@ void ServiceXrFrame(void* renderer)
         dll::PublishHeadPose(inputHead, frameState.predictedDisplayTime);
     }
 
-    UpdateXrInput(gHost.session, gHost.space,
-                  static_cast<long long>(frameState.predictedDisplayTime), inputHead, inputHeadValidity);
+    if(spaceReady) {
+        UpdateXrInput(gHost.session, gHost.space,
+                      static_cast<long long>(frameState.predictedDisplayTime), inputHead, inputHeadValidity);
+    } else {
+        // The runtime has changed coordinates but our reference rebase could
+        // not acquire its lock yet. Do not publish hands in the new space with
+        // the old reference, or keep the previous input sample actionable.
+        InvalidateTrackingSamples();
+        ClearUiPointer();
+    }
 
     if(gHost.recalibrateSpace && haveViews && RecenterHeadTracking(true)==0) gHost.recalibrateSpace=false;
 
@@ -1363,6 +1375,12 @@ void ServiceXrFrame(void* renderer)
     gHost.contract.OnBegun();
 
     XrCompositionLayerProjectionView projViews[2]{};
+    const auto panelSettingsGeneration=gPanelSettingsGeneration.load(std::memory_order_acquire);
+    if(panelSettingsGeneration!=gHost.panelSettingsGeneration) {
+        gHost.menuPanel.reset();
+        gHost.guidePanel.reset();
+        gHost.panelSettingsGeneration=panelSettingsGeneration;
+    }
     const auto panelMode=gUiPanelMode.load();
     // A delayed main-thread poll is unknown, not proof that a menu closed.
     // Preserve its presentation through a stall; pointer/gameplay input still
@@ -1963,10 +1981,9 @@ DWORD SetUiScalePercent(unsigned int percent)
         return 1;
     }
     gUiScalePercent.store(percent, std::memory_order_release);
-    // The panels are rebuilt from the fit on the next frame that needs one, so
-    // drop the cached ones rather than waiting for a reference change.
-    gHost.menuPanel.reset();
-    gHost.guidePanel.reset();
+    // Invalidate on the frame thread, including when this setting arrives
+    // before the session exists. A later write is picked up next frame.
+    gPanelSettingsGeneration.fetch_add(1, std::memory_order_release);
     std::ostringstream line;
     line << "result=0 detail=ui_scale percent=" << percent;
     Log(line.str());
@@ -1992,8 +2009,7 @@ DWORD SetUiFitMarginPercent(unsigned int percent)
         return 1;
     }
     gUiFitMarginPercent.store(percent, std::memory_order_release);
-    gHost.menuPanel.reset();
-    gHost.guidePanel.reset();
+    gPanelSettingsGeneration.fetch_add(1, std::memory_order_release);
     Log("result=0 detail=ui_margin percent=" + std::to_string(percent));
     return 0;
 }
@@ -2006,8 +2022,7 @@ DWORD SetUiGuideEnabled(unsigned int enabled)
 {
     const bool on = enabled != 0;
     gUiGuide.store(on, std::memory_order_release);
-    gHost.menuPanel.reset();
-    gHost.guidePanel.reset();
+    gPanelSettingsGeneration.fetch_add(1, std::memory_order_release);
     Log(std::string("result=0 detail=ui_guide enabled=") + (on ? "1" : "0"));
     return 0;
 }

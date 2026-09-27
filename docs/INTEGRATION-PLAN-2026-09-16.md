@@ -1,9 +1,18 @@
 # PreyVR integration branch
 
-Worktree: `D:/Dev Debug/PreyVR-integration`, branch `codex/integration`.
-Baseline commit: `5c30857` preserves the 124 changed/untracked files copied from
-our development checkout. The original `D:/Dev Debug/PreyVR` checkout and its
-uncommitted files were not changed. No remote push or main merge is implied.
+Canonical shared development branch: **`collab/integration`**. Base new feature
+branches on it and target pull requests back to it. `main` remains the release
+baseline, gated on feature parity and headset acceptance.
+
+The September 27 consolidation brings the comfort-controls ancestry from
+`codex/integration` into the shared branch. The existing feature branches are
+retained as history; they are not competing integration targets. See
+[consolidation and static validation](INTEGRATION-CONSOLIDATION-2026-09-27.md).
+
+Historical baseline: `5c30857` preserved the 124 changed/untracked files copied
+from the development checkout on September 16. `b190b1e` is the shared baseline
+before consolidation; `e8451e5` contains the comfort work merged through
+`99c5474`. No donor source is introduced by this consolidation.
 
 ## Acceptance gates
 
@@ -30,7 +39,7 @@ Build/tests prove portable contracts and supported binary landmarks. Native
 xr-sim validates exercised engine and submission behaviour. Neither proves
 headset comfort, visual stereo correctness or complete feature parity.
 
-## Status — 19 September
+## Status â€” 19 September
 
 Snap turning (default 45 degrees), head-relative movement, optional floor reference
 selection and separate height calibration are implemented. See

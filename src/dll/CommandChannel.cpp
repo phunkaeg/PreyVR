@@ -795,7 +795,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     } else if (verb == "move.snap") {
         out << "move.snap result=" << (args.size()>1?SetSnapTurnDegrees(arg(1,SnapTurnDegrees())):0) << " degrees=" << SnapTurnDegrees();
     } else if (verb == "move.headrelative") {
-        out << "move.headrelative result=" << SetHeadRelativeMovement(arg(1,1));
+        out << "move.headrelative result=" << (args.size()>1?SetHeadRelativeMovement(arg(1,2)):0)
+            << " enabled=" << HeadRelativeMovementEnabled();
     } else if (verb == "move.scales") {
         out << "move.scales result=" << SetMovementAxisScales(arg(1,100),arg(2,100));
     } else if (verb == "move.turn") {
