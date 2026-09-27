@@ -47,7 +47,12 @@ threshold hysteresis. It hides outside 23–100 cm eye distance, during menus or
 two-hand aiming, and on missing/stale tracking or stats. It is a compositor quad,
 so it is not depth-occluded by scene geometry. Native HUD widgets remain intact.
 
-![Production wrist card, synthetic preview values](WRIST-STATUS-PREVIEW.png)
+![Prototype wrist card, synthetic preview values](WRIST-STATUS-PREVIEW.png)
+
+**Presentation direction:** this custom card is a prototype. The requested end
+state is Prey's own HUD status widgets rendered on the wrist, retaining their
+art and animation. See [native HUD retargeting](NATIVE-WRIST-HUD-2026-09-27.md)
+for the established update routes and the remaining widget-isolation boundary.
 
 The screenshot uses synthetic values through the production rasterizer, not a
 game capture. Health/psi/suit values in the mod come from the Steam native paths

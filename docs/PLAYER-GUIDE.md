@@ -71,11 +71,13 @@ to bind different weapons; weapons remain in your inventory. Assignments are
 session-local, not saved. This first version uses inferred hip/chest positions,
 not tracked torso/hip hardware, and has no visible holstered weapon props.
 
-**Wrist status:** turn the left palm up and look at the wrist. A small TranStar
+**Wrist status (prototype):** turn the left palm up and look at the wrist. A small TranStar
 card shows health, psi and suit integrity; unavailable values display `--`.
 Size adjusts from 80% to 140%. The card hides in menus, during two-handed aiming,
 on tracking loss and when looking away. It supplements the native HUD; reticles,
-prompts and native status widgets are unchanged. No headset acceptance yet.
+prompts and native status widgets are unchanged. The card uses custom graphics;
+retargeting Prey's own status artwork is the intended replacement and is not yet
+implemented. No headset acceptance yet.
 See [implementation and test details](BODY-EQUIPMENT-2026-09-27.md).
 
 **Toggle foregrip:** squeeze near the foregrip to attach; release the grip button
