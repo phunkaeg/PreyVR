@@ -7,6 +7,9 @@
 #include "preyvr/CameraEdit.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/StereoCamera.h"
+#include "preyvr/MotionController.h"
+#include "preyvr/ComfortControls.h"
+#include "XrSessionHost.h"
 
 #include <MinHook.h>
 
@@ -61,8 +64,9 @@ std::atomic<unsigned long long> gLastPoseAgeMicroseconds{0};
 std::atomic<unsigned long long> gMaxPoseAgeMicroseconds{0};
 
 // Atomic publication of the complete payload; render readers never wait.
-struct PoseSlot { Pose pose{}; std::int64_t publishedQpc = 0; long long displayTime = 0; };
+struct PoseSlot { Pose pose{}; std::int64_t publishedQpc = 0; long long displayTime = 0; unsigned long long spaceEpoch=0; };
 LatestSnapshot<PoseSlot> gPoseSlot;
+std::atomic<unsigned long long> gHeadSpaceEpoch{1};
 
 std::atomic<bool> gHaveReference{false};
 std::atomic<float> gReferenceYaw{0.0f};
@@ -88,10 +92,11 @@ std::int64_t QpcFrequency()
     return frequency;
 }
 
-bool ReadPose(Pose& out, std::int64_t& publishedQpc, long long& displayTime)
+bool ReadPose(Pose& out, std::int64_t& publishedQpc, long long& displayTime, unsigned long long& epoch)
 {
     PoseSlot value{};
-    if (!gPoseSlot.TryRead(value)) { return false; }
+    if (!gPoseSlot.TryRead(value) || value.spaceEpoch!=gHeadSpaceEpoch.load()) { return false; }
+    epoch=value.spaceEpoch;
     out = value.pose;
     displayTime = value.displayTime;
     publishedQpc = value.publishedQpc;
@@ -199,7 +204,7 @@ bool EnsureHook()
 // untracked view for one frame -- rare, and violent when it happens. The last
 // pose this thread read is the better answer while it is recent. Thread-local,
 // so no reader shares it and nothing can tear.
-struct HeadLastGood { Pose pose{}; std::int64_t publishedQpc = 0; long long displayTime = 0; bool valid = false; };
+struct HeadLastGood { Pose pose{}; std::int64_t publishedQpc = 0; long long displayTime = 0; bool valid = false; unsigned long long spaceEpoch=0; };
 thread_local HeadLastGood tHeadLastGood;
 std::atomic<unsigned long long> gHeadPoseReadFallbacks{0};
 constexpr unsigned long long kHeadFallbackMaxMicroseconds = 100000ull;
@@ -209,8 +214,9 @@ bool TryReadHeadPose(Pose& out, unsigned long long& ageMicroseconds)
     Pose pose{};
     std::int64_t publishedQpc = 0;
     long long displayTime = 0;
-    if (!ReadPose(pose, publishedQpc, displayTime)) {
-        if (!tHeadLastGood.valid) {
+    unsigned long long epoch=0;
+    if (!ReadPose(pose, publishedQpc, displayTime, epoch)) {
+        if (!tHeadLastGood.valid || tHeadLastGood.spaceEpoch!=gHeadSpaceEpoch.load()) {
             return false;
         }
         const auto staleMicroseconds = static_cast<unsigned long long>(
@@ -226,6 +232,7 @@ bool TryReadHeadPose(Pose& out, unsigned long long& ageMicroseconds)
         tHeadLastGood.publishedQpc = publishedQpc;
         tHeadLastGood.displayTime = displayTime;
         tHeadLastGood.valid = true;
+        tHeadLastGood.spaceEpoch=epoch;
     }
     const auto age = static_cast<unsigned long long>(
         ((QpcNow() - publishedQpc) * 1000000ll) / QpcFrequency());
@@ -593,11 +600,12 @@ DWORD SetViewHookApplying(unsigned int enabled)
 
 void PublishHeadPose(const Pose& openXrHeadPose, long long displayTime)
 {
-    gPoseSlot.Publish(PoseSlot{openXrHeadPose, QpcNow(), displayTime});
+    gPoseSlot.Publish(PoseSlot{openXrHeadPose, QpcNow(), displayTime, gHeadSpaceEpoch.load()});
 }
 
-DWORD RecenterHeadTracking()
+DWORD RecenterHeadTracking(bool recalibrateHeight)
 {
+    const auto sampledReference=gReferenceGeneration.load();
     TrackingFrame frame{};
     if (!TryGetTrackingFrame(frame) ||
         !FreshSample(MonotonicNanoseconds(), frame.publishedNs) ||
@@ -615,18 +623,73 @@ DWORD RecenterHeadTracking()
         return 2;
     }
     std::unique_lock referenceLock(gRecenterMutex, std::try_to_lock);
-    if (!referenceLock.owns_lock()) { return 3; }
+    if (!referenceLock.owns_lock() || sampledReference%2 ||
+        sampledReference!=gReferenceGeneration.load()) { return 3; }
+    Vec3 origin=headPose.position;
+    RoomReference previous{};
+    if(!recalibrateHeight && gHaveReference.load()) {
+        if(!gRoomReference.TryRead(previous)) return 3;
+        origin=comfort::RecenterOrigin(origin,previous.origin,true);
+    }
     gReferenceGeneration.fetch_add(1); // odd while recenter is being published
-    gRoomReference.Publish(RoomReference{*yaw, headPose.position});
+    gRoomReference.Publish(RoomReference{*yaw, origin});
     gReferenceYaw.store(*yaw, std::memory_order_release);
     gHaveReference.store(true, std::memory_order_release);
     gReferenceGeneration.fetch_add(1);
     std::ostringstream line;
     line << "result=0 detail=recentered yawRadians=" << *yaw
-         << " origin=" << headPose.position.x << ',' << headPose.position.y
-         << ',' << headPose.position.z;
+         << " origin=" << origin.x << ',' << origin.y << ',' << origin.z
+         << " heightCalibrated=" << recalibrateHeight;
     Log(line.str());
     return 0;
+}
+
+DWORD SnapTurnHeadTracking(int steps,unsigned degrees) {
+    if((steps!=-1 && steps!=1) || degrees<15 || degrees>90) return 1;
+    const auto sampledReference=gReferenceGeneration.load();
+    TrackingFrame frame{}; RoomReference room{};
+    if(!gHaveReference.load() || !TryGetTrackingFrame(frame) ||
+       !FreshSample(MonotonicNanoseconds(),frame.publishedNs) ||
+       !IsPoseUsable(frame.head,frame.headValidity,200000000ull)) return 2;
+    std::unique_lock lock(gRecenterMutex,std::try_to_lock);
+    if(!lock.owns_lock() || sampledReference%2 || sampledReference!=gReferenceGeneration.load() ||
+       !gRoomReference.TryRead(room)) return 3;
+    const float delta=static_cast<float>(steps)*static_cast<float>(degrees)*.0174532925199433f;
+    room.origin=comfort::TurnOriginAboutHead(room.origin,frame.head.position,delta);
+    room.yaw=controller::SnapTurn(room.yaw,steps,degrees*.0174532925199433f);
+    gReferenceGeneration.fetch_add(1);
+    gRoomReference.Publish(room);gReferenceYaw.store(room.yaw);gReferenceGeneration.fetch_add(1);
+    Log("result=0 detail=snap_turn degrees="+std::to_string(steps*static_cast<int>(degrees)));
+    return 0;
+}
+void ResetHeadTrackingReference() {
+    std::lock_guard lock(gRecenterMutex);
+    gReferenceGeneration.fetch_add(1);gHaveReference=false;
+    gPoseSlot.Clear();gHeadSpaceEpoch.fetch_add(1);gReferenceGeneration.fetch_add(1);
+}
+bool RebaseHeadTrackingSpace(const Pose& previousFromNew,bool valid) {
+    std::unique_lock lock(gRecenterMutex,std::try_to_lock);
+    if(!lock.owns_lock()) return false;
+    RoomReference room{};
+    const bool hadReference=gHaveReference.load();
+    if(hadReference && !gRoomReference.TryRead(room)) return false;
+    gReferenceGeneration.fetch_add(1);
+    if(valid && hadReference && comfort::RebaseReference(room.origin,room.yaw,previousFromNew)) {
+        gRoomReference.Publish(room);gReferenceYaw.store(room.yaw);
+    } else gHaveReference=false;
+    // Clear old-space controller snapshots before publishing the even generation.
+    // A concurrent recenter must not combine new reference + previous-space head.
+    InvalidateTrackingSamples();
+    gPoseSlot.Clear();gHeadSpaceEpoch.fetch_add(1);gReferenceGeneration.fetch_add(1);
+    return true;
+}
+std::string HeadHeightReport() {
+    RoomReference room{};TrackingFrame frame{};
+    std::ostringstream out;out<<"space="<<XrTrackingSpaceName()<<" calibrated="<<gHaveReference.load();
+    if(gRoomReference.TryRead(room) && TryGetTrackingFrame(frame))
+        out<<" referenceHeight="<<room.origin.y<<" headHeight="<<frame.head.position.y
+           <<" relativeHeight="<<(frame.head.position.y-room.origin.y);
+    return out.str();
 }
 
 DWORD SetHeadTrackingEnabled(unsigned int enabled)

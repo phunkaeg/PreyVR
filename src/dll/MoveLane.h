@@ -130,3 +130,10 @@ int MoveLaneCinematicGate();
 unsigned long long MoveLaneRecenterCount();
 
 } // namespace preyvr::dll
+
+namespace preyvr::dll {
+DWORD SetSnapTurnDegrees(unsigned degrees);
+unsigned SnapTurnDegrees();
+DWORD SetHeadRelativeMovement(unsigned enabled);
+DWORD SetMovementAxisScales(unsigned strafePercent,unsigned backwardPercent);
+}

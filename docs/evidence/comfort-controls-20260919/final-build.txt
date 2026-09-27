@@ -1,0 +1,16 @@
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  minhook.vcxproj -> D:\Dev Debug\PreyVR-integration\build\integration\_deps\minhook-build\Release\minhook.x64.lib
+  preyvr_core.vcxproj -> D:\Dev Debug\PreyVR-integration\build\integration\Release\preyvr_core.lib
+  preyvr_win32_bootstrap.vcxproj -> D:\Dev Debug\PreyVR-integration\build\integration\Release\preyvr_win32_bootstrap.lib
+  preyvr_engine_map_probe.vcxproj -> D:\Dev Debug\PreyVR-integration\build\integration\Release\preyvr_engine_map_probe.exe
+  openxr_loader.vcxproj -> D:\Dev Debug\PreyVR-integration\build\integration\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  D:\Dev Debug\PreyVR-integration\build\integration\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  D:\Dev Debug\PreyVR-integration\build\integration\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  D:\Dev Debug\PreyVR-integration\build\integration\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  HeadTrackingHook.cpp
+     Creating library D:/Dev Debug/PreyVR-integration/build/integration/Release/PreyVR.lib and object D:/Dev Debug/PreyVR-integration/build/integration/Release/PreyVR.exp
+  preyvr.vcxproj -> D:\Dev Debug\PreyVR-integration\build\integration\Release\PreyVR.dll

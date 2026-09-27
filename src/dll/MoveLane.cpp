@@ -8,6 +8,9 @@
 #include "XrInput.h"
 #include "preyvr/InputEvent.h"
 #include "preyvr/Locomotion.h"
+#include "preyvr/ComfortControls.h"
+#include "preyvr/StereoCamera.h"
+#include "preyvr/LatestSnapshot.h"
 
 #include <MinHook.h>
 
@@ -20,6 +23,9 @@
 
 namespace preyvr::dll {
 namespace {
+std::atomic<unsigned> gSnapDegrees{45};
+std::atomic<bool> gHeadRelative{true};
+std::atomic<float> gStrafeScale{1.f},gBackwardScale{1.f};
 
 void Log(const std::string& line) { lifecycle::Log("preyvr_move " + line); }
 
@@ -288,14 +294,27 @@ void UpdateMoveLane()
     ControllerState state{};
     const bool active = gMode.load(std::memory_order_acquire) == 2u;
     const bool neutralize = gMoveNeutralize.exchange(false, std::memory_order_acq_rel);
+    const auto movementReference=HeadTrackingReferenceGeneration();
+    TrackingFrame movementFrame{};
     bool haveInput = active && !neutralize && HudGameplayInputAllowed() &&
-        TryGetControllerState(Hand::left, state);
+        TryGetTrackingFrame(movementFrame) && FreshSample(MonotonicNanoseconds(),movementFrame.publishedNs);
+    if(haveInput) state=movementFrame.hands[0];
     static bool awaitNeutral=false;
     if (!HudGameplayInputAllowed()) { awaitNeutral=true; }
     if (haveInput && awaitNeutral) {
         if (std::fabs(state.thumbstickX)<=.15f && std::fabs(state.thumbstickY)<=.15f) awaitNeutral=false;
         else haveInput=false;
     }
+    if(haveInput && gHeadRelative.load()) {
+        const auto yaw=stereo::RecenterYawFromHeadPose(movementFrame.head);
+        if(!yaw || !IsPoseUsable(movementFrame.head,movementFrame.headValidity,200000000ull)) haveInput=false;
+        else {
+            const auto v=comfort::HeadRelativeStick({state.thumbstickX,state.thumbstickY},
+                *yaw-HeadTrackingReferenceYaw(),gStrafeScale.load(),gBackwardScale.load());
+            state.thumbstickX=v.x;state.thumbstickY=v.y;
+        }
+    }
+    if(movementReference%2 || movementReference!=HeadTrackingReferenceGeneration()) haveInput=false;
     if (!haveInput) {
         // A partially delivered X/Y pair can leave one axis held even though
         // the candidate shaper was not committed. Release both owned axes and
@@ -378,10 +397,19 @@ void UpdateTurnAndFireLanes()
     else if (haveInput && std::fabs(right.thumbstickX)<=.15f && std::fabs(right.thumbstickY)<=.15f) turnBlocked=false;
     const bool turnOn = gTurnEnabled.load(std::memory_order_acquire) && HudGameplayInputAllowed() && !turnBlocked;
     const bool releaseTurn = gTurnNeutralize.exchange(false, std::memory_order_acq_rel);
+    static comfort::SnapLatch snap;
+    static unsigned previousMode=~0u;
+    const unsigned snapDegrees=gSnapDegrees.load();
+    const bool modeChanged=snapDegrees!=previousMode;previousMode=snapDegrees;
+    const int steps=snap.Update(right.thumbstickX,right.thumbstickY,
+        turnOn && haveInput && !releaseTurn && !modeChanged && snapDegrees!=0);
+    if(steps) {
+        if(SnapTurnHeadTracking(steps,snapDegrees)==0) ++gTurnPosted; else ++gTurnRefused;
+    }
     if (turnOn || (gTurnPrimed && gLastTurnSent != 0)) {
         const float dead = gTurnDeadzoneHundredths.load(std::memory_order_relaxed) / 100.0f;
         const float scale = gTurnScalePercent.load(std::memory_order_relaxed) / 100.0f;
-        float value = (turnOn && !releaseTurn) ? right.thumbstickX : 0.0f;
+        float value = (turnOn && haveInput && !releaseTurn && snapDegrees==0) ? right.thumbstickX : 0.0f;
         if (!std::isfinite(value)) { value = 0.0f; }
         // Rescaled past the deadzone rather than clipped, so leaving the dead
         // area is gentle instead of a step to full rate.
@@ -612,4 +640,14 @@ int MoveLaneAxisMilli(unsigned int axis) { return axis < 2 ? gAxisMilli[axis].lo
 int MoveLaneCinematicGate() { return gCinematic.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneRecenterCount() { return gRecenters.load(std::memory_order_relaxed); }
 
+DWORD SetSnapTurnDegrees(unsigned degrees) {
+    if(degrees!=0 && (degrees<15 || degrees>90)) return 1;
+    gSnapDegrees=degrees;gTurnNeutralize=true;return 0;
+}
+unsigned SnapTurnDegrees() {return gSnapDegrees.load();}
+DWORD SetHeadRelativeMovement(unsigned enabled) {gHeadRelative=enabled!=0;gMoveNeutralize=true;return 0;}
+DWORD SetMovementAxisScales(unsigned strafe,unsigned backward) {
+    if(strafe<1 || strafe>200 || backward<1 || backward>200) return 1;
+    gStrafeScale=strafe/100.f;gBackwardScale=backward/100.f;gMoveNeutralize=true;return 0;
+}
 } // namespace preyvr::dll

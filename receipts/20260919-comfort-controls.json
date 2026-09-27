@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260919-comfort-controls",
+  "recorded_at": "2026-09-19T02:06:44.857852+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Can the integrated snap-turn and height-calibration paths run in native Prey with a floor reference?",
+  "claim": "STAGE selected; held right stick produced one +45 snap and a fresh left deflection -45; crouched recenter preserved standing height while explicit calibration changed it. Native movement transform reached the consumer with simulator binding limitations.",
+  "evidence_grade": "LIVE",
+  "environment": "in_game",
+  "method": "Process-scoped xr-sim runtime and xr-tape 0.1.0; supported Invoke-PreyVRLaunch.ps1 at 1344x1440, controlled stick/head steps, native command reports, D3D11 captures, and 42 CTest checks. See report and frozen manifest for exact DLL identity.",
+  "validity": "VALID",
+  "mutation": "temporary",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Supported Steam landmarks and DLL hash in launch manifest."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Native xr-tape plus world captures; shared-action simulator limit bounded explicitly."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Held vs neutral/re-engaged sticks; height 1.6 to 1.1; ordinary vs explicit recenter."
+    },
+    "scene": {
+      "status": "PASS",
+      "reason": "Talos Lobby visible in captured world images."
+    },
+    "restore": {
+      "status": "PASS",
+      "reason": "Simulated inputs cleared, VR disabled, owned PIDs 34812 and 91192 closed, no save requested."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Visible native gameplay, 42/42 tests, no xrEndFrame errors; excludes menu appearance, independent simulator subactions and headset acceptance."
+  },
+  "limits": "xr-sim returns shared vector action values independent of hand subaction; movement used matching stick values. No headset acceptance, LOCAL_FLOOR, invalid STAGE fallback or runtime space-change live validation. Forced LOCAL launch blocked by Defender injector quarantine. Final concurrency guards were built and unit-tested after the native run; final binary not reinjected.",
+  "artifacts": [
+    {
+      "path": "docs/COMFORT-CONTROLS-2026-09-19.md",
+      "sha256": "6be5d12e9c69af11aceece8e11414a080127388d2674795dce0432ffe74138bc",
+      "role": "Implementation and limits"
+    },
+    {
+      "path": "docs/evidence/comfort-controls-20260919/native.log",
+      "sha256": "1708080adfbf3cb3622975c2231076411c9b79aaf63881895a6de3d568406d3e",
+      "role": "Native log and reports"
+    },
+    {
+      "path": "docs/evidence/comfort-controls-20260919/ctest.txt",
+      "sha256": "641c7cd96aa9eea4b852af0e3199f45c1292bed1c5a2b4ca6a12390cf51c7c1c",
+      "role": "42 test results"
+    },
+    {
+      "path": "docs/evidence/comfort-controls-20260919/summary.json",
+      "sha256": "74e33b9e9435873217f3c51d6b9caaf0f6e360692ac49df3b87c4f0eb24d88a1",
+      "role": "Trace accounting and process restoration"
+    },
+    {
+      "path": "docs/evidence/comfort-controls-20260919/trace.ndjson.gz",
+      "sha256": "d3525d19c5bdfc16be4be657d35c2ca262cdfbfbb971ab450cd094271089c403",
+      "role": "Full compressed xr-tape trace"
+    },
+    {
+      "path": "docs/evidence/comfort-controls-20260919/snap-right-game_left.png",
+      "sha256": "561477907d2cf1ebe73b35238235863b8dfb295463e1eb841b7d732ec8a516cc",
+      "role": "Gameplay after right snap"
+    },
+    {
+      "path": "docs/evidence/comfort-controls-20260919/snap-return_left.png",
+      "sha256": "8b0b14eb14adb67610022016bc6a75b08b09ed2d8ebf85eba569964df6c03f1a",
+      "role": "Gameplay after return snap"
+    },
+    {
+      "path": "docs/evidence/comfort-controls-20260919/final-ctest.txt",
+      "sha256": "b3927b02bb1d80088299fb0cda2350c9e336f41f7f111bfb27e5a14c3ebf386e",
+      "role": "Final build tests"
+    },
+    {
+      "path": "docs/evidence/comfort-controls-20260919/final-build.txt",
+      "sha256": "f5f09fe8b75a1aada0f142b8e8431baf4758b98ba20d9cc8ad4d7c8cc44b128b",
+      "role": "Final Release build log"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Headset-check independent controllers, pivot/rig alignment, comfort, and floor/runtime recenter. Review xr-sim subaction isolation before relying on independent-hand harness tests."
+}

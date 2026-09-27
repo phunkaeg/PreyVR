@@ -1,0 +1,70 @@
+{
+  "dll_sha256": "32ad102ccd96ff08a0c8fb67d10d69bbf31004332014359e1ac5a747d8915ca2",
+  "records": {
+    "header": 1,
+    "instance": 1,
+    "runtime": 1,
+    "session": 1,
+    "space": 2,
+    "viewconfig": 1,
+    "swapchain": 4,
+    "sessionstate": 5,
+    "beginsession": 1,
+    "wait": 17986,
+    "views": 17986,
+    "begin": 17986,
+    "end": 17986,
+    "footer": 1
+  },
+  "end_frames": 17986,
+  "projection_frames": 11292,
+  "end_errors": 0,
+  "space_creations": [
+    {
+      "r": "space",
+      "handle": 4345298944,
+      "spaceType": 3,
+      "pose": {
+        "p": [
+          0,
+          0,
+          0
+        ],
+        "o": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "result": 0
+    },
+    {
+      "r": "space",
+      "handle": 4345298945,
+      "spaceType": 2,
+      "pose": {
+        "p": [
+          0,
+          0,
+          0
+        ],
+        "o": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "result": 0
+    }
+  ],
+  "closed_owned_pids": [
+    34812,
+    91192
+  ],
+  "second_run": "run-20260919-120403: unmodded, injector quarantined; forced LOCAL not tested",
+  "headset_acceptance": false,
+  "final_dll_sha256": "60640dc57ee89b07edc7cd06ab517864337645bca97ca442efa0a742e9713852",
+  "final_delta": "Post-native-run reference-generation checks; clear old-space inputs before even generation; refuse busy height-reference reads instead of recalibrating. Rebuilt and 42/42 tests; not reinjected due Defender quarantine."
+}
