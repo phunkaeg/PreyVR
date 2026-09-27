@@ -1,3 +1,7 @@
 # Preserve byte hashes of this integration receipt's frozen evidence.
 docs/INTEGRATION-CORRECTNESS-2026-09-16.md -text
 docs/evidence/integration-contract-20260916/** -text
+
+# Preserve frozen comfort-control evidence hashes across Windows checkouts.
+docs/COMFORT-CONTROLS-2026-09-19.md -text
+docs/evidence/comfort-controls-20260919/** -text

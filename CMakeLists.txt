@@ -337,6 +337,11 @@ if(PREYVR_BUILD_TESTS)
     preyvr_enable_warnings(preyvr_stereo_frame_tests)
     add_test(NAME stereo_frame COMMAND preyvr_stereo_frame_tests)
 
+    add_executable(preyvr_comfort_controls_tests tests/ComfortControlsTests.cpp)
+    target_link_libraries(preyvr_comfort_controls_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_comfort_controls_tests)
+    add_test(NAME comfort_controls COMMAND preyvr_comfort_controls_tests)
+
     add_executable(preyvr_motion_controller_tests tests/MotionControllerTests.cpp)
     target_link_libraries(preyvr_motion_controller_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_motion_controller_tests)
@@ -511,6 +516,12 @@ if(PREYVR_BUILD_TESTS)
     endif()
 
     find_program(PREYVR_POWERSHELL_EXECUTABLE NAMES pwsh powershell)
+    if(PREYVR_POWERSHELL_EXECUTABLE)
+        add_test(NAME launcher_resolution COMMAND "${PREYVR_POWERSHELL_EXECUTABLE}"
+            -NoProfile -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/LauncherResolution.Tests.ps1")
+        add_test(NAME launcher_comfort COMMAND "${PREYVR_POWERSHELL_EXECUTABLE}"
+            -NoProfile -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/LauncherComfort.Tests.ps1")
+    endif()
     if(PREYVR_POWERSHELL_EXECUTABLE AND PREYVR_BUILD_SMOKE_DLL AND WIN32)
         add_test(
             NAME smoke_log_parser

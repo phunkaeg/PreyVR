@@ -8,6 +8,9 @@
 #include "XrInput.h"
 #include "preyvr/InputEvent.h"
 #include "preyvr/Locomotion.h"
+#include "preyvr/ComfortControls.h"
+#include "preyvr/StereoCamera.h"
+#include "preyvr/LatestSnapshot.h"
 
 #include <MinHook.h>
 
@@ -20,6 +23,9 @@
 
 namespace preyvr::dll {
 namespace {
+std::atomic<unsigned> gSnapDegrees{45};
+std::atomic<bool> gHeadRelative{true};
+std::atomic<float> gStrafeScale{1.f},gBackwardScale{1.f};
 
 void Log(const std::string& line) { lifecycle::Log("preyvr_move " + line); }
 
@@ -288,14 +294,27 @@ void UpdateMoveLane()
     ControllerState state{};
     const bool active = gMode.load(std::memory_order_acquire) == 2u;
     const bool neutralize = gMoveNeutralize.exchange(false, std::memory_order_acq_rel);
+    const auto movementReference=HeadTrackingReferenceGeneration();
+    TrackingFrame movementFrame{};
     bool haveInput = active && !neutralize && HudGameplayInputAllowed() &&
-        TryGetControllerState(Hand::left, state);
+        TryGetTrackingFrame(movementFrame) && FreshSample(MonotonicNanoseconds(),movementFrame.publishedNs);
+    if(haveInput) state=movementFrame.hands[0];
     static bool awaitNeutral=false;
     if (!HudGameplayInputAllowed()) { awaitNeutral=true; }
     if (haveInput && awaitNeutral) {
         if (std::fabs(state.thumbstickX)<=.15f && std::fabs(state.thumbstickY)<=.15f) awaitNeutral=false;
         else haveInput=false;
     }
+    if(haveInput && gHeadRelative.load()) {
+        const auto yaw=stereo::RecenterYawFromHeadPose(movementFrame.head);
+        if(!yaw || !IsPoseUsable(movementFrame.head,movementFrame.headValidity,200000000ull)) haveInput=false;
+        else {
+            const auto v=comfort::HeadRelativeStick({state.thumbstickX,state.thumbstickY},
+                *yaw-HeadTrackingReferenceYaw(),gStrafeScale.load(),gBackwardScale.load());
+            state.thumbstickX=v.x;state.thumbstickY=v.y;
+        }
+    }
+    if(movementReference%2 || movementReference!=HeadTrackingReferenceGeneration()) haveInput=false;
     if (!haveInput) {
         // A partially delivered X/Y pair can leave one axis held even though
         // the candidate shaper was not committed. Release both owned axes and
@@ -348,9 +367,12 @@ void UpdateMoveLane()
 
 void UpdateTurnAndFireLanes()
 {
-    ControllerState right{};
-    const bool haveInput = TryGetControllerState(Hand::right, right);
-    if (!haveInput) { right = {}; }
+    // Read both hands from one publication: separate latest reads can invent a
+    // recenter/support chord that was never held at the same instant.
+    TrackingFrame inputFrame{};
+    const bool haveInput = TryGetTrackingFrame(inputFrame);
+    const ControllerState right = haveInput ? inputFrame.hands[1] : ControllerState{};
+    const ControllerState leftHand = haveInput ? inputFrame.hands[0] : ControllerState{};
 
     // Both grips + left Y: both grips alone are a natural two-handed hold.
     // Requiring Y keeps recenter deliberate and independent of grab timing.
@@ -358,9 +380,7 @@ void UpdateTurnAndFireLanes()
     // Edge-triggered: held grips must recentre ONCE, not every frame, or the
     // reference would be rebuilt continuously and the view would never settle.
     {
-        ControllerState leftGrip{};
-        const bool haveLeft = TryGetControllerState(Hand::left, leftGrip);
-        const bool both = haveInput && haveLeft && leftGrip.gripPressed && right.gripPressed && leftGrip.menuCancel;
+        const bool both = haveInput && leftHand.gripPressed && right.gripPressed && leftHand.menuCancel;
         if (both && !gRecenterHeld) {
             // This bumps the head-tracking reference generation, which
             // deliberately invalidates the IK calibration -- the hands were
@@ -378,10 +398,19 @@ void UpdateTurnAndFireLanes()
     else if (haveInput && std::fabs(right.thumbstickX)<=.15f && std::fabs(right.thumbstickY)<=.15f) turnBlocked=false;
     const bool turnOn = gTurnEnabled.load(std::memory_order_acquire) && HudGameplayInputAllowed() && !turnBlocked;
     const bool releaseTurn = gTurnNeutralize.exchange(false, std::memory_order_acq_rel);
+    static comfort::SnapLatch snap;
+    static unsigned previousMode=~0u;
+    const unsigned snapDegrees=gSnapDegrees.load();
+    const bool modeChanged=snapDegrees!=previousMode;previousMode=snapDegrees;
+    const int steps=snap.Update(right.thumbstickX,right.thumbstickY,
+        turnOn && haveInput && !releaseTurn && !modeChanged && snapDegrees!=0);
+    if(steps) {
+        if(SnapTurnHeadTracking(steps,snapDegrees)==0) ++gTurnPosted; else ++gTurnRefused;
+    }
     if (turnOn || (gTurnPrimed && gLastTurnSent != 0)) {
         const float dead = gTurnDeadzoneHundredths.load(std::memory_order_relaxed) / 100.0f;
         const float scale = gTurnScalePercent.load(std::memory_order_relaxed) / 100.0f;
-        float value = (turnOn && !releaseTurn) ? right.thumbstickX : 0.0f;
+        float value = (turnOn && haveInput && !releaseTurn && snapDegrees==0) ? right.thumbstickX : 0.0f;
         if (!std::isfinite(value)) { value = 0.0f; }
         // Rescaled past the deadzone rather than clipped, so leaving the dead
         // area is gentle instead of a step to full rate.
@@ -472,11 +501,7 @@ void UpdateTurnAndFireLanes()
                            HudGameplayInputAllowed();
     const bool releaseActions = gActionsNeutralize.exchange(false, std::memory_order_acq_rel);
     {
-        // The left hand is fetched here rather than reused from the recenter
-        // chord's scope: that one is only read when the chord is being checked,
-        // and an inventory button must not depend on it.
-        ControllerState leftHand{};
-        const bool haveLeftHand = TryGetControllerState(Hand::left, leftHand);
+        const bool haveLeftHand = haveInput;
         const bool sources[kActionCount] = {
             right.gripPressed,                        // use/reload; support chord suppresses below
             haveLeftHand && leftHand.menuAccept,      // inventory <- left X
@@ -612,4 +637,18 @@ int MoveLaneAxisMilli(unsigned int axis) { return axis < 2 ? gAxisMilli[axis].lo
 int MoveLaneCinematicGate() { return gCinematic.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneRecenterCount() { return gRecenters.load(std::memory_order_relaxed); }
 
+DWORD SetSnapTurnDegrees(unsigned degrees) {
+    if(degrees!=0 && (degrees<15 || degrees>90)) return 1;
+    gSnapDegrees=degrees;gTurnNeutralize=true;return 0;
+}
+unsigned SnapTurnDegrees() {return gSnapDegrees.load();}
+DWORD SetHeadRelativeMovement(unsigned enabled) {
+    if(enabled>1) return 1;
+    gHeadRelative=enabled!=0;gMoveNeutralize=true;return 0;
+}
+bool HeadRelativeMovementEnabled() {return gHeadRelative.load();}
+DWORD SetMovementAxisScales(unsigned strafe,unsigned backward) {
+    if(strafe<1 || strafe>200 || backward<1 || backward>200) return 1;
+    gStrafeScale=strafe/100.f;gBackwardScale=backward/100.f;gMoveNeutralize=true;return 0;
+}
 } // namespace preyvr::dll

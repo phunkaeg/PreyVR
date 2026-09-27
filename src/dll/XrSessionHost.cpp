@@ -72,6 +72,7 @@ std::atomic<unsigned long long> gUiPanelFrames{0};
 std::atomic<unsigned long long> gInventoryLayerFrames{0};
 std::atomic<unsigned int> gUiCurveDegrees{35};
 std::atomic<float> gRuntimeIpd{0};
+std::atomic<XrReferenceSpaceType> gTrackingSpaceType{XR_REFERENCE_SPACE_TYPE_MAX_ENUM};
 struct BackbufferSample { unsigned width=0,height=0; std::uint64_t changed=0,stamp=0; unsigned frames=0; };
 LatestSnapshot<BackbufferSample> gBackbufferSample;
 
@@ -80,6 +81,12 @@ struct Host {
     XrSystemId systemId = XR_NULL_SYSTEM_ID;
     XrSession session = XR_NULL_HANDLE;
     XrSpace space = XR_NULL_HANDLE;
+    XrSpace localFallback=XR_NULL_HANDLE;
+    bool spaceHasValidViews=false;
+    XrVersion apiVersion=XR_API_VERSION_1_0;
+    bool localFloorSupported=false;
+    bool recalibrateSpace=false;
+    std::vector<XrEventDataReferenceSpaceChangePending> spaceChanges;
     XrSwapchain swapchain = XR_NULL_HANDLE;
     DXGI_FORMAT colorFormat = DXGI_FORMAT_UNKNOWN;
     XrSwapchain guideSwapchain = XR_NULL_HANDLE;
@@ -125,6 +132,7 @@ struct Host {
     std::optional<ui::Panel> menuPanel;
     std::optional<ui::Panel> guidePanel;
     unsigned long long panelReference = 0;
+    unsigned long long panelSettingsGeneration = 0;
     bool panelWasActive = false;
     float panelAngle=0;
     unsigned long long surfaceSerial=0;
@@ -363,6 +371,9 @@ bool CreateInstanceAndSystem()
             // Braced deliberately: this loop was a single unbraced statement, and
             // adding a second test to it silently moved that test outside the loop.
             for(const auto& extension:extensions) {
+                if(std::strcmp(extension.extensionName,XR_EXT_LOCAL_FLOOR_EXTENSION_NAME)==0) {
+                    enabled.push_back(XR_EXT_LOCAL_FLOOR_EXTENSION_NAME);gHost.localFloorSupported=true;
+                }
                 if(std::strcmp(extension.extensionName,XR_KHR_COMPOSITION_LAYER_DEPTH_EXTENSION_NAME)==0) {
                     enabled.push_back(XR_KHR_COMPOSITION_LAYER_DEPTH_EXTENSION_NAME);gHost.depthSupported=true;
                 }
@@ -393,6 +404,7 @@ bool CreateInstanceAndSystem()
         result = xrCreateInstance(&info, &gHost.instance);
         if (XR_SUCCEEDED(result)) {
             std::ostringstream line;
+            gHost.apiVersion=candidate;
             line << "instance created api_version=" << XR_VERSION_MAJOR(candidate) << '.'
                  << XR_VERSION_MINOR(candidate) << '.' << XR_VERSION_PATCH(candidate);
             Log(line.str());
@@ -489,13 +501,31 @@ bool CreateSessionAndSwapchain()
         return false;
     }
 
-    XrReferenceSpaceCreateInfo spaceInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
-    spaceInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
-    spaceInfo.poseInReferenceSpace.orientation.w = 1.0f;
-    result = xrCreateReferenceSpace(gHost.session, &spaceInfo, &gHost.space);
-    if (XR_FAILED(result)) {
-        LogResult("create_reference_space", result);
-        return false;
+    std::uint32_t spaceCount=0;
+    if(XR_FAILED(xrEnumerateReferenceSpaces(gHost.session,0,&spaceCount,nullptr))) return false;
+    std::vector<XrReferenceSpaceType> spaces(spaceCount);
+    if(XR_FAILED(xrEnumerateReferenceSpaces(gHost.session,spaceCount,&spaceCount,spaces.data()))) return false;
+    char preference[32]{};
+    GetEnvironmentVariableA("PREYVR_REFERENCE_SPACE",preference,sizeof(preference));
+    const bool forceLocal=std::strcmp(preference,"local")==0;
+    for(const auto type : {XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR,XR_REFERENCE_SPACE_TYPE_STAGE,XR_REFERENCE_SPACE_TYPE_LOCAL}) {
+        if(forceLocal && type!=XR_REFERENCE_SPACE_TYPE_LOCAL) continue;
+        if(type==XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR && !gHost.localFloorSupported &&
+           gHost.apiVersion<XR_MAKE_VERSION(1,1,0)) continue;
+        if(std::find(spaces.begin(),spaces.end(),type)==spaces.end()) continue;
+        XrReferenceSpaceCreateInfo spaceInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+        spaceInfo.referenceSpaceType=type;spaceInfo.poseInReferenceSpace.orientation.w=1.f;
+        result=xrCreateReferenceSpace(gHost.session,&spaceInfo,&gHost.space);
+        if(XR_SUCCEEDED(result)) {
+            gTrackingSpaceType=type;Log(std::string("tracking_space selected=")+XrTrackingSpaceName());break;
+        }
+        gHost.space=XR_NULL_HANDLE;LogResult("create_reference_space_candidate",result);
+    }
+    if(!gHost.space) return false;
+    if(gTrackingSpaceType.load()!=XR_REFERENCE_SPACE_TYPE_LOCAL) {
+        XrReferenceSpaceCreateInfo fallback{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+        fallback.referenceSpaceType=XR_REFERENCE_SPACE_TYPE_LOCAL;fallback.poseInReferenceSpace.orientation.w=1.f;
+        if(XR_FAILED(xrCreateReferenceSpace(gHost.session,&fallback,&gHost.localFallback))) gHost.localFallback=XR_NULL_HANDLE;
     }
 
     // Controller input, created with the session because OpenXR permits
@@ -616,6 +646,8 @@ void Teardown()
     gHost.inventorySwapchain.reset(); // XR images die before their session.
     gHost.inventoryRightSwapchain.reset();
     DestroyXrInput();
+    ResetHeadTrackingReference();
+    gTrackingSpaceType=XR_REFERENCE_SPACE_TYPE_MAX_ENUM;
     for (auto*& image : gHost.eyeImage) {
         if (image != nullptr) {
             image->Release();
@@ -628,6 +660,7 @@ void Teardown()
     if (gHost.hudSwapchain) xrDestroySwapchain(gHost.hudSwapchain);
     if (gHost.swapchain) xrDestroySwapchain(gHost.swapchain);
     if (gHost.space) xrDestroySpace(gHost.space);
+    if (gHost.localFallback) xrDestroySpace(gHost.localFallback);
     if (gHost.session) xrDestroySession(gHost.session);
     if (gHost.instance) xrDestroyInstance(gHost.instance);
     gHost = Host{};
@@ -687,6 +720,9 @@ std::atomic<unsigned long long> gEyeSkewSamples{0};
 // constant. Applied to the menu panel and the HUD alike, because they are the
 // same presentation and one dial is easier to reason about than two.
 std::atomic<unsigned int> gUiScalePercent{100};
+// Command threads only publish settings. Cached panels belong to the XR frame
+// thread under gMutex; touching their optionals from a setter is a data race.
+std::atomic<unsigned long long> gPanelSettingsGeneration{0};
 // **The two things that actually cap panel size, both reported as `ui.scale`
 // doing nothing above ~130.**
 //
@@ -993,6 +1029,13 @@ void PumpEvents()
             } else if(changed->state==XR_SESSION_STATE_EXITING || changed->state==XR_SESSION_STATE_LOSS_PENDING) {
                 gStopRequested.store(true);
             }
+        } else if(event.type==XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING) {
+            const auto& changed=*reinterpret_cast<const XrEventDataReferenceSpaceChangePending*>(&event);
+            if(changed.session==gHost.session && changed.referenceSpaceType==gTrackingSpaceType.load()) {
+                gHost.spaceChanges.push_back(changed);
+                std::stable_sort(gHost.spaceChanges.begin(),gHost.spaceChanges.end(),
+                    [](const auto& a,const auto& b){return a.changeTime<b.changeTime;});
+            }
         } else if(event.type==XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING) {
             gStopRequested.store(true);
         }
@@ -1002,6 +1045,14 @@ void PumpEvents()
 
 } // namespace
 
+const char* XrTrackingSpaceName() {
+    switch(gTrackingSpaceType.load()) {
+    case XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR:return "LOCAL_FLOOR";
+    case XR_REFERENCE_SPACE_TYPE_STAGE:return "STAGE";
+    case XR_REFERENCE_SPACE_TYPE_LOCAL:return "LOCAL";
+    default:return "none";
+    }
+}
 DWORD SetXrRuntimeManifest(const char* manifestPath)
 {
     std::unique_lock lock(gMutex, kControlLockTimeout);
@@ -1226,6 +1277,20 @@ void ServiceXrFrame(void* renderer)
         return;
     }
 
+    bool spaceReady=true;
+    while(!gHost.spaceChanges.empty() && gHost.spaceChanges.front().changeTime<=frameState.predictedDisplayTime) {
+        const auto& change=gHost.spaceChanges.front();
+        const auto& p=change.poseInPreviousSpace;
+        if(!RebaseHeadTrackingSpace({{p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w},
+                                   {p.position.x,p.position.y,p.position.z}},change.poseValid!=XR_FALSE)) {
+            spaceReady=false;break;
+        }
+        gHost.eyeImageValid[0]=gHost.eyeImageValid[1]=false;
+        gHost.menuPanel.reset();gHost.guidePanel.reset();ClearUiPointer();
+        gHost.recalibrateSpace=HeadTrackingHasReference()==0;
+        gHost.spaceChanges.erase(gHost.spaceChanges.begin());
+        Log("tracking_space changed images_invalidated=1");
+    }
     XrViewLocateInfo locate{XR_TYPE_VIEW_LOCATE_INFO};
     locate.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
     locate.displayTime = frameState.predictedDisplayTime;
@@ -1233,11 +1298,22 @@ void ServiceXrFrame(void* renderer)
     XrViewState viewState{XR_TYPE_VIEW_STATE};
     std::uint32_t located = 0;
     XrView views[2] = {{XR_TYPE_VIEW}, {XR_TYPE_VIEW}};
-    const bool haveViews =
+    bool haveViews = spaceReady &&
         XR_SUCCEEDED(xrLocateViews(gHost.session, &locate, &viewState, 2, &located, views)) &&
         located == 2 &&
         (viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) != 0 &&
         (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT) != 0;
+    if(spaceReady && !haveViews && !gHost.spaceHasValidViews && gHost.localFallback) {
+        locate.space=gHost.localFallback;
+        if(XR_SUCCEEDED(xrLocateViews(gHost.session,&locate,&viewState,2,&located,views)) && located==2 &&
+           (viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) &&
+           (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT)) {
+            xrDestroySpace(gHost.space);gHost.space=gHost.localFallback;gHost.localFallback=XR_NULL_HANDLE;
+            gTrackingSpaceType=XR_REFERENCE_SPACE_TYPE_LOCAL;gHost.spaceChanges.clear();haveViews=true;
+            Log("tracking_space selected=LOCAL reason=floor_not_locatable");
+        }
+    }
+    if(haveViews) gHost.spaceHasValidViews=true;
     gHost.contract.OnViewsLocated(frameState.predictedDisplayTime, haveViews, haveViews);
 
     // Hand the head pose to the M1 camera hook. The midpoint of the two eyes is
@@ -1279,8 +1355,18 @@ void ServiceXrFrame(void* renderer)
         dll::PublishHeadPose(inputHead, frameState.predictedDisplayTime);
     }
 
-    UpdateXrInput(gHost.session, gHost.space,
-                  static_cast<long long>(frameState.predictedDisplayTime), inputHead, inputHeadValidity);
+    if(spaceReady) {
+        UpdateXrInput(gHost.session, gHost.space,
+                      static_cast<long long>(frameState.predictedDisplayTime), inputHead, inputHeadValidity);
+    } else {
+        // The runtime has changed coordinates but our reference rebase could
+        // not acquire its lock yet. Do not publish hands in the new space with
+        // the old reference, or keep the previous input sample actionable.
+        InvalidateTrackingSamples();
+        ClearUiPointer();
+    }
+
+    if(gHost.recalibrateSpace && haveViews && RecenterHeadTracking(true)==0) gHost.recalibrateSpace=false;
 
     XrFrameBeginInfo beginInfo{XR_TYPE_FRAME_BEGIN_INFO};
     if (XR_FAILED(xrBeginFrame(gHost.session, &beginInfo))) {
@@ -1289,6 +1375,12 @@ void ServiceXrFrame(void* renderer)
     gHost.contract.OnBegun();
 
     XrCompositionLayerProjectionView projViews[2]{};
+    const auto panelSettingsGeneration=gPanelSettingsGeneration.load(std::memory_order_acquire);
+    if(panelSettingsGeneration!=gHost.panelSettingsGeneration) {
+        gHost.menuPanel.reset();
+        gHost.guidePanel.reset();
+        gHost.panelSettingsGeneration=panelSettingsGeneration;
+    }
     const auto panelMode=gUiPanelMode.load();
     // A delayed main-thread poll is unknown, not proof that a menu closed.
     // Preserve its presentation through a stall; pointer/gameplay input still
@@ -1889,10 +1981,9 @@ DWORD SetUiScalePercent(unsigned int percent)
         return 1;
     }
     gUiScalePercent.store(percent, std::memory_order_release);
-    // The panels are rebuilt from the fit on the next frame that needs one, so
-    // drop the cached ones rather than waiting for a reference change.
-    gHost.menuPanel.reset();
-    gHost.guidePanel.reset();
+    // Invalidate on the frame thread, including when this setting arrives
+    // before the session exists. A later write is picked up next frame.
+    gPanelSettingsGeneration.fetch_add(1, std::memory_order_release);
     std::ostringstream line;
     line << "result=0 detail=ui_scale percent=" << percent;
     Log(line.str());
@@ -1918,8 +2009,7 @@ DWORD SetUiFitMarginPercent(unsigned int percent)
         return 1;
     }
     gUiFitMarginPercent.store(percent, std::memory_order_release);
-    gHost.menuPanel.reset();
-    gHost.guidePanel.reset();
+    gPanelSettingsGeneration.fetch_add(1, std::memory_order_release);
     Log("result=0 detail=ui_margin percent=" + std::to_string(percent));
     return 0;
 }
@@ -1932,8 +2022,7 @@ DWORD SetUiGuideEnabled(unsigned int enabled)
 {
     const bool on = enabled != 0;
     gUiGuide.store(on, std::memory_order_release);
-    gHost.menuPanel.reset();
-    gHost.guidePanel.reset();
+    gPanelSettingsGeneration.fetch_add(1, std::memory_order_release);
     Log(std::string("result=0 detail=ui_guide enabled=") + (on ? "1" : "0"));
     return 0;
 }
