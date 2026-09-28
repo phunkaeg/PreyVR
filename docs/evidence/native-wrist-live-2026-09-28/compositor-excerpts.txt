@@ -1,0 +1,67 @@
+40: const char* kShaderSource = R"HLSL(
+41: cbuffer Constants : register(b0) {
+42:     float4 eyeTan;      // l, r, u, d  (tangents of the EYE's fov)
+43:     float4 layTan;      // l, r, u, d  (tangents of the LAYER's fov)
+44:     float4 rectMin;     // xy = uv min of the submitted subimage
+45:     float4 rectMax;     // xy = uv max
+46:     float4 qRel;        // rotation from eye space into layer space
+47:     float4x4 mvp;       // quad pass only
+48:     float4 quadParams;  // x = pass (0 projection, 1 quad), y = flipY
+49: };
+84:         o.pos = float4(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, 0.0, 1.0);
+85:     } else {
+86:         // Unit quad in the layer's local plane, transformed by mvp.
+87:         float2 c = float2((vid == 1 || vid == 3) ? 1.0 : -1.0,
+88:                           (vid >= 2) ? -1.0 : 1.0);
+89:         o.uv = float2(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);
+90:         o.pos = mul(float4(c.x, c.y, 0.0, 1.0), mvp);
+91:     }
+92:     return o;
+394:     g_device = device;
+395:     g_ctx = context;
+396: 
+397:     ID3DBlob* vsb = nullptr;
+398:     ID3DBlob* psb1 = nullptr;
+399:     ID3DBlob* psb2 = nullptr;
+400:     ID3DBlob* psb3 = nullptr;
+401:     ID3DBlob* psb4 = nullptr;
+402:     ID3DBlob* err = nullptr;
+403:     const UINT flags = D3DCOMPILE_OPTIMIZATION_LEVEL1;
+404: 
+651: 
+652:         // Corners are +/-1 in the shader, so scale by the HALF extent.
+653:         Mat4 model = mat4_identity();
+654:         {
+655:             const Quat q = quadWorld.q;
+656:             const Vec3 rx = quat_rotate(q, Vec3{L.size.width * 0.5f, 0.0f, 0.0f});
+657:             const Vec3 ry = quat_rotate(q, Vec3{0.0f, L.size.height * 0.5f, 0.0f});
+658:             const Vec3 rz = quat_rotate(q, Vec3{0.0f, 0.0f, 1.0f});
+659:             model.m[0][0] = rx.x; model.m[0][1] = rx.y; model.m[0][2] = rx.z;
+660:             model.m[1][0] = ry.x; model.m[1][1] = ry.y; model.m[1][2] = ry.z;
+661:             model.m[2][0] = rz.x; model.m[2][1] = rz.y; model.m[2][2] = rz.z;
+662:             model.m[3][0] = quadWorld.p.x;
+663:             model.m[3][1] = quadWorld.p.y;
+664:             model.m[3][2] = quadWorld.p.z;
+665:         }
+666:         const Mat4 mvp = mat4_mul(mat4_mul(model, mat4_view_from_pose(eyeWorld)),
+667:                                   mat4_projection_fov(eyeFov, 0.02f, 1000.0f));
+668: 
+669:         Constants c{};
+670:         tangents(eyeFov, c.eyeTan);
+671:         uv_rect(L.sub, tw, th, c.rectMin, c.rectMax);
+672:         memcpy(c.mvp, mvp.m, sizeof(c.mvp));
+673:         c.quadParams[0] = 1.0f;
+674:         set_constants(c);
+675: 
+676:         ID3D11BlendState* blend = g_blendOff;
+682:         g_ctx->PSSetShader(arrayView ? g_psQuadArray : g_psQuad, nullptr, 0);
+683:         g_ctx->PSSetShaderResources(0, 1, &srv);
+684:         g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+685:         g_ctx->Draw(4, 0);
+686:         srv->Release();
+687: 
+688:         // A coarse on-screen estimate. It only has to answer "is this layer in
+689:         // frame at all", which is the question no other tool in the repo can.
+690:         stats[li].pixelsCovered[eye] = 1;
+691:     }
+692: }

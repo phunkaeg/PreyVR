@@ -1,0 +1,15 @@
+{
+  "recordedEndFrames": 10000,
+  "nonzeroEndResults": 0,
+  "matchedCaptures": 4,
+  "footer": {
+    "r": "footer",
+    "records": 40018,
+    "recordedFrames": 10000,
+    "truncated": true,
+    "maxFrames": 10000
+  },
+  "closedOwnedPid": 135192,
+  "settingsRestored": "original file absent; temporary vr-options.ini removed after LoadVrOptions",
+  "visualVerdict": "placement/readability not accepted; compositor matrix convention suspect, pixelsCovered=1 is a sentinel"
+}

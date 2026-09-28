@@ -1,0 +1,26 @@
+{
+  "name": "wrist_returned",
+  "frameIndex": 9860,
+  "displayTimeNs": 1590825910058371,
+  "sessionState": "FOCUSED",
+  "width": 1000,
+  "height": 1000,
+  "pacing": {"mode": "free", "hz": 90.00, "creditsLeft": 0},
+  "gate": {"waited": 9860, "begun": 9860, "ended": 9860, "discarded": 0, "outOfOrder": 0},
+  "head": {"pos": [0.00000, 1.65000, 0.00000], "quat": [0.00000, 0.00000, 0.00000, 1.00000], "ypr": [-0.000, 0.000, 0.000]},
+  "views": [
+    {"eye": "left", "pos": [-0.03150, 1.65000, 0.00000], "fovDeg": {"l": -54.000, "r": 44.000, "u": 55.000, "d": -55.000}},
+    {"eye": "right", "pos": [0.03150, 1.65000, 0.00000], "fovDeg": {"l": -44.000, "r": 54.000, "u": 55.000, "d": -55.000}}
+  ],
+  "handL": {"grip": [-0.10000, 1.55000, -0.42000], "aimYpr": [-0.000, 50.000, 0.000], "valid": true},
+  "handR": {"grip": [0.20000, 1.35000, -0.35000], "aimYpr": [-0.000, -40.000, 0.000], "valid": true},
+  "controls": {"a": false, "b": false, "x": false, "y": false, "menu": false, "trigL": 0.000, "trigR": 0.000, "gripL": 0.000, "gripR": 0.000, "stickL": [0.000, 0.000], "stickR": [0.000, 0.000]},
+  "layerCount": 3,
+  "layers": [
+    {"i": 0, "type": "projection", "space": "stage", "viewCount": 2, "fovDeg": {"l": -60.000, "r": 60.000, "u": 62.833, "d": -62.833}, "pixelsCoveredL": 1000000, "pixelsCoveredR": 1000000},
+    {"i": 1, "type": "quad", "space": "stage", "sizeM": [1.2941, 1.4559], "pose": [0.0000, 1.6500, -2.0000], "premultiplied": true, "pixelsCoveredL": 1, "pixelsCoveredR": 1},
+    {"i": 2, "type": "quad", "space": "stage", "sizeM": [0.1800, 0.1200], "pose": [-0.1000, 1.4400, -0.3750], "premultiplied": true, "pixelsCoveredL": 1, "pixelsCoveredR": 1}
+  ],
+  "derived": {"eyeSeparationM": 0.063000, "ipdM": 0.063000, "claimTanH": 1.73205, "eyeTanH": 1.17104, "claimRatioH": 1.47908, "aimRayDots": 2, "aimRayMaxDevDeg": 97.0749, "aimRayMeanDevDeg": 73.8568, "aimRayDotsL": 1, "aimRayMaxDevDegL": 46.4870, "aimRayDotsR": 1, "aimRayMaxDevDegR": 97.0749},
+  "stats": {"meanLumaL": 44.20, "meanLumaR": 40.32, "nonBlackPctL": 75.80, "nonBlackPctR": 72.27}
+}

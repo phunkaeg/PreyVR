@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260928-native-wrist-live",
+  "recorded_at": "2026-09-28T13:04:13.153315+00:00",
+  "target": {
+    "name": "Steam Prey 2017 x64 PreyDll.dll",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Does native wrist capture and layer submission stop when lowered and resume when raised in Prey?",
+  "claim": "Capture remained 1392 while forward HUD capture advanced 1445 to 3281, then resumed on raising the wrist. Capture reached 1495 with zero refusals/faults; 1493 wrist-layer frames. Captured submissions add/remove the wrist quad. Visual placement/readability remains unaccepted.",
+  "evidence_grade": "LIVE",
+  "environment": "in_game",
+  "method": "One 3-minute-12-second Prey session, source 27b15fe, candidate DLL identified in run.json, process-scoped xr-sim and xr-tape. Native menu taps loaded existing Talos Lobby save. Fixed head, raised/lowered/raised left grip, then pause and vr.disable. Command replies and exact matching xrEndFrame capture records retained.",
+  "validity": "VALID",
+  "mutation": "temporary",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Steam binary SHA verified; exact injected candidate SHA and PID recorded."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Native counters paired with matching xrEndFrame records for four captures; quad coverage placeholder explicitly excluded from proof."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Lowered wrist stops capture while forward HUD advances; raising restores capture and third layer. Pause suppresses wrist layer."
+    },
+    "scene": {
+      "status": "PASS",
+      "reason": "Talos Lobby gameplay established in both-eye captures; menu 6 reaches pause."
+    },
+    "restore": {
+      "status": "PASS",
+      "reason": "vr.disable acknowledged, XR torn_down logged, owned PID exited. Temporary settings removed; no preexisting options file, no shared runtime change."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "FAIL",
+    "reason": "Panel composition is visibly distorted/misplaced in the simulator. Native capture lifecycle confirmation is not visual acceptance or release approval."
+  },
+  "limits": "No headset evidence. pixelsCovered=1 is a quad-draw sentinel, not measured area. Simulator matrix convention is a defect candidate, not experimentally isolated here. Trace truncated at 10000 frames, four captures match successful recorded end results. No damage/healing/psi/suit/save-load/performance acceptance.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/compositor-excerpts.txt",
+      "sha256": "ba8a96276170bda6d5914a1b28389309c82e89a0eb98e97bae52fb93fa6a9099",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/final-options.txt",
+      "sha256": "1e2238674e18d84a820f3dc6798e04c8c8015ee77b6d8da66d9f6d43240c9130",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/gameplay.json",
+      "sha256": "16a3123de8bd02ba78a42fb862e7fcd855bd59dd4e34fd8ab20b146eb3697801",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/gameplay_left.png",
+      "sha256": "a9f6dcb4c22cfbd655cb596cfdf5d1b6f6cbc80e652041bf1ab257be0d09f9e3",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/gameplay_right.png",
+      "sha256": "a4176f86670d518ee1d402f3d47569dd42c22cde6208e39986fccb47846d9061",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/PreyVR.log",
+      "sha256": "b36f44231a1c542e450db62e1d8a66b632f9f50595d65a1ae9e0f5e5cc12de41",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/run.json",
+      "sha256": "06ee1ea35fa167270c3b5eb1caa90146c4885b79c49ad0b02c74750a5fe0fd64",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/runtime.json",
+      "sha256": "a8f95114b400809cf0587dc085f7ee72f0615818d0aa8d39e5bf46e9a3023d76",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/summary.json",
+      "sha256": "85b61fe2047ec300c977f7f2c8cc40c38558fd72353706c7b1479387dccdb9e5",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/tape-excerpt.ndjson",
+      "sha256": "e5e83284516753ba3db2484cc0875b84169e292144a2eebf92e9eb27490deb65",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/teardown.txt",
+      "sha256": "a30da2f9d8ccf84cc2542a21d6df4bd9ceaa3fcc3cc85bd2da775417a5092e70",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist-hidden-later.txt",
+      "sha256": "ea08a9373099bfc73ba88bf8c89bbb586d7a62e9112eba6e2cf26a120d3ee30c",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist-hidden.txt",
+      "sha256": "4e2055c9291811c912e200fc154e1942286cd3e8766d4625be670b72de414266",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist-menu.txt",
+      "sha256": "f2fee012aecdc90d8e4cb5d8eab3009807cf2cb94e1cfbcf760b5abc6129d8a4",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist-on.txt",
+      "sha256": "4901577a674e9c9282afb9373bc533ce7062c57cb6931c63bb72f5b9df79e08a",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist-returned.txt",
+      "sha256": "8723c61592abef0baae5f282225e5d65ddfad723bbe692caf51436c1e4d3db52",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist_hidden.json",
+      "sha256": "fa2d4e408a6b21a55cfae5ac4e4ee1af95ec8e1180f21ca8d7f2aeb8cb07373c",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist_hidden_left.png",
+      "sha256": "5af9595f7fb727639d897dcbf3609687b78bcbb92f2dbc3df46cfd4aab2db4c6",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist_hidden_right.png",
+      "sha256": "e56d4ab39b44d4c0c1b940dcb5994216c03877f96faba494d96dd43cb74c850c",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist_menu.json",
+      "sha256": "000a2df746fd45deaec07503d8388b7bfc816a6ebc93c70db91e87fd6387f48d",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist_menu_left.png",
+      "sha256": "bdf3beb4ecb04b69a8b08ebc4e95b87fda9037a523e76596431028bb2f06dbb3",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist_menu_right.png",
+      "sha256": "daf8897eb9751fb9d84a727298e123f77c4693ae1250259f765d3e9bce0bab32",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist_returned.json",
+      "sha256": "a73d75197db5cdadd7acd24daa047461d6bb4137287196e5337878d312cc0c88",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist_returned_left.png",
+      "sha256": "965f3496f4b33299d2475a659529c522ca759e6b70ff4af78c139a891da3aa89",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/evidence/native-wrist-live-2026-09-28/wrist_returned_right.png",
+      "sha256": "ee2a2eb5b2b552ebbc51214f9211c5d230fc79af0a6331c74b38311452b696fa",
+      "role": "Brief in-game native wrist lifecycle evidence"
+    },
+    {
+      "path": "docs/NATIVE-WRIST-LIVE-2026-09-28.md",
+      "sha256": "c6deb9e2949b896fabec6b1661b41d9e888f0b15d0164c908e4a22a85e6e5739",
+      "role": "Interpretation and visual limitations"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Verify corrected matrix conventions with a known quad in an isolated simulator build, or capture the submitted wrist texture directly; then brief repeat. Shared runtime left unchanged due concurrent fleet tests."
+}

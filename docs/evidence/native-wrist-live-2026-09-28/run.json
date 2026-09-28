@@ -1,0 +1,24 @@
+{
+  "runId": "run-20260928-225949",
+  "startedUtc": "2026-09-28T13:00:00.2323806Z",
+  "gameExe": "D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\Prey.exe",
+  "gameRoot": "D:\\SteamLibrary\\steamapps\\common\\Prey",
+  "pid": 135192,
+  "rendererUp": true,
+  "dll": "D:\\Dev Debug\\PreyVR-integration\\build\\integration\\Release\\PreyVR.dll",
+  "dllSha256": "94C0AA050201438A1660A349A18F5B89137612C898D4BA4D7425D39C60846F78",
+  "dllBytes": 1033216,
+  "xrsimDir": "D:\\Dev Debug\\PreyVR-integration\\build\\native-wrist-live-20260928\\run-20260928-225949\\xrsim",
+  "tapeDir": "D:\\Dev Debug\\PreyVR-integration\\build\\native-wrist-live-20260928\\run-20260928-225949\\tape",
+  "logDir": "D:\\Dev Debug\\PreyVR-integration\\build\\native-wrist-live-20260928\\run-20260928-225949\\log",
+  "environment": {
+    "SteamAppId": "480490",
+    "XRSIM_DIR": "D:\\Dev Debug\\PreyVR-integration\\build\\native-wrist-live-20260928\\run-20260928-225949\\xrsim",
+    "PREYVR_LOG_PATH": "D:\\Dev Debug\\PreyVR-integration\\build\\native-wrist-live-20260928\\run-20260928-225949\\log\\PreyVR.log",
+    "XR_RUNTIME_JSON": "C:\\Users\\meise\\AppData\\Local\\xr-sim\\runtime\\xrsim-x64.json",
+    "XR_API_LAYER_PATH": "C:\\Users\\meise\\AppData\\Local\\xr-tape\\layer-x64",
+    "XR_ENABLE_API_LAYERS": "XR_APILAYER_XRTAPE_recorder",
+    "XRTAPE_DIR": "D:\\Dev Debug\\PreyVR-integration\\build\\native-wrist-live-20260928\\run-20260928-225949\\tape",
+    "XRTAPE_MAX_FRAMES": "10000"
+  }
+}

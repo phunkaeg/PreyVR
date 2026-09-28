@@ -1,0 +1,1 @@
+hud.layer result=0 hudLayer=1 inventoryCapture=0 inventoryConsumer=0 inventoryLayerFrames=0 refused=0 nativeWrist={captured=1392 refused=0 fault=0} DanielleHUD={identified=3284 captured=3281} DaniellePDA={identified=0 captured=0}

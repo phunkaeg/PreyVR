@@ -1,0 +1,1 @@
+vr.options open=0 inputOwned=0 saved=1 psychoscope=0 holsters=0 wrist=1 wristSize=100 dispatched=0 refused=0 fault=0 holsterSlots=0 holsterDispatched=0 holsterRefused=0 equipmentFault=0 wristSamples=0 wristLayerFrames=1493
