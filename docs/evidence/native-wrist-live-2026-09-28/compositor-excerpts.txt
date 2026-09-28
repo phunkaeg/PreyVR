@@ -19,7 +19,7 @@
 92:     return o;
 394:     g_device = device;
 395:     g_ctx = context;
-396: 
+396:
 397:     ID3DBlob* vsb = nullptr;
 398:     ID3DBlob* psb1 = nullptr;
 399:     ID3DBlob* psb2 = nullptr;
@@ -27,8 +27,8 @@
 401:     ID3DBlob* psb4 = nullptr;
 402:     ID3DBlob* err = nullptr;
 403:     const UINT flags = D3DCOMPILE_OPTIMIZATION_LEVEL1;
-404: 
-651: 
+404:
+651:
 652:         // Corners are +/-1 in the shader, so scale by the HALF extent.
 653:         Mat4 model = mat4_identity();
 654:         {
@@ -45,21 +45,21 @@
 665:         }
 666:         const Mat4 mvp = mat4_mul(mat4_mul(model, mat4_view_from_pose(eyeWorld)),
 667:                                   mat4_projection_fov(eyeFov, 0.02f, 1000.0f));
-668: 
+668:
 669:         Constants c{};
 670:         tangents(eyeFov, c.eyeTan);
 671:         uv_rect(L.sub, tw, th, c.rectMin, c.rectMax);
 672:         memcpy(c.mvp, mvp.m, sizeof(c.mvp));
 673:         c.quadParams[0] = 1.0f;
 674:         set_constants(c);
-675: 
+675:
 676:         ID3D11BlendState* blend = g_blendOff;
 682:         g_ctx->PSSetShader(arrayView ? g_psQuadArray : g_psQuad, nullptr, 0);
 683:         g_ctx->PSSetShaderResources(0, 1, &srv);
 684:         g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 685:         g_ctx->Draw(4, 0);
 686:         srv->Release();
-687: 
+687:
 688:         // A coarse on-screen estimate. It only has to answer "is this layer in
 689:         // frame at all", which is the question no other tool in the repo can.
 690:         stats[li].pixelsCovered[eye] = 1;

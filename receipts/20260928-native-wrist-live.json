@@ -46,7 +46,7 @@
   "artifacts": [
     {
       "path": "docs/evidence/native-wrist-live-2026-09-28/compositor-excerpts.txt",
-      "sha256": "ba8a96276170bda6d5914a1b28389309c82e89a0eb98e97bae52fb93fa6a9099",
+      "sha256": "2419cc7fd907d7c9432b8973519dd7cc818a923e903492d288bdf28f6f5b715d",
       "role": "Brief in-game native wrist lifecycle evidence"
     },
     {
