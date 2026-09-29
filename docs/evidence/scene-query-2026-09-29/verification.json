@@ -1,0 +1,22 @@
+{
+  "target": "D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\PreyDll.dll",
+  "sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "checks": [
+    "RayWorldIntersection: full body matches; one-bit mutation refused",
+    "RayHeightfield: full body matches; one-bit mutation refused",
+    "CheckCell: full body matches; one-bit mutation refused",
+    "DrawRayOnGrid: full body matches; one-bit mutation refused",
+    "CheckerConstructor: full body matches; one-bit mutation refused",
+    "EntityGetPhysics: full body matches; one-bit mutation refused",
+    "PlayerSingleton: full body matches; one-bit mutation refused",
+    "Concrete world vtable +0x118 points to Steam 0xCCF250",
+    "Constructor installs concrete world vtable",
+    "Native melee obtains player entity at +0x38",
+    "Native melee calls entity physics slot +0x228",
+    "Synchronous caller lock",
+    "Axis permutation tables used by indexed grid traversal"
+  ],
+  "environment": "static",
+  "game_launched": false,
+  "limits": "Proves native bytes/layout/call route, not query acceptance, hit filtering in a scene, rendered reticle depth or performance."
+}

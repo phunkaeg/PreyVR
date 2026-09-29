@@ -1,4 +1,5 @@
 #include "XrInput.h"
+#include "HapticsXr.h"
 #include "VrOptionsRuntime.h"
 #include "UiPointer.h"
 #include "preyvr/LatestSnapshot.h"
@@ -52,6 +53,8 @@ XrAction gMenuCancel = XR_NULL_HANDLE;
 XrAction gMenuStart = XR_NULL_HANDLE;
 XrAction gTrigger = XR_NULL_HANDLE;
 XrAction gSqueeze = XR_NULL_HANDLE;
+XrAction gHaptic = XR_NULL_HANDLE;
+XrSession gHapticSession = XR_NULL_HANDLE;
 std::array<HandActions, 2> gHands{};
 
 std::atomic<bool> gCreated{false};
@@ -150,6 +153,8 @@ bool CreateXrInput(void* instanceHandle, void* sessionHandle)
     };
     gHands[0].subactionPath = subactions[0];
     gHands[1].subactionPath = subactions[1];
+    gHapticSession=session;
+    gHaptic=CreateAction(XR_ACTION_TYPE_VIBRATION_OUTPUT,"feedback","Controller Feedback",subactions);
 
     // Grip and aim are separate actions on purpose. Grip is the palm, which a
     // held weapon hangs off; aim is the pointing axis, which a ray follows.
@@ -178,7 +183,7 @@ bool CreateXrInput(void* instanceHandle, void* sessionHandle)
     // A/B are right-hand only on Touch and X/Y are left-hand only, so accept and
     // cancel bind to one controller rather than both. The menu button is the
     // left one; its right-hand counterpart is reserved by the runtime.
-    const std::array<XrActionSuggestedBinding, 16> bindings = {{
+    const std::array<XrActionSuggestedBinding, 18> bindings = {{
         {gGripPose, StringToPath(instance, "/user/hand/left/input/grip/pose")},
         {gGripPose, StringToPath(instance, "/user/hand/right/input/grip/pose")},
         {gAimPose, StringToPath(instance, "/user/hand/left/input/aim/pose")},
@@ -195,13 +200,15 @@ bool CreateXrInput(void* instanceHandle, void* sessionHandle)
         {gMenuCancel, StringToPath(instance, "/user/hand/left/input/y/click")},
         {gMenuStart, StringToPath(instance, "/user/hand/left/input/menu/click")},
         {gWeaponWheel, StringToPath(instance, "/user/hand/right/input/thumbstick/click")},
+        {gHaptic, StringToPath(instance, "/user/hand/left/output/haptic")},
+        {gHaptic, StringToPath(instance, "/user/hand/right/output/haptic")},
     }};
     XrInteractionProfileSuggestedBinding suggested{
         XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
     suggested.interactionProfile =
         StringToPath(instance, "/interaction_profiles/oculus/touch_controller");
     suggested.suggestedBindings = bindings.data();
-    suggested.countSuggestedBindings = static_cast<std::uint32_t>(bindings.size());
+    suggested.countSuggestedBindings = gHaptic?static_cast<std::uint32_t>(bindings.size()):16u;
     result = xrSuggestInteractionProfileBindings(instance, &suggested);
     bool haveProfile=XR_SUCCEEDED(result);
     if (XR_FAILED(result)) LogResult("touch_bindings",result);
@@ -281,11 +288,13 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
     // the call returned, not that it did anything.
     const XrResult syncResult = xrSyncActions(session, &sync);
     if (XR_FAILED(syncResult)) {
+        ResetHaptics(session,gHaptic,{gHands[0].subactionPath,gHands[1].subactionPath});
         gTrackingEpoch.fetch_add(1);
         gTrackingFrame.Clear();
         return;
     }
     if (syncResult == XR_SESSION_NOT_FOCUSED) {
+        ResetHaptics(session,gHaptic,{gHands[0].subactionPath,gHands[1].subactionPath});
         gSyncsNotFocused.fetch_add(1, std::memory_order_relaxed);
         gTrackingEpoch.fetch_add(1);
         gTrackingFrame.Clear();
@@ -367,6 +376,7 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
     frame.epoch = gTrackingEpoch.load();
     frame.publishedNs = MonotonicNanoseconds();
     gTrackingFrame.Publish(frame);
+    ServiceHaptics(session,gHaptic,{gHands[0].subactionPath,gHands[1].subactionPath},frame,true);
     if((gMenuNavigation.load()||VrOptionsInputOwned())&&VrOptionsReady()&&ProcessVrOptionsInput(frame)) {
         gNavigator.Reset();gLastDisplayTime.store(predictedDisplayTime);
         return;
@@ -456,6 +466,8 @@ void InvalidateTrackingSamples() { gTrackingEpoch.fetch_add(1); gTrackingFrame.C
 
 void DestroyXrInput()
 {
+    ResetHaptics(gHapticSession,gHaptic,{gHands[0].subactionPath,gHands[1].subactionPath});
+    gHaptic=XR_NULL_HANDLE;gHapticSession=XR_NULL_HANDLE;
     for (auto& hand : gHands) {
         if (hand.gripSpace != XR_NULL_HANDLE) xrDestroySpace(hand.gripSpace);
         if (hand.aimSpace != XR_NULL_HANDLE) xrDestroySpace(hand.aimSpace);

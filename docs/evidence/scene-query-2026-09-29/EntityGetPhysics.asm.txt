@@ -1,0 +1,51 @@
+009042b0 4053 push rbx
+009042b2 4883ec20 sub rsp, 0x20
+009042b6 4c8b81b8000000 mov r8, qword ptr [rcx + 0xb8]
+009042bd 488bd9 mov rbx, rcx
+009042c0 498bd0 mov rdx, r8
+009042c3 498b4008 mov rax, qword ptr [r8 + 8]
+009042c7 80781900 cmp byte ptr [rax + 0x19], 0
+009042cb 751b jne 0x9042e8
+009042cd 0f1f00 nop dword ptr [rax]
+009042d0 83782001 cmp dword ptr [rax + 0x20], 1
+009042d4 7306 jae 0x9042dc
+009042d6 488b4010 mov rax, qword ptr [rax + 0x10]
+009042da eb06 jmp 0x9042e2
+009042dc 488bd0 mov rdx, rax
+009042df 488b00 mov rax, qword ptr [rax]
+009042e2 80781900 cmp byte ptr [rax + 0x19], 0
+009042e6 74e8 je 0x9042d0
+009042e8 493bd0 cmp rdx, r8
+009042eb 7406 je 0x9042f3
+009042ed 837a2001 cmp dword ptr [rdx + 0x20], 1
+009042f1 7603 jbe 0x9042f6
+009042f3 498bd0 mov rdx, r8
+009042f6 493bd0 cmp rdx, r8
+009042f9 7417 je 0x904312
+009042fb 488b4a28 mov rcx, qword ptr [rdx + 0x28]
+009042ff 4885c9 test rcx, rcx
+00904302 740e je 0x904312
+00904304 488b01 mov rax, qword ptr [rcx]
+00904307 ff90a0000000 call qword ptr [rax + 0xa0]
+0090430d 4885c0 test rax, rax
+00904310 7538 jne 0x90434a
+00904312 488b03 mov rax, qword ptr [rbx]
+00904315 ba0c000000 mov edx, 0xc
+0090431a 488bcb mov rcx, rbx
+0090431d ff9000020000 call qword ptr [rax + 0x200]
+00904323 4885c0 test rax, rax
+00904326 7420 je 0x904348
+00904328 488b10 mov rdx, qword ptr [rax]
+0090432b 488bc8 mov rcx, rax
+0090432e ff5278 call qword ptr [rdx + 0x78]
+00904331 4885c0 test rax, rax
+00904334 7412 je 0x904348
+00904336 488b10 mov rdx, qword ptr [rax]
+00904339 488bc8 mov rcx, rax
+0090433c 4883c420 add rsp, 0x20
+00904340 5b pop rbx
+00904341 48ffa2e8000000 jmp qword ptr [rdx + 0xe8]
+00904348 33c0 xor eax, eax
+0090434a 4883c420 add rsp, 0x20
+0090434e 5b pop rbx
+0090434f c3 ret

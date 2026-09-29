@@ -175,6 +175,8 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/PassCameraProbe.cpp
         src/dll/ReticleFollow.cpp
         src/dll/XrInput.cpp
+        src/dll/Haptics.cpp
+        src/dll/SceneQuery.cpp
         src/dll/XrSessionHost.cpp
         src/lifecycle/Logger.cpp
     )
@@ -380,6 +382,10 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_weapon_aim_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_weapon_aim_tests)
     add_test(NAME weapon_aim COMMAND preyvr_weapon_aim_tests)
+    add_executable(preyvr_scene_query_tests tests/SceneQueryTests.cpp)
+    target_link_libraries(preyvr_scene_query_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_scene_query_tests)
+    add_test(NAME scene_query_contracts COMMAND preyvr_scene_query_tests)
 
     add_executable(preyvr_frustum_coverage_tests tests/FrustumCoverageTests.cpp)
     target_link_libraries(preyvr_frustum_coverage_tests PRIVATE preyvr_core)
@@ -522,6 +528,12 @@ if(PREYVR_BUILD_TESTS)
         )
 
         if(PREYVR_BUILD_OPENXR_LOADER)
+            add_executable(preyvr_haptics_tests tests/HapticsTests.cpp src/dll/Haptics.cpp)
+            target_include_directories(preyvr_haptics_tests PRIVATE $<TARGET_PROPERTY:openxr_loader,INTERFACE_INCLUDE_DIRECTORIES>)
+            target_compile_definitions(preyvr_haptics_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+            target_link_libraries(preyvr_haptics_tests PRIVATE preyvr_core)
+            preyvr_enable_warnings(preyvr_haptics_tests)
+            add_test(NAME haptics_contracts COMMAND preyvr_haptics_tests)
             add_executable(preyvr_inventory_swapchain_tests tests/InventorySwapchainTests.cpp src/dll/InventorySwapchain.cpp)
             target_include_directories(preyvr_inventory_swapchain_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/dll"
                 $<TARGET_PROPERTY:openxr_loader,INTERFACE_INCLUDE_DIRECTORIES>)

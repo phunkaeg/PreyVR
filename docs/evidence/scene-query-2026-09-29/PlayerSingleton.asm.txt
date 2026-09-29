@@ -1,0 +1,12 @@
+0157c990 4883ec28 sub rsp, 0x28
+0157c994 488b0d8d10cd00 mov rcx, qword ptr [rip + 0xcd108d]
+0157c99b 488b01 mov rax, qword ptr [rcx]
+0157c99e ff5070 call qword ptr [rax + 0x70]
+0157c9a1 488bc8 mov rcx, rax
+0157c9a4 488b10 mov rdx, qword ptr [rax]
+0157c9a7 ff92c0000000 call qword ptr [rdx + 0xc0]
+0157c9ad ba77770000 mov edx, 0x7777
+0157c9b2 488bc8 mov rcx, rax
+0157c9b5 4c8b00 mov r8, qword ptr [rax]
+0157c9b8 4883c428 add rsp, 0x28
+0157c9bc 49ff6018 jmp qword ptr [r8 + 0x18]

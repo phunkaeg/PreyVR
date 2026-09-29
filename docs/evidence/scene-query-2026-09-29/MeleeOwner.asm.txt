@@ -1,0 +1,14 @@
+013bd667 e824f31b00 call 0x157c990
+013bd66c 488bd8 mov rbx, rax
+013bd66f 0f57c0 xorps xmm0, xmm0
+013bd672 f30f7f45a0 movdqu xmmword ptr [rbp - 0x60], xmm0
+013bd677 488b7838 mov rdi, qword ptr [rax + 0x38]
+013bd67b 33c0 xor eax, eax
+013bd67d 488bcf mov rcx, rdi
+013bd680 48897dd8 mov qword ptr [rbp - 0x28], rdi
+013bd684 488945b0 mov qword ptr [rbp - 0x50], rax
+013bd688 4c8b07 mov r8, qword ptr [rdi]
+013bd68b 41ff9028020000 call qword ptr [r8 + 0x228]
+013bd692 488945e0 mov qword ptr [rbp - 0x20], rax
+013bd696 4885c0 test rax, rax
+013bd699 0f844b0d0000 je 0x13be3ea

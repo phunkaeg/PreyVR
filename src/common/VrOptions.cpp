@@ -19,7 +19,11 @@ constexpr Spec specs[]={
  {"ui_guide",L"CONTROLS GUIDE",L"Shows a help card below native menus; uses some panel space.",0,0,1,1},
  {"holsters",L"BODY HOLSTERS",L"Right grip at right hip or left chest: store current weapon, then draw/stow. Session only.",0,0,1,1},
  {"wrist",L"WRIST STATUS",L"Turn your left palm up and look at your wrist for health, psi and suit integrity.",0,0,1,1},
- {"wrist_size",L"WRIST DISPLAY SIZE",L"Adjust the status card size. Hidden in menus and during two-hand aiming.",100,80,140,10}
+ {"wrist_size",L"WRIST DISPLAY SIZE",L"Adjust the status card size. Hidden in menus and during two-hand aiming.",100,80,140,10},
+ {"scene_reticle",L"SCENE RETICLE (EXPERIMENTAL)",L"Place the reticle on the first surface along the weapon's aim. Does not steer shots.",0,0,1,1},
+ {"reticle_fallback_mm",L"RETICLE FALLBACK DISTANCE",L"Distance used when no scene hit is available, or Scene Reticle is off.",10000,500,200000,500},
+ {"haptics",L"CONTROLLER FEEDBACK",L"Short pulses for VR menu changes and attaching the support hand.",1,0,1,1},
+ {"haptic_strength",L"FEEDBACK STRENGTH",L"Scale controller feedback intensity. Zero silences all pulses.",70,0,100,10}
 };
 }
 const Spec& Describe(unsigned id){return specs[id<Count?id:0];}
@@ -53,17 +57,18 @@ bool Parse(std::string_view text,Values& result){
  result=parsed;return true;
 }
 int Item(unsigned page,unsigned row){
- constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,-1},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3}};
+ constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,-1},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength}};
  return page<Pages&&row<Rows?items[page][row]:-2;
 }
-const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT"};return names[p%Pages];}
+const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK"};return names[p%Pages];}
 std::wstring Display(unsigned id,int v){
  if(id==Turn)return v?std::to_wstring(v)+L" DEGREES":L"SMOOTH";
  if(id==HeadRelative)return v?L"HEAD RELATIVE":L"BODY RELATIVE";
  if(id==GripToggle)return v?L"TOGGLE":L"HOLD";
  if(id==SupportSnap)return v?L"SNAPPED":L"FREE";
  if(id==UiCurve)return v?std::to_wstring(v)+L" DEGREES":L"FLAT";
- if(id==TurnSpeed||id==UiScale||id==UiMargin||id==WristSize)return std::to_wstring(v)+L"%";
+ if(id==TurnSpeed||id==UiScale||id==UiMargin||id==WristSize||id==HapticStrength)return std::to_wstring(v)+L"%";
+ if(id==ReticleFallback)return std::to_wstring(v/1000)+L"."+std::to_wstring((v%1000)/100)+L" M";
  return v?L"ON":L"OFF";
 }
 int Adjust(unsigned id,int v,int direction){

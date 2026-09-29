@@ -1,4 +1,6 @@
 #include "AimTakeover.h"
+#include "SceneQuery.h"
+#include "Haptics.h"
 #include "BodyEquipment.h"
 #include "Psychoscope.h"
 #include "WeaponAttachment.h"
@@ -137,7 +139,9 @@ void SolveTwoHandedFrame(GameplayPoseFrame& frame, bool tracking)
     frame.twoHand=gTwoHandSolver.Update(input);
     frame.twoHand.snapSupport=gTwoHandSnap.load();
     gSupportInput.Publish(input);
-    gTwoHandHeld.store(frame.twoHand.held);
+    const bool wasHeld=gTwoHandHeld.exchange(frame.twoHand.held);
+    if(frame.twoHand.held&&!wasHeld)
+        QueueHaptic(Hand::left,haptics::Event::ForegripAttached,frame.tracking);
     if(frame.twoHand.held) ++gTwoHandFrames;
 }
 
@@ -397,6 +401,7 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
             static_cast<int>((&controller.aimPose.orientation.x)[i] * 1000.0f),
             std::memory_order_relaxed);
     }
+    QueryAimScene(frame,sample);
     sample.publishedNs = MonotonicNanoseconds();
     gAimSample.Publish(sample);
     gAimSamplePublished.fetch_add(1, std::memory_order_relaxed);
@@ -465,7 +470,7 @@ void UpdateAimReticleForRender()
     }
     const ReticleAimContext context{frame.tracking.sequence, frame.tracking.epoch,
         frame.referenceGeneration, frame.tracking.displayTime, frame.yaw,
-        frame.tracking.head, frame.tracking.hands[static_cast<int>(Hand::right)].aimPose};
+        frame.tracking.head, frame.tracking.hands[static_cast<int>(Hand::right)].aimPose,sample.sceneDistance};
     WriteReticleScreenPosition(reinterpret_cast<void*>(frame.player),
                                sample.origin, sample.direction, &context);
 }
