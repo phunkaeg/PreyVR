@@ -23,7 +23,11 @@ constexpr Spec specs[]={
  {"scene_reticle",L"SCENE RETICLE (EXPERIMENTAL)",L"Place the reticle on the first surface along the weapon's aim. Does not steer shots.",0,0,1,1},
  {"reticle_fallback_mm",L"RETICLE FALLBACK DISTANCE",L"Distance used when no scene hit is available, or Scene Reticle is off.",10000,500,200000,500},
  {"haptics",L"CONTROLLER FEEDBACK",L"Short pulses for VR menu changes and attaching the support hand.",1,0,1,1},
- {"haptic_strength",L"FEEDBACK STRENGTH",L"Scale controller feedback intensity. Zero silences all pulses.",70,0,100,10}
+ {"haptic_strength",L"FEEDBACK STRENGTH",L"Scale controller feedback intensity. Zero silences all pulses.",70,0,100,10},
+ {"physical_melee",L"PHYSICAL WRENCH (EXPERIMENTAL)",L"Swing the wrench to strike. Native stamina and attack recovery still apply.",0,0,1,1},
+ {"physical_contacts",L"OBJECT NUDGES (EXPERIMENTAL)",L"Tap movable objects with weapon bounds. Does not stop your weapon at walls.",0,0,1,1},
+ {"swing_speed",L"MINIMUM SWING SPEED",L"Higher values require faster swings. Rest briefly between strikes.",120,80,250,10},
+ {"contact_strength",L"OBJECT NUDGE STRENGTH",L"Scales gentle object impulses. Wrench damage uses the game's rules.",50,0,100,10}
 };
 }
 const Spec& Describe(unsigned id){return specs[id<Count?id:0];}
@@ -57,11 +61,13 @@ bool Parse(std::string_view text,Values& result){
  result=parsed;return true;
 }
 int Item(unsigned page,unsigned row){
- constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,-1},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength}};
+ constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,-1},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength}};
  return page<Pages&&row<Rows?items[page][row]:-2;
 }
-const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK"};return names[p%Pages];}
+const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL"};return names[p%Pages];}
 std::wstring Display(unsigned id,int v){
+ if(id==SwingSpeed)return std::to_wstring(v)+L" CM/S";
+ if(id==ContactStrength)return std::to_wstring(v)+L"%";
  if(id==Turn)return v?std::to_wstring(v)+L" DEGREES":L"SMOOTH";
  if(id==HeadRelative)return v?L"HEAD RELATIVE":L"BODY RELATIVE";
  if(id==GripToggle)return v?L"TOGGLE":L"HOLD";

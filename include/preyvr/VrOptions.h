@@ -7,7 +7,7 @@
 namespace preyvr::options {
 enum Setting : unsigned { Turn, HeadRelative, TurnSpeed, TwoHand, GripToggle,
     SupportSnap, Psychoscope, UiScale, UiMargin, UiCurve, UiGuide, Holsters, Wrist, WristSize,
-    SceneReticle, ReticleFallback, Haptics, HapticStrength, Count };
+    SceneReticle, ReticleFallback, Haptics, HapticStrength, PhysicalMelee, PhysicalContacts, SwingSpeed, ContactStrength, Count };
 struct Spec { const char* key; const wchar_t* label; const wchar_t* help; int initial,min,max,step; };
 const Spec& Describe(unsigned id);
 bool Valid(unsigned id,int value);
@@ -17,7 +17,7 @@ std::string Serialize(const Values&);
 // Transactional parse: malformed/unknown fields refuse the whole file.
 bool Parse(std::string_view text,Values& result);
 std::wstring Display(unsigned id,int value);
-constexpr unsigned Width=1400,Height=1100,Pages=5,Rows=4;
+constexpr unsigned Width=1400,Height=1100,Pages=6,Rows=4;
 constexpr int CloseHit=Rows+Pages;
 // -1 = recenter, -2 = empty, -3 = clear holsters; shared renderer/hit layout.
 int Item(unsigned page,unsigned row);

@@ -177,6 +177,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/XrInput.cpp
         src/dll/Haptics.cpp
         src/dll/SceneQuery.cpp
+        src/dll/PhysicalInteractions.cpp
         src/dll/XrSessionHost.cpp
         src/lifecycle/Logger.cpp
     )
@@ -386,6 +387,10 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_scene_query_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_scene_query_tests)
     add_test(NAME scene_query_contracts COMMAND preyvr_scene_query_tests)
+    add_executable(preyvr_physical_interactions_tests tests/PhysicalInteractionsTests.cpp)
+    target_link_libraries(preyvr_physical_interactions_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_physical_interactions_tests)
+    add_test(NAME physical_interactions COMMAND preyvr_physical_interactions_tests)
 
     add_executable(preyvr_frustum_coverage_tests tests/FrustumCoverageTests.cpp)
     target_link_libraries(preyvr_frustum_coverage_tests PRIVATE preyvr_core)
@@ -477,6 +482,12 @@ if(PREYVR_BUILD_TESTS)
     add_test(NAME runtime_bootstrap COMMAND preyvr_runtime_bootstrap_tests)
 
     if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
+        add_executable(preyvr_physical_runtime_tests tests/PhysicalRuntimeTests.cpp)
+        target_include_directories(preyvr_physical_runtime_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
+        target_compile_definitions(preyvr_physical_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        target_link_libraries(preyvr_physical_runtime_tests PRIVATE preyvr_core minhook)
+        preyvr_enable_warnings(preyvr_physical_runtime_tests)
+        add_test(NAME physical_runtime COMMAND preyvr_physical_runtime_tests)
         add_executable(preyvr_ui_pointer_tests tests/UiPointerTests.cpp)
         target_include_directories(preyvr_ui_pointer_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
         target_compile_definitions(preyvr_ui_pointer_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)

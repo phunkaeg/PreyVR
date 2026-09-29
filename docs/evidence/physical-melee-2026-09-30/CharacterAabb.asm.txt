@@ -1,0 +1,2 @@
+0082dd40 488d81f0090000 lea rax, [rcx + 0x9f0]
+0082dd47 c3 ret

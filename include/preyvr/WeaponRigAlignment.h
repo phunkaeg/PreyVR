@@ -45,4 +45,10 @@ Status ReadBasis(const Memory& memory, std::uintptr_t moduleBase,
 bool SolveWrist(const Quaternion& characterWorld, const Quaternion& aimWorld,
                 const Basis& basis, Quaternion& wristModel);
 
+struct ContactGeometry {Pose weaponInWrist{};Vec3 minimum{},maximum{};bool wrench=false;};
+// Full attachment translation as well as orientation; bounds belong to the
+// bound weapon character, never the arms character or a guessed barrel length.
+bool ReadContactGeometry(const Memory&,std::uintptr_t moduleBase,const RigIdentity&,
+                         std::uintptr_t absolutePose,unsigned count,int wristJoint,ContactGeometry&);
+
 } // namespace preyvr::weaponrig

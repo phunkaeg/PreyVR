@@ -33,3 +33,10 @@ tests/NativeWristTests.cpp text eol=lf
 tools/re/verify_native_wrist.py text eol=lf
 docs/evidence/native-wrist-2026-09-28/** text eol=lf
 receipts/20260928-native-wrist-candidate.json text eol=lf
+
+# Frozen physical-contact evidence must survive Windows checkout unchanged.
+docs/PHYSICAL-MELEE-2026-09-30.md -text
+docs/evidence/physical-melee-2026-09-30/** -text
+receipts/20260930-physical-melee-static.json text eol=lf
+include/preyvr/PhysicalNative.h text eol=lf
+tools/re/verify_physical_interactions.py text eol=lf

@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260930-physical-melee-static",
+  "recorded_at": "2026-09-29T21:35:30.543434+00:00",
+  "target": {
+    "name": "Steam Prey 2017 x64 PreyDll.dll",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Can tracked weapon contacts feed native wrench damage and a separately gated rigid-object impulse, with concrete Steam ABI and lifetime contracts?",
+  "claim": "Native wrench admission changes idle state to 1/2 even while returning false. Its component consumes a native-allocated 0x50-byte hit vector; substitution can retain native hit processing. The rigid action concrete slot consumes a 56-byte type-2 impulse; its queue copies that action. The implemented adapters preserve those contracts and reject unsupported classes.",
+  "evidence_grade": "STATIC",
+  "environment": "static",
+  "method": "Explicit Ghidra /Prey/PreyDll.dll target via its supported HTTP bridge; compare all 15 body byte ranges against the exact on-disk Steam PE. Python 3.12 and Capstone 5.0.7 for listings. Reproduce SHA, complete-body hashes, relocation exclusion, vtable/call-site checks and corruption controls with python -E -B tools/re/verify_physical_interactions.py. Release source build and 54/54 offline CTest checks passed; production dispatch is exercised against mocked native calls, not a game process.",
+  "validity": "VALID",
+  "mutation": "none",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Exact Steam SHA-256 plus explicit Ghidra program and body-by-body memory/disk comparison."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "PE section bounds, body hashes, native instructions and concrete vtable entries verified; hashed bodies contain no base relocations."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "One-byte corruption refused for every body. Offline tests cover rejected native admission, duplicate/delayed hits across threads, locomotion/recenter/equip resets, no stale hit reuse and impulse caps."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Static inspection and offline harnesses only; no game scene."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "No native process or shared runtime mutation. Source edits remain on the feature branch."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Release DLL build and 54/54 offline tests passed. No in-game/simulator/headset baseline was run."
+  },
+  "limits": "Static native contracts and offline implementation checks only. Native hook installation, queue metadata initialisation, hit acceptance, contact filtering, fatigue behaviour in game, physics timing and perceived alignment remain unmeasured. Nine swept bounds samples are not an exact mesh or solid collider; no visual wall blocking. Nudge speed limits use the measured body response before queued dispatch. Delayed-hit ownership is bounded to 16 weapon instances without evicting pending events.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/AppendHit.asm.txt",
+      "sha256": "901ce5ca0fab70d447a2ed581123ba16efaa29f08112d627b3eb428ac72bc833",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/Attack.asm.txt",
+      "sha256": "daea399098cee7145beef73d0287e52c9fd3cfc8d271db195589fcca30e4bf84",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/AttackPrelude.asm.txt",
+      "sha256": "08f12c510edf9880c56eefd402f2a2fd33fa67a78b0e07c73151e23e7e922b30",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/build.txt",
+      "sha256": "8ba97a49afcb9d40c6cac3821ed02f93113d82e14a33d9fcbf1a35d75d968e38",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/CharacterAabb.asm.txt",
+      "sha256": "c7563f9ee7ed848cd129247212f48ac745429338b19873f28bde58a5b3e60d05",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/ComponentHit.asm.txt",
+      "sha256": "3f8ab5cf1ea4256d6d70d6c7ed9ee0ce21bf3f7dd865fdbf879df5ab1f00dfe2",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/ctest.txt",
+      "sha256": "caf4dc4b305f54df097f64c860dc1ad5f609ceb2148cf4a3f3cfc08899143ade",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/GetHits.asm.txt",
+      "sha256": "d5d065dcc62691c6bd015c5cb20564310b37618d6d0eec69df1111ceb55ca1a2",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/identity.json",
+      "sha256": "8e5daac6d110e2ac27731ec92bd2432f80576bc9750c9d5cabca8ba906d59add",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/ImpulseProducer.asm.txt",
+      "sha256": "2658be9f70461c6ef8dacf77b81aa76f8b7ff320476f4e8f8d56729c11811b6c",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/ImpulseValidation.asm.txt",
+      "sha256": "1d42889484135a86ef74f7449fb5c3e263fd2ce3a546b178083939e9b83e7feb",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/physical-options.png",
+      "sha256": "d9fc823faeec1e929e2ab8a005087fc821e50f29bb51bfb1077184a252eb099c",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/QueueAction.asm.txt",
+      "sha256": "e2c5238bd709122cbc9a19324b4ac46fec3df63785af0f5b504e0599f4da0a40",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/RigidAction.asm.txt",
+      "sha256": "f241ac44c45633d404c51e87ba6cd1e1e51cab816705c9a43719d413f1e79e92",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/RigidGetType.asm.txt",
+      "sha256": "669c1b4549d633e1abe711eeb725f55cf41b0ef9649ccd34fd818e475f4f95b6",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/VectorAllocate.asm.txt",
+      "sha256": "07c17acaa689e29317d7f45ce11b5bc618324870de2c2576ae66b999c93e3860",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/VectorCommit.asm.txt",
+      "sha256": "294d87a619c6c9e047aa3f5234343fb08a5cd0fadb5d6098a46b163014a56df9",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/verification.json",
+      "sha256": "16acdff721e729f09efc00b4a6a26a1a5a47053cfd38e232f39d965e5cdfe495",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/WeaponHit.asm.txt",
+      "sha256": "c48afe870027ea83610654dada212d465f99dd5b579e4dd2b53ef47c0beb916b",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/evidence/physical-melee-2026-09-30/WeaponImpulse.asm.txt",
+      "sha256": "a53a617dca0e2d8abd1361e4fa4db96ee278bb3f1a1c80cd86cb2828464115c2",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    },
+    {
+      "path": "docs/PHYSICAL-MELEE-2026-09-30.md",
+      "sha256": "5da3216e30324c1bc7406e13924ccda8f0ff3065e4ff75a816ee45a9f9673b7c",
+      "role": "Native static evidence or explicitly offline build/test evidence; interpretation in the handover"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "CosmicTangerine: brief opt-in wrench/contact acceptance using the documented sequence and physical diagnostics. Keep features default-off until game/headset checks pass. Submit the receipt and refresh the canonical graph when branch artifacts reach the fleet-registered checkout."
+}

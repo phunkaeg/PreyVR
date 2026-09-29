@@ -44,13 +44,14 @@ static_assert(offsetof(Params,skipCount)==0x50 && offsetof(Params,skip)==0x58);
 static_assert(offsetof(Params,collisionIgnore)==0x64);
 constexpr float Range = 200.f;
 inline bool Finite(Vec3 v){return std::isfinite(v.x)&&std::isfinite(v.y)&&std::isfinite(v.z);}
-inline bool Build(Params& p,Vec3 origin,Vec3 direction,Hit& hit,void** skip,int count){
+inline bool Build(Params& p,Vec3 origin,Vec3 direction,Hit& hit,void** skip,int count,float range=Range){
     p={};
     const float norm=direction.x*direction.x+direction.y*direction.y+direction.z*direction.z;
-    if(!Finite(origin)||!Finite(direction)||std::fabs(norm-1.f)>.002f||!skip||count<1||count>2)return false;
+    if(!Finite(origin)||!Finite(direction)||std::fabs(norm-1.f)>.002f||!skip||count<1||count>2||
+       !std::isfinite(range)||range<=0||range>Range)return false;
     for(int i=0;i<count;++i)if(!skip[i])return false;
     hit={};hit.distance=-1;
-    p.origin=origin;p.delta={direction.x*Range,direction.y*Range,direction.z*Range};
+    p.origin=origin;p.delta={direction.x*range,direction.y*range,direction.z*range};
     p.objectTypes=0x11f;p.flags=0xf;p.hits=&hit;p.capacity=1;p.skipCount=count;p.skip=skip;
     p.collisionIgnore=0x400000;
     return true;
