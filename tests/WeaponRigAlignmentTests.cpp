@@ -79,7 +79,7 @@ struct Fixture {
         weapon = Alloc(0x420); mount = Alloc(0x170); binding = Alloc(0x20);
         arms = Alloc(0x80); skel = Alloc(0x80); joints = Array(6, 0xA8);
         bindPose = Array(6, 0x1C); pose = Array(6, 0x1C);
-        weaponChar = Alloc(0x80); weaponSkel = Alloc(0x80); weaponJoints = Array(3, 0xA8);
+        weaponChar = Alloc(0xA20); weaponSkel = Alloc(0x80); weaponJoints = Array(3, 0xA8);
         weaponBind = Array(3, 0x1C); helpers = Array(1, 8); helper = Alloc(0x170);
         owner = {weapon, mount, binding, arms, 1, 42};
         Put(weapon, 0x2B0, mount); Put(weapon, 0x2F0, Name("AMMO"));
@@ -166,6 +166,30 @@ void GeometryAndSwitches()
     Check(Distance(Rotate(animik::ApplyRotationOffset(Quaternion{}, offset), {0,1,0}), {0,1,0}) > .7f,
           "old equip-angle defect is observable in this harness");
     std::cout << cases << " native-chain/reticle comparisons passed\n";
+}
+
+void ContactBounds()
+{
+    Fixture f;ContactGeometry g{};
+    const Pose wrist{f.nativeWrist,{.2f,.4f,.1f}},socket{Multiply(f.nativeWrist,f.socketRelative),{.4f,.5f,.2f}};
+    const Pose bind{f.bind,{.1f,.2f,.3f}},authored{f.authored,{.3f,-.1f,.2f}};
+    f.Put(f.pose,2*0x1c,wrist);f.Put(f.pose,3*0x1c,socket);f.Put(f.bindPose,3*0x1c,bind);f.Put(f.mount,0x114,authored);
+    f.Put(f.weaponChar,0x9f0,Vec3{-.05f,-.1f,-.03f});f.Put(f.weaponChar,0x9fc,Vec3{.05f,.6f,.1f});
+    auto resolve=[&]{return ReadContactGeometry({&f,Fixture::Read},Fixture::base,f.owner,f.pose,f.poseCount,2,g);};
+    Check(resolve(),"full contact geometry resolves");
+    const auto expectedSocket=Compose(wrist,g.weaponInWrist);
+    // Independent forward equality B * relative = authored. Including
+    // nonzero translations catches rotation-only reconstruction mistakes.
+    auto inv=[](Pose p){const auto q=Inv(p.orientation);return Pose{q,Rotate(q,{-p.position.x,-p.position.y,-p.position.z})};};
+    const auto expected=Compose(Compose(socket,Compose(inv(bind),authored)),Pose{f.extra,{}});
+    Check(Distance(expected.position,expectedSocket.position)<1e-5f&&SameRotation(expected.orientation,expectedSocket.orientation),"full attachment translation matches native chain");
+    Check(g.minimum.y==-.1f&&g.maximum.y==.6f,"bounds read from bound weapon, not arms");
+    const Pose relative{Q(1,2,3,.2f),{.1f,.2f,.4f}};f.Put(f.mount,8,std::uint32_t(0x4000));f.Put(f.mount,0xf8,relative);
+    Check(resolve(),"projected attachment resolves");
+    Check(Distance(Compose(wrist,g.weaponInWrist).position,Compose(Compose(socket,relative),Pose{f.extra,{}}).position)<1e-5f,"projected translation comes from native relative field");
+    f.Put(f.weaponChar,0x9fc,Vec3{-.2f,.6f,.1f});Check(!resolve(),"inverted bounds refused");
+    f.Put(f.weaponChar,0x9fc,Vec3{.05f,9,.1f});Check(!resolve(),"implausible weapon bounds refused");
+    f.Put(f.weaponChar,0x9fc,Vec3{.05f,.6f,.1f});f.Put(f.binding,8,f.arms);Check(!resolve(),"arms cannot masquerade as weapon geometry");
 }
 
 void LookupAndRefusals()
@@ -259,5 +283,6 @@ int main()
 {
     GeometryAndSwitches();
     LookupAndRefusals();
+    ContactBounds();
     std::cout << "weapon rig alignment fixtures passed (static/offline; no game)\n";
 }

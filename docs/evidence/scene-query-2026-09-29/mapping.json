@@ -1,0 +1,96 @@
+[
+  {
+    "name": "RayWorldIntersection",
+    "steamRva": "0xccf250",
+    "size": 5121,
+    "egsLead": "0xccd5d0",
+    "normalizedDifferences": [
+      {
+        "index": 615,
+        "steam": [
+          "movsxd",
+          "48638c90a8142602"
+        ],
+        "egs": [
+          "movsxd",
+          "48638c9088522502"
+        ]
+      },
+      {
+        "index": 616,
+        "steam": [
+          "movsxd",
+          "48638490b8142602"
+        ],
+        "egs": [
+          "movsxd",
+          "4863849098522502"
+        ]
+      },
+      {
+        "index": 701,
+        "steam": [
+          "movsxd",
+          "4863848aa8142602"
+        ],
+        "egs": [
+          "movsxd",
+          "4863848a88522502"
+        ]
+      },
+      {
+        "index": 704,
+        "steam": [
+          "movsxd",
+          "4863848ab8142602"
+        ],
+        "egs": [
+          "movsxd",
+          "4863848a98522502"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "RayHeightfield",
+    "steamRva": "0xcce960",
+    "size": 1126,
+    "egsLead": "0xcccce0",
+    "normalizedDifferences": []
+  },
+  {
+    "name": "CheckCell",
+    "steamRva": "0xcd0e00",
+    "size": 6300,
+    "egsLead": "0xccf180",
+    "normalizedDifferences": []
+  },
+  {
+    "name": "DrawRayOnGrid",
+    "steamRva": "0xcce000",
+    "size": 1808,
+    "egsLead": "0xccc380",
+    "normalizedDifferences": []
+  },
+  {
+    "name": "CheckerConstructor",
+    "steamRva": "0xcce710",
+    "size": 405,
+    "egsLead": "0xccca90",
+    "normalizedDifferences": []
+  },
+  {
+    "name": "EntityGetPhysics",
+    "steamRva": "0x9042b0",
+    "size": 160,
+    "egsLead": "0x904cb0",
+    "normalizedDifferences": []
+  },
+  {
+    "name": "PlayerSingleton",
+    "steamRva": "0x157c990",
+    "size": 48,
+    "egsLead": null,
+    "normalizedDifferences": []
+  }
+]

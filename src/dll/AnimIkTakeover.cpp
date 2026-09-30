@@ -5,6 +5,7 @@
 #include "HandRigTakeover.h"
 #include "AimTakeover.h"
 #include "WeaponAttachment.h"
+#include "PhysicalInteractions.h"
 #include <mutex>
 #include "HeadTrackingHook.h"
 #include "Logger.h"
@@ -605,6 +606,11 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
     }
 
     // Target: absolute position (and rotation once calibrated); weight: relative X = 1.
+    weaponrig::ContactGeometry contactGeometry{};
+    const bool contactReady=hand==0&&aligned&&PhysicalInteractionsEnabled()&&
+        weaponrig::ReadContactGeometry({nullptr,ReadAlignmentMemory},
+            reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll")),owner,
+            reinterpret_cast<std::uintptr_t>(absolute),poseCount,handJoint,contactGeometry);
     auto* const targetAt = absolute + static_cast<std::size_t>(target) * kQuatTStride;
     auto* const weightAt = reinterpret_cast<float*>(relative + static_cast<std::size_t>(weight) * kQuatTStride + 0x10);
     if (!WriteGoal(targetAt, weightAt, goal, rotation, writeRotation)) {
@@ -617,6 +623,7 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
     }
     if (aligned) { gAlignStatus = weaponrig::Status::applied; ++gAlignApplied; }
     if(hand==0&&aligned) {
+        if(contactReady)PublishPhysicalWeapon(frame,owner,location,Pose{rotation,goal},contactGeometry);
         if(writtenPrimary) *writtenPrimary=goal;
         if(primaryWritten) *primaryWritten=true;
         const Vec3 actual=animik::ModelToWorld(location,goal);

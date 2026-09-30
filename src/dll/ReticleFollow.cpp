@@ -1,4 +1,6 @@
 #include "ReticleFollow.h"
+#include "SceneQuery.h"
+#include "preyvr/SceneQuery.h"
 #include "HudBridge.h"
 #include "HudLayer.h"
 
@@ -49,7 +51,7 @@ struct ProjectionRecord {
     stereo::Matrix34 camera{};
     stereoframe::EyeView view{};
     float distance = 0, rawX = 0, rawY = 0, x = 0, y = 0;
-    bool clamped = false, dispatch = false;
+    bool clamped = false, dispatch = false, sceneHit = false;
     DWORD dispatchX = 0, dispatchY = 0;
 };
 LatestSnapshot<ProjectionRecord> gProjection;
@@ -177,8 +179,10 @@ bool WriteReticleForCamera(void* player, const Vec3& rayOrigin,
     gOriginOffset.store(static_cast<unsigned long long>(offsetLength * 1000.0f + 0.5f),
                         std::memory_order_relaxed);
 
-    const float distance =
-        static_cast<float>(gConvergenceMm.load(std::memory_order_acquire)) * 0.001f;
+    const bool sceneEnabled=SceneReticleEnabled()!=0;
+    const float distance = scene::ReticleDistance(sceneEnabled,
+        context?context->sceneDistance:-1.f,
+        static_cast<float>(gConvergenceMm.load(std::memory_order_acquire)) * 0.001f);
     const Vec3 aimPoint{offset.x + worldDirection.x * distance,
                         offset.y + worldDirection.y * distance,
                         offset.z + worldDirection.z * distance};
@@ -221,6 +225,8 @@ bool WriteReticleForCamera(void* player, const Vec3& rayOrigin,
     record.camera = matrix;
     record.view = *view;
     record.distance = distance;
+    record.sceneHit = sceneEnabled&&context&&std::isfinite(context->sceneDistance)&&
+        context->sceneDistance>=0&&context->sceneDistance<=scene::Range;
     record.rawX = fractionX;
     record.rawY = fractionY;
     if (fractionX < 0.0f || fractionX > 1.0f || fractionY < 0.0f || fractionY > 1.0f) {
@@ -381,6 +387,7 @@ std::string ReticleProjectionReport()
     out << " rpTans=" << r.view.tanLeft << ',' << r.view.tanRight << ','
         << r.view.tanDown << ',' << r.view.tanUp
         << " rpDistance=" << r.distance
+        << " rpSceneHit=" << r.sceneHit
         << " rpRawXY=" << r.rawX << ',' << r.rawY
         << " rpXY=" << r.x << ',' << r.y
         << " rpClamped=" << r.clamped

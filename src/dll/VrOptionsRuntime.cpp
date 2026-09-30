@@ -1,4 +1,8 @@
 #include "VrOptionsRuntime.h"
+#include "SceneQuery.h"
+#include "PhysicalInteractions.h"
+#include "Haptics.h"
+#include "ReticleFollow.h"
 #include "AimTakeover.h"
 #include "BodyEquipment.h"
 #include "HeadTrackingHook.h"
@@ -35,6 +39,14 @@ std::filesystem::path SettingsPath(){
 }
 void Apply(unsigned id,int v){
  switch(id){
+ case options::PhysicalMelee:SetPhysicalMelee(v);break;
+ case options::PhysicalContacts:SetPhysicalContacts(v);break;
+ case options::SwingSpeed:SetSwingSpeed(v);break;
+ case options::ContactStrength:SetContactStrength(v);break;
+ case options::SceneReticle:SetSceneReticle(v);break;
+ case options::ReticleFallback:SetReticleConvergenceMillimetres(v);break;
+ case options::Haptics:SetHapticsEnabled(v);break;
+ case options::HapticStrength:SetHapticStrength(v);break;
  case options::Turn:SetSnapTurnDegrees(v);break;
  case options::HeadRelative:SetHeadRelativeMovement(v);break;
  case options::TurnSpeed:SetTurnLaneScale(v);break;
@@ -64,6 +76,11 @@ void Save(){
 }
 options::Values VrOptionsValues(){
  auto v=options::Defaults();
+ v[options::PhysicalMelee]=PhysicalMeleeEnabled();v[options::PhysicalContacts]=PhysicalContactsEnabled();
+ v[options::SwingSpeed]=SwingSpeed();v[options::ContactStrength]=ContactStrength();
+ v[options::SceneReticle]=SceneReticleEnabled();
+ v[options::ReticleFallback]=static_cast<int>(ReticleConvergenceMillimetres());
+ v[options::Haptics]=HapticsEnabled();v[options::HapticStrength]=HapticStrength();
  v[options::Turn]=SnapTurnDegrees();v[options::HeadRelative]=HeadRelativeMovementEnabled();
  v[options::TwoHand]=TwoHandedAimEnabled();v[options::GripToggle]=TwoHandGripToggle();v[options::SupportSnap]=TwoHandSupportSnap();
  v[options::TurnSpeed]=TurnLaneScalePercent();
@@ -125,7 +142,9 @@ bool ProcessVrOptionsInput(const TrackingFrame& f){
  if(change.clearHolsters)ClearHolsters();
  if(change.setting>=0){
   const auto id=static_cast<unsigned>(change.setting);
-  values[id]=options::Adjust(id,VrOptionsValues()[id],change.direction);dirty.fetch_or(1u<<id);
+  const auto before=VrOptionsValues()[id],after=options::Adjust(id,before,change.direction);
+  values[id]=after;dirty.fetch_or(1u<<id);
+  if(before!=after)QueueHaptic(i.trigger&&hand<2?static_cast<Hand>(hand):Hand::right,haptics::Event::MenuChange,f);
  }
  open=menu.Open();owned=menu.OwnsInput();page=menu.page;row=menu.row;
  if(wasOwned!=menu.OwnsInput())ClearUiPointer();

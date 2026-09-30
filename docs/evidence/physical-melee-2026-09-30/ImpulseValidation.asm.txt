@@ -1,0 +1,252 @@
+00b43870 48895c2418 mov qword ptr [rsp + 0x18], rbx
+00b43875 4889542410 mov qword ptr [rsp + 0x10], rdx
+00b4387a 55 push rbp
+00b4387b 56 push rsi
+00b4387c 57 push rdi
+00b4387d 4154 push r12
+00b4387f 4155 push r13
+00b43881 4156 push r14
+00b43883 4157 push r15
+00b43885 4881ec60040000 sub rsp, 0x460
+00b4388c f30f104104 movss xmm0, dword ptr [rcx + 4]
+00b43891 4c8d3de3951301 lea r15, [rip + 0x11395e3]
+00b43898 448ba424d8040000 mov r12d, dword ptr [rsp + 0x4d8]
+00b438a0 488be9 mov rbp, rcx
+00b438a3 448bac24d0040000 mov r13d, dword ptr [rsp + 0x4d0]
+00b438ab 498bf1 mov rsi, r9
+00b438ae 488b8c24c8040000 mov rcx, qword ptr [rsp + 0x4c8]
+00b438b6 498bd8 mov rbx, r8
+00b438b9 488bbc24c0040000 mov rdi, qword ptr [rsp + 0x4c0]
+00b438c1 41b601 mov r14b, 1
+00b438c4 f30f118424a0040000 movss dword ptr [rsp + 0x4a0], xmm0
+00b438cd 8b8424a0040000 mov eax, dword ptr [rsp + 0x4a0]
+00b438d4 250000a0ff and eax, 0xffa00000
+00b438d9 0f29b42450040000 movaps xmmword ptr [rsp + 0x450], xmm6
+00b438e1 0f57f6 xorps xmm6, xmm6
+00b438e4 3d0000a0ff cmp eax, 0xffa00000
+00b438e9 0f84e4000000 je 0xb439d3
+00b438ef f30f104508 movss xmm0, dword ptr [rbp + 8]
+00b438f4 f30f105504 movss xmm2, dword ptr [rbp + 4]
+00b438f9 f30f104d0c movss xmm1, dword ptr [rbp + 0xc]
+00b438fe f30f59d2 mulss xmm2, xmm2
+00b43902 f30f59c0 mulss xmm0, xmm0
+00b43906 f30f59c9 mulss xmm1, xmm1
+00b4390a f30f58d0 addss xmm2, xmm0
+00b4390e f30f58d1 addss xmm2, xmm1
+00b43912 0f28c2 movaps xmm0, xmm2
+00b43915 f30f59c2 mulss xmm0, xmm2
+00b43919 0f2fc6 comiss xmm0, xmm6
+00b4391c 721b jb 0xb43939
+00b4391e 0f2f058bce2301 comiss xmm0, dword ptr [rip + 0x123ce8b]
+00b43925 7312 jae 0xb43939
+00b43927 0f2fd6 comiss xmm2, xmm6
+00b4392a 720d jb 0xb43939
+00b4392c 0f2f1579ce2301 comiss xmm2, dword ptr [rip + 0x123ce79]
+00b43933 0f869a000000 jbe 0xb439d3
+00b43939 4532f6 xor r14b, r14b
+00b4393c 4885ff test rdi, rdi
+00b4393f 7414 je 0xb43955
+00b43941 488b07 mov rax, qword ptr [rdi]
+00b43944 488bd1 mov rdx, rcx
+00b43947 458bcc mov r9d, r12d
+00b4394a 458bc5 mov r8d, r13d
+00b4394d 488bcf mov rcx, rdi
+00b43950 ff5018 call qword ptr [rax + 0x18]
+00b43953 eb03 jmp 0xb43958
+00b43955 498bc7 mov rax, r15
+00b43958 f30f104608 movss xmm0, dword ptr [rsi + 8]
+00b4395d 488d0d6c1d1401 lea rcx, [rip + 0x1141d6c]
+00b43964 f30f104e04 movss xmm1, dword ptr [rsi + 4]
+00b43969 4c8d0520ca2301 lea r8, [rip + 0x123ca20]
+00b43970 f30f1016 movss xmm2, dword ptr [rsi]
+00b43974 ba00040000 mov edx, 0x400
+00b43979 4c8b8c24a8040000 mov r9, qword ptr [rsp + 0x4a8]
+00b43981 48894c2440 mov qword ptr [rsp + 0x40], rcx
+00b43986 488d4c2450 lea rcx, [rsp + 0x50]
+00b4398b 0f5ac0 cvtps2pd xmm0, xmm0
+00b4398e 0f5ac9 cvtps2pd xmm1, xmm1
+00b43991 f20f11442438 movsd qword ptr [rsp + 0x38], xmm0
+00b43997 f20f114c2430 movsd qword ptr [rsp + 0x30], xmm1
+00b4399d 0f5ad2 cvtps2pd xmm2, xmm2
+00b439a0 f20f11542428 movsd qword ptr [rsp + 0x28], xmm2
+00b439a6 4889442420 mov qword ptr [rsp + 0x20], rax
+00b439ab e8a05b5fff call 0x139550
+00b439b0 c684244f04000000 mov byte ptr [rsp + 0x44f], 0
+00b439b8 4885db test rbx, rbx
+00b439bb 740e je 0xb439cb
+00b439bd 488b03 mov rax, qword ptr [rbx]
+00b439c0 488d542450 lea rdx, [rsp + 0x50]
+00b439c5 488bcb mov rcx, rbx
+00b439c8 ff5018 call qword ptr [rax + 0x18]
+00b439cb 488b8c24c8040000 mov rcx, qword ptr [rsp + 0x4c8]
+00b439d3 f30f104510 movss xmm0, dword ptr [rbp + 0x10]
+00b439d8 f30f118424a0040000 movss dword ptr [rsp + 0x4a0], xmm0
+00b439e1 8b8424a0040000 mov eax, dword ptr [rsp + 0x4a0]
+00b439e8 250000a0ff and eax, 0xffa00000
+00b439ed 3d0000a0ff cmp eax, 0xffa00000
+00b439f2 0f84dc000000 je 0xb43ad4
+00b439f8 f30f104514 movss xmm0, dword ptr [rbp + 0x14]
+00b439fd f30f105510 movss xmm2, dword ptr [rbp + 0x10]
+00b43a02 f30f104d18 movss xmm1, dword ptr [rbp + 0x18]
+00b43a07 f30f59d2 mulss xmm2, xmm2
+00b43a0b f30f59c0 mulss xmm0, xmm0
+00b43a0f f30f59c9 mulss xmm1, xmm1
+00b43a13 f30f58d0 addss xmm2, xmm0
+00b43a17 f30f58d1 addss xmm2, xmm1
+00b43a1b 0f28c2 movaps xmm0, xmm2
+00b43a1e f30f59c2 mulss xmm0, xmm2
+00b43a22 0f2fc6 comiss xmm0, xmm6
+00b43a25 721b jb 0xb43a42
+00b43a27 0f2f0582cd2301 comiss xmm0, dword ptr [rip + 0x123cd82]
+00b43a2e 7312 jae 0xb43a42
+00b43a30 0f2fd6 comiss xmm2, xmm6
+00b43a33 720d jb 0xb43a42
+00b43a35 0f2f156ccd2301 comiss xmm2, dword ptr [rip + 0x123cd6c]
+00b43a3c 0f8692000000 jbe 0xb43ad4
+00b43a42 4532f6 xor r14b, r14b
+00b43a45 4885ff test rdi, rdi
+00b43a48 7414 je 0xb43a5e
+00b43a4a 488b07 mov rax, qword ptr [rdi]
+00b43a4d 488bd1 mov rdx, rcx
+00b43a50 458bcc mov r9d, r12d
+00b43a53 458bc5 mov r8d, r13d
+00b43a56 488bcf mov rcx, rdi
+00b43a59 ff5018 call qword ptr [rax + 0x18]
+00b43a5c eb03 jmp 0xb43a61
+00b43a5e 498bc7 mov rax, r15
+00b43a61 f30f104608 movss xmm0, dword ptr [rsi + 8]
+00b43a66 488d0d6b1b1901 lea rcx, [rip + 0x1191b6b]
+00b43a6d f30f104e04 movss xmm1, dword ptr [rsi + 4]
+00b43a72 4c8d0517c92301 lea r8, [rip + 0x123c917]
+00b43a79 f30f1016 movss xmm2, dword ptr [rsi]
+00b43a7d ba00040000 mov edx, 0x400
+00b43a82 4c8b8c24a8040000 mov r9, qword ptr [rsp + 0x4a8]
+00b43a8a 48894c2440 mov qword ptr [rsp + 0x40], rcx
+00b43a8f 488d4c2450 lea rcx, [rsp + 0x50]
+00b43a94 0f5ac0 cvtps2pd xmm0, xmm0
+00b43a97 0f5ac9 cvtps2pd xmm1, xmm1
+00b43a9a f20f11442438 movsd qword ptr [rsp + 0x38], xmm0
+00b43aa0 f20f114c2430 movsd qword ptr [rsp + 0x30], xmm1
+00b43aa6 0f5ad2 cvtps2pd xmm2, xmm2
+00b43aa9 f20f11542428 movsd qword ptr [rsp + 0x28], xmm2
+00b43aaf 4889442420 mov qword ptr [rsp + 0x20], rax
+00b43ab4 e8975a5fff call 0x139550
+00b43ab9 c684244f04000000 mov byte ptr [rsp + 0x44f], 0
+00b43ac1 4885db test rbx, rbx
+00b43ac4 740e je 0xb43ad4
+00b43ac6 488b03 mov rax, qword ptr [rbx]
+00b43ac9 488d542450 lea rdx, [rsp + 0x50]
+00b43ace 488bcb mov rcx, rbx
+00b43ad1 ff5018 call qword ptr [rax + 0x18]
+00b43ad4 f30f10451c movss xmm0, dword ptr [rbp + 0x1c]
+00b43ad9 f30f118424a0040000 movss dword ptr [rsp + 0x4a0], xmm0
+00b43ae2 8b8424a0040000 mov eax, dword ptr [rsp + 0x4a0]
+00b43ae9 250000a0ff and eax, 0xffa00000
+00b43aee 3d0000a0ff cmp eax, 0xffa00000
+00b43af3 0f84e2000000 je 0xb43bdb
+00b43af9 f30f104520 movss xmm0, dword ptr [rbp + 0x20]
+00b43afe f30f10551c movss xmm2, dword ptr [rbp + 0x1c]
+00b43b03 f30f104d24 movss xmm1, dword ptr [rbp + 0x24]
+00b43b08 f30f59d2 mulss xmm2, xmm2
+00b43b0c f30f59c0 mulss xmm0, xmm0
+00b43b10 f30f59c9 mulss xmm1, xmm1
+00b43b14 f30f58d0 addss xmm2, xmm0
+00b43b18 f30f58d1 addss xmm2, xmm1
+00b43b1c 0f28c2 movaps xmm0, xmm2
+00b43b1f f30f59c2 mulss xmm0, xmm2
+00b43b23 0f2fc6 comiss xmm0, xmm6
+00b43b26 721b jb 0xb43b43
+00b43b28 0f2f0581cc2301 comiss xmm0, dword ptr [rip + 0x123cc81]
+00b43b2f 7312 jae 0xb43b43
+00b43b31 0f2fd6 comiss xmm2, xmm6
+00b43b34 720d jb 0xb43b43
+00b43b36 0f2f157fe51401 comiss xmm2, dword ptr [rip + 0x114e57f]
+00b43b3d 0f8698000000 jbe 0xb43bdb
+00b43b43 4532f6 xor r14b, r14b
+00b43b46 4885ff test rdi, rdi
+00b43b49 7419 je 0xb43b64
+00b43b4b 488b07 mov rax, qword ptr [rdi]
+00b43b4e 458bcc mov r9d, r12d
+00b43b51 488b9424c8040000 mov rdx, qword ptr [rsp + 0x4c8]
+00b43b59 458bc5 mov r8d, r13d
+00b43b5c 488bcf mov rcx, rdi
+00b43b5f ff5018 call qword ptr [rax + 0x18]
+00b43b62 eb03 jmp 0xb43b67
+00b43b64 498bc7 mov rax, r15
+00b43b67 f30f104608 movss xmm0, dword ptr [rsi + 8]
+00b43b6c 488d0dd59a1c01 lea rcx, [rip + 0x11c9ad5]
+00b43b73 f30f104e04 movss xmm1, dword ptr [rsi + 4]
+00b43b78 4c8d0511c82301 lea r8, [rip + 0x123c811]
+00b43b7f f30f1016 movss xmm2, dword ptr [rsi]
+00b43b83 ba00040000 mov edx, 0x400
+00b43b88 4c8b8c24a8040000 mov r9, qword ptr [rsp + 0x4a8]
+00b43b90 48894c2440 mov qword ptr [rsp + 0x40], rcx
+00b43b95 488d4c2450 lea rcx, [rsp + 0x50]
+00b43b9a 0f5ac0 cvtps2pd xmm0, xmm0
+00b43b9d 0f5ac9 cvtps2pd xmm1, xmm1
+00b43ba0 f20f11442438 movsd qword ptr [rsp + 0x38], xmm0
+00b43ba6 f20f114c2430 movsd qword ptr [rsp + 0x30], xmm1
+00b43bac 0f5ad2 cvtps2pd xmm2, xmm2
+00b43baf f20f11542428 movsd qword ptr [rsp + 0x28], xmm2
+00b43bb5 4889442420 mov qword ptr [rsp + 0x20], rax
+00b43bba e891595fff call 0x139550
+00b43bbf c684244f04000000 mov byte ptr [rsp + 0x44f], 0
+00b43bc7 4885db test rbx, rbx
+00b43bca 740f je 0xb43bdb
+00b43bcc 4c8b03 mov r8, qword ptr [rbx]
+00b43bcf 488d542450 lea rdx, [rsp + 0x50]
+00b43bd4 488bcb mov rcx, rbx
+00b43bd7 41ff5018 call qword ptr [r8 + 0x18]
+00b43bdb 8b552c mov edx, dword ptr [rbp + 0x2c]
+00b43bde 8d8affffff7f lea ecx, [rdx + 0x7fffffff]
+00b43be4 81f9feffff7f cmp ecx, 0x7ffffffe
+00b43bea 7611 jbe 0xb43bfd
+00b43bec 81fa11270000 cmp edx, 0x2711
+00b43bf2 7d09 jge 0xb43bfd
+00b43bf4 410fb6c6 movzx eax, r14b
+00b43bf8 e995000000 jmp 0xb43c92
+00b43bfd 4885ff test rdi, rdi
+00b43c00 741a je 0xb43c1c
+00b43c02 488b07 mov rax, qword ptr [rdi]
+00b43c05 458bcc mov r9d, r12d
+00b43c08 488b9424c8040000 mov rdx, qword ptr [rsp + 0x4c8]
+00b43c10 458bc5 mov r8d, r13d
+00b43c13 488bcf mov rcx, rdi
+00b43c16 ff5018 call qword ptr [rax + 0x18]
+00b43c19 4c8bf8 mov r15, rax
+00b43c1c f30f104608 movss xmm0, dword ptr [rsi + 8]
+00b43c21 488d05b8c72301 lea rax, [rip + 0x123c7b8]
+00b43c28 f30f104e04 movss xmm1, dword ptr [rsi + 4]
+00b43c2d 4c8d055cc72301 lea r8, [rip + 0x123c75c]
+00b43c34 f30f1016 movss xmm2, dword ptr [rsi]
+00b43c38 488d4c2450 lea rcx, [rsp + 0x50]
+00b43c3d 4c8b8c24a8040000 mov r9, qword ptr [rsp + 0x4a8]
+00b43c45 ba00040000 mov edx, 0x400
+00b43c4a 4889442440 mov qword ptr [rsp + 0x40], rax
+00b43c4f 0f5ac0 cvtps2pd xmm0, xmm0
+00b43c52 0f5ac9 cvtps2pd xmm1, xmm1
+00b43c55 f20f11442438 movsd qword ptr [rsp + 0x38], xmm0
+00b43c5b f20f114c2430 movsd qword ptr [rsp + 0x30], xmm1
+00b43c61 0f5ad2 cvtps2pd xmm2, xmm2
+00b43c64 f20f11542428 movsd qword ptr [rsp + 0x28], xmm2
+00b43c6a 4c897c2420 mov qword ptr [rsp + 0x20], r15
+00b43c6f e8dc585fff call 0x139550
+00b43c74 c684244f04000000 mov byte ptr [rsp + 0x44f], 0
+00b43c7c 4885db test rbx, rbx
+00b43c7f 740f je 0xb43c90
+00b43c81 4c8b03 mov r8, qword ptr [rbx]
+00b43c84 488d542450 lea rdx, [rsp + 0x50]
+00b43c89 488bcb mov rcx, rbx
+00b43c8c 41ff5018 call qword ptr [r8 + 0x18]
+00b43c90 32c0 xor al, al
+00b43c92 488b9c24b0040000 mov rbx, qword ptr [rsp + 0x4b0]
+00b43c9a 0f28b42450040000 movaps xmm6, xmmword ptr [rsp + 0x450]
+00b43ca2 4881c460040000 add rsp, 0x460
+00b43ca9 415f pop r15
+00b43cab 415e pop r14
+00b43cad 415d pop r13
+00b43caf 415c pop r12
+00b43cb1 5f pop rdi
+00b43cb2 5e pop rsi
+00b43cb3 5d pop rbp
+00b43cb4 c3 ret

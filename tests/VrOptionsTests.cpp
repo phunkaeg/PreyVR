@@ -42,7 +42,8 @@ void MenuChecks(){
  m={};i=Base();Open(m,i);i.valid=false;m.Update(i);Check(!m.Open(),"tracking loss closes");
  i.valid=true;i.accept=true;m.Update(i);Check(!m.Open(),"regained held input cannot open");
  m={};i=Base();Open(m,i);i.epoch++;m.Update(i);Check(!m.Open(),"session transition closes");
- Check(Hit(.5f,310.f/Height)==0&&Hit(.5f,200.f/Height)==6&&Hit(.5f,1010.f/Height)==CloseHit,"shared hit layout");
+ Check(Hit(.5f,310.f/Height)==0&&Hit(.5f,1010.f/Height)==CloseHit,"shared row and close hit layout");
+ for(unsigned p=0;p<Pages;++p)Check(Hit(.04f+.92f*(p+.5f)/Pages,200.f/Height)==static_cast<int>(Rows+p),"each visible tab selects itself");
  Check(Hit(-.1f,.4f)==-1&&Hit(.5f,.82f)==-1&&Hit(NAN,.4f)==-1,"outside and help text not actionable");
 }
 void SettingsChecks(){

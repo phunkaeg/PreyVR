@@ -36,6 +36,7 @@ struct ReticleAimContext {
     long long displayTime = 0;
     float playYaw = 0.0f;
     Pose head{}, controller{};
+    float sceneDistance = -1.0f;
 };
 
 // One coherent, timestamped projection record. Values are floats in engine

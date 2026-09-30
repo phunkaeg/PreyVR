@@ -1,0 +1,4 @@
+00b9e7b9 488d05b0461e01 lea rax, [rip + 0x11e46b0]
+00b9e7c0 4533f6 xor r14d, r14d
+00b9e7c3 488907 mov qword ptr [rdi], rax
+00b9e7c6 488d8f40050000 lea rcx, [rdi + 0x540]
