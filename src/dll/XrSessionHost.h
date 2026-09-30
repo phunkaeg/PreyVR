@@ -173,6 +173,7 @@ void ServiceXrFrame(void* renderer);
 // usable edge is cannot be derived, only worn. Applies to the menu panel and
 // the HUD together.
 DWORD SetUiScalePercent(unsigned int percent);
+unsigned UiCurveDegrees();
 DWORD UiScalePercent();
 // The fraction of the RUNTIME-REPORTED frustum a panel must stay inside, 30..100.
 // This, not ui.scale, is what caps panel size: the fit loops shrink the panel

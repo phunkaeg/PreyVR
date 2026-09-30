@@ -42,6 +42,8 @@ struct Sample {
     Vec3 direction{};
     // The full orientation, for consumers that need more than a ray.
     Quaternion orientation{};
+    // Synchronous scene query of this exact ray. Negative means no usable hit.
+    float sceneDistance = -1.0f;
 
     // --- provenance -------------------------------------------------------
     //

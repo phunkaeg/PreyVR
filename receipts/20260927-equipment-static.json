@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260927-equipment-static",
+  "recorded_at": "2026-09-27T07:11:17.772833+00:00",
+  "target": {
+    "name": "Steam Prey 2017 x64 PreyDll.dll",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Can optional VR holsters and a separate wrist-status display use the native Steam equipment and vitals paths?",
+  "claim": "Steam Equip at RVA 0x1274820 and Unequip at 0x12773A0 consume the live player weapon component at +0x14B8. Native health, psi and suit HUD producers establish health display scaling by 0.1, psi component/current/maximum and armor status type 11 with integrity 100*(1-damage/maximum).",
+  "evidence_grade": "STATIC",
+  "environment": "static",
+  "method": "Read-only Ghidra MCP on explicit /Prey/PreyDll.dll (bridge version unreported), raw Steam PE disassembly with Capstone 5.0.9, and Python 3.12 tools/re/verify_body_equipment.py. EGS symbols and normalized byte matches supplied leads only. The independent PE verifier checks exact target SHA256, 22 complete native bodies, eight semantic anchors and altered-byte negative controls. No game process was opened.",
+  "validity": "VALID",
+  "mutation": "none",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Ghidra target metadata and independent Steam PE SHA256 identify x64 module 7d6e322f...05311a7, image base 0x180000000."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Decompiled native producer/consumer relationships checked against full instruction dumps; float returns confirmed in XMM0 rather than trusting inferred decompiler types."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "All 22 complete Steam body hashes match; an altered byte is rejected for each. Eight semantic anchors independently match their expected bytes."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Static binary analysis only, no game scene."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "No game or target binary mutation; implementation source is version controlled."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "NOT_MEASURED",
+    "reason": "User requested code/static work only. Offline tests do not measure the in-game baseline or native acceptance."
+  },
+  "limits": "Steam build only. No native execution or headset acceptance. Model-free body zones and controller-relative wrist orientation need ergonomic testing. Native equip/stow completion, menu arbitration, save/load and display values need live checks. Whole-function hashes are compatibility guards; exact identity comes from SHA256. Graph refresh and fleet intake await canonical checkout.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/body-equipment-2026-09-27/native-disassembly.txt",
+      "sha256": "2d0b539378959ef8963818e607ad046a3f85ad6dde337419c167a2601e479d22",
+      "role": "Full Steam instruction bodies"
+    },
+    {
+      "path": "docs/evidence/body-equipment-2026-09-27/ghidra-producers.txt",
+      "sha256": "e7b0ed64bf50a8a86571f852b7f99dde5881b03ab8c72a8c2da6be5338cf5488",
+      "role": "Ghidra producer and consumer extracts"
+    },
+    {
+      "path": "docs/evidence/body-equipment-2026-09-27/native-verification.json",
+      "sha256": "8ebfaf65ade9af8efa27007baac5ea468fd196de67cfaa59bd5c972ef1de6663",
+      "role": "Independent verifier results"
+    },
+    {
+      "path": "include/preyvr/EquipmentNative.h",
+      "sha256": "7a62c5b124bfa38a976fa958a18a9637edcec385fcbbca7be5a957aef9340a17",
+      "role": "Compiled compatibility contracts"
+    },
+    {
+      "path": "tools/re/verify_body_equipment.py",
+      "sha256": "485f2e632dae331b6451cf06dbc609b3d96d32d072f629b835878e104f6c9cdb",
+      "role": "Read-only reproducible verifier"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "When live testing is authorized, verify stow/draw, absent items, save/load, modal and grip arbitration, real vitals against the native HUD, and wrist orientation/legibility. Submit receipt when artifacts reach canonical checkout."
+}

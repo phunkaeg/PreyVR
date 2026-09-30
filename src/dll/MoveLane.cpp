@@ -1,4 +1,6 @@
 #include "MoveLane.h"
+#include "AimTakeover.h"
+#include "BodyEquipment.h"
 
 #include "InputPost.h"
 #include "HeadTrackingHook.h"
@@ -373,6 +375,7 @@ void UpdateTurnAndFireLanes()
     const bool haveInput = TryGetTrackingFrame(inputFrame);
     const ControllerState right = haveInput ? inputFrame.hands[1] : ControllerState{};
     const ControllerState leftHand = haveInput ? inputFrame.hands[0] : ControllerState{};
+    UpdateHolsterInput(inputFrame,haveInput&&gActionsEnabled.load());
 
     // Both grips + left Y: both grips alone are a natural two-handed hold.
     // Requiring Y keeps recenter deliberate and independent of grab timing.
@@ -514,7 +517,7 @@ void UpdateTurnAndFireLanes()
             // A paired squeeze is a hold, not use/reload. Require the right
             // grip to release before use returns, including after support release.
             if(slot==0&&right.gripPressed&&
-               (gRecenterHeld||(haveLeftHand&&leftHand.squeezeValue>=.45f))) blocked[slot]=true;
+               (gRecenterHeld||HolsterOwnsGrip()||TwoHandedAimHeld()||(haveLeftHand&&leftHand.squeezeValue>=.45f))) blocked[slot]=true;
             if (!HudGameplayInputAllowed() && sources[slot]) blocked[slot]=true;
             if (!sources[slot]) blocked[slot]=false;
             ActionBinding& binding = gActions[slot];
@@ -564,6 +567,7 @@ DWORD SetTurnLaneScale(unsigned int percent)
     gTurnScalePercent.store(percent, std::memory_order_relaxed);
     return 0;
 }
+unsigned TurnLaneScalePercent(){return gTurnScalePercent.load();}
 
 DWORD SetFireLaneEnabled(unsigned int enabled)
 {

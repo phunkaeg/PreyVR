@@ -7,6 +7,7 @@ namespace {
 struct Event {int kind,x,y;};
 std::vector<Event> events;
 bool menuKnown=true,menuOpen=true;
+bool optionsOwned=false;
 DWORD modeError=0,cursorError=0,cancelError=0;
 void Require(bool ok,const char* why){if(!ok){std::cerr<<why<<'\n';std::exit(1);}}
 }
@@ -14,6 +15,7 @@ namespace preyvr::lifecycle {void Log(std::string_view){}}
 namespace preyvr::dll {
 bool HudMenuStateKnown(){return menuKnown;}
 bool HudMenuIsOpen(){return menuOpen;}
+bool VrOptionsInputOwned(){return optionsOwned;}
 bool TryGetTrackingFrame(TrackingFrame&){return false;}
 DWORD PostRawInputImmediate(int key,unsigned state,int value){
     Require(key==input::kMouseX&&state==input::kStateChanged&&value==0,"mode event contract");
@@ -28,7 +30,7 @@ constexpr std::uint64_t now=1000000000;
 void Reset(){
     gSample.Clear();gClearGeneration=0;gRetainedSample={};gHand=1;gFault=false;
     gButtons={};gEpoch=gReference=0;gLastX=gLastY=-100;gWasActive=gNativeDown=false;
-    menuKnown=menuOpen=true;modeError=cursorError=cancelError=0;events.clear();
+    menuKnown=menuOpen=true;optionsOwned=false;modeError=cursorError=cancelError=0;events.clear();
 }
 Sample Neutral(){return {true,true,false,330,555,now,4,1,0};}
 Sample Press(){auto s=Neutral();DrainPointerSample(&s,now);s.pressed=true;DrainPointerSample(&s,now);Require(gNativeDown,"native button pressed");events.clear();return s;}
@@ -63,6 +65,8 @@ void TestExitAndNormalRelease(){
     Reset();s=Press();s.pressed=false;DrainPointerSample(&s,now);
     Require(events.size()==1&&events[0].kind==2,"ordinary release does not cancel inventory placement");
     Reset();s=Press();menuKnown=false;DrainPointerSample(&s,now);CheckCancelOrder();
+    Reset();s=Press();optionsOwned=true;DrainPointerSample(&s,now);CheckCancelOrder();
+    events.clear();DrainPointerSample(&s,now);Require(!gNativeDown,"options block native pointer press");
 }
 void TestFault(){
     Reset();auto s=Press();s.x=350;modeError=ERROR_INVALID_ADDRESS;DrainPointerSample(&s,now);

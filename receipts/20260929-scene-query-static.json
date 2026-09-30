@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260929-scene-query-static",
+  "recorded_at": "2026-09-29T13:59:51.877597+00:00",
+  "target": {
+    "name": "Steam Prey 2017 x64 PreyDll.dll",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Does the R-127 dispatch reach a concrete synchronous scene query with private hit storage and a native player self-filter?",
+  "claim": "Steam world vtable 0x1D82E70 slot +0x118 reaches 0xCCF250. Native melee gets player entity +0x38 and calls entity +0x228, concrete 0x9042B0, for the self-filter. The query uses 0x70-byte params, 0x50-byte hits and an internal caller lock. Seven complete bodies and target call-site witnesses are verified offline.",
+  "evidence_grade": "STATIC",
+  "environment": "static",
+  "method": "Read Steam PE sections with Python 3.12/pefile and disassemble using Capstone 5.0.7. EGS symbols are candidate leads, not target addresses. Reproduce target identity, complete-body hashes and negative controls: python -E -B tools/re/verify_scene_query.py. Source adapters separately built in Release; 52/52 offline CTest checks passed, including mocked XR output and pure scene-query contracts.",
+  "validity": "VALID",
+  "mutation": "none",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Exact Steam SHA-256 verified by offline verifier."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "PE section bounds, complete-body hashes, concrete vtable pointer and native call-site bytes checked; retained disassembly covers split unwind body."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "One-bit mutation refused independently for all seven bodies; tests reject stale/malformed hits and haptic events."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Static source/binary work; no scene was rendered."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "Read-only native binary inspection; no process or shared runtime mutation."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Release build and 52/52 offline tests passed. No in-game, simulator or headset baseline was run."
+  },
+  "limits": "Static contract only. Native call acceptance, collision filtering including equipped-object self hits, real query cost, rendered reticle placement and physical vibration remain unmeasured. One ray is not a swept weapon volume or a ballistic prediction. EGS relative-address normalization is not proof that all callees/globals are equivalent.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/verification.json",
+      "sha256": "267befca4197e5fb24f3272c3ad18597f7f6a328860601fdc28a81ab256eaed5",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/mapping.json",
+      "sha256": "c6e3a776ce8ef717d7a1c37624a15aa788db6848c84e4e0e4faea7238b4cac15",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/RayWorldIntersection.asm.txt",
+      "sha256": "c89b3fe9d6e4ca3d5011731e3e964d7a9347b869d2a6ba4e8893679ebd74c3d3",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/RayHeightfield.asm.txt",
+      "sha256": "d379c756652e0989c6e27d4da165e6887b4538e929af574dc5839c6c183e1e70",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/CheckCell.asm.txt",
+      "sha256": "1af19ecd855b41ea9544738e94b5b6621e683eef3c1f2fbebefc089926810553",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/DrawRayOnGrid.asm.txt",
+      "sha256": "a6cca395ddc3ac0a161d3d6c44b1f1536e531d9387e137bbe05781077977e5d4",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/CheckerConstructor.asm.txt",
+      "sha256": "6719d734a5f7320cf5093b431df39eaed2250b822e1edd9afe5255a81f94158e",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/EntityGetPhysics.asm.txt",
+      "sha256": "ebb9c18b636c59b39f46c02494238cbe20b094bf089c8fdb359348eb819144b0",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/PlayerSingleton.asm.txt",
+      "sha256": "ca77a937c0a558ac13e737f6edcbf6e352d5c87e4c25aee2d891582dbb5d3675",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/MeleeOwner.asm.txt",
+      "sha256": "df1cd096ee4103a0d410b93dcfb1a1f03863aa485230da97da56ff2c4d4ebe57",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/WorldConstructor.asm.txt",
+      "sha256": "7b49310aa5644c162f035f5f710411921eeb6f8e7a4067b58d4492796f52f782",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/ctest.txt",
+      "sha256": "156fd408e42a9d51173f31dbf1ebe2b939d79a5967cc6ead4036ea7ee46fccdb",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/evidence/scene-query-2026-09-29/feedback-options.png",
+      "sha256": "4700440a75030346dc6a4cf81b7a412a348403e09cc07ccbd602a84a927555ae",
+      "role": "Static contract and offline validation evidence"
+    },
+    {
+      "path": "docs/SCENE-RETICLE-HAPTICS-2026-09-29.md",
+      "sha256": "53f367d9ffcfd9cba9375e4d3fa3b593523ae0e17f5aff91d0f67f58ab554def",
+      "role": "Interpretation, implementation boundaries and pending live checks"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "CosmicTangerine: brief opt-in scene reticle A/B and feedback test. Keep scene mode off until native hit/filter/timing and both-eye visual checks pass. Refresh canonical graph and submit this receipt after artifacts reach the fleet-registered checkout."
+}

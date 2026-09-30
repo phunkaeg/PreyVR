@@ -2,6 +2,15 @@
 
 Research and implementation workspace for an OpenXR VR mod for **Prey (2017)**. The intended end state is native, engine-owned 6DoF world rendering and motion controls; a flat OpenXR bridge is useful only as a reversible early milestone.
 
+**VR options candidate (2026-09-27):** adds an in-headset settings panel, hold/toggle
+foregrip and free/snapped support-hand preferences, plus an opt-in psychoscope
+gesture. The Equipment tab also adds optional hip/chest holsters and a left-wrist
+health/psi/suit display. The [September 28 native HUD wrist candidate](docs/NATIVE-WRIST-IMPLEMENTATION-2026-09-28.md)
+replaces its custom graphics with a separate capture of the game's status widgets.
+Static/offline validation only; no game run for this batch.
+See [options](docs/VR-OPTIONS-2026-09-27.md) and
+[body equipment controls and evidence](docs/BODY-EQUIPMENT-2026-09-27.md).
+
 **Player preview (2026-09-10):** the package launcher starts/injects/enables VR, with controller-driven menus and inventory, a floating native HUD, and view reset. See [the player guide](docs/PLAYER-GUIDE.md) for controls, settings, supported build, and validation limits. The older research milestones below retain their original evidence dates.
 
 **Hologram candidate 10:** adds right-stick click for the native weapon wheel to the controller beam, curved menus and inventory drag support. Candidate 09's corrected stereo and curved in-game popup were confirmed in the headset, but that session crashed; stability and the new wheel binding remain unverified live. See [hologram controls](docs/PLAYER-GUIDE-HOLOGRAM.md) and [current validation](docs/HOLOGRAM-VALIDATION.md).

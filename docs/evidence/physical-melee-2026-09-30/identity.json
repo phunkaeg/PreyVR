@@ -1,0 +1,23 @@
+{
+  "sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "program": "/Prey/PreyDll.dll",
+  "base": "0x180000000",
+  "remoteBytesMatchDisk": true,
+  "functions": {
+    "Attack": 23797712,
+    "WeaponHit": 23800768,
+    "ComponentHit": 20707120,
+    "GetHits": 20698656,
+    "AppendHit": 20697680,
+    "VectorAllocate": 8987984,
+    "VectorCommit": 20709792,
+    "WeaponImpulse": 23782416,
+    "ImpulseProducer": 19077440,
+    "QueueAction": 11645280,
+    "AttackPrelude": 23670336,
+    "RigidAction": 12384656,
+    "ImpulseValidation": 11810928,
+    "RigidGetType": 20781968,
+    "CharacterAabb": 8576320
+  }
+}

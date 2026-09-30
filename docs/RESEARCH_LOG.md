@@ -3614,3 +3614,33 @@ User confirmed candidate 09 corrected stereo and a curved in-game popup. That se
 ## 2026-09-11 — inventory native 3D depth confirmed live
 
 Running user-owned PID18188: bounded read-only-data Frida observers identified DaniellePDA and eight parallel planes after removing common tilt. Three complete sampled displays each contained 403 unique transforms. No mod change or stereo acceptance claim. Observers detached; game remained responsive. See [live depth evidence](RE-INVENTORY-DEPTH-2026-09-11.md).
+## 2026-09-27 — Native wrist HUD assets extracted offline
+
+A bounded read-only decoder now extracts the installed Steam base and patched
+DanielleHUD movie and UI definition. Both encrypted directories decode completely
+(5,455 base / 517 patch entries); all four requested files pass size and CRC checks.
+The patched movie's script references and named placements agree on
+`_root.safe.quadrant_SW.health_mc`, `psi_mc` and `armor_mc`. The shared parent also
+contains climb/pickup and other indicators, so moving the entire quadrant is not
+an appropriate status-only wrist implementation.
+
+Nine synthetic offline tests pass, including corrupt-input controls. Original
+game files remain unchanged; no game process or headset was used. Native widget
+capture and wrist submission remain unimplemented; the default-off prototype
+card is unchanged. See [native HUD extraction and integration boundary](NATIVE-WRIST-HUD-2026-09-27.md)
+and [static receipt](../receipts/20260927-native-hud-extraction.json).
+## 2026-09-28 — Native wrist capture candidate implemented offline
+
+The native `_visible` setter is not a pure display switch: Steam sprite
+`SetVisible` at `0x18BF0C0` can update optimized animation playlists. The final
+candidate instead filters excluded sprite Display calls only during an extra
+HUD replay inside the existing native render locks. It resolves and releases
+movie-owned handles per callback, requires traversal below the shared status
+ancestor, retains native transforms/masks/animations and preserves the normal HUD.
+
+Two GPU compute passes derive current alpha bounds and fit native pixels into
+the transparent wrist panel. There is no CPU readback or fixed-resolution crop.
+Release build and 50/50 offline tests pass; nine native body/accessor identities
+and concrete vtables match the Steam PE. No game or headset run occurred. Native
+replay behavior, visibility, comfort and frame cost remain live acceptance work.
+See [implementation and static contracts](NATIVE-WRIST-IMPLEMENTATION-2026-09-28.md).

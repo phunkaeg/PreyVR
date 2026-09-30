@@ -1,0 +1,95 @@
+{
+  "target_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "image_base": "0x180000000",
+  "method": "Ghidra function body extents, checked contiguous by address count; raw PE file hashes, not first-fragment unwind extents.",
+  "functions": [
+    {
+      "name": "Archive Prepare",
+      "rva": "0xe6fe60",
+      "size": 5308,
+      "sha256": "b8e3cd7320264054cb9d9c335222a22890681daeadbac1e5f829d9ab9ebb49c6",
+      "first_bytes": "40554156488dac2418fcffff4881ece8"
+    },
+    {
+      "name": "Read directory",
+      "rva": "0xe6e920",
+      "size": 1363,
+      "sha256": "f8e304dc1070c63039ba896f687b78573cea007f240b88a5b4183ab84901030b",
+      "first_bytes": "4055534157488d6c24b94881ecd00000"
+    },
+    {
+      "name": "Twofish CTR",
+      "rva": "0xe652f0",
+      "size": 162,
+      "sha256": "21dc42c04a9972a62dbddf04cc756f03fb5e58998a9dfdb94819175ede461ef0",
+      "first_bytes": "48895c240848896c2410488974241857"
+    },
+    {
+      "name": "File IV",
+      "rva": "0xe653b0",
+      "size": 80,
+      "sha256": "825d2456300c38b07276f28162b7df0b35335be2f2c6aede292bea33424cd345",
+      "first_bytes": "4883ec18448b59044533d2448b490845"
+    },
+    {
+      "name": "Key index",
+      "rva": "0xe65400",
+      "size": 11,
+      "sha256": "0b954f406e0d15ba94953bff90b61cfc5140274aa2241243b31d9a6b37e75ef5",
+      "first_bytes": "8b01c1e802f7d083e00fc3cccccccccc"
+    },
+    {
+      "name": "Flash callback",
+      "rva": "0xe8c5e0",
+      "size": 398,
+      "sha256": "182875b576020598b1f7b9e99fb133304a9e2aa7047fce9de1ca9c90aa52b342",
+      "first_bytes": "48895c240848896c2418488974242057"
+    },
+    {
+      "name": "Display",
+      "rva": "0x18ab710",
+      "size": 801,
+      "sha256": "ce0da9211aa77f34beb76dc13baea5f181d8515f2e254fac87467a127f42aeb4",
+      "first_bytes": "4055564881ec68030000488b05a783b6"
+    },
+    {
+      "name": "SetVariable",
+      "rva": "0x18abcc0",
+      "size": 316,
+      "sha256": "f366fd2b34de79ec82c9744a007621b72cb85ff1ea57ed706876e2d52121e816",
+      "first_bytes": "48895c241048896c2418488974242057"
+    },
+    {
+      "name": "GetVariable",
+      "rva": "0x18abe10",
+      "size": 236,
+      "sha256": "4c1b9d3047e597c49f843c4bbaf00b9044ea7d103ff051d03c1f9f3508bc7fe1",
+      "first_bytes": "48895c241848896c2420574883ec6048"
+    },
+    {
+      "name": "AS to GFx",
+      "rva": "0x183f680",
+      "size": 654,
+      "sha256": "6896aa18c31dd10804318f626bcf32c78e54cd89892ca935034778f8cf1090f1",
+      "first_bytes": "48895c240848896c2410488974241857"
+    },
+    {
+      "name": "GFx to AS",
+      "rva": "0x183f4f0",
+      "size": 356,
+      "sha256": "6da48275293dec9c299d96736cf367fd10cc31ba7f2ec68bd04adfe7f8355845",
+      "first_bytes": "40574883ec20498bf8448b4208418bc0"
+    }
+  ],
+  "root_vtable_rva": "0x1eb4b60",
+  "slots": {
+    "0x80": "0x18abcc0",
+    "0x88": "0x18abe10",
+    "0x130": "0x18ab710"
+  },
+  "public_key": {
+    "raw_file_offset": "0x228bbf0",
+    "bytes": 140,
+    "sha256": "00016bbda07057709496fa502f382f5eb4dacdc68bbb66960a44498b9b0621b4"
+  }
+}

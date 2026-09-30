@@ -81,6 +81,11 @@ struct SupportGripGeometry {
 void PublishSupportGripGeometry(const SupportGripGeometry& geometry);
 DWORD SetTwoHandedAim(unsigned int enabled);
 unsigned int TwoHandedAimEnabled();
+DWORD SetTwoHandGripToggle(unsigned enabled);
+DWORD SetTwoHandSupportSnap(unsigned enabled);
+bool TwoHandGripToggle();
+bool TwoHandSupportSnap();
+bool TwoHandedAimHeld();
 std::string TwoHandedAimStatus();
 bool EnsureGameplayPoseObservation();
 bool TryGetGameplayPoseFrame(GameplayPoseFrame& out, bool requireTracking = true);

@@ -1,0 +1,17 @@
+{
+  "target": "D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\PreyDll.dll",
+  "sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "checks": [
+    "complete native handler, including all gates and callees",
+    "altered handler refused",
+    "player embeds input at +0x8e0 and passes same owner",
+    "scope action name producer at actions+0x968",
+    "literal resolves to toggle_scope",
+    "same action field registers native scope handler",
+    "scope component accessor +0xe8",
+    "constructor and consumer call targets decoded"
+  ],
+  "static_checks_passed": 8,
+  "runtime_tested": false,
+  "claim": "Native toggle_scope handler and live-player embedded input receiver mapped on Steam."
+}

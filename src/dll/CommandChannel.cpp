@@ -1,5 +1,8 @@
 #include "CommandChannel.h"
 #include "VrMode.h"
+#include "VrOptionsRuntime.h"
+#include "Psychoscope.h"
+#include "BodyEquipment.h"
 
 #include "AimTakeover.h"
 #include "AnimIkTakeover.h"
@@ -15,6 +18,9 @@
 #include "NearViewStereo.h"
 #include "RenderFrame.h"
 #include "ReticleFollow.h"
+#include "SceneQuery.h"
+#include "PhysicalInteractions.h"
+#include "Haptics.h"
 #include "HudBridge.h"
 #include "HudLayer.h"
 #include "UiPointer.h"
@@ -346,7 +352,10 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         return value;
     };
 
-    if (verb == "vr.enable") {
+    if (verb == "vr.options") {
+        if(args.size()>1)RequestVrOptions(arg(1,0)!=0);
+        out << "vr.options" << VrOptionsReport() << PsychoscopeReport() << BodyEquipmentReport();
+    } else if (verb == "vr.enable") {
         EnableVrMode(); out << VrModeReport();
     } else if (verb == "vr.disable") {
         DisableVrMode(); out << VrModeReport();
@@ -581,6 +590,15 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         }
         out << "console result=" << result
             << " command=\"" << command << "\"";
+    } else if (verb == "physical") {
+        out<<"physical"<<PhysicalInteractionsReport();
+    } else if (verb == "aim.scene") {
+        if(args.size()>1)SetSceneReticle(arg(1,0));
+        out<<"aim.scene"<<SceneQueryReport();
+    } else if (verb == "haptics") {
+        if(args.size()>1)SetHapticsEnabled(arg(1,1));
+        if(args.size()>2)SetHapticStrength(arg(2,70));
+        out<<"haptics"<<HapticsReport();
     } else if (verb == "aim.reticle") {
         // Moves Prey's own crosshair to where the controller points, so the
         // symbol a player aims with agrees with the ray gameplay uses. One
@@ -905,6 +923,7 @@ DWORD WINAPI PollThread(LPVOID)
         "\" results=\"" + results.string() + "\"");
     while (gRunning.load(std::memory_order_acquire)) {
         TickVrMode();
+        ServiceVrOptions();
         // Keys and startup progress are serviced at 50 Hz; disk polling stays 5 Hz.
         static unsigned poll=0;
         if (++poll%10!=0) { Sleep(20); continue; }

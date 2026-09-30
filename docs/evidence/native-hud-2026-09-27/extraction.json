@@ -1,0 +1,69 @@
+{
+  "target_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "environment": "offline",
+  "archives": [
+    {
+      "path": "GameSDK/GameData.pak",
+      "sha256": "7f1d96c631220b4a0566a00196c01efb8204476e429694461c6379e0b281617c",
+      "entries": 5455,
+      "directory_sha256": "6e6a5c4c70008045af6621ae60f5e8f8a11f05bb887acf2943b08a7a094d95e0"
+    },
+    {
+      "path": "GameSDK/Precache/patch.pak",
+      "sha256": "c04ee92d951c0b2f49495bf1072323e9ed49a4d5224c98fe29b67d3b82d34cb0",
+      "entries": 517,
+      "directory_sha256": "e34333af7cd3ac920bbc44040819ceea2c0f4f8c04f94cca5a677fc31e88d1ff"
+    }
+  ],
+  "assets": {
+    "libs/ui/gfx/danielle_hud.gfx": [
+      {
+        "archive": "GameSDK/GameData.pak",
+        "size": 726688,
+        "crc32": "c9af6bae",
+        "sha256": "d60aff3aa2f3b76c8e1eb2022e69ad1baf6f366588fc75d3ce31a55ed6c6cdef",
+        "output": "GameData\\libs\\ui\\gfx\\danielle_hud.gfx"
+      },
+      {
+        "archive": "GameSDK/Precache/patch.pak",
+        "size": 732099,
+        "crc32": "0e5443c4",
+        "sha256": "35974883f152e345834ca690c8f6cb280152cee0ae724280e3cc98f75fb9c9dc",
+        "output": "patch\\libs\\ui\\gfx\\danielle_hud.gfx"
+      }
+    ],
+    "libs/ui/uielements/daniellehud.xml": [
+      {
+        "archive": "GameSDK/GameData.pak",
+        "size": 63059,
+        "crc32": "b6651288",
+        "sha256": "28d6c66932c08ab16405364a04ebb4f79327d5bf43a9a3023b9debdc8597c312",
+        "output": "GameData\\libs\\ui\\uielements\\daniellehud.xml"
+      },
+      {
+        "archive": "GameSDK/Precache/patch.pak",
+        "size": 64010,
+        "crc32": "92a59f51",
+        "sha256": "57b89b80082a6dc93ae4b947739acf0cfb2c7c6e07edac137daac584925eb1df",
+        "output": "patch\\libs\\ui\\uielements\\daniellehud.xml"
+      }
+    ]
+  },
+  "verification": "OAEP padding, directory bounds, decompression, per-entry size and CRC; not signature authentication",
+  "effective": {
+    "libs/ui/gfx/danielle_hud.gfx": {
+      "archive": "GameSDK/Precache/patch.pak",
+      "size": 732099,
+      "crc32": "0e5443c4",
+      "sha256": "35974883f152e345834ca690c8f6cb280152cee0ae724280e3cc98f75fb9c9dc",
+      "output": "patch\\libs\\ui\\gfx\\danielle_hud.gfx"
+    },
+    "libs/ui/uielements/daniellehud.xml": {
+      "archive": "GameSDK/Precache/patch.pak",
+      "size": 64010,
+      "crc32": "92a59f51",
+      "sha256": "57b89b80082a6dc93ae4b947739acf0cfb2c7c6e07edac137daac584925eb1df",
+      "output": "patch\\libs\\ui\\uielements\\daniellehud.xml"
+    }
+  }
+}

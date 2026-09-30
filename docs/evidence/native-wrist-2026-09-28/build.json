@@ -1,0 +1,10 @@
+{
+  "configuration": "Release",
+  "path": "build\\integration\\Release\\PreyVR.dll",
+  "size": 1033216,
+  "sha256": "94c0aa050201438a1660a349a18f5b89137612c898d4ba4d7425d39c60846f78",
+  "installed": false,
+  "game_launched": false,
+  "tests": "50/50 offline CTest",
+  "limitations": "Native game replay and headset acceptance not tested."
+}

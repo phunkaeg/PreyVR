@@ -51,17 +51,19 @@ bool ClosestGrip(const Input& i,Vec3& point) {
 }
 Output Solver::Update(const Input& i) {
     Output out{};out.orientation=i.aim.orientation;
-    const bool changed=i.owner!=owner_||i.reference!=reference_||i.epoch!=epoch_;
+    const bool changed=i.owner!=owner_||i.reference!=reference_||i.epoch!=epoch_||i.toggleGrip!=toggleGrip_;
     if(changed||!ValidInput(i)) {
         *this={}; owner_=i.owner;reference_=i.reference;epoch_=i.epoch;
+        toggleGrip_=i.toggleGrip;
         // A weapon switch, modal transition or tracking loss requires a new squeeze.
         armed_=ValidInput(i)&&i.squeeze<.45f;
         return out;
     }
-    if(i.squeeze<.45f) { held_=false;armed_=true; }
-    else if(!held_&&armed_&&i.squeeze>=.65f) {
+    if(i.squeeze<.45f) { if(!i.toggleGrip)held_=false;armed_=true; }
+    else if(armed_&&i.squeeze>=.65f) {
         armed_=false;
-        if(ClosestGrip(i,socket_)) {
+        if(held_&&i.toggleGrip) held_=false;
+        else if(!held_&&ClosestGrip(i,socket_)) {
             held_=true;
             supportInAim_=Multiply(Inv(i.aim.orientation),i.support.orientation);
         }

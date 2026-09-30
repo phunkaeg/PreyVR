@@ -1,0 +1,258 @@
+Ghidra /Prey/PreyDll.dll; x64 Windows; base 0x180000000.
+SHA256 7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7.
+Read-only decompile, references, listing and byte reads. No game launched.
+
+## scope_registration
+
+psipower");
+  FUN_18017bb70(param_1 + 300,"deactivate_psipower");
+  FUN_18017bb70(param_1 + 0x12d,"toggle_scope");
+  FUN_18017bb70(param_1 + 0x12e,"togglepda");
+  FUN_18017bb70(param_1 + 0x12f,"pdanextpage");
+  FUN_18017bb70(param_1 + 0x130,"pdaprevpage");
+  FUN_18017bb70(param_1 + 0x131,"togg
+
+## input_constructor
+
+
+undefined8 * FUN_18158d1c0(undefined8 *param_1,undefined8 param_2)
+
+{
+  int *piVar1;
+  longlong lVar2;
+  undefined8 uVar3;
+  longlong lVar4;
+  longlong *plVar5;
+  code *local_48;
+  undefined4 uStack_40;
+  undefined4 uStack_3c;
+  longlong local_38;
+  undefined4 local_30;
+  undefined4 uStack_2c;
+  undefined4 uStack_28;
+  undefined4 uStack_24;
+
+  *param_1 = &PTR_FUN_181e580e0;
+  param_1[1] = &PTR_LAB_181e580f8;
+  param_1[2] = 0;
+  param_1[3] = 0;
+  param_1[4] = 0;
+  param_1[5] = 0;
+  param_1[6] = 0;
+  uVar3 = FUN_1815913b0(param_1 + 5);
+  param_1[5] = uVar3;
+  *(undefined8 *)((longlong)param_1 + 0x3c) = 0;
+  *(undefined4 *)(param_1 + 7) = 0;
+  param_1[9] = 0;
+  *(undefined4 *)((longlong)param_1 + 0x44) = 0;
+  *(undefined8 *)((longlong)param_1 + 0x54) = 0;
+  *(undefined4 *)(param_1 + 10) = 0;
+  *(undefined8 *)((longlong)param_1 + 0x5c) = 0;
+  *(undefined8 *)((longlong)param_1 + 100) = 0;
+  *(undefined4 *)((longlong)param_1 + 0x6c) = 0;
+  param_1[0xe] = param_2;
+  param_1[0xf] = 0x3f800000;
+  param_1[0x10] = 0;
+  param_1[0x11] = 0;
+  param_1[0x12] = 0;
+  param_1[0x13] = 0;
+  param_1[0x14] = 0;
+  param_1[0x15] = 0;
+  *(undefined4 *)(param_1 + 0x16) = 0;
+  *(undefined2 *)((longlong)param_1 + 0xb4) = 0;
+  *(undefined1 *)((longlong)param_1 + 0xb6) = 0;
+  param_1[0x17] = 0;
+  param_1[0x18
+...
+local_48 = FUN_181590cc0;
+  if (*(longlong *)(lVar2 + 0x968) != 0) {
+    piVar1 = (int *)(*(longlong *)(lVar2 + 0x968) + -0xc);
+    *piVar1 = *piVar1 + 1;
+  }
+  local_38 = *(longlong *)(lVar2 + 0x968);
+  local_30 = 0x81590cc0;
+  uStack_2c = 1;
+  uStack_28 = 0;
+  uStack_24 = uStack_3c;
+  lVar4 = FUN_18158cdf0(param_1 + 5,&local_38);
+  FUN_18158ce40(param_1 + 5,&local_48,0,lVar4 + 0x20,lVar4);
+  if (local_38 != 0) {
+    *(int *)(local_38 + -0xc) = *(int *)(local_38 + -0xc) + -1;
+    if (*(int *)(local_38 + -0xc) < 1) {
+      (**(code **)(*DAT_18224da90 + 0x18))();
+    }
+  }
+  u
+
+## player_constructor
+
+  param_1[0x109] = 0;
+  *(undefined4 *)puVar3 = 0x3f800000;
+  FUN_1809a9050(puVar3,8);
+  FUN_18135ad40(param_1 + 0x10c,1);
+  FUN_18135ad40(param_1 + 0x114,0);
+  FUN_18158d1c0(param_1 + 0x11c,param_1);
+  FUN_1815a9150(param_1 + 0x136);
+  FUN_181591830(param_1 + 0x159);
+  param_1[0x236] = 0;
+  *(undefined4 *)(param_1 + 0x
+
+## 181590cc0
+
+
+ulonglong FUN_181590cc0(longlong param_1)
+
+{
+  longlong *plVar1;
+  longlong lVar2;
+  ulonglong uVar3;
+  ulonglong uVar4;
+  undefined8 uVar5;
+  longlong local_18;
+  ulonglong local_10;
+
+  plVar1 = DAT_18224d9d8;
+  lVar2 = (**(code **)(*DAT_18224d9d8 + 0xb8))(DAT_18224d9d8,0x206);
+  uVar3 = (**(code **)(*plVar1 + 0xb8))(plVar1,0x401);
+  uVar4 = uVar3;
+  if (lVar2 != 0) {
+    local_18 = lVar2;
+    uVar4 = (**(code **)(*plVar1 + 0xb0))(plVar1,&local_18,4);
+    if ((char)uVar4 != '\0') goto LAB_181590d79;
+  }
+  if (uVar3 != 0) {
+    local_10 = uVar3;
+    uVar4 = (**(code **)(*plVar1 + 0xb0))(plVar1,&local_10,4);
+    if ((char)uVar4 != '\0') goto LAB_181590d79;
+  }
+  if ((*(int *)(*(longlong *)(param_1 + 0x70) + 0x58) != 10) && (*(int *)(param_1 + 0x94) == 0)) {
+    uVar5 = FUN_18119a470(*(longlong *)(param_1 + 0x70) + 0x678);
+    uVar4 = FUN_181272d10(uVar5);
+  }
+LAB_181590d79:
+  return uVar4 & 0xffffffffffffff00;
+}
+
+
+
+## 181272d10
+
+
+void FUN_181272d10(undefined8 *param_1)
+
+{
+  undefined8 uVar1;
+  char cVar2;
+  undefined4 uVar3;
+  longlong lVar4;
+  longlong lVar5;
+
+  if (*(char *)((longlong)param_1 + 0x59) == '\0') {
+    if (*(char *)(param_1 + 0xb) != '\0') {
+      lVar4 = GetArkPlayerInstance();
+      cVar2 = FUN_18157e490(lVar4);
+      if (cVar2 == '\0') {
+        *(undefined1 *)((longlong)param_1 + 0x59) = 1;
+        FUN_18118bfe0(DAT_182c16838 + 0xdf0,1);
+        uVar1 = FUN_1810839f0(lVar4 + 0x678);
+        lVar5 = FUN_1815ad020(uVar1);
+        if (*(char *)(lVar5 + 0x10a) == '\0') {
+          if (*(char *)((longlong)param_1 + 0x5a) == '\0') {
+            FUN_1813fe970(*(undefined8 *)(DAT_182c16840 + 0x380),*param_1);
+          }
+        }
+        else {
+          FUN_1815d9c40(lVar5);
+        }
+        FUN_18162a140((longlong)param_1 + 0x7c,param_1 + 7);
+        uVar3 = FUN_181490e40(lVar4 + 0x1898,*(undefined4 *)(param_1 + 2),
+                              *(undefined4 *)((longlong)param_1 + 0x14),0,4);
+        *(undefined4 *)((longlong)param_1 + 0x5c) = uVar3;
+        FUN_1810de6d0((longlong)param_1 + 0x74,*(undefined8 *)(lVar4 + 0x38));
+      }
+    }
+    return;
+  }
+  FUN_181272630();
+  return;
+}
+
+
+
+## 18119a470
+
+
+undefined8 FUN_18119a470(longlong param_1)
+
+{
+  return *(undefined8 *)(param_1 + 0xe8);
+}
+
+
+
+## scopeRegisterProof
+
+=== GHIDRA SCRIPT EXECUTION ===
+Script: C:\Users\meise\ghidra_scripts\ScopeRegisterProof.java
+Program: PreyDll.dll
+Time: Sun Sep 27 15:36:49 AEST 2026
+
+Found script: C:\Users\meise\ghidra_scripts\ScopeRegisterProof.java
+Size: 331 bytes
+
+Script provider: JavaScriptProvider
+
+--- SCRIPT OUTPUT ---
+From: 182d521b0 To: 181590cc0 Type: DATA Op: 0 DEFAULT
+From: 18158dc6c To: 181590cc0 Type: DATA Op: 1 ANALYSIS
+18158dc6c LEA RAX,[0x181590cc0]
+18158dc73 MOV dword ptr [RBP + -0x28],R12D
+18158dc77 MOV qword ptr [RBP + -0x30],RAX
+18158dc7b MOV RAX,qword ptr [RBX + 0x968]
+18158dc82 TEST RAX,RAX
+18158dc85 JZ 0x18158dc8a
+18158dc87 INC dword ptr [RAX + -0xc]
+18158dc8a MOVUPS XMM0,xmmword ptr [RBP + -0x30]
+18158dc8e MOV RAX,qword ptr [RBX + 0x968]
+18158dc95 LEA RDX,[RBP + -0x20]
+18158dc99 LEA RCX,[RSI + 0x28]
+18158dc9d MOV qword ptr [RBP + -0x20],RAX
+From: 18158dc77 To: 181590cc0 Type: DATA Op: 1 ANALYSIS
+18158dc77 MOV qword ptr [RBP + -0x30],RAX
+18158dc7b MOV RAX,qword ptr [RBX + 0x968]
+18158dc82 TEST RAX,RAX
+18158dc85 JZ 0x18158dc8a
+18158dc87 INC dword ptr [RAX + -0xc]
+18158dc8a MOVUPS XMM0,xmmword ptr [RBP + -0x30]
+18158dc8e MOV RAX,qword ptr [RBX + 0x968]
+18158dc95 LEA RDX,[RBP + -0x20]
+18158dc99 LEA RCX,[RSI + 0x28]
+18158dc9d MOV qword ptr [RBP + -0x20],RAX
+18158dca1 MOVUPS xmmword ptr [RBP + -0x18],XMM0
+18158dca5 CALL 0x18158cdf0
+
+
+=== SCRIPT COMPLETED SUCCESSFULLY ===
+
+## scopeAnchors
+
+=== GHIDRA SCRIPT EXECUTION ===
+Script: C:\Users\meise\ghidra_scripts\ScopeContractAnchors.java
+Program: PreyDll.dll
+Time: Sun Sep 27 15:35:17 AEST 2026
+
+Found script: C:\Users\meise\ghidra_scripts\ScopeContractAnchors.java
+Size: 412 bytes
+
+Script provider: JavaScriptProvider
+
+--- SCRIPT OUTPUT ---
+ANCHOR 18157a55b
+0033d2e8dd07deff488d8ee0080000488bd6e84e2c0100
+ANCHOR 18158d1c0
+48895c2408488974241048897c24184c896424205541564157488bec
+ANCHOR 181709a91
+488d15e8ff7600488d8b68090000e8cc20a7fe488d15e5
+
+
+=== SCRIPT COMPLETED SUCCESSFULLY ===

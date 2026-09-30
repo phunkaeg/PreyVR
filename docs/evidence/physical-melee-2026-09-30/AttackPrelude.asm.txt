@@ -1,0 +1,4 @@
+01692e40 488b05f1395801 mov rax, qword ptr [rip + 0x15839f1]
+01692e47 488b88e00c0000 mov rcx, qword ptr [rax + 0xce0]
+01692e4e 488b01 mov rax, qword ptr [rcx]
+01692e51 48ff6038 jmp qword ptr [rax + 0x38]

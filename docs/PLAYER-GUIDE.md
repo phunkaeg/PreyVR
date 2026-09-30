@@ -20,10 +20,11 @@ The launcher starts Prey, loads the mod, waits for the requested render size, an
 | Right grip | Native use / reload button | Next tab, on release |
 | Left grip | Hold a long weapon's support grip | Previous tab, on release |
 | Triggers | Right: fire | Previous / next page (LT / RT) |
-| Left menu button | Pause | Pause / resume |
+| Left menu button | Tap: pause. Hold: VR options | Tap: pause / resume. Hold: VR options |
 | Both grips + left Y | Reset VR view | Reset and bring the panel in front of you |
 | F11 | Enable VR or retry setup | Enable VR or retry setup |
 | F12 | Reset VR view | Reset and reposition the panel |
+| F10 | — | Open / close VR options |
 
 Release a held stick, trigger, or button after closing a menu before using it in gameplay. This prevents an inventory input from immediately moving, turning, firing, or jumping.
 
@@ -31,7 +32,7 @@ For two-handed aiming, bring your left hand to the weapon's foregrip and squeeze
 the left grip. Keep it squeezed while aiming with both hands; release to return
 smoothly to one hand. A squeeze away from the weapon does nothing. Changing
 weapons, opening a menu or losing tracking requires releasing and grabbing again.
-Use/reload remains on the right grip when the left grip is released. To recenter,
+Use/reload remains on the right grip when the support grip is detached. To recenter,
 hold both grips, then press left Y; F12 also works.
 `aim.twohand 0` disables support aiming; `aim.twohand 1` enables it (default).
 
@@ -40,6 +41,67 @@ To equip a weapon, open inventory with **X**, highlight it with the right stick,
 The Touch profile has been tested in the injected game through xr-sim; physical controller acceptance remains. Index bindings are included: left A/B correspond to X/Y, and **left stick click** opens pause. Other controller profiles do not yet have dedicated mappings. Headset rendering uses OpenXR; the panel fits both runtime eye frusta, including their asymmetry.
 
 ## Comfort settings
+
+### In-headset VR options (integration build)
+
+Hold the **left menu button for about 0.65 seconds**, then release it. In gameplay,
+the mod first requests the native pause menu and waits until it is observed.
+Point at the options panel and pull the trigger, or use the **right stick** to
+select rows and adjust values. **A** changes the selected value, **grips** change
+tabs, and **B** returns to the native menu. Releasing the controls is required
+before they can operate the screen behind it. F10 is a desktop shortcut while a
+native menu is already open; `vr.options 1` is the diagnostic equivalent.
+
+- **Comfort:** snap angle / smooth turning, head-relative movement, smooth-turn
+  speed, and reset VR view.
+- **Hands:** two-hand aim on/off, hold/toggle foregrip, snapped/free support hand,
+  and the optional psychoscope gesture.
+- **Interface:** size, visible-area limit, panel curvature and controls guide.
+- **Equipment:** optional body holsters, wrist status, wrist-card size and clear
+  holster assignments. Both new features default off.
+
+**Holsters:** with a weapon equipped, bring the right controller to your right
+hip or across to your left chest, release grip, then squeeze. An empty slot stores
+that weapon and requests its normal stow animation. Squeeze the same slot again
+to draw it. If its weapon is already equipped, the squeeze stows it. Drawing a
+different slot switches through Prey's native equipment transition. Release
+between actions; drifting into a slot with grip held does nothing. Two-handed
+aiming, menus and recenter take priority. Clear assignments on the Equipment tab
+to bind different weapons; weapons remain in your inventory. Assignments are
+session-local, not saved. This first version uses inferred hip/chest positions,
+not tracked torso/hip hardware, and has no visible holstered weapon props.
+
+**Wrist status (native HUD candidate):** turn the left palm up and look at the wrist.
+The September 28 candidate captures the game's health, psi and suit widgets onto
+a transparent panel, preserving their native artwork and visibility. Size adjusts
+from 80% to 140%. It hides in menus, during two-handed aiming, on tracking loss
+and when looking away. It supplements the forward HUD; reticles, prompts and
+native status widgets remain unchanged. Off by default; implemented and tested
+offline, awaiting in-game and headset verification.
+See [implementation and test details](NATIVE-WRIST-IMPLEMENTATION-2026-09-28.md).
+
+**Toggle foregrip:** squeeze near the foregrip to attach; release the grip button
+and squeeze again to detach. **Free support hand** keeps its visual position on
+the controller while both hands still steer the weapon. Weapon changes, menus,
+tracking loss and recenter invalidate the attachment.
+
+**Psychoscope gesture is off by default.** Once enabled, bring the left hand to
+your forehead, squeeze, and pull down at least about 14 cm. Release before the
+next gesture. A lift from near the eyes requests the same native toggle to put it
+away. Each deliberate stroke requests one toggle; the game retains its unlock,
+cinematic and movement restrictions. This does not add a visible visor prop.
+Gesture feel and native acceptance still need headset testing.
+
+Menu choices save automatically to **`%LOCALAPPDATA%\PreyVR\vr-options.ini`**.
+They take precedence over launcher defaults for the settings listed above.
+To return those settings to launcher defaults, rename that file with Prey closed.
+Resolution, runtime and reference-space selection remain launcher settings.
+
+This batch has offline tests and a production-rendered menu preview, but **has
+not been run in Prey or accepted in a headset**. See
+[implementation and validation](VR-OPTIONS-2026-09-27.md).
+
+### Launcher settings
 
 The launcher saves these options in `PreyVR.json` beside the launcher. Edit the
 existing fields with Prey closed, or pass the corresponding PowerShell parameter

@@ -15,6 +15,11 @@
 #include "UiPointer.h"
 #include "HudLayer.h"
 #include "InventorySwapchain.h"
+#include "VrOptionsRuntime.h"
+#include "VrOptionsPanel.h"
+#include "BodyEquipment.h"
+#include "NativeWristTexture.h"
+#include "AimTakeover.h"
 #include "preyvr/UiPanel.h"
 #include "preyvr/LatestSnapshot.h"
 #include "preyvr/HudCapturePair.h"
@@ -95,6 +100,17 @@ struct Host {
     XrSwapchain hudSwapchain = XR_NULL_HANDLE;
     std::unique_ptr<InventorySwapchain> inventorySwapchain;
     std::unique_ptr<InventorySwapchain> inventoryRightSwapchain;
+    std::unique_ptr<InventorySwapchain> optionsSwapchain;
+    ID3D11Texture2D* optionsTexture=nullptr;
+    std::unique_ptr<InventorySwapchain> wristSwapchain;
+    std::unique_ptr<NativeWristTexture> wristFitter;
+    bool wristVisible=false;
+    DXGI_FORMAT optionsFormat=DXGI_FORMAT_UNKNOWN;
+    std::optional<ui::Panel> optionsPanel;
+    std::uint64_t optionsReference=0;
+    options::Values optionsPainted{};
+    unsigned optionsPage=~0u,optionsRow=~0u;
+    bool optionsReady=false,optionsSaveFailed=false;
     std::vector<XrSwapchainImageD3D11KHR> hudImages;
     D3D11_TEXTURE2D_DESC hudDesc{};
     bool guideReady = false, guideAttempted = false;
@@ -645,6 +661,13 @@ void Teardown()
     SetInventoryConsumerReady(nullptr);
     gHost.inventorySwapchain.reset(); // XR images die before their session.
     gHost.inventoryRightSwapchain.reset();
+    gHost.optionsSwapchain.reset();
+    if(gHost.optionsTexture)gHost.optionsTexture->Release();
+    gHost.wristSwapchain.reset();
+    gHost.wristFitter.reset();
+    ResetNativeWristCapture();
+    ClearHolsters();
+    ResetVrOptionsSession();
     DestroyXrInput();
     ResetHeadTrackingReference();
     gTrackingSpaceType=XR_REFERENCE_SPACE_TYPE_MAX_ENUM;
@@ -1208,6 +1231,8 @@ void ServiceXrFrame(void* renderer)
     ID3D11Texture2D* inventoryRightTexture=nullptr;
     ID3D11Texture2D* inventoryTexture = InventoryLayerTexture(&inventoryRightTexture);
     ID3D11Texture2D* hudTexture = HudLayerTexture();
+    ID3D11Texture2D* nativeWristTexture = NativeWristLayerTexture();
+    RequestNativeWristCapture(false);
     SetInventoryConsumerReady(nullptr);
     if (gStatus.load(std::memory_order_acquire) != static_cast<DWORD>(XrSessionStatus::running)) {
         return; // the hot path
@@ -1722,7 +1747,76 @@ void ServiceXrFrame(void* renderer)
         }
         if(rendered)EnsurePointerTexture();
     }
-    const auto pointer=PublishUiPointer(panelActive&&rendered&&gHost.pointerReady?&surface:nullptr,
+    XrCompositionLayerQuad optionsLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    bool optionsActive=false;
+    if(VrOptionsOpen()&&haveViews&&rendered) {
+        if(!gHost.optionsPanel||gHost.optionsReference!=reference) {
+            std::array<ui::Eye,2> optical{};
+            for(unsigned eye=0;eye<2;++eye) {
+                const auto& p=views[eye].pose;const auto& f=views[eye].fov;
+                optical[eye]={Pose{{p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w},
+                    {p.position.x,p.position.y,p.position.z}},f.angleLeft,f.angleRight,f.angleUp,f.angleDown};
+            }
+            // Independent fit keeps the settings escape hatch readable even if
+            // the wearer makes the game's UI very large or small.
+            gHost.optionsPanel=ui::FitPanel(inputHead,optical,static_cast<float>(options::Width)/options::Height,1.5f,1.f,.68f);
+            gHost.optionsReference=reference;
+        }
+        if(!gHost.optionsTexture) {
+            uint32_t count=0;
+            if(xrEnumerateSwapchainFormats(gHost.session,0,&count,nullptr)==XR_SUCCESS&&count&&count<256) {
+                std::vector<int64_t> formats(count);
+                if(xrEnumerateSwapchainFormats(gHost.session,count,&count,formats.data())==XR_SUCCESS) {
+                    for(auto format:{DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB}) {
+                        if(std::find(formats.begin(),formats.end(),format)!=formats.end()){gHost.optionsFormat=format;break;}
+                    }
+                }
+            }
+            if(gHost.optionsFormat!=DXGI_FORMAT_UNKNOWN) {
+                D3D11_TEXTURE2D_DESC d{};d.Width=options::Width;d.Height=options::Height;
+                d.Format=gHost.optionsFormat;d.SampleDesc.Count=1;d.ArraySize=d.MipLevels=1;d.BindFlags=D3D11_BIND_SHADER_RESOURCE;
+                if(SUCCEEDED(gHost.device->CreateTexture2D(&d,nullptr,&gHost.optionsTexture))) {
+                    gHost.optionsSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
+                        xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
+                        xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
+                    if(!gHost.optionsSwapchain->Prepare(gHost.session,d,gHost.optionsFormat))RequestVrOptions(false);
+                }
+            }
+        }
+        const auto values=VrOptionsValues();const auto optionPage=VrOptionsPage(),optionRow=VrOptionsRow();const bool failed=VrOptionsSaveFailed();
+        if(gHost.optionsTexture&&gHost.optionsSwapchain&&
+           (!gHost.optionsReady||values!=gHost.optionsPainted||optionPage!=gHost.optionsPage||optionRow!=gHost.optionsRow||failed!=gHost.optionsSaveFailed)) {
+            auto pixels=DrawVrOptions(values,optionPage,optionRow,failed);
+            if(gHost.optionsFormat==DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
+                for(size_t n=0;n+3<pixels.size();n+=4)std::swap(pixels[n],pixels[n+2]);
+            ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+            if(context&&!pixels.empty()) {
+                context->UpdateSubresource(gHost.optionsTexture,0,nullptr,pixels.data(),options::Width*4,0);
+                const auto upload=gHost.optionsSwapchain->Copy(context,gHost.optionsTexture);
+                gHost.optionsReady=upload==InventorySwapchain::Upload::ready;
+                if(upload==InventorySwapchain::Upload::sessionFault)gStopRequested.store(true);
+                if(gHost.optionsReady){gHost.optionsPainted=values;gHost.optionsPage=optionPage;gHost.optionsRow=optionRow;gHost.optionsSaveFailed=failed;}
+            }
+            if(context)context->Release();
+        }
+        optionsActive=gHost.optionsReady&&gHost.optionsPanel.has_value();
+        if(optionsActive) {
+            const auto& p=*gHost.optionsPanel;
+            optionsLayer.space=gHost.space;optionsLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+            optionsLayer.pose={{p.pose.orientation.x,p.pose.orientation.y,p.pose.orientation.z,p.pose.orientation.w},
+                {p.pose.position.x,p.pose.position.y,p.pose.position.z}};
+            optionsLayer.size={p.width,p.height};optionsLayer.subImage.swapchain=gHost.optionsSwapchain->Handle();
+            optionsLayer.subImage.imageRect={{0,0},{options::Width,options::Height}};
+            surface={p,0};SetVrOptionsSurface(&surface,reference);EnsurePointerTexture();
+        } else {
+            RequestVrOptions(false);Log("result=refused detail=vr_options_layer native_menu_retained=1");
+        }
+    } else {gHost.optionsPanel.reset();SetVrOptionsSurface(nullptr,reference);}
+    UiPointerVisual pointer;
+    if(optionsActive) {
+        PublishUiPointer(nullptr,0,0,0);
+        if(gHost.pointerReady)pointer=OptionsPointer(surface);
+    } else pointer=PublishUiPointer(panelActive&&rendered&&gHost.pointerReady&&!VrOptionsInputOwned()?&surface:nullptr,
         gHost.width,gHost.height,gHost.surfaceSerial);
     XrCompositionLayerQuad cursorLayer{XR_TYPE_COMPOSITION_LAYER_QUAD},beamLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
     const bool cursorActive=pointer.active&&pointer.hit&&pointer.hit->inside;
@@ -1839,15 +1933,64 @@ void ServiceXrFrame(void* renderer)
         }
     }
     if(!hudActive)SetHudLayerPresentation(false);
+    XrCompositionLayerQuad wristLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    bool wristActive=false;
+    TrackingFrame wristFrame{};
+    const bool wristInput=WristDisplayEnabled()&&haveViews&&rendered&&!panelActive&&!optionsActive&&
+        HudGameplayInputAllowed()&&!TwoHandedAimHeld()&&!(reference&1)&&
+        TryGetTrackingFrame(wristFrame)&&wristFrame.displayTime==frameState.predictedDisplayTime&&
+        FreshSample(MonotonicNanoseconds(),wristFrame.publishedNs)&&
+        IsPoseUsable(wristFrame.head,wristFrame.headValidity,200000000)&&
+        IsPoseUsable(wristFrame.hands[0].gripPose,wristFrame.hands[0].gripValidity,200000000);
+    const auto wristPose=equipment::WristPose(wristFrame.hands[0].gripPose);
+    gHost.wristVisible=wristInput&&equipment::WristVisible(wristFrame.head,wristPose,gHost.wristVisible);
+    RequestNativeWristCapture(gHost.wristVisible);
+    if(gHost.wristVisible){
+        if(nativeWristTexture){
+            if(!gHost.wristFitter)gHost.wristFitter=std::make_unique<NativeWristTexture>();
+            ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+            if(auto fitted=gHost.wristFitter->Fit(context,nativeWristTexture)){
+                if(!gHost.wristSwapchain)gHost.wristSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
+                    xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
+                    xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
+                D3D11_TEXTURE2D_DESC d{};fitted->GetDesc(&d);
+                // GPU fitting swizzles BGRA to RGBA, but preserves encoded colour
+                // values and premultiplication. Inherit the main XR interpretation.
+                const auto format=gHost.colorFormat==DXGI_FORMAT_R8G8B8A8_UNORM_SRGB||
+                    gHost.colorFormat==DXGI_FORMAT_B8G8R8A8_UNORM_SRGB?
+                    DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:DXGI_FORMAT_R8G8B8A8_UNORM;
+                if(gHost.wristSwapchain->Prepare(gHost.session,d,format)){
+                    const auto result=gHost.wristSwapchain->Copy(context,fitted);
+                    wristActive=result==InventorySwapchain::Upload::ready;
+                    if(result==InventorySwapchain::Upload::sessionFault)gStopRequested.store(true);
+                }
+            }
+            if(context)context->Release();
+        }
+        wristActive=wristActive&&reference==HeadTrackingReferenceGeneration();
+        if(wristActive){
+            const auto& p=wristPose;
+            wristLayer.space=gHost.space;wristLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+            wristLayer.layerFlags=XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+            wristLayer.pose={{p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w},
+                {p.position.x,p.position.y,p.position.z}};
+            const float width=.18f*WristSizePercent()*.01f;
+            wristLayer.size={width,width*NativeWristHeight/NativeWristWidth};
+            wristLayer.subImage.swapchain=gHost.wristSwapchain->Handle();
+            wristLayer.subImage.imageRect={{0,0},{NativeWristWidth,NativeWristHeight}};
+        }
+    }
     std::vector<const XrCompositionLayerBaseHeader*> layers;
-    if(panelActive)layers.push_back(surface.angle>0?reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cylinderLayer):
+    if(optionsActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&optionsLayer));
+    else if(panelActive)layers.push_back(surface.angle>0?reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cylinderLayer):
         reinterpret_cast<const XrCompositionLayerBaseHeader*>(&panelLayer));
     else layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&layer));
-    if(inventoryStereoSubmitted)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&rightPanelLayer));
-    if(guideActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&guideLayer));
-    else if(hudActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hudLayer));
+    if(!optionsActive&&inventoryStereoSubmitted)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&rightPanelLayer));
+    if(!optionsActive&&guideActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&guideLayer));
+    else if(!optionsActive&&hudActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hudLayer));
     if(beamActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&beamLayer));
     if(cursorActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cursorLayer));
+    if(wristActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&wristLayer));
 
     XrFrameEndInfo endInfo{XR_TYPE_FRAME_END_INFO};
     endInfo.displayTime = frameState.predictedDisplayTime;
@@ -1874,6 +2017,7 @@ void ServiceXrFrame(void* renderer)
     PublishResolution();
 
     if (rendered && XR_SUCCEEDED(endResult)) {
+        if(wristActive)RecordWristLayerFrame();
         if (inventorySubmitted) {
             if (gInventoryLayerFrames.fetch_add(1)==0)
                 Log("result=0 detail=first_inventory_layer_submitted separate_swapchain=1 array_size=1 world_copy=0");
@@ -1919,6 +2063,7 @@ DWORD SetUiCurveDegrees(unsigned int degrees) {
     if(degrees>60)return ERROR_INVALID_PARAMETER;
     gUiCurveDegrees.store(degrees);return 0;
 }
+unsigned UiCurveDegrees(){return gUiCurveDegrees.load();}
 unsigned int UiPanelMode() { return gUiPanelMode.load(); }
 unsigned long long UiPanelFrameCount() { return gUiPanelFrames.load(); }
 unsigned long long InventoryLayerFrameCount() { return gInventoryLayerFrames.load(); }

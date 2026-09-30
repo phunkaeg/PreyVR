@@ -15,7 +15,7 @@ std::vector<std::uint8_t> MakeMenuGuide() {
     const auto brush=CreateSolidBrush(RGB(17,23,32));
     FillRect(dc,&area,brush);DeleteObject(brush);
     SetBkMode(dc,TRANSPARENT);
-    const auto font=CreateFontW(-30,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+    const auto font=CreateFontW(-26,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,ANTIALIASED_QUALITY,DEFAULT_PITCH,L"Segoe UI");
     const auto oldFont=SelectObject(dc,font);
     SetTextColor(dc,RGB(143,218,248));
@@ -24,8 +24,10 @@ std::vector<std::uint8_t> MakeMenuGuide() {
     SetTextColor(dc,RGB(240,244,248));
     const wchar_t* line1=L"Point + trigger: click / drag   A: select   B: back";
     const wchar_t* line2=L"Stick: navigate   Grips: tabs   Grips + Y: reset view";
-    TextOutW(dc,30,57,line1,lstrlenW(line1));
-    TextOutW(dc,30,103,line2,lstrlenW(line2));
+    const wchar_t* line3=L"Hold left menu: VR options   Tap left menu: pause / resume";
+    TextOutW(dc,30,51,line1,lstrlenW(line1));
+    TextOutW(dc,30,85,line2,lstrlenW(line2));
+    TextOutW(dc,30,119,line3,lstrlenW(line3));
     GdiFlush();
     std::vector<std::uint8_t> result(kGuideWidth*kGuideHeight*4);
     std::memcpy(result.data(),pixels,result.size());

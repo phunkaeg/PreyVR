@@ -5,3 +5,38 @@ docs/evidence/integration-contract-20260916/** -text
 # Preserve frozen comfort-control evidence hashes across Windows checkouts.
 docs/COMFORT-CONTROLS-2026-09-19.md -text
 docs/evidence/comfort-controls-20260919/** -text
+
+# Keep the static scope receipt reproducible across Windows checkouts.
+docs/evidence/vr-options-2026-09-27/** -text
+include/preyvr/PsychoscopeNative.h text eol=lf
+tools/re/verify_psychoscope.py text eol=lf
+receipts/20260927-psychoscope-static.json -text
+docs/evidence/body-equipment-2026-09-27/** text eol=lf
+include/preyvr/EquipmentNative.h text eol=lf
+tools/re/verify_body_equipment.py text eol=lf
+receipts/20260927-equipment-static.json text eol=lf
+
+# Offline native HUD extraction evidence and reproducible tools.
+tools/re/extract_native_hud.py text eol=lf
+tools/re/map_native_hud.py text eol=lf
+tests/test_extract_native_hud.py text eol=lf
+docs/evidence/native-hud-2026-09-27/** text eol=lf
+receipts/20260927-native-hud-extraction.json text eol=lf
+
+# Native wrist implementation receipts use stable bytes across checkouts.
+include/preyvr/NativeHudIsolation.h text eol=lf
+include/preyvr/NativeWristNative.h text eol=lf
+src/dll/NativeHudValue.h text eol=lf
+src/dll/NativeWristTexture.h text eol=lf
+src/dll/NativeWristTexture.cpp text eol=lf
+tests/NativeWristTests.cpp text eol=lf
+tools/re/verify_native_wrist.py text eol=lf
+docs/evidence/native-wrist-2026-09-28/** text eol=lf
+receipts/20260928-native-wrist-candidate.json text eol=lf
+
+# Frozen physical-contact evidence must survive Windows checkout unchanged.
+docs/PHYSICAL-MELEE-2026-09-30.md -text
+docs/evidence/physical-melee-2026-09-30/** -text
+receipts/20260930-physical-melee-static.json text eol=lf
+include/preyvr/PhysicalNative.h text eol=lf
+tools/re/verify_physical_interactions.py text eol=lf
