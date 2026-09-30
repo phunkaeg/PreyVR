@@ -2,7 +2,7 @@
 #include "preyvr/LatestSnapshot.h"
 #include <algorithm>
 namespace preyvr::haptics {
-enum class Event { MenuChange, ForegripAttached };
+enum class Event { MenuChange, ForegripAttached, WeaponContact };
 struct Request {
     Event event=Event::MenuChange;
     std::uint64_t serial=0,epoch=0,reference=0,stamp=0,generation=0;
@@ -18,8 +18,8 @@ public:
            !FreshSample(now,r.stamp,100000000)||
            (last_&&now>=last_&&now-last_<40000000))return {};
         last_=now;
-        const float amplitude=r.event==Event::ForegripAttached?.45f:.25f;
-        return {amplitude*std::min(strength,100u)*.01f,r.event==Event::ForegripAttached?35000000:18000000};
+        const float amplitude=r.event==Event::WeaponContact?.55f:r.event==Event::ForegripAttached?.45f:.25f;
+        return {amplitude*std::min(strength,100u)*.01f,r.event==Event::MenuChange?18000000:35000000};
     }
     void Reset(){*this={};}
 private:

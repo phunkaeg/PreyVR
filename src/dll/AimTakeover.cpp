@@ -1,5 +1,6 @@
 #include "AimTakeover.h"
 #include "SceneQuery.h"
+#include "PhysicalInteractions.h"
 #include "Haptics.h"
 #include "BodyEquipment.h"
 #include "Psychoscope.h"
@@ -296,6 +297,7 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     gGameplayFrame.Publish(frame);
     UpdatePsychoscopeGesture(frame,haveTracking&&gEnabled.load());
     UpdateBodyEquipment(frame,haveTracking&&gEnabled.load());
+    UpdatePhysicalInteractions(frame,haveTracking&&gEnabled.load());
     if (!haveTracking) { gRejNoPose.fetch_add(1); return; }
     // A frame whose play-space yaw is unknown cannot aim, and must not silently
     // aim with the camera-relative yaw the body-yaw mode exists to replace.

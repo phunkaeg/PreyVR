@@ -21,7 +21,8 @@ bool Gate(std::uintptr_t base){
     }
     return true;
 }
-DWORD Query(const GameplayPoseFrame& frame,aim::Sample& sample){
+DWORD Query(const GameplayPoseFrame& frame,Vec3 origin,Vec3 direction,float range,scene::Hit& hit){
+    hit={};hit.distance=-1;
     __try {
         if(InputDrainThreadId()==0||InputDrainThreadId()!=GetCurrentThreadId())return ERROR_INVALID_THREAD_ID;
         const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
@@ -42,15 +43,14 @@ DWORD Query(const GameplayPoseFrame& frame,aim::Sample& sample){
         const auto table=*reinterpret_cast<const std::uintptr_t*>(world);
         if(table!=base+scene::native::WorldVtable||*reinterpret_cast<const std::uintptr_t*>(table+0x118)!=base+scene::native::Query)
             return ERROR_INVALID_ADDRESS;
-        scene::Hit hit{};scene::Params params{};
-        if(!scene::Build(params,sample.origin,sample.direction,hit,skip,1))return ERROR_INVALID_DATA;
+        scene::Params params{};
+        if(!scene::Build(params,origin,direction,hit,skip,1,range))return ERROR_INVALID_DATA;
         // Synchronous flags only. Stack skip/hit storage cannot escape. Native
         // caller=4 acquires the physics caller lock; never call from render/XR.
         using Ray=int(__fastcall*)(std::uintptr_t,const scene::Params*,const char*,int);
         const int count=reinterpret_cast<Ray>(base+scene::native::Query)(world,&params,"RayWorldIntersection(PreyVR)",4);
-        if(count==0){++misses;return ERROR_SUCCESS;}
-        sample.sceneDistance=scene::Distance(count,hit);
-        if(sample.sceneDistance<0)return ERROR_INVALID_DATA;
+        if(count==0){hit={};hit.distance=-1;++misses;return ERROR_SUCCESS;}
+        if(scene::Distance(count,hit)<0||hit.distance>range+.001f)return ERROR_INVALID_DATA;
         ++hits;return ERROR_SUCCESS;
     }__except(EXCEPTION_EXECUTE_HANDLER){return GetExceptionCode();}
 }
@@ -62,13 +62,28 @@ void QueryAimScene(const GameplayPoseFrame& frame,aim::Sample& sample){
        frame.referenceGeneration!=HeadTrackingReferenceGeneration()){++refused;return;}
     thread_local bool busy=false;
     if(busy){++refused;return;}
-    busy=true;const auto result=Query(frame,sample);busy=false;
+    scene::Hit hit{};
+    busy=true;const auto result=Query(frame,sample.origin,sample.direction,scene::Range,hit);busy=false;
+    sample.sceneDistance=hit.distance;
     lastError=result;
     if(result){sample.sceneDistance=-1;++refused;
         // Transient lack of player/physics or wrong thread can recover. Bad ABI,
         // malformed output or access faults remain disarmed for this process.
         if(result!=ERROR_NOT_READY&&result!=ERROR_INVALID_THREAD_ID)fault=true;
     }
+}
+bool QueryPhysicalSegment(const GameplayPoseFrame& frame,Vec3 origin,Vec3 delta,scene::Hit& hit){
+    hit={};hit.distance=-1;
+    const float length=std::sqrt(delta.x*delta.x+delta.y*delta.y+delta.z*delta.z);
+    if(fault.load()||!std::isfinite(length)||length<.001f||length>.501f||!HudGameplayInputAllowed()||
+       !FreshSample(MonotonicNanoseconds(),frame.tracking.publishedNs,100000000)||
+       frame.referenceGeneration!=HeadTrackingReferenceGeneration())return false;
+    const auto result=Query(frame,origin,{delta.x/length,delta.y/length,delta.z/length},length,hit);
+    if(result){lastError=result;++refused;
+        if(result!=ERROR_NOT_READY&&result!=ERROR_INVALID_THREAD_ID)fault=true;
+        hit={};hit.distance=-1;
+    }
+    return result==ERROR_SUCCESS;
 }
 void SetSceneReticle(unsigned on){enabled=on!=0;}
 unsigned SceneReticleEnabled(){return enabled.load()?1u:0u;}

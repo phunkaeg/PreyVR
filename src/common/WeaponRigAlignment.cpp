@@ -250,6 +250,38 @@ bool SolveWrist(const Quaternion& characterWorld, const Quaternion& aimWorld,
     return true;
 }
 
+bool ReadContactGeometry(const Memory& memory,std::uintptr_t base,const RigIdentity& owner,
+                         std::uintptr_t absolute,unsigned count,int wristJoint,ContactGeometry& out)
+{
+    out={};Basis basis{};
+    if(ReadBasis(memory,base,owner,absolute,count,wristJoint,basis)!=Status::ready)return false;
+    const Reader r{memory};
+    std::uintptr_t skeleton=0,bindArray=0,weaponCharacter=0;
+    Pose wrist{},socket{},bind{},authored{},relative{},extra{};
+    std::uint32_t flags=0;
+    auto finite=[](Vec3 v){return std::isfinite(v.x)&&std::isfinite(v.y)&&std::isfinite(v.z);};
+    auto pose=[&](std::uintptr_t p,std::size_t offset,Pose& value){
+        return r.Get(p,offset,value)&&ValidQ(value.orientation)&&finite(value.position);
+    };
+    auto inverse=[](Pose p){const auto q=Inverse(p.orientation);return Pose{q,Rotate(q,{-p.position.x,-p.position.y,-p.position.z})};};
+    if(!r.Get(owner.character,0x10,skeleton)||!r.Get(skeleton,0x30,bindArray)||
+       !pose(absolute,wristJoint*0x1Cull,wrist)||!pose(absolute,basis.socketJoint*0x1Cull,socket)||
+       !pose(bindArray,basis.socketJoint*0x1Cull,bind)||!pose(owner.attachment,0x114,authored)||
+       !r.Rotation(owner.attachment,0x14c,extra.orientation)||!r.Get(owner.attachment,8,flags))return false;
+    relative=Compose(inverse(bind),authored);
+    if((flags&0x4000u)&&!pose(owner.attachment,0xf8,relative))return false;
+    ContactGeometry candidate{};
+    candidate.weaponInWrist=Compose(Compose(Compose(inverse(wrist),socket),relative),extra);
+    if(!r.Get(owner.binding,8,weaponCharacter)||!r.Is(weaponCharacter,base+kCharacterVtable)||
+       !r.Get(weaponCharacter,0x9f0,candidate.minimum)||!r.Get(weaponCharacter,0x9fc,candidate.maximum))return false;
+    const auto lo=candidate.minimum,hi=candidate.maximum;
+    if(!finite(lo)||!finite(hi)||lo.x>hi.x||lo.y>hi.y||lo.z>hi.z)return false;
+    const float extent=std::sqrt((hi.x-lo.x)*(hi.x-lo.x)+(hi.y-lo.y)*(hi.y-lo.y)+(hi.z-lo.z)*(hi.z-lo.z));
+    if(extent<.03f||extent>1.8f||std::fabs(lo.x)>2||std::fabs(lo.y)>2||std::fabs(lo.z)>2||
+       std::fabs(hi.x)>2||std::fabs(hi.y)>2||std::fabs(hi.z)>2)return false;
+    candidate.wrench=basis.source==Source::wrenchModel;out=candidate;return true;
+}
+
 const char* SourceName(Source source)
 {
     switch (source) {

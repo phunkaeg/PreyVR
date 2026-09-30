@@ -19,6 +19,7 @@
 #include "RenderFrame.h"
 #include "ReticleFollow.h"
 #include "SceneQuery.h"
+#include "PhysicalInteractions.h"
 #include "Haptics.h"
 #include "HudBridge.h"
 #include "HudLayer.h"
@@ -589,6 +590,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         }
         out << "console result=" << result
             << " command=\"" << command << "\"";
+    } else if (verb == "physical") {
+        out<<"physical"<<PhysicalInteractionsReport();
     } else if (verb == "aim.scene") {
         if(args.size()>1)SetSceneReticle(arg(1,0));
         out<<"aim.scene"<<SceneQueryReport();
