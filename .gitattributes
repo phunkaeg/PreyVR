@@ -40,3 +40,18 @@ docs/evidence/physical-melee-2026-09-30/** -text
 receipts/20260930-physical-melee-static.json text eol=lf
 include/preyvr/PhysicalNative.h text eol=lf
 tools/re/verify_physical_interactions.py text eol=lf
+
+# Keep this static/harness receipt's frozen evidence byte-stable on Windows.
+docs/PSI-MEDKIT-2026-09-30.md -text
+docs/evidence/psi-medkit-2026-09-30/** -text
+receipts/20260930-psi-medkit-static.json -text whitespace=cr-at-eol
+include/preyvr/PsiMedkitNative.h text eol=lf
+src/dll/PsiMedkit.cpp text eol=lf
+tests/PsiMedkitRuntimeTests.cpp text eol=lf
+tools/re/verify_psi_medkit.py text eol=lf
+# Ghidra's exact text includes spaces on blank lines and a final blank line.
+docs/evidence/psi-medkit-2026-09-30/steam-decompiles.txt whitespace=-blank-at-eol,-blank-at-eof
+docs/evidence/psi-medkit-2026-09-30/steam-candidate.txt whitespace=-blank-at-eol,-blank-at-eof
+# Native Windows build/test logs keep their original CRLF bytes.
+docs/evidence/psi-medkit-2026-09-30/build-release.txt whitespace=cr-at-eol
+docs/evidence/psi-medkit-2026-09-30/ctest-release.txt whitespace=cr-at-eol

@@ -27,7 +27,9 @@ constexpr Spec specs[]={
  {"physical_melee",L"PHYSICAL WRENCH (EXPERIMENTAL)",L"Swing the wrench to strike. Native stamina and attack recovery still apply.",0,0,1,1},
  {"physical_contacts",L"OBJECT NUDGES (EXPERIMENTAL)",L"Tap movable objects with weapon bounds. Does not stop your weapon at walls.",0,0,1,1},
  {"swing_speed",L"MINIMUM SWING SPEED",L"Higher values require faster swings. Rest briefly between strikes.",120,80,250,10},
- {"contact_strength",L"OBJECT NUDGE STRENGTH",L"Scales gentle object impulses. Wrench damage uses the game's rules.",50,0,100,10}
+ {"contact_strength",L"OBJECT NUDGE STRENGTH",L"Scales gentle object impulses. Wrench damage uses the game's rules.",50,0,100,10},
+ {"psi_target",L"PSYCHIC TARGETING",L"Head or left controller: hold left trigger to aim the equipped power; release to cast. Original keeps native controls.",0,0,2,1},
+ {"medkit_slot",L"LEFT-HIP MEDKIT SLOT",L"Squeeze left grip at left hip, then press left trigger while holding grip. One medkit per grab; native use rules apply.",0,0,1,1}
 };
 }
 const Spec& Describe(unsigned id){return specs[id<Count?id:0];}
@@ -61,11 +63,12 @@ bool Parse(std::string_view text,Values& result){
  result=parsed;return true;
 }
 int Item(unsigned page,unsigned row){
- constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,-1},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength}};
+ constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,-1},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,-2,-2}};
  return page<Pages&&row<Rows?items[page][row]:-2;
 }
-const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL"};return names[p%Pages];}
+const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES"};return names[p%Pages];}
 std::wstring Display(unsigned id,int v){
+ if(id==PsiTarget)return v==1?L"HEAD":v==2?L"LEFT CONTROLLER":L"ORIGINAL";
  if(id==SwingSpeed)return std::to_wstring(v)+L" CM/S";
  if(id==ContactStrength)return std::to_wstring(v)+L"%";
  if(id==Turn)return v?std::to_wstring(v)+L" DEGREES":L"SMOOTH";
@@ -131,9 +134,10 @@ Change Menu::Update(const Input& i){
  const int moveY=y&&stickY_==0?y:0,moveX=x&&stickX_==0?x:0;
  if(std::fabs(i.x)<.25f)stickX_=0;else if(x)stickX_=x;
  if(std::fabs(i.y)<.25f)stickY_=0;else if(y)stickY_=y;
- if(moveY)row=(row+(moveY>0?Rows-1:1))%Rows;
- if(click&&i.hover>=0&&i.hover<4)row=static_cast<unsigned>(i.hover);
- if(moveX||accept||(click&&i.hover>=0&&i.hover<4)){
+ if(moveY){do{row=(row+(moveY>0?Rows-1:1))%Rows;}while(Item(page,row)==-2);}
+ const bool rowClick=click&&i.hover>=0&&i.hover<static_cast<int>(Rows)&&Item(page,static_cast<unsigned>(i.hover))!=-2;
+ if(rowClick)row=static_cast<unsigned>(i.hover);
+ if(moveX||accept||rowClick){
   out.setting=Item(page,row);out.direction=moveX?moveX:((click&&i.decrease)?-1:1);out.recenter=out.setting==-1;out.clearHolsters=out.setting==-3;
  }
  return out;

@@ -20,6 +20,7 @@
 #include "ReticleFollow.h"
 #include "SceneQuery.h"
 #include "PhysicalInteractions.h"
+#include "PsiMedkit.h"
 #include "Haptics.h"
 #include "HudBridge.h"
 #include "HudLayer.h"
@@ -590,6 +591,12 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         }
         out << "console result=" << result
             << " command=\"" << command << "\"";
+    } else if (verb == "psi.target") {
+        const auto result=args.size()>1?SetPsiTargetMode(arg(1,0)):0;
+        out<<"psi.target result="<<result<<PsiMedkitReport();
+    } else if (verb == "medkit.slot") {
+        const auto result=args.size()>1?SetMedkitSlot(arg(1,0)):0;
+        out<<"medkit.slot result="<<result<<PsiMedkitReport();
     } else if (verb == "physical") {
         out<<"physical"<<PhysicalInteractionsReport();
     } else if (verb == "aim.scene") {

@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20260930-psi-medkit-static",
+  "recorded_at": "2026-09-30T11:45:39.760283+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll x64, image base 0x180000000",
+    "identity_kind": "sha256",
+    "identity": "7D6E322F61B28331095A400F0BA5F09BD9A39C57BF993602285DD6ACB05311A7"
+  },
+  "question": "Can head/left psychic targeting and a medkit body slot reuse native target/use policy without writing the shared camera or healing manually?",
+  "claim": "Steam area and individual psi targeting read the 24-byte IArkPlayer reticle getter; scoped output replacement can separate psi aim from the weapon cache. The individual HUD-preferred candidate bypasses its angle test and must use the ordinary angle test in the VR scope. The native medkit helper resolves a 64-bit medkit archetype and ConsumeItem performs native inventory lookup, CanConsume and UseFromInventory, returning absent/refused/use-invoked outcomes.",
+  "evidence_grade": "STATIC",
+  "environment": "static",
+  "method": "EGS symbols were correspondence leads only. Explicit /Prey/PreyDll.dll Steam Ghidra target; memory getter cross-check; Python 3.12 read-only verify_psi_medkit.py proves exact SHA, x64, 18 whole bodies including split unwind spans, absence of relocations, 54 mutation controls, vtable/getter/candidate and native transaction witnesses. MSVC 2026 Release and CTest production-mock adapters are separate offline harness evidence. Reproduce: python -E -B tools/re/verify_psi_medkit.py; cmake --build build/psi-medkit --config Release; ctest --test-dir build/psi-medkit -C Release --output-on-failure.",
+  "validity": "VALID",
+  "mutation": "persistent",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Exact supported Steam DLL SHA-256, x64 PE and explicit Ghidra program metadata recorded."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Ghidra getter bytes agree with disk; verifier finds all 18 nonempty native bodies and exact call/field/string witnesses."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "54 byte-mutation refusals; offline production tests cover native/default path, wrong receiver/thread, stale and changed reference/menu owner, cancellation and disabled transaction."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Static/offline task; no process or headset scene was launched."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "No native binary/process mutation. Persistent feature source edits are tracked on codex/psi-medkit with offline baseline checks."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Release DLL build and all 56 offline CTest cases passed. No game execution or headset baseline was measured; this pass does not approve native/headset quality."
+  },
+  "limits": "Static native flow and offline mocked dispatch only. No Prey run, MinHook installation in the game, native power/medkit acceptance, full power coverage, performance or headset testing. Native mimic-grab target policy remains. Input feel, torso slot fit and native visual feedback remain acceptance work.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/psi-medkit-2026-09-30/steam-contracts.json",
+      "sha256": "ef6627f5eec3152c617f1ae989f0d7ee13e9238cea5eef565f70824f00f10583",
+      "role": "read-only Steam ABI witnesses and mutation controls"
+    },
+    {
+      "path": "docs/evidence/psi-medkit-2026-09-30/steam-decompiles.txt",
+      "sha256": "595292bcd1e4c4122728457ad9971e104a4d1c8f9c17f28f0996561dcf5e408f",
+      "role": "native Steam target and transaction decompiles"
+    },
+    {
+      "path": "docs/evidence/psi-medkit-2026-09-30/steam-candidate.txt",
+      "sha256": "936676daec6c3fb7d850769e13c80f79a82d9b666ee7c4486299ed04cc80f56c",
+      "role": "HUD-preferred angular bypass"
+    },
+    {
+      "path": "docs/evidence/psi-medkit-2026-09-30/ghidra-program.json",
+      "sha256": "61504e70bca46d01d1487e48de0b396e8f4f1df2ec195ab74ffcce635be3d058",
+      "role": "explicit loaded program identity"
+    },
+    {
+      "path": "docs/evidence/psi-medkit-2026-09-30/validation.txt",
+      "sha256": "7f74a9bade791a7e3ed49608996b878a54bf58f1e4182e9d7715264230e406a0",
+      "role": "offline build/CTest artifact summary"
+    },
+    {
+      "path": "docs/evidence/psi-medkit-2026-09-30/ctest-release.txt",
+      "sha256": "323878183e9301049ca521f94c50fa87fe0e8e9e382d4ea90a1e62f93ad04f9a",
+      "role": "offline full CTest results"
+    },
+    {
+      "path": "include/preyvr/PsiMedkitNative.h",
+      "sha256": "115d39d0d7b07f70895554ff2c2765f1d2c73e3585de6ac44341c30b491b7868",
+      "role": "whole-body byte contracts used before installing"
+    },
+    {
+      "path": "src/dll/PsiMedkit.cpp",
+      "sha256": "75991cf25a6dba9961dd5be06a3e5ab95d77204d5206b8e1ae5b41c85f13b446",
+      "role": "production scoped native adapter"
+    },
+    {
+      "path": "tests/PsiMedkitRuntimeTests.cpp",
+      "sha256": "3e2e03cd191daa1077fa197c19455fd2052a902fc53a666146bc37215ba0de26",
+      "role": "production dispatch harness and controls"
+    },
+    {
+      "path": "docs/PSI-MEDKIT-2026-09-30.md",
+      "sha256": "454492d45a23b4a40d5c9de7472b94f802b9ed084d5bb5cafbc758dfb7593e96",
+      "role": "implementation, limits and remaining acceptance"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Run the bounded headset checks in docs/PSI-MEDKIT-2026-09-30.md when runtime testing is authorized; consider a fleet input/consumer note on scoping getter outputs and auditing preferred-target angle bypasses. Do not promote harness results to in-game evidence."
+}

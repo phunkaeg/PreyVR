@@ -139,6 +139,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
     add_library(preyvr SHARED
         src/dll/AimRayProbe.cpp
         src/dll/AimTakeover.cpp
+        src/dll/PsiMedkit.cpp
         src/dll/AnimIkTakeover.cpp
         src/dll/Bootstrap.cpp
         src/dll/VrMode.cpp
@@ -391,6 +392,10 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_physical_interactions_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_physical_interactions_tests)
     add_test(NAME physical_interactions COMMAND preyvr_physical_interactions_tests)
+    add_executable(preyvr_psi_medkit_tests tests/PsiMedkitTests.cpp)
+    target_link_libraries(preyvr_psi_medkit_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_psi_medkit_tests)
+    add_test(NAME psi_medkit_contracts COMMAND preyvr_psi_medkit_tests)
 
     add_executable(preyvr_frustum_coverage_tests tests/FrustumCoverageTests.cpp)
     target_link_libraries(preyvr_frustum_coverage_tests PRIVATE preyvr_core)
@@ -482,6 +487,11 @@ if(PREYVR_BUILD_TESTS)
     add_test(NAME runtime_bootstrap COMMAND preyvr_runtime_bootstrap_tests)
 
     if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
+        add_executable(preyvr_psi_medkit_runtime_tests tests/PsiMedkitRuntimeTests.cpp)
+        target_compile_definitions(preyvr_psi_medkit_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        target_link_libraries(preyvr_psi_medkit_runtime_tests PRIVATE preyvr_core minhook)
+        preyvr_enable_warnings(preyvr_psi_medkit_runtime_tests)
+        add_test(NAME psi_medkit_runtime COMMAND preyvr_psi_medkit_runtime_tests)
         add_executable(preyvr_physical_runtime_tests tests/PhysicalRuntimeTests.cpp)
         target_include_directories(preyvr_physical_runtime_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
         target_compile_definitions(preyvr_physical_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)

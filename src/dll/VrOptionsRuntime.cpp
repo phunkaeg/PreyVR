@@ -1,6 +1,7 @@
 #include "VrOptionsRuntime.h"
 #include "SceneQuery.h"
 #include "PhysicalInteractions.h"
+#include "PsiMedkit.h"
 #include "Haptics.h"
 #include "ReticleFollow.h"
 #include "AimTakeover.h"
@@ -39,6 +40,8 @@ std::filesystem::path SettingsPath(){
 }
 void Apply(unsigned id,int v){
  switch(id){
+ case options::PsiTarget:SetPsiTargetMode(v);break;
+ case options::Medkit:SetMedkitSlot(v);break;
  case options::PhysicalMelee:SetPhysicalMelee(v);break;
  case options::PhysicalContacts:SetPhysicalContacts(v);break;
  case options::SwingSpeed:SetSwingSpeed(v);break;
@@ -76,6 +79,7 @@ void Save(){
 }
 options::Values VrOptionsValues(){
  auto v=options::Defaults();
+ v[options::PsiTarget]=PsiTargetMode();v[options::Medkit]=MedkitSlotEnabled();
  v[options::PhysicalMelee]=PhysicalMeleeEnabled();v[options::PhysicalContacts]=PhysicalContactsEnabled();
  v[options::SwingSpeed]=SwingSpeed();v[options::ContactStrength]=ContactStrength();
  v[options::SceneReticle]=SceneReticleEnabled();

@@ -4,6 +4,7 @@
 #include "Haptics.h"
 #include "BodyEquipment.h"
 #include "Psychoscope.h"
+#include "PsiMedkit.h"
 #include "WeaponAttachment.h"
 #include "preyvr/AnimIk.h"
 #include "MinHookInit.h"
@@ -132,7 +133,7 @@ void SolveTwoHandedFrame(GameplayPoseFrame& frame, bool tracking)
         FreshSample(now,geometry.publishedNs);
     if(region) { input.region=geometry.region;input.visualPrimaryOffset=geometry.primaryOffsetWorld; }
     gTwoHandRegionReady.store(region);
-    input.usable=region&&tracking&&frame.headYawUsable&&frame.cameraCentreValid&&
+    input.usable=region&&tracking&&!MedkitOwnsGrip()&&frame.headYawUsable&&frame.cameraCentreValid&&
         gEnabled.load()&&gTwoHandEnabled.load()&&HudGameplayInputAllowed()&&
         IsPoseUsable(right.aimPose,right.aimValidity,200000000ull)&&
         IsPoseUsable(right.gripPose,right.gripValidity,200000000ull)&&
@@ -295,6 +296,7 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     SolveTwoHandedFrame(frame,haveTracking);
     frame.publishedNs = MonotonicNanoseconds();
     gGameplayFrame.Publish(frame);
+    UpdatePsiMedkit(frame,haveTracking&&gEnabled.load());
     UpdatePsychoscopeGesture(frame,haveTracking&&gEnabled.load());
     UpdateBodyEquipment(frame,haveTracking&&gEnabled.load());
     UpdatePhysicalInteractions(frame,haveTracking&&gEnabled.load());

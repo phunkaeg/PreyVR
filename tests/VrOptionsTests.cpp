@@ -61,6 +61,12 @@ void SettingsChecks(){
  Check(Defaults()[Holsters]==0&&Defaults()[Wrist]==0,"equipment features opt in");
  Check(Parse("version=1\nturn=45\n",parsed)&&parsed[Holsters]==0&&parsed[WristSize]==100,"old settings upgrade safely");
  Check(Item(3,0)==Holsters&&Item(3,1)==Wrist&&Item(3,3)==-3,"equipment page layout");
+ Check(Defaults()[PsiTarget]==0&&Defaults()[Medkit]==0,"abilities preserve original behavior by default");
+ Check(Valid(PsiTarget,2)&&!Valid(PsiTarget,3)&&!Valid(Medkit,2),"ability ranges");
+ Menu abilities;Input ai=Base();Open(abilities,ai);abilities.page=6;abilities.row=1;
+ ai.y=-1;abilities.Update(ai);Check(abilities.row==0,"navigation skips empty ability rows");
+ ai.y=0;abilities.Update(ai);ai.y=1;abilities.Update(ai);Check(abilities.row==1,"reverse navigation skips empty rows");
+ ai.y=0;ai.trigger=true;ai.hover=2;Check(abilities.Update(ai).setting==-1&&abilities.row==1,"empty row is not interactive");
  Menu menu;Input input=Base();Open(menu,input);input.trigger=true;input.hover=7;menu.Update(input);
  Check(menu.Open()&&menu.page==3,"fourth tab is not mistaken for close");
  input.trigger=false;menu.Update(input);input.trigger=true;input.hover=3;

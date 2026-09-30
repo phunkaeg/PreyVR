@@ -10,6 +10,8 @@ void Check(bool ok,const char* why){if(!ok){std::cerr<<why<<'\n';std::exit(1);}}
 }
 namespace preyvr::lifecycle { void Log(std::string_view){} }
 namespace preyvr::dll {
+DWORD SetPsiTargetMode(unsigned v){applied[options::PsiTarget]=v;return 0;}unsigned PsiTargetMode(){return applied[options::PsiTarget];}
+DWORD SetMedkitSlot(unsigned v){applied[options::Medkit]=v;return 0;}unsigned MedkitSlotEnabled(){return applied[options::Medkit];}
 void SetPhysicalMelee(unsigned v){applied[options::PhysicalMelee]=v;}unsigned PhysicalMeleeEnabled(){return applied[options::PhysicalMelee];}
 void SetPhysicalContacts(unsigned v){applied[options::PhysicalContacts]=v;}unsigned PhysicalContactsEnabled(){return applied[options::PhysicalContacts];}
 void SetSwingSpeed(unsigned v){applied[options::SwingSpeed]=v;}unsigned SwingSpeed(){return applied[options::SwingSpeed];}
@@ -106,6 +108,15 @@ int main(){
  r.thumbstickY=-1;tick();r.thumbstickY=0;tick();
  r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
  Check(PhysicalContactsEnabled(),"object nudge opt-in reaches consumer");
+ r.gripPressed=true;tick();r.gripPressed=false;tick();
+ Check(VrOptionsPage()==6&&PsiTargetMode()==0&&!MedkitSlotEnabled(),"abilities start with native behavior");
+ r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+ Check(PsiTargetMode()==1,"head-directed psi reaches adapter");
+ r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+ Check(PsiTargetMode()==2,"controller-directed psi reaches adapter");
+ r.thumbstickY=-1;tick();r.thumbstickY=0;tick();
+ r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+ Check(MedkitSlotEnabled(),"medkit opt-in reaches adapter");
  // Native menu changes behind us: held confirm cannot leak to the game.
  r.menuAccept=true;nativeModal=false;Check(tick()&&!VrOptionsOpen(),"native menu closes options");
  Check(tick(),"held input quarantined");r.menuAccept=false;tick();Check(!tick(),"neutral releases ownership");

@@ -1,0 +1,21 @@
+PreyVR psychic targeting + one medkit slot, 2026-09-30
+Branch: codex/psi-medkit; integration parent c9b29be
+
+Release CMake / Visual Studio 18 2026 x64 build: PASS
+DLL: build/psi-medkit/Release/PreyVR.dll
+DLL size: 1094656 bytes
+DLL SHA-256: f0b66e1bfe680f908462e7c6278fe2f49b2f4d3847cb3484c70549306a77e24e
+Final incremental build warnings/errors: none
+100% tests passed, 0 tests failed out of 56
+
+Total Test time (real) =  16.23 sec
+
+Read-only Steam verifier: PASS; 18 complete body hashes, no base relocations, 54 byte mutation refusals, native ABI/call/field/string witnesses.
+Production options panel: PASS; all seven pages rendered; GDI objects before=3 after=3. Abilities PNG inspected.
+Deterministic code graph refreshed: 6,657 nodes, 12,828 edges; semantic nodes preserved. Two pre-existing parser warnings in Bootstrap.h and PhysicalRuntimeTests.cpp.
+git diff --check: PASS
+
+Observation environment: static + offline production-mock harness.
+Prey launched/attached/injected: NO
+Native execution and MinHook installation in Prey: NOT MEASURED
+Headset visuals, power variants, input feel and medkit-slot reachability: NOT MEASURED

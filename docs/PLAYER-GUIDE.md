@@ -59,6 +59,26 @@ native menu is already open; `vr.options 1` is the diagnostic equivalent.
 - **Interface:** size, visible-area limit, panel curvature and controls guide.
 - **Equipment:** optional body holsters, wrist status, wrist-card size and clear
   holster assignments. Both new features default off.
+- **Abilities:** psychic targeting (Original / Head / Left Controller) and the
+  optional left-hip medkit slot. Original targeting and slot off are the defaults.
+
+**Psychic targeting:** equip a power using Prey's normal quick wheel. Choose Head
+or Left Controller on the Abilities tab, then hold **left trigger** to target and
+release it to cast. Head follows where you look; Left Controller follows the
+left controller's aim axis. Release the support grip before targeting. The game
+keeps its native power costs, cooldowns, target filters and unlock restrictions.
+Menus, recentering, tracking loss and long frame gaps cancel a pending cast;
+release the trigger before trying again. Original restores the existing controls.
+
+**Medkit slot:** once enabled, bring the left controller to your left hip,
+release grip, then squeeze **left grip**. A short pulse confirms selection.
+Keep grip held and press **left trigger** to request one medkit use; you may
+move the hand away from the hip first. Release grip before another use. Prey
+checks the native inventory and whether the item can be consumed, so an empty
+inventory or full health does not force a heal. The slot uses an estimated body
+position and currently has no visible medkit prop. This feature and psychic
+targeting have offline/static checks; native and headset acceptance remain.
+See [implementation and acceptance checks](PSI-MEDKIT-2026-09-30.md).
 
 **Holsters:** with a weapon equipped, bring the right controller to your right
 hip or across to your left chest, release grip, then squeeze. An empty slot stores

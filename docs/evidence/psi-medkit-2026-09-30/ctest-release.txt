@@ -1,0 +1,117 @@
+Test project D:/Dev Debug/PreyVR/build/psi-medkit
+      Start  1: vr_math
+ 1/56 Test  #1: vr_math ..........................   Passed    0.02 sec
+      Start  2: engine_map
+ 2/56 Test  #2: engine_map .......................   Passed    0.02 sec
+      Start  3: aim_state_fixture
+ 3/56 Test  #3: aim_state_fixture ................   Passed    0.02 sec
+      Start  4: wrench_query_fixture
+ 4/56 Test  #4: wrench_query_fixture .............   Passed    0.02 sec
+      Start  5: interaction_query_fixture
+ 5/56 Test  #5: interaction_query_fixture ........   Passed    0.02 sec
+      Start  6: runtime_snapshot
+ 6/56 Test  #6: runtime_snapshot .................   Passed    0.02 sec
+      Start  7: xr_swapchain_format
+ 7/56 Test  #7: xr_swapchain_format ..............   Passed    0.02 sec
+      Start  8: xr_frame_contract
+ 8/56 Test  #8: xr_frame_contract ................   Passed    0.02 sec
+      Start  9: stereo_frame
+ 9/56 Test  #9: stereo_frame .....................   Passed    0.02 sec
+      Start 10: comfort_controls
+10/56 Test #10: comfort_controls .................   Passed    0.02 sec
+      Start 11: motion_controller
+11/56 Test #11: motion_controller ................   Passed    0.04 sec
+      Start 12: two_handed_aim
+12/56 Test #12: two_handed_aim ...................   Passed    0.02 sec
+      Start 13: vr_options_contracts
+13/56 Test #13: vr_options_contracts .............   Passed    0.02 sec
+      Start 14: body_equipment_contracts
+14/56 Test #14: body_equipment_contracts .........   Passed    0.02 sec
+      Start 15: anim_ik
+15/56 Test #15: anim_ik ..........................   Passed    0.02 sec
+      Start 16: weapon_rig_alignment
+16/56 Test #16: weapon_rig_alignment .............   Passed    0.02 sec
+      Start 17: weapon_aim
+17/56 Test #17: weapon_aim .......................   Passed    0.02 sec
+      Start 18: scene_query_contracts
+18/56 Test #18: scene_query_contracts ............   Passed    0.02 sec
+      Start 19: physical_interactions
+19/56 Test #19: physical_interactions ............   Passed    0.02 sec
+      Start 20: psi_medkit_contracts
+20/56 Test #20: psi_medkit_contracts .............   Passed    0.02 sec
+      Start 21: frustum_coverage
+21/56 Test #21: frustum_coverage .................   Passed    0.03 sec
+      Start 22: depth_submission
+22/56 Test #22: depth_submission .................   Passed    0.02 sec
+      Start 23: frame_clock
+23/56 Test #23: frame_clock ......................   Passed    0.02 sec
+      Start 24: frame_timing
+24/56 Test #24: frame_timing .....................   Passed    0.02 sec
+      Start 25: input_event
+25/56 Test #25: input_event ......................   Passed    0.02 sec
+      Start 26: input_queue
+26/56 Test #26: input_queue ......................   Passed    0.02 sec
+      Start 27: menu_navigator
+27/56 Test #27: menu_navigator ...................   Passed    0.02 sec
+      Start 28: render_contract
+28/56 Test #28: render_contract ..................   Passed    0.02 sec
+      Start 29: inventory_depth
+29/56 Test #29: inventory_depth ..................   Passed    0.02 sec
+      Start 30: ui_panel
+30/56 Test #30: ui_panel .........................   Passed    0.02 sec
+      Start 31: locomotion
+31/56 Test #31: locomotion .......................   Passed    0.02 sec
+      Start 32: render_frame_table
+32/56 Test #32: render_frame_table ...............   Passed    6.27 sec
+      Start 33: stereo_camera
+33/56 Test #33: stereo_camera ....................   Passed    0.03 sec
+      Start 34: camera_edit
+34/56 Test #34: camera_edit ......................   Passed    0.02 sec
+      Start 35: frame_dump
+35/56 Test #35: frame_dump .......................   Passed    0.02 sec
+      Start 36: debug_registers
+36/56 Test #36: debug_registers ..................   Passed    0.02 sec
+      Start 37: console_policy
+37/56 Test #37: console_policy ...................   Passed    0.02 sec
+      Start 38: runtime_bootstrap
+38/56 Test #38: runtime_bootstrap ................   Passed    0.03 sec
+      Start 39: psi_medkit_runtime
+39/56 Test #39: psi_medkit_runtime ...............   Passed    0.06 sec
+      Start 40: physical_runtime
+40/56 Test #40: physical_runtime .................   Passed    0.02 sec
+      Start 41: ui_pointer_dispatch
+41/56 Test #41: ui_pointer_dispatch ..............   Passed    0.02 sec
+      Start 42: vr_options_panel
+42/56 Test #42: vr_options_panel .................   Passed    0.17 sec
+      Start 43: wrist_panel
+43/56 Test #43: wrist_panel ......................   Passed    0.06 sec
+      Start 44: native_wrist
+44/56 Test #44: native_wrist .....................   Passed    0.15 sec
+      Start 45: vr_options_runtime
+45/56 Test #45: vr_options_runtime ...............   Passed    0.09 sec
+      Start 46: inventory_pointer_capture
+46/56 Test #46: inventory_pointer_capture ........   Passed    0.02 sec
+      Start 47: near_fov_override
+47/56 Test #47: near_fov_override ................   Passed    0.02 sec
+      Start 48: dll_load_fail_closed
+48/56 Test #48: dll_load_fail_closed .............   Passed    0.07 sec
+      Start 49: haptics_contracts
+49/56 Test #49: haptics_contracts ................   Passed    0.02 sec
+      Start 50: inventory_swapchain
+50/56 Test #50: inventory_swapchain ..............   Passed    0.30 sec
+      Start 51: openxr_preflight_files
+51/56 Test #51: openxr_preflight_files ...........   Passed    0.05 sec
+      Start 52: dxgi_method_probe
+52/56 Test #52: dxgi_method_probe ................   Passed    0.27 sec
+      Start 53: launcher_resolution
+53/56 Test #53: launcher_resolution ..............   Passed    0.87 sec
+      Start 54: launcher_comfort
+54/56 Test #54: launcher_comfort .................   Passed    2.28 sec
+      Start 55: smoke_log_parser
+55/56 Test #55: smoke_log_parser .................   Passed    2.13 sec
+      Start 56: build_doctor
+56/56 Test #56: build_doctor .....................   Passed    2.42 sec
+
+100% tests passed, 0 tests failed out of 56
+
+Total Test time (real) =  16.23 sec

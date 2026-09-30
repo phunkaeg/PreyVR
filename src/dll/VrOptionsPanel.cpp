@@ -29,10 +29,11 @@ std::vector<std::uint8_t> DrawVrOptions(const options::Values& values,unsigned p
   text(x+16,194,span-28,45,PageName(p),Pages>5?26:30,p==page?bg:muted,true);
  }
  for(unsigned r=0;r<Rows;++r){
+  const int id=Item(page,r);
+  if(id==-2)continue;
   const int y=280+static_cast<int>(r)*116;const bool active=r==selected;
   fill(56,y,1288,108,active?RGB(47,48,40):RGB(22,30,37));
   if(active)fill(56,y,6,108,amber);
-  const int id=Item(page,r);
   text(83,y+24,710,65,id==-3?L"CLEAR HOLSTER ASSIGNMENTS":id<0?L"RESET VR VIEW":Describe(id).label,32,active?amber:ink,true);
   const auto value=id==-3?L"CLEAR":id<0?L"RECENTER":Display(id,values[id]);
   text(813,y+27,44,55,L"<",30,muted);
@@ -41,7 +42,7 @@ std::vector<std::uint8_t> DrawVrOptions(const options::Values& values,unsigned p
  }
  fill(56,778,1288,2,RGB(69,80,83));
  const int selectedId=Item(page,selected);
- text(80,808,1240,103,selectedId==-3?L"Forget both session holsters. Your weapons stay in the native inventory.":selectedId<0?
+ text(80,808,1240,103,selectedId==-2?L"Select a setting above.":selectedId==-3?L"Forget both session holsters. Your weapons stay in the native inventory.":selectedId<0?
       L"Look straight ahead and select to reset the view and controller reference together.":
       Describe(selectedId).help,29,ink);
  text(80,914,1250,52,saveFailed?L"SETTINGS ACTIVE / COULD NOT SAVE TO DISK":

@@ -1,0 +1,90 @@
+
+ulonglong FUN_1815bda40(undefined8 *param_1,undefined8 param_2,char param_3)
+
+{
+  float *pfVar1;
+  longlong *plVar2;
+  longlong lVar3;
+  longlong *plVar4;
+  int iVar5;
+  undefined4 uVar6;
+  float *pfVar7;
+  float *pfVar8;
+  undefined8 uVar9;
+  float fVar10;
+  undefined1 auVar11 [16];
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  float fVar15;
+  float fVar16;
+  float fVar17;
+  float local_108;
+  float local_104;
+  float local_100;
+  float local_f8;
+  float local_f4;
+  float local_f0;
+  undefined1 local_e8 [8];
+  undefined8 local_e0;
+  undefined1 local_98 [144];
+  
+  pfVar7 = (float *)FUN_181496070(param_2);
+  pfVar8 = (float *)0x0;
+  if (pfVar7 != (float *)0x0) {
+    FUN_181495f40(&local_108,pfVar7);
+    pfVar1 = (float *)*param_1;
+    fVar13 = local_108 - *pfVar1;
+    fVar12 = local_104 - pfVar1[1];
+    fVar15 = local_100 - pfVar1[2];
+    pfVar8 = (float *)param_1[1];
+    fVar16 = fVar13 * fVar13 + fVar12 * fVar12 + fVar15 * fVar15;
+    if (fVar16 < *pfVar8 || fVar16 == *pfVar8) {
+      fVar17 = 0.0;
+      if (param_3 == '\0') {
+        fVar17 = DAT_18224dc84;
+        fVar14 = DAT_18224dc80;
+        fVar10 = DAT_18224dc88;
+        if (1.1920929e-07 < fVar16) {
+          auVar11 = rsqrtss(ZEXT416((uint)fVar16),ZEXT416((uint)fVar16));
+          fVar10 = auVar11._0_4_;
+          fVar10 = (1.5 - fVar10 * fVar16 * fVar10 * 0.5) * fVar10;
+          fVar17 = fVar12 * fVar10;
+          fVar14 = fVar13 * fVar10;
+          fVar10 = fVar15 * fVar10;
+        }
+        fVar12 = fVar17 * pfVar1[4] + fVar14 * pfVar1[3] + fVar10 * pfVar1[5];
+        if (fVar12 <= 0.0) goto LAB_1815bdc71;
+        fVar17 = acosf(fVar12);
+        pfVar8 = (float *)param_1[2];
+        if (*pfVar8 <= fVar17) goto LAB_1815bdc71;
+      }
+      if (((*(int *)param_1[3] == 0) || (pfVar8 = (float *)param_1[4], fVar17 < *pfVar8)) &&
+         (pfVar8 = (float *)FUN_1815bd9c0(param_1[5],pfVar7), plVar4 = DAT_18224d9c8,
+         (char)pfVar8 != '\0')) {
+        pfVar8 = (float *)*param_1;
+        local_f8 = local_108 - *pfVar8;
+        local_f4 = local_104 - pfVar8[1];
+        plVar2 = *(longlong **)param_1[6];
+        local_f0 = local_100 - pfVar8[2];
+        lVar3 = *DAT_18224d9c8;
+        uVar9 = FUN_18124c410(local_98,pfVar8,&local_f8,local_e8,*plVar2,
+                              (int)(plVar2[1] - *plVar2 >> 3));
+        iVar5 = (**(code **)(lVar3 + 0x118))(plVar4,uVar9,"RayWorldIntersection(Game)",4);
+        if ((iVar5 == 0) ||
+           (pfVar8 = (float *)(**(code **)(*DAT_18224da38 + 0xe0))(DAT_18224da38,local_e0),
+           pfVar8 == pfVar7)) {
+          uVar6 = (**(code **)(*(longlong *)pfVar7 + 8))(pfVar7);
+          *(undefined4 *)param_1[3] = uVar6;
+          pfVar8 = (float *)param_1[4];
+          *pfVar8 = fVar17;
+          return CONCAT71((int7)((ulonglong)pfVar8 >> 8),1);
+        }
+      }
+    }
+  }
+LAB_1815bdc71:
+  return (ulonglong)pfVar8 & 0xffffffffffffff00;
+}
+
+

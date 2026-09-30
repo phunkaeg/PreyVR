@@ -11,6 +11,7 @@ namespace preyvr::equipment {
 inline constexpr std::array<Vec3,2> Zones{{{.25f,-.65f,.02f},{-.20f,-.30f,-.13f}}};
 class HolsterGesture {
 public:
+ explicit HolsterGesture(std::array<Vec3,2> zones=Zones):zones_(zones){}
  int Update(Pose head,Vec3 hand,bool squeeze,bool valid,float dt) {
   if(!valid||!std::isfinite(dt)||dt<=0||dt>.2f){Reset();return -1;}
   auto forward=Rotate(head.orientation,{0,0,-1});
@@ -22,7 +23,7 @@ public:
       Vec3{hand.x-head.position.x,hand.y-head.position.y,hand.z-head.position.z});};
   auto distance=[](Vec3 a,Vec3 b){return std::sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)+(a.z-b.z)*(a.z-b.z));};
   auto point=local();int zone=-1;
-  for(int n=0;n<2;++n)if(distance(point,Zones[n])<.14f)zone=n;
+  for(int n=0;n<2;++n)if(distance(point,zones_[n])<.14f)zone=n;
   // A head turn alone cannot drag an already-reached holster under the hand.
   // Outside both zones follow only beyond a 45-degree head/body deadband.
   if(!squeeze&&zone<0){
@@ -38,6 +39,7 @@ public:
  bool OwnsGrip()const{return owned_;}
  void Reset(){armed_=false;bodyValid_=false;owned_=false;}
 private:
+ std::array<Vec3,2> zones_;
  bool armed_=false,owned_=false,bodyValid_=false;float bodyYaw_=0;
 };
 struct Vitals {

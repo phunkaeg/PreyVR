@@ -1,0 +1,1168 @@
+=== psi_initial_0 (Ghidra /Prey/PreyDll.dll, Steam x64 base 0x180000000) ===
+
+undefined8 FUN_181381af0(undefined8 param_1)
+
+{
+  longlong *plVar1;
+  char cVar2;
+  longlong lVar3;
+  ulonglong uVar4;
+  undefined8 *puVar5;
+  undefined8 uVar6;
+  undefined8 *local_28;
+  undefined8 *local_20;
+  longlong local_18;
+  
+  lVar3 = TryGetLocalArkPlayer();
+  if (lVar3 != 0) {
+    (**(code **)(*(longlong *)(*(longlong *)(lVar3 + 0x1810) + 0x50) + 0x28))
+              (*(longlong *)(lVar3 + 0x1810) + 0x50,&local_28,param_1);
+    if (local_28 != local_20) {
+      plVar1 = (longlong *)*local_28;
+      cVar2 = (**(code **)(*plVar1 + 0x1a0))(plVar1);
+      if (cVar2 == '\0') {
+        uVar6 = 1;
+      }
+      else {
+        (**(code **)(*plVar1 + 400))(plVar1);
+        uVar6 = 2;
+      }
+      if (local_28 != (undefined8 *)0x0) {
+        uVar4 = local_18 - (longlong)local_28 >> 3;
+        if ((0x1fffffffffffffff < uVar4) ||
+           ((puVar5 = local_28, 0xfff < uVar4 * 8 &&
+            (((((ulonglong)local_28 & 0x1f) != 0 ||
+              (puVar5 = (undefined8 *)local_28[-1], local_28 <= puVar5)) ||
+             (0x1f < (ulonglong)((longlong)local_28 + (-8 - (longlong)puVar5)))))))) {
+                    /* WARNING: Subroutine does not return */
+          _invalid_parameter_noinfo_noreturn();
+        }
+        free(puVar5);
+      }
+      return uVar6;
+    }
+    if (local_28 != (undefined8 *)0x0) {
+      uVar4 = local_18 - (longlong)local_28 >> 3;
+      if ((0x1fffffffffffffff < uVar4) ||
+         ((puVar5 = local_28, 0xfff < uVar4 * 8 &&
+          (((((ulonglong)local_28 & 0x1f) != 0 ||
+            (puVar5 = (undefined8 *)local_28[-1], local_28 <= puVar5)) ||
+           (0x1f < (ulonglong)((longlong)local_28 + (-8 - (longlong)puVar5)))))))) {
+                    /* WARNING: Subroutine does not return */
+        _invalid_parameter_noinfo_noreturn();
+      }
+      free(puVar5);
+    }
+  }
+  return 0;
+}
+
+
+
+=== psi_initial_1 (Ghidra /Prey/PreyDll.dll, Steam x64 base 0x180000000) ===
+
+/* Steam SHA-256 7D6E322F...B05311A7. PDB type is IArkPlayer::GetReticleViewPositionAndDir. RCX is
+   the IArkPlayer subobject at ArkPlayer+0x40, so loads at interface+0x1794/+0x17A0 correspond to
+   ArkPlayer+0x17D4/+0x17E0. Live x64dbg hit confirmed RCX=player+0x40. */
+
+undefined4 * GetReticleViewPositionAndDir_ArkPlayer(longlong param_1,undefined4 *param_2)
+
+{
+  *param_2 = *(undefined4 *)(param_1 + 0x1794);
+  param_2[1] = *(undefined4 *)(param_1 + 0x1798);
+  param_2[2] = *(undefined4 *)(param_1 + 0x179c);
+  param_2[3] = *(undefined4 *)(param_1 + 0x17a0);
+  param_2[4] = *(undefined4 *)(param_1 + 0x17a4);
+  param_2[5] = *(undefined4 *)(param_1 + 0x17a8);
+  return param_2;
+}
+
+
+
+=== psi_initial_2 (Ghidra /Prey/PreyDll.dll, Steam x64 base 0x180000000) ===
+
+void FUN_1815bc840(longlong param_1,float param_2)
+
+{
+  int iVar1;
+  longlong *plVar2;
+  char cVar3;
+  undefined1 uVar4;
+  int iVar5;
+  undefined8 uVar6;
+  longlong *plVar7;
+  float *pfVar8;
+  longlong lVar9;
+  longlong *plVar10;
+  int *piVar11;
+  undefined8 *puVar12;
+  longlong *plVar13;
+  undefined4 uVar14;
+  float fVar15;
+  float fVar16;
+  float fVar17;
+  undefined1 local_res8 [16];
+  undefined1 local_88 [96];
+  
+  fVar15 = *(float *)(param_1 + 0x278);
+  for (puVar12 = (undefined8 *)(param_1 + 0x40); puVar12 != (undefined8 *)(param_1 + 0xc0);
+      puVar12 = puVar12 + 1) {
+    uVar6 = (**(code **)(*(longlong *)*puVar12 + 0x120))();
+    cVar3 = FUN_181284d20(uVar6);
+    (**(code **)(*(longlong *)*puVar12 + 0x118))((longlong *)*puVar12,param_2 * fVar15);
+    if ((cVar3 == '\0') &&
+       (iVar1 = *(int *)(param_1 + 0x234), iVar5 = (**(code **)(*(longlong *)*puVar12 + 0xa0))(),
+       iVar5 == iVar1)) {
+      uVar4 = FUN_181284d20(uVar6);
+      FUN_1815bcc50(param_1,uVar4);
+    }
+  }
+  plVar7 = (longlong *)GetArkPlayerInstance();
+  plVar13 = (longlong *)0x0;
+  iVar1 = *(int *)(param_1 + 0x230);
+  plVar10 = plVar13;
+  if ((iVar1 != -1) && (iVar1 != 0x10)) {
+    plVar10 = *(longlong **)(param_1 + 0x40 + (longlong)iVar1 * 8);
+  }
+  if (plVar10 == (longlong *)0x0) goto LAB_1815bcb4d;
+  uVar14 = (**(code **)(*DAT_18224da18 + 0x38))(DAT_18224da18,2);
+  (**(code **)(*plVar10 + 0x50))(plVar10,uVar14);
+  fVar15 = (float)FUN_1814ae9e0(plVar7 + 0xf8,&DAT_182bd6e08);
+  if (fVar15 <= 0.0) {
+    fVar15 = 0.0;
+  }
+  fVar16 = (float)FUN_1814ae9e0(plVar7 + 0xf8,&DAT_182bd6e18);
+  if (fVar16 <= 0.0) {
+    fVar16 = 0.0;
+  }
+  pfVar8 = (float *)FUN_18159cb00(plVar7 + 0xb,local_res8);
+  fVar17 = SQRT(*pfVar8 * *pfVar8 + pfVar8[1] * pfVar8[1]);
+  if ((fVar15 <= fVar17) && (fVar15 = fVar17, fVar16 <= fVar17)) {
+    fVar15 = fVar16;
+  }
+  pfVar8 = (float *)FUN_18158f470(plVar7 + 0x11c,local_88,uVar14);
+  if ((((*pfVar8 != 0.0) || (pfVar8[1] != 0.0)) || (fVar17 = fVar15, pfVar8[2] != 0.0)) &&
+     (fVar17 = (float)FUN_1814ae9e0(plVar7 + 0xf8,&DAT_182bd6e10), fVar17 <= fVar15)) {
+    fVar17 = fVar15;
+  }
+  cVar3 = FUN_18157e3f0(plVar7);
+  if (cVar3 != '\0') goto LAB_1815bcaf4;
+  cVar3 = (**(code **)(*plVar7 + 0x370))(plVar7);
+  if (cVar3 == '\0') {
+    cVar3 = FUN_1812850c0(param_1 + 0x10,uVar14);
+    if (cVar3 == '\0') {
+      fVar17 = fVar16;
+    }
+    cVar3 = FUN_1812850c0(param_1 + 8,uVar14);
+    if (cVar3 == '\0') {
+      fVar15 = (float)FUN_181284cd0(param_1 + 8);
+      if (0.1 <= fVar15) {
+        fVar17 = fVar16;
+        if ((int)plVar7[0xb] == 5) {
+          FUN_181284fb0(param_1 + 8);
+        }
+      }
+      else {
+        FUN_18159e660(plVar7 + 0xb,1);
+        fVar17 = fVar16;
+      }
+    }
+    else {
+      cVar3 = FUN_18148a130(plVar7 + 0x254);
+      if ((cVar3 != '\0') && (fVar15 = (float)FUN_180ec1f30(plVar7 + 0x254), ABS(fVar15) < 0.99))
+      goto LAB_1815bcaf4;
+    }
+  }
+  else if (*(char *)((longlong)plVar7 + 0x991) == '\0') {
+    if (((*(float *)(plVar7 + 300) != 0.0) || (cVar3 = FUN_18159d420(plVar7 + 0xb), cVar3 != '\0'))
+       || (cVar3 = FUN_18159d410(plVar7 + 0xb), cVar3 != '\0')) goto LAB_1815bcaf4;
+  }
+  else if (*(float *)(plVar7 + 0x89) != 0.0) {
+LAB_1815bcaf4:
+    fVar17 = fVar16;
+  }
+  lVar9 = FUN_181587c30(plVar7 + 0xcf);
+  fVar15 = *(float *)(lVar9 + 0x374) - *(float *)(lVar9 + 0x370);
+  if (fVar15 <= 0.0) {
+    fVar15 = 0.0;
+  }
+  FUN_1811de670(lVar9 + 0x364,fVar17,fVar15);
+  fVar15 = *(float *)(lVar9 + 0x358) - *(float *)(lVar9 + 0x354);
+  if (fVar15 <= 0.0) {
+    fVar15 = 0.0;
+  }
+  FUN_1811de670(lVar9 + 0x348,fVar17,fVar15);
+LAB_1815bcb4d:
+  piVar11 = *(int **)(param_1 + 0x240);
+  plVar10 = (longlong *)
+            ((ulonglong)((longlong)*(int **)(param_1 + 0x248) + (3 - (longlong)piVar11)) >> 2);
+  if (*(int **)(param_1 + 0x248) < piVar11) {
+    plVar10 = plVar13;
+  }
+  if (plVar10 != (longlong *)0x0) {
+    do {
+      plVar2 = *(longlong **)(param_1 + 0x40 + (longlong)*piVar11 * 8);
+      (**(code **)(*plVar2 + 0x48))(plVar2,param_2);
+      plVar13 = (longlong *)((longlong)plVar13 + 1);
+      piVar11 = piVar11 + 1;
+    } while (plVar13 != plVar10);
+  }
+  if ((0.0 < *(float *)(param_1 + 0x274)) &&
+     (param_2 = *(float *)(param_1 + 0x274) - param_2, *(float *)(param_1 + 0x274) = param_2,
+     param_2 <= 0.0)) {
+    FUN_181490b70(plVar7 + 0x313,*(undefined4 *)(param_1 + 0x27c),0xbf800000,0);
+    *(undefined4 *)(param_1 + 0x27c) = 0;
+    (**(code **)(**(longlong **)(DAT_182c16838 + 0xcd8) + 0x38))
+              (*(longlong **)(DAT_182c16838 + 0xcd8),0);
+  }
+  return;
+}
+
+
+
+=== psi_initial_3 (Ghidra /Prey/PreyDll.dll, Steam x64 base 0x180000000) ===
+
+uint FUN_1815b5d90(longlong param_1)
+
+{
+  char cVar1;
+  undefined4 uVar2;
+  int iVar3;
+  longlong lVar4;
+  undefined8 uVar5;
+  longlong lVar6;
+  longlong *plVar7;
+  char *pcVar8;
+  size_t _Size;
+  uint uVar10;
+  float fVar11;
+  float fVar12;
+  float local_res8 [2];
+  undefined8 in_stack_ffffffffffffff78;
+  float local_78;
+  float local_74;
+  float local_70;
+  undefined1 local_68 [8];
+  undefined1 *local_60;
+  undefined2 *local_58;
+  undefined1 local_50 [8];
+  undefined1 *local_48;
+  undefined4 local_40;
+  size_t sVar9;
+  
+  uVar2 = (undefined4)((ulonglong)in_stack_ffffffffffffff78 >> 0x20);
+  iVar3 = *(int *)(param_1 + 0x230);
+  uVar10 = 0;
+  if ((iVar3 == -1) || (iVar3 == 0x10)) {
+    plVar7 = (longlong *)0x0;
+  }
+  else {
+    plVar7 = *(longlong **)(param_1 + 0x40 + (longlong)iVar3 * 8);
+  }
+  if (plVar7 == (longlong *)0x0) goto LAB_1815b6039;
+  cVar1 = FUN_1815b6190(plVar7);
+  if (cVar1 == '\0') {
+    pcVar8 = "@ui_Error_NoPsi";
+  }
+  else {
+    cVar1 = (**(code **)(*plVar7 + 200))(plVar7);
+    if (cVar1 != '\0') {
+      lVar4 = GetArkPlayerInstance();
+      uVar5 = FUN_1810839f0(lVar4 + 0x678);
+      uVar10 = 1;
+      fVar11 = (float)FUN_1814ae9e0(lVar4 + 0x7c0,&DAT_182bd6c98);
+      fVar12 = 0.0;
+      if (fVar11 <= 0.0) {
+LAB_1815b5ea0:
+        (**(code **)(*plVar7 + 0xe0))(plVar7);
+        FUN_1815acef0(uVar5);
+      }
+      else {
+        DAT_18224d948 = DAT_18224d948 * 0x343fd + 0x269ec3;
+        if (fVar11 < (float)(DAT_18224d948 >> 0x10 & 0xffffffff) * 2.3283064e-10)
+        goto LAB_1815b5ea0;
+        uVar5 = FUN_181665780();
+        FUN_18118f690(uVar5,"psiFlash");
+        FUN_181666d60("@ui_freePsiCast");
+      }
+      *(undefined1 *)(param_1 + 600) = 1;
+      fVar11 = (float)(**(code **)(*plVar7 + 0xf0))(plVar7);
+      if (0.0 < fVar11) {
+        (**(code **)(*plVar7 + 0xf8))(plVar7,&local_78);
+        if (((0.05 < ABS(local_78)) || (0.05 < ABS(local_74))) || (0.05 < ABS(local_70))) {
+          *(float *)(param_1 + 0x274) = fVar11;
+          lVar6 = GetArkPlayerInstance();
+          local_78 = *(float *)(lVar6 + 0x17d4) - local_78;
+          local_70 = *(float *)(lVar6 + 0x17dc) - local_70;
+          local_74 = *(float *)(lVar6 + 0x17d8) - local_74;
+          fVar11 = *(float *)(param_1 + 0x260);
+          local_res8[0] = SQRT(local_78 * local_78 + local_74 * local_74 + local_70 * local_70);
+          if (fVar11 <= local_res8[0]) {
+            if (local_res8[0] <= *(float *)(param_1 + 0x264)) {
+              fVar12 = (local_res8[0] - fVar11) / (*(float *)(param_1 + 0x264) - fVar11);
+            }
+            else {
+              fVar12 = 1.0;
+            }
+          }
+          uVar2 = FUN_181490e40(lVar6 + 0x1898,
+                                (*(float *)(param_1 + 0x26c) - *(float *)(param_1 + 0x268)) * fVar12
+                                + *(float *)(param_1 + 0x268),*(undefined4 *)(param_1 + 0x270),0,
+                                CONCAT44(uVar2,3));
+          *(undefined4 *)(param_1 + 0x27c) = uVar2;
+          (**(code **)(**(longlong **)(DAT_182c16838 + 0xcd8) + 0x38))
+                    (*(longlong **)(DAT_182c16838 + 0xcd8),1);
+        }
+      }
+      FUN_18157e8a0(lVar4);
+      goto LAB_1815b6039;
+    }
+    pcVar8 = (char *)(**(code **)(*plVar7 + 0x130))(plVar7);
+  }
+  FUN_1815b86f0(param_1,pcVar8);
+LAB_1815b6039:
+  plVar7 = (longlong *)FUN_181665780();
+  if (plVar7 != (longlong *)0x0) {
+    local_res8[0] = (float)((uVar10 ^ 1) + 1);
+    FUN_1802b2870(local_68);
+    local_58 = &DAT_18224df7c;
+    local_60 = &DAT_18224d03c;
+    FUN_1802b27f0(local_50);
+    local_48 = &DAT_18224d03c;
+    sVar9 = 0xffffffffffffffff;
+    do {
+      _Size = sVar9 + 1;
+      pcVar8 = &DAT_181ca2d79 + sVar9;
+      sVar9 = _Size;
+    } while (*pcVar8 != '\0');
+    if (_Size != 0) {
+      FUN_180095610(&local_48,_Size);
+      if (local_48 != &DAT_181ca2d78) {
+        memcpy(local_48,&DAT_181ca2d78,_Size);
+      }
+    }
+    local_40 = 8;
+    FUN_1802de840(local_68,local_res8);
+    (**(code **)(*plVar7 + 0x210))(plVar7,"powerFlash",local_68,0,0);
+    iVar3 = *(int *)(local_48 + -0xc);
+    if ((-1 < iVar3) && (iVar3 = iVar3 + -1, *(int *)(local_48 + -0xc) = iVar3, iVar3 < 1)) {
+      FUN_1800a8b20();
+    }
+    FUN_1802b2650(local_50,0,0);
+    iVar3 = *(int *)(local_58 + -6);
+    if ((-1 < iVar3) && (iVar3 = iVar3 + -1, *(int *)(local_58 + -6) = iVar3, iVar3 < 1)) {
+      FUN_1800a8b20();
+    }
+    if (-1 < *(int *)(local_60 + -0xc)) {
+      iVar3 = *(int *)(local_60 + -0xc) + -1;
+      *(int *)(local_60 + -0xc) = iVar3;
+      if (iVar3 < 1) {
+        FUN_1800a8b20();
+      }
+    }
+    FUN_1802b24b0(local_68);
+    FUN_1802b2720(local_68,0,0);
+  }
+  return uVar10;
+}
+
+
+
+=== psi_consumer_0 (Ghidra /Prey/PreyDll.dll, Steam x64 base 0x180000000) ===
+
+undefined8 FUN_181381c50(void)
+
+{
+  if (*(int *)(*(longlong *)((longlong)ThreadLocalStoragePointer + (ulonglong)_tls_index * 8) + 0x10
+              ) < DAT_182be9960) {
+    _Init_thread_header(&DAT_182be9960);
+    if (DAT_182be9960 == -1) {
+      DAT_182be9958 =
+           (**(code **)(*DAT_18224da38 + 0x1d0))(DAT_18224da38,"ArkPickups.Medical.Medkit");
+      _Init_thread_footer(&DAT_182be9960);
+    }
+  }
+  return DAT_182be9958;
+}
+
+
+
+=== psi_consumer_1 (Ghidra /Prey/PreyDll.dll, Steam x64 base 0x180000000) ===
+
+void FUN_1815afe50(longlong *param_1)
+
+{
+  char cVar1;
+  int iVar2;
+  undefined4 uVar3;
+  longlong lVar4;
+  longlong *plVar5;
+  undefined8 uVar6;
+  ulonglong uVar7;
+  void *_Memory;
+  int *piVar8;
+  uint uVar9;
+  float fVar10;
+  undefined8 local_res8;
+  undefined4 local_3c8;
+  undefined4 local_3c4;
+  undefined4 local_3c0;
+  float local_3b8;
+  float local_3b4;
+  float local_3b0;
+  float local_3ac;
+  float local_3a8;
+  float local_3a4;
+  undefined8 local_3a0;
+  undefined8 uStack_398;
+  undefined4 local_390;
+  undefined4 uStack_38c;
+  undefined4 uStack_388;
+  undefined4 uStack_384;
+  float local_380;
+  float local_37c;
+  float local_378;
+  void *local_370;
+  undefined8 local_368;
+  longlong lStack_360;
+  undefined8 local_358;
+  undefined8 uStack_350;
+  undefined4 local_348;
+  undefined4 uStack_344;
+  undefined4 uStack_340;
+  undefined4 uStack_33c;
+  undefined1 local_338 [16];
+  undefined1 local_328 [112];
+  undefined1 local_2b8 [60];
+  int local_27c [153];
+  
+  lVar4 = GetArkPlayerInstance();
+  (*(code *)**(undefined8 **)(lVar4 + 0x40))(lVar4 + 0x40,&local_3b8);
+  fVar10 = (float)FUN_181496060(param_1);
+  uVar9 = 0;
+  local_380 = local_3ac * fVar10;
+  local_370 = (void *)0x0;
+  local_37c = local_3a8 * fVar10;
+  local_378 = local_3a4 * fVar10;
+  local_368 = 0;
+  lStack_360 = 0;
+  local_res8 = (**(code **)(**(longlong **)(lVar4 + 0x38) + 0x228))();
+  FUN_1811871e0(&local_370,&local_res8);
+  plVar5 = (longlong *)
+           (**(code **)(*DAT_18224da38 + 0x70))(DAT_18224da38,*(undefined4 *)(lVar4 + 0xba0));
+  if (plVar5 != (longlong *)0x0) {
+    local_res8 = (**(code **)(*plVar5 + 0x228))(plVar5);
+    FUN_1811871e0(&local_370,&local_res8);
+  }
+  FUN_18124c360(local_328,&local_3b8,&local_380,local_2b8,&local_370);
+  iVar2 = (**(code **)(*DAT_18224d9c8 + 0x118))
+                    (DAT_18224d9c8,local_328,"RayWorldIntersection(Game)",4);
+  if (iVar2 != 0) {
+    piVar8 = local_27c;
+    do {
+      if (*(longlong *)(piVar8 + -0xd) != 0) {
+        plVar5 = (longlong *)(**(code **)(*DAT_18224da38 + 0xe0))();
+        if (plVar5 != (longlong *)0x0) {
+          uVar3 = (**(code **)(*plVar5 + 8))(plVar5);
+          cVar1 = FUN_18157e400(lVar4,uVar3);
+          if (cVar1 != '\0') goto LAB_1815affd8;
+        }
+        fVar10 = (float)piVar8[-0xf] - 0.05;
+        if (*piVar8 == 0) break;
+      }
+LAB_1815affd8:
+      uVar9 = uVar9 + 1;
+      piVar8 = piVar8 + 0x14;
+    } while (uVar9 < 8);
+  }
+  lVar4 = GetArkPlayerInstance();
+  uVar6 = FUN_1810839f0(lVar4 + 0x678);
+  lVar4 = FUN_1812c3370(uVar6);
+  if (0.0 <= fVar10) {
+    if (*(float *)(lVar4 + 0x1c8) <= fVar10) {
+      fVar10 = *(float *)(lVar4 + 0x1c8);
+    }
+  }
+  else {
+    fVar10 = 0.0;
+  }
+  param_1[0x1c] = CONCAT44(local_3b4 + local_3a8 * fVar10,local_3ac * fVar10 + local_3b8);
+  *(float *)(param_1 + 0x1d) = local_3b0 + local_3a4 * fVar10;
+  local_3c8 = (undefined4)param_1[0x1c];
+  local_3c4 = *(undefined4 *)((longlong)param_1 + 0xe4);
+  local_3c0 = (undefined4)param_1[0x1d];
+  uVar6 = FUN_1815afae0(param_1,local_338);
+  FUN_180139ce0(&local_3a0,&local_3c8,uVar6,0x3f800000);
+  FUN_181184c80(param_1 + 0x1e,&local_3a0);
+  FUN_181184c80(param_1 + 0x2c,&local_3a0);
+  cVar1 = (**(code **)(*param_1 + 0x18))(param_1);
+  if (cVar1 != '\0') {
+    local_358 = local_3a0;
+    uStack_350 = uStack_398;
+    local_348 = local_390;
+    uStack_344 = uStack_38c;
+    uStack_340 = uStack_388;
+    uStack_33c = uStack_384;
+    FUN_181184c80(param_1 + 5,&local_358);
+  }
+  if (local_370 != (void *)0x0) {
+    uVar7 = lStack_360 - (longlong)local_370 >> 3;
+    if ((0x1fffffffffffffff < uVar7) ||
+       ((_Memory = local_370, 0xfff < uVar7 * 8 &&
+        (((((ulonglong)local_370 & 0x1f) != 0 ||
+          (_Memory = *(void **)((longlong)local_370 + -8), local_370 <= _Memory)) ||
+         (0x1f < (ulonglong)((longlong)local_370 + (-8 - (longlong)_Memory)))))))) {
+                    /* WARNING: Subroutine does not return */
+      _invalid_parameter_noinfo_noreturn();
+    }
+    free(_Memory);
+  }
+  return;
+}
+
+
+
+=== psi_consumer_2 (Ghidra /Prey/PreyDll.dll, Steam x64 base 0x180000000) ===
+
+void FUN_1815bdca0(longlong *param_1,longlong param_2)
+
+{
+  int iVar1;
+  char cVar2;
+  undefined4 uVar3;
+  longlong lVar4;
+  longlong *plVar5;
+  ulonglong uVar6;
+  ulonglong uVar7;
+  void *_Memory;
+  uint uVar8;
+  float fVar9;
+  int local_res8 [2];
+  float local_res10 [2];
+  undefined4 local_res18 [2];
+  undefined4 local_res20 [2];
+  undefined8 local_108;
+  float local_100;
+  float local_f8;
+  float local_f4;
+  float local_f0;
+  float local_ec;
+  float local_e8;
+  float local_e4;
+  undefined8 local_e0;
+  longlong *local_d8;
+  longlong local_d0;
+  void *local_c8;
+  undefined8 local_c0;
+  longlong lStack_b8;
+  void **local_b0;
+  undefined8 local_a8;
+  float local_a0;
+  undefined8 local_9c;
+  float local_94;
+  undefined8 local_90;
+  undefined4 local_88;
+  longlong local_80;
+  int local_78;
+  float *local_70;
+  float *local_68;
+  undefined4 *local_60;
+  int *local_58;
+  undefined4 *local_50;
+  undefined8 *local_48;
+  void ***local_40;
+  
+  lVar4 = GetArkPlayerInstance();
+  local_e0 = FUN_1808332a0(lVar4 + 0x678);
+  local_d8 = param_1;
+  local_d0 = param_2;
+  if ((*(int *)(lVar4 + 0x18e8) == 0) ||
+     (plVar5 = (longlong *)(**(code **)(*DAT_18224da38 + 0x70))(), plVar5 == (longlong *)0x0)) {
+    local_c0 = 0;
+    lStack_b8 = 0;
+    uVar7 = 0;
+    local_c8 = (void *)0x0;
+    local_108 = (**(code **)(**(longlong **)(lVar4 + 0x38) + 0x228))();
+    FUN_1811871e0(&local_c8,&local_108);
+    plVar5 = (longlong *)FUN_18157cab0(lVar4);
+    if (plVar5 != (longlong *)0x0) {
+      local_108 = (**(code **)(*plVar5 + 0x228))(plVar5);
+      FUN_1811871e0(&local_c8,&local_108);
+    }
+    local_b0 = &local_c8;
+    fVar9 = (float)FUN_181496060(param_1);
+    local_res8[0] = 0;
+    local_res10[0] = fVar9 * fVar9;
+    local_res20[0] = 0x7f7fffff;
+    lVar4 = FUN_1815afbd0(param_1);
+    local_res18[0] = *(undefined4 *)(lVar4 + 0x18);
+    lVar4 = GetArkPlayerInstance();
+    (*(code *)**(undefined8 **)(lVar4 + 0x40))(lVar4 + 0x40,&local_f8);
+    plVar5 = DAT_18224da38;
+    local_70 = &local_f8;
+    local_68 = local_res10;
+    local_60 = local_res18;
+    local_58 = local_res8;
+    local_50 = local_res20;
+    local_48 = &local_e0;
+    local_40 = &local_b0;
+    uVar6 = uVar7;
+    if ((*(longlong *)(DAT_182c16840 + 0x1a8) != 0) &&
+       (lVar4 = FUN_18182c080(*(longlong *)(DAT_182c16840 + 0x1a8),"ArkUIHUD"), lVar4 != 0)) {
+      uVar6 = lVar4 - 0x18;
+    }
+    iVar1 = *(int *)(uVar6 + 0x248);
+    lVar4 = (**(code **)(*plVar5 + 0x70))(plVar5,iVar1);
+    if ((lVar4 == 0) || (cVar2 = FUN_1815bda40(&local_70,lVar4,1), cVar2 == '\0')) {
+      fVar9 = fVar9 * 0.5;
+      local_78 = 0;
+      local_80 = 0;
+      local_f8 = local_f8 + local_ec * fVar9;
+      local_90 = 0;
+      local_f0 = local_f0 + local_e4 * fVar9;
+      local_88 = 0;
+      local_f4 = local_e8 * fVar9 + local_f4;
+      local_100 = local_f0 + fVar9;
+      local_a0 = local_f0 - fVar9;
+      local_a8 = CONCAT44(local_f4 - fVar9,local_f8 - fVar9);
+      local_9c = CONCAT44(local_f4 + fVar9,local_f8 + fVar9);
+      local_94 = local_100;
+      (**(code **)(*DAT_18224da38 + 200))(DAT_18224da38,&local_a8);
+      uVar6 = uVar7;
+      if (0 < local_78) {
+        do {
+          FUN_1815bda40(&local_70,*(undefined8 *)(uVar6 + local_80),0);
+          uVar8 = (int)uVar7 + 1;
+          uVar7 = (ulonglong)uVar8;
+          uVar6 = uVar6 + 8;
+        } while ((int)uVar8 < local_78);
+      }
+      iVar1 = local_res8[0];
+      if (local_res8[0] == (int)param_1[0x3e]) goto LAB_1815bdfd2;
+    }
+    FUN_1815be150(param_1,iVar1);
+LAB_1815bdfd2:
+    if (local_c8 == (void *)0x0) {
+      return;
+    }
+    uVar7 = lStack_b8 - (longlong)local_c8 >> 3;
+    if ((uVar7 < 0x2000000000000000) &&
+       ((_Memory = local_c8, uVar7 * 8 < 0x1000 ||
+        (((((ulonglong)local_c8 & 0x1f) == 0 &&
+          (_Memory = *(void **)((longlong)local_c8 + -8), _Memory < local_c8)) &&
+         ((ulonglong)((longlong)local_c8 + (-8 - (longlong)_Memory)) < 0x20)))))) {
+      free(_Memory);
+      return;
+    }
+                    /* WARNING: Subroutine does not return */
+    _invalid_parameter_noinfo_noreturn();
+  }
+  cVar2 = (**(code **)(*plVar5 + 0x1b0))(plVar5);
+  if (cVar2 == '\0') {
+LAB_1815bdd27:
+    cVar2 = (**(code **)(*local_d8 + 0x20))(local_d8,plVar5);
+    if ((cVar2 != '\0') && (cVar2 = (**(code **)(local_d0 + 0x18))(local_d0,plVar5), cVar2 != '\0'))
+    {
+      uVar3 = (**(code **)(*plVar5 + 8))(plVar5);
+      goto LAB_1815bdd56;
+    }
+  }
+  else {
+    uVar3 = (**(code **)(*plVar5 + 8))(plVar5);
+    cVar2 = FUN_181254010(local_e0,uVar3);
+    if (cVar2 != '\0') goto LAB_1815bdd27;
+  }
+  uVar3 = 0;
+LAB_1815bdd56:
+  FUN_1815be150(param_1,uVar3);
+  return;
+}
+
+
+
+=== psi_owner_0 (Ghidra /Prey/PreyDll.dll, Steam x64 base 0x180000000) ===
+
+void FUN_18157cb80(longlong param_1)
+
+{
+  undefined8 uVar1;
+  
+  uVar1 = FUN_1810839f0(param_1 + 0x678);
+  FUN_1812c3370(uVar1);
+  return;
+}
+
+
+
+=== psi_owner_1 (Ghidra /Prey/PreyDll.dll, Steam x64 base 0x180000000) ===
+
+undefined1 FUN_18124de50(longlong param_1,char param_2)
+
+{
+  char cVar1;
+  longlong *plVar2;
+  longlong lVar3;
+  undefined8 uVar4;
+  
+  if (*(char *)(param_1 + 0x390) != '\0') {
+    return 0;
+  }
+  plVar2 = (longlong *)GetArkPlayerInstance();
+  lVar3 = FUN_181587c40(plVar2 + 0xcf);
+  if (((*(char *)(lVar3 + 0xd0) == '\0') && (*(char *)(lVar3 + 0xd1) == '\0')) &&
+     (cVar1 = (**(code **)(*plVar2 + 0x118))(plVar2), cVar1 == '\0')) {
+    uVar4 = FUN_18157cb80(plVar2);
+    cVar1 = FUN_1815b6240(uVar4,param_2);
+    if ((cVar1 != '\0') && ((int)plVar2[0xb] != 6)) {
+      if (param_2 == '\0') {
+        uVar4 = 1;
+      }
+      else {
+        FUN_181383af0(param_1);
+        if (*(char *)(param_1 + 0x88) == '\0') {
+          return 0;
+        }
+        uVar4 = 0;
+      }
+      FUN_18124fcf0(param_1 + 0xa8,uVar4);
+      *(undefined1 *)(param_1 + 0x390) = 1;
+      FUN_181592fd0(plVar2 + 0x159,1);
+      FUN_18124d730(param_1,1);
+      if (*(longlong *)(param_1 + 0x388) != 0) {
+        FUN_1811ed1a0();
+      }
+      return 1;
+    }
+  }
+  return 0;
+}
+
+
+
+=== psi_owner_2 (Ghidra /Prey/PreyDll.dll, Steam x64 base 0x180000000) ===
+
+void FUN_18124df60(longlong param_1,byte param_2)
+
+{
+  longlong lVar1;
+  undefined8 uVar2;
+  undefined4 uVar3;
+  undefined **local_68;
+  undefined4 local_60;
+  undefined4 local_58;
+  int local_50;
+  undefined4 local_4c;
+  undefined4 local_48;
+  undefined8 local_40;
+  undefined8 local_38;
+  undefined8 uStack_30;
+  undefined8 local_28;
+  undefined ***local_20;
+  
+  if (*(char *)(param_1 + 0x390) != '\0') {
+    if (((param_2 != 0) || (*(char *)(param_1 + 0x88) != '\0')) && (*(int *)(param_1 + 900) != 0)) {
+      local_68 = &PTR_FUN_181d8ee00;
+      local_48 = 0;
+      local_28 = 0;
+      local_20 = &local_68;
+      local_4c = 0;
+      local_60 = 3;
+      local_58 = 0x10;
+      local_40 = 1;
+      local_38 = 0;
+      uStack_30 = 0;
+      local_50 = *(int *)(param_1 + 900);
+      (**(code **)(*DAT_18224da50 + 0x18))(DAT_18224da50,&local_40);
+    }
+    *(undefined1 *)(param_1 + 0x390) = 0;
+    FUN_181381950(param_1);
+    FUN_18124d730(param_1,0);
+    lVar1 = GetArkPlayerInstance();
+    FUN_181592fd0(lVar1 + 0xac8,0);
+    uVar2 = FUN_18157cb80(lVar1);
+    FUN_1815b65a0(uVar2);
+    uVar3 = FUN_1814ae9e0(lVar1 + 0x7c0,&DAT_182bd6c90);
+    FUN_1811de670(param_1 + 0x348,0x3f800000,uVar3);
+    FUN_1811de670(param_1 + 0x364,0x3f800000,uVar3);
+    FUN_18124fcf0(param_1 + 0xa8,param_2 + 4);
+    if (*(longlong *)(param_1 + 0x388) != 0) {
+      FUN_1811ed110();
+    }
+  }
+  return;
+}
+
+
+
+=== psi_owner_3 (Ghidra /Prey/PreyDll.dll, Steam x64 base 0x180000000) ===
+
+undefined8 FUN_1815b8e00(longlong param_1,int param_2)
+
+{
+  int *piVar1;
+  char cVar2;
+  int iVar3;
+  int *piVar4;
+  longlong lVar5;
+  undefined8 uVar6;
+  undefined4 *puVar7;
+  char *pcVar8;
+  size_t _Size;
+  longlong *plVar10;
+  char *local_res18 [2];
+  size_t sVar9;
+  
+  GetArkPlayerInstance();
+  if ((param_2 == -1) || (param_2 == 0x10)) {
+    plVar10 = (longlong *)0x0;
+  }
+  else {
+    plVar10 = *(longlong **)(param_1 + 0x40 + (longlong)param_2 * 8);
+  }
+  if (plVar10 != (longlong *)0x0) {
+    if (((param_2 - 6U & 0xfffffff6) == 0) && (param_2 != 0xf)) {
+      piVar1 = *(int **)(param_1 + 0x248);
+      piVar4 = *(int **)(param_1 + 0x240);
+      if (piVar4 != piVar1) {
+        do {
+          if (*piVar4 == param_2) break;
+          piVar4 = piVar4 + 1;
+        } while (piVar4 != piVar1);
+        if (piVar4 != piVar1) {
+          return 0;
+        }
+      }
+    }
+    lVar5 = TryGetLocalArkPlayer();
+    uVar6 = FUN_1810839f0(lVar5 + 0x678);
+    cVar2 = FUN_1815acea0(uVar6);
+    if (cVar2 == '\0') {
+      pcVar8 = "@ui_Error_PsiBlocked";
+    }
+    else {
+      cVar2 = FUN_1815b6190(plVar10);
+      if (cVar2 == '\0') {
+        cVar2 = FUN_181381c30();
+        if (cVar2 != '\0') {
+          lVar5 = FUN_181196f60();
+          if (lVar5 == 0) {
+            return 0;
+          }
+          local_res18[0] = &DAT_18224d03c;
+          _Size = 0xffffffffffffffff;
+          do {
+            sVar9 = _Size;
+            _Size = sVar9 + 1;
+          } while ("@ui_PsiHypoUsed"[sVar9 + 1] != '\0');
+          if (_Size != 0) {
+            puVar7 = (undefined4 *)FUN_1800a8b30(sVar9 + 0xe,0xf,1);
+            *puVar7 = 1;
+            local_res18[0] = (char *)(puVar7 + 3);
+            puVar7[1] = (int)_Size;
+            puVar7[2] = (int)_Size;
+            local_res18[0][_Size] = '\0';
+            if (local_res18[0] != "@ui_PsiHypoUsed") {
+              memcpy(local_res18[0],"@ui_PsiHypoUsed",_Size);
+            }
+          }
+          FUN_181665580(lVar5,local_res18,0x40000000);
+          iVar3 = *(int *)(local_res18[0] + -0xc);
+          if (iVar3 < 0) {
+            return 0;
+          }
+          iVar3 = iVar3 + -1;
+          *(int *)(local_res18[0] + -0xc) = iVar3;
+          if (0 < iVar3) {
+            return 0;
+          }
+          FUN_1800a8b20();
+          return 0;
+        }
+        pcVar8 = "@ui_Error_NoPsi";
+      }
+      else {
+        uVar6 = (**(code **)(*plVar10 + 0x120))(plVar10);
+        cVar2 = FUN_181284d20(uVar6);
+        if (cVar2 == '\0') {
+          pcVar8 = "@ui_Error_Cooldown";
+        }
+        else {
+          pcVar8 = (char *)(**(code **)(*plVar10 + 0x138))(plVar10);
+          if (pcVar8 == (char *)0x0) {
+            FUN_1815b67c0(param_1);
+            FUN_1815b65a0(param_1);
+            *(int *)(param_1 + 0x230) = param_2;
+            (**(code **)(*plVar10 + 0x40))(plVar10);
+            cVar2 = (**(code **)(*plVar10 + 0x78))(plVar10);
+            if (cVar2 == '\0') {
+              return 0;
+            }
+            FUN_1815baa60(param_1,plVar10);
+            return 1;
+          }
+        }
+      }
+    }
+    FUN_1815b86f0(param_1,pcVar8);
+  }
+  return 0;
+}
+
+
+
+=== medkit_input (Ghidra /Prey/PreyDll.dll, Steam x64 base 0x180000000) ===
+
+void FUN_1813831c0(ulonglong param_1,longlong *param_2,int param_3,float param_4)
+
+{
+  float *pfVar1;
+  char *pcVar2;
+  longlong lVar3;
+  char cVar4;
+  int iVar5;
+  undefined4 uVar6;
+  longlong lVar7;
+  undefined8 uVar8;
+  longlong lVar9;
+  ulonglong uVar10;
+  longlong *plVar11;
+  size_t _Size;
+  undefined4 local_res8 [2];
+  longlong local_res10;
+  undefined1 uVar13;
+  ulonglong local_98;
+  longlong local_90;
+  undefined1 local_88 [8];
+  undefined1 *local_80;
+  undefined2 *local_78;
+  undefined1 local_70 [8];
+  undefined1 *local_68;
+  undefined4 local_60;
+  size_t sVar12;
+  
+  lVar7 = GetArkPlayerInstance();
+  uVar8 = FUN_18157cb80(lVar7);
+  local_res10 = lVar7 + 0x678;
+  lVar9 = FUN_181587c30(local_res10);
+  lVar3 = *param_2;
+  local_90 = lVar9 + 0xa8;
+  local_98 = param_1;
+  if (lVar3 == *(longlong *)(DAT_182c16838 + 0x910)) {
+    FUN_181381600(&local_98,1);
+    goto LAB_18138392a;
+  }
+  if (lVar3 == *(longlong *)(DAT_182c16838 + 0x918)) {
+    FUN_181381600(&local_98,0xffffffffffffffff);
+    goto LAB_18138392a;
+  }
+  if (*(char *)(param_1 + 0x88) == '\0') goto LAB_18138392a;
+  if ((lVar3 == *(longlong *)(DAT_182c16838 + 0x8d8)) ||
+     (lVar3 == *(longlong *)(DAT_182c16838 + 0x8b8))) {
+LAB_181383656:
+    FUN_18124df60(lVar9,0);
+  }
+  else {
+    if ((lVar3 == *(longlong *)(DAT_182c16838 + 0x8c8)) ||
+       (lVar3 == *(longlong *)(DAT_182c16838 + 0x8d0))) {
+      if (*(longlong *)(param_1 + 0x38) != *(longlong *)(param_1 + 0x40)) {
+        uVar10 = *(longlong *)(param_1 + 0x28) - *(longlong *)(param_1 + 0x20) >> 3;
+        if ((uVar10 <= (ulonglong)(longlong)*(int *)(param_1 + 0x84)) &&
+           (iVar5 = *(int *)(*(longlong *)(param_1 + 0x38) +
+                            ((longlong)*(int *)(param_1 + 0x84) - uVar10) * 4), iVar5 != 0)) {
+          cVar4 = FUN_181273f90(lVar7 + 0x14b8,iVar5);
+          if (cVar4 != '\0') {
+            FUN_181274820(lVar7 + 0x14b8,iVar5);
+          }
+          local_res8[0] = 0;
+          FUN_181383e40(param_1,local_res8);
+          FUN_18124df60(lVar9,0);
+          goto LAB_181383656;
+        }
+      }
+      local_res8[0] = FUN_181381d50(param_1);
+      cVar4 = FUN_1815b78b0(uVar8,local_res8);
+      if (cVar4 != '\0') {
+        local_res8[0] = 1;
+        FUN_181383e40(param_1,local_res8);
+      }
+      goto LAB_181383656;
+    }
+    if (lVar3 == *(longlong *)(DAT_182c16838 + 0x938)) {
+      uVar8 = FUN_181381c50();
+      iVar5 = FUN_181381af0(uVar8);
+      if (iVar5 == 0) {
+        FUN_181381410(local_res8,1,"@ui_NoMedkits");
+      }
+      else if (iVar5 == 1) {
+        FUN_181381410(local_res8,1,"@ui_HealthFull");
+      }
+      else if (iVar5 == 2) {
+        FUN_181384c70(param_1);
+        local_res8[0] = 3;
+        FUN_181383e40(param_1,local_res8);
+      }
+    }
+    else if (lVar3 == *(longlong *)(DAT_182c16838 + 0x930)) {
+      uVar8 = FUN_181381cd0();
+      iVar5 = FUN_181381af0(uVar8);
+      if (iVar5 == 0) {
+        FUN_181381410(local_res8,2,"@ui_NoPsiHypos");
+      }
+      else if (iVar5 == 1) {
+        FUN_181381410(local_res8,2,"@ui_PsiFull");
+      }
+      else if (iVar5 == 2) {
+        FUN_181384c70(param_1);
+        FUN_181380630(param_1,local_res8);
+        iVar5 = FUN_181381d50(param_1);
+        if (iVar5 != 0x10) {
+          FUN_181384030(param_1,*(longlong *)(param_1 + 0x20) +
+                                (longlong)*(int *)(param_1 + 0x84) * 8);
+        }
+        local_res8[0] = 2;
+        FUN_181383e40(param_1,local_res8);
+      }
+    }
+    else if (lVar3 == *(longlong *)(DAT_182c16838 + 0x940)) {
+      uVar6 = FUN_1810d8780(*(undefined8 *)(lVar7 + 0x1810),param_1 + 0x90);
+      plVar11 = (longlong *)FUN_18117f3e0(uVar6);
+      if (plVar11 == (longlong *)0x0) {
+        FUN_181381410(local_res8,3,"@ui_NoFood");
+      }
+      else {
+        cVar4 = (**(code **)(*plVar11 + 0x1a0))(plVar11);
+        if (cVar4 == '\0') {
+          FUN_181381410(local_res8,3,"@ui_CannotEat");
+        }
+        else {
+          (**(code **)(*plVar11 + 400))(plVar11);
+          local_res8[0] = 4;
+          FUN_181383e40(param_1,local_res8);
+          FUN_181384c70(param_1);
+        }
+      }
+    }
+    else if (lVar3 == *(longlong *)(DAT_182c16838 + 0x948)) {
+      uVar8 = FUN_181381dc0();
+      iVar5 = FUN_181381af0(uVar8);
+      if (iVar5 == 0) {
+        FUN_181381410(local_res8,4,"@ui_NoSuitPatchKits");
+      }
+      else if (iVar5 == 1) {
+        FUN_181381410(local_res8,4,"@ui_ArmorFull");
+      }
+      else if (iVar5 == 2) {
+        FUN_181384c70(param_1);
+        local_res8[0] = 5;
+        FUN_181383e40(param_1,local_res8);
+      }
+    }
+    else if (lVar3 == *(longlong *)(DAT_182c16838 + 0x8e0)) {
+      *(float *)(param_1 + 0x5c) = param_4;
+    }
+    else if (lVar3 == *(longlong *)(DAT_182c16838 + 0x8e8)) {
+      *(float *)(param_1 + 0x60) = -param_4;
+    }
+    else if (lVar3 == *(longlong *)(DAT_182c16838 + 0x8f0)) {
+      pfVar1 = (float *)(*(longlong *)(param_1 + 0x78) + 0x1c);
+      if ((*pfVar1 <= ABS(param_4) && ABS(param_4) != *pfVar1) || (*(int *)(param_1 + 0x80) != 2)) {
+        *(float *)(param_1 + 0x5c) = param_4;
+        *(undefined4 *)(param_1 + 0x80) = 1;
+      }
+    }
+    else if ((lVar3 == *(longlong *)(DAT_182c16838 + 0x8f8)) &&
+            ((pfVar1 = (float *)(*(longlong *)(param_1 + 0x78) + 0x1c),
+             *pfVar1 <= ABS(param_4) && ABS(param_4) != *pfVar1 || (*(int *)(param_1 + 0x80) != 2)))
+            ) {
+      *(float *)(param_1 + 0x60) = param_4;
+      *(undefined4 *)(param_1 + 0x80) = 1;
+    }
+  }
+  lVar3 = *param_2;
+  if (lVar3 == *(longlong *)(DAT_182c16838 + 0x900)) {
+    pfVar1 = (float *)(*(longlong *)(param_1 + 0x78) + 0x1c);
+    if ((*pfVar1 <= ABS(param_4) && ABS(param_4) != *pfVar1) || (*(int *)(param_1 + 0x80) != 1)) {
+      *(float *)(param_1 + 0x5c) = param_4;
+      *(undefined4 *)(param_1 + 0x80) = 2;
+    }
+  }
+  else if (lVar3 == *(longlong *)(DAT_182c16838 + 0x908)) {
+    pfVar1 = (float *)(*(longlong *)(param_1 + 0x78) + 0x1c);
+    if ((*pfVar1 <= ABS(param_4) && ABS(param_4) != *pfVar1) || (*(int *)(param_1 + 0x80) != 1)) {
+      *(float *)(param_1 + 0x60) = param_4;
+      *(undefined4 *)(param_1 + 0x80) = 2;
+    }
+  }
+  else if (((param_3 == 1) &&
+           ((((((lVar3 == *(longlong *)(DAT_182c16838 + 0xb28) ||
+                (lVar3 == *(longlong *)(DAT_182c16838 + 0xb18))) ||
+               (lVar3 == *(longlong *)(DAT_182c16838 + 0xb20))) ||
+              ((lVar3 == *(longlong *)(DAT_182c16838 + 0xb88) ||
+               (lVar3 == *(longlong *)(DAT_182c16838 + 0xb90))))) ||
+             (((lVar3 == *(longlong *)(DAT_182c16838 + 0xb98) ||
+               ((lVar3 == *(longlong *)(DAT_182c16838 + 0xba0) ||
+                (lVar3 == *(longlong *)(DAT_182c16838 + 0xba8))))) ||
+              (lVar3 == *(longlong *)(DAT_182c16838 + 0xbb0))))) ||
+            ((((lVar3 == *(longlong *)(DAT_182c16838 + 3000) ||
+               (lVar3 == *(longlong *)(DAT_182c16838 + 0xbc0))) ||
+              (lVar3 == *(longlong *)(DAT_182c16838 + 0xbc8))) ||
+             (lVar3 == *(longlong *)(DAT_182c16838 + 0xbd0))))))) &&
+          (plVar11 = (longlong *)FUN_181665780(), plVar11 != (longlong *)0x0)) {
+    uVar8 = FUN_1816fe0d0(local_res10);
+    iVar5 = FUN_181381d50(param_1);
+    if (iVar5 == 0x10) {
+      iVar5 = FUN_181381d80(param_1);
+      if (iVar5 == 0) goto LAB_18138392a;
+      local_90 = CONCAT44(local_90._4_4_,iVar5);
+      local_98 = local_98 & 0xffffffff00000000;
+      cVar4 = FUN_181335520(uVar8,1,&local_98,param_2);
+      iVar5 = (int)local_98;
+      if ((int)local_98 < 0) {
+        iVar5 = -1 - (int)local_98;
+      }
+      uVar13 = (undefined1)local_res8[0];
+    }
+    else {
+      local_90 = CONCAT44(local_90._4_4_,iVar5);
+      local_98 = CONCAT44(local_98._4_4_,1);
+      cVar4 = FUN_181335520(uVar8,0,&local_98,param_2);
+      iVar5 = (int)local_98;
+      if ((int)local_98 < 0) {
+        iVar5 = -1 - (int)local_98;
+      }
+      uVar13 = (undefined1)local_res8[0];
+    }
+    FUN_181331dc0((int)local_98,iVar5,local_res8,&local_90,(undefined1)local_res8[0],uVar13,0,0);
+    FUN_181338b60(uVar8,plVar11);
+    if ((cVar4 != '\0') && (*(int *)(*(longlong *)(DAT_182c16840 + 0x1a8) + 0x28) - 3U < 3)) {
+      local_res8[0] = FUN_181336260(param_2);
+      FUN_1802b2870(local_88);
+      local_78 = &DAT_18224df7c;
+      local_80 = &DAT_18224d03c;
+      FUN_1802b27f0(local_70);
+      local_68 = &DAT_18224d03c;
+      sVar12 = 0xffffffffffffffff;
+      do {
+        _Size = sVar12 + 1;
+        pcVar2 = &DAT_181ca2d79 + sVar12;
+        sVar12 = _Size;
+      } while (*pcVar2 != '\0');
+      if ((_Size != 0) && (FUN_180095610(&local_68,_Size), local_68 != &DAT_181ca2d78)) {
+        memcpy(local_68,&DAT_181ca2d78,_Size);
+      }
+      local_60 = 8;
+      FUN_1802de840(local_88,local_res8);
+      (**(code **)(*plVar11 + 0x210))(plVar11,"wheelAssignQuickSelect",local_88,0,0);
+      FUN_1802b16d0(local_88);
+    }
+  }
+LAB_18138392a:
+  lVar3 = *param_2;
+  if ((lVar3 != 0) &&
+     (*(int *)(lVar3 + -0xc) = *(int *)(lVar3 + -0xc) + -1, *(int *)(lVar3 + -0xc) < 1)) {
+    (**(code **)(*DAT_18224da90 + 0x18))();
+  }
+  return;
+}
+
+
