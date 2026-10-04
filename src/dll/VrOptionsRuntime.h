@@ -20,9 +20,11 @@ options::Values VrOptionsValues();
 unsigned VrOptionsPage();
 unsigned VrOptionsRow();
 bool VrOptionsSaveFailed();
+std::wstring VrSetupMessage();
 bool PsychoscopeGestureEnabled();
 bool HolstersEnabled();
 bool WristDisplayEnabled();
 unsigned WristSizePercent();
+bool BeltHintsEnabled();
 std::string VrOptionsReport();
 }

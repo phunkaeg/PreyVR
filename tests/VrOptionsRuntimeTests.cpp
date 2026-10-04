@@ -4,7 +4,9 @@
 #include <cstdlib>
 namespace {
 preyvr::options::Values applied=preyvr::options::Defaults();
-bool nativeModal=true;unsigned pauseTaps=0,recenters=0,clears=0,holsterClears=0;
+bool nativeModal=true;unsigned pauseTaps=0,recenters=0,calibrations=0,clears=0,holsterClears=0;
+DWORD viewResultForTest=0;
+bool supersedeViewForTest=false;
 preyvr::dll::TrackingFrame currentFrame{};
 void Check(bool ok,const char* why){if(!ok){std::cerr<<why<<'\n';std::exit(1);}}
 }
@@ -51,7 +53,9 @@ bool HudMenuStateKnown(){return true;}
 bool TryGetTrackingFrame(TrackingFrame& f){f=currentFrame;return true;}
 unsigned UiPointerHand(){return 1;}
 unsigned long long HeadTrackingReferenceGeneration(){return 2;}
-DWORD RecenterHeadTracking(bool){++recenters;return 0;}
+DWORD RecenterHeadTracking(bool height){if(height)++calibrations;else ++recenters;
+ if(supersedeViewForTest){supersedeViewForTest=false;QueueViewRequest(2,currentFrame.epoch);}
+ return viewResultForTest;}
 void ClearUiPointer(){++clears;}
 DWORD PostMenuAction(unsigned id,unsigned long long){Check(id==static_cast<unsigned>(input::MenuAction::Start),"only pause posted");++pauseTaps;return 0;}
 }
@@ -117,6 +121,29 @@ int main(){
  r.thumbstickY=-1;tick();r.thumbstickY=0;tick();
  r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
  Check(MedkitSlotEnabled(),"medkit opt-in reaches adapter");
+ r.gripPressed=true;tick();r.gripPressed=false;tick();
+ Check(VrOptionsPage()==7,"setup page reached");
+ r.menuAccept=true;tick();r.menuAccept=false;tick();
+ viewResultForTest=3;ServiceVrOptions();
+ Check(calibrations==1&&recenters==0&&VrSetupMessage()==L"WAITING FOR CURRENT HEADSET POSE","height calibration retries a busy reference");
+ viewResultForTest=0;ServiceVrOptions();ServiceVrOptions();
+ Check(calibrations==2&&recenters==0&&VrSetupMessage()==L"CURRENT POSTURE CALIBRATED / VR VIEW RESET","successful calibration reports completion and stops retrying");
+ r.thumbstickY=-1;tick();r.thumbstickY=0;tick();
+ r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+ Check(recenters==1&&calibrations==2&&VrSetupMessage()==L"VR VIEW RESET / HEIGHT BASELINE PRESERVED","ordinary reset preserves the posture baseline");
+ r.menuAccept=true;tick();r.menuAccept=false;tick();viewResultForTest=2;ServiceVrOptions();ServiceVrOptions();
+ Check(recenters==2&&VrSetupMessage()==L"LOOK STRAIGHT AHEAD AND TRY AGAIN","vertical view refusal never automatically retries");
+ r.menuAccept=true;tick();r.menuAccept=false;tick();++currentFrame.epoch;ServiceVrOptions();
+ Check(recenters==2&&VrSetupMessage()==L"NO CURRENT HEADSET POSE / TRY AGAIN","request from an old tracking session never executes");
+ // A new request arriving while the worker calls the native boundary must keep
+ // its own action/epoch/deadline and must not receive the older result.
+ QueueViewRequest(1,currentFrame.epoch);supersedeViewForTest=true;viewResultForTest=3;
+ ServiceVrOptions();Check(VrSetupMessage()==L"WAITING FOR CURRENT HEADSET POSE","superseded reset cannot publish a result");
+ viewResultForTest=0;ServiceVrOptions();
+ Check(recenters==3&&calibrations==3&&VrSetupMessage()==L"CURRENT POSTURE CALIBRATED / VR VIEW RESET","new calibration never inherits older reset retry");
+ QueueViewRequest(1,currentFrame.epoch);
+ {std::lock_guard lock(viewMutex);viewPending->deadline=0;}
+ ServiceVrOptions();Check(recenters==3,"expired request never reaches native backend");
  // Native menu changes behind us: held confirm cannot leak to the game.
  r.menuAccept=true;nativeModal=false;Check(tick()&&!VrOptionsOpen(),"native menu closes options");
  Check(tick(),"held input quarantined");r.menuAccept=false;tick();Check(!tick(),"neutral releases ownership");

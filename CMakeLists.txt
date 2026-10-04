@@ -148,6 +148,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/VrOptionsRuntime.cpp
         src/dll/Psychoscope.cpp
         src/dll/BodyEquipment.cpp
+        src/dll/SlotFeedback.cpp
         src/dll/NativeWristTexture.cpp
         src/dll/HudLayer.cpp
         src/dll/InventorySwapchain.cpp
@@ -487,6 +488,11 @@ if(PREYVR_BUILD_TESTS)
     add_test(NAME runtime_bootstrap COMMAND preyvr_runtime_bootstrap_tests)
 
     if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
+        add_executable(preyvr_slot_feedback_tests tests/SlotFeedbackTests.cpp)
+        target_compile_definitions(preyvr_slot_feedback_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        target_link_libraries(preyvr_slot_feedback_tests PRIVATE preyvr_core gdi32 user32)
+        preyvr_enable_warnings(preyvr_slot_feedback_tests)
+        add_test(NAME slot_feedback COMMAND preyvr_slot_feedback_tests)
         add_executable(preyvr_psi_medkit_runtime_tests tests/PsiMedkitRuntimeTests.cpp)
         target_compile_definitions(preyvr_psi_medkit_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
         target_link_libraries(preyvr_psi_medkit_runtime_tests PRIVATE preyvr_core minhook)

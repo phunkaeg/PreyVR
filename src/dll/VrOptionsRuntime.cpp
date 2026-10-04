@@ -20,16 +20,29 @@
 #include <iterator>
 #include <algorithm>
 #include <cmath>
+#include <mutex>
 namespace preyvr::dll {
 namespace {
 options::Menu menu; // XR thread only
 std::array<std::atomic<int>,options::Count> values{};
 std::atomic<bool> ready{false},open{false},owned{false},saveFailed{false},scope{false};
 std::atomic<bool> holsters{false},wrist{false};
+std::atomic<bool> beltHints{true};
 std::atomic<unsigned> wristSize{100};
 std::atomic<unsigned> dirty{0},page{0},row{0};
 std::atomic<int> request{0};
-std::atomic<bool> recenter{false};
+// Latest explicit request wins. Busy reference locks retry for at most one
+// second, within the same tracking session; a stale request never fires later.
+struct ViewRequest { int action=0;std::uint64_t epoch=0,deadline=0,generation=0; };
+std::mutex viewMutex;
+std::optional<ViewRequest> viewPending;
+std::uint64_t viewGeneration=0;
+std::atomic<int> viewResult{-1}; // 1 reset, 2 posture calibration
+void QueueViewRequest(int action,std::uint64_t epoch){
+ std::lock_guard lock(viewMutex);
+ viewPending=ViewRequest{action,epoch,MonotonicNanoseconds()+1000000000ull,++viewGeneration};
+ viewResult=-2;
+}
 std::optional<ui::Surface> pointerSurface;
 std::uint64_t surfaceReference=0;
 long long previousTime=0;
@@ -60,6 +73,7 @@ void Apply(unsigned id,int v){
  case options::Holsters:holsters.store(v!=0);ClearHolsters();break;
  case options::Wrist:wrist.store(v!=0);break;
  case options::WristSize:wristSize=v;break;
+ case options::BeltHints:beltHints=v!=0;break;
  case options::UiScale:SetUiScalePercent(v);break;
  case options::UiMargin:SetUiFitMarginPercent(v);break;
  case options::UiCurve:SetUiCurveDegrees(v);break;
@@ -92,6 +106,7 @@ options::Values VrOptionsValues(){
  v[options::UiCurve]=UiCurveDegrees();v[options::UiGuide]=UiGuideEnabled();
  v[options::Psychoscope]=scope.load();
  v[options::Holsters]=holsters.load();v[options::Wrist]=wrist.load();v[options::WristSize]=wristSize.load();
+ v[options::BeltHints]=beltHints.load();
  // Read the actual lane settings, including changes made through the command
  // channel. Pending menu edits override only their own row until applied.
  const auto pending=dirty.load();
@@ -112,11 +127,21 @@ void LoadVrOptions(){
 }
 void ServiceVrOptions(){
  if(!ready.load())return;
- if(recenter.exchange(false)) {
-  const auto result=RecenterHeadTracking();
-  // A busy reference lock is transient, not a failed user request.
-  if(result==3)recenter=true;
-  else lifecycle::Log("preyvr_options recenter_result="+std::to_string(result));
+ std::optional<ViewRequest> view;
+ {std::lock_guard lock(viewMutex);view=viewPending;viewPending.reset();}
+ if(view) {
+  TrackingFrame f{};
+  const bool current=MonotonicNanoseconds()<view->deadline&&TryGetTrackingFrame(f)&&f.epoch==view->epoch;
+  const auto result=current?RecenterHeadTracking(view->action==2):DWORD{1};
+  std::lock_guard lock(viewMutex);
+  // A newer click or teardown must not inherit the old action's retry/status.
+  if(viewGeneration==view->generation){
+   if(result==3&&MonotonicNanoseconds()<view->deadline)viewPending=view;
+   else {
+    viewResult=static_cast<int>(result)+(view->action==2?10:0);
+    lifecycle::Log("preyvr_options view_action="+std::to_string(view->action)+" result="+std::to_string(result));
+   }
+  }
  }
  const auto mask=dirty.exchange(0);
  if(mask){for(unsigned i=0;i<options::Count;++i)if(mask&(1u<<i))Apply(i,values[i].load());Save();}
@@ -142,7 +167,9 @@ bool ProcessVrOptionsInput(const TrackingFrame& f){
  const bool wasOwned=menu.OwnsInput();
  const auto change=menu.Update(i);
  if(menu.PauseTap())PostMenuAction(static_cast<unsigned>(input::MenuAction::Start),0);
- if(change.recenter)recenter=true;
+ if(change.recenter||change.calibrate){
+  QueueViewRequest(change.calibrate?2:1,f.epoch);
+ }
  if(change.clearHolsters)ClearHolsters();
  if(change.setting>=0){
   const auto id=static_cast<unsigned>(change.setting);
@@ -171,14 +198,25 @@ bool VrOptionsOpen(){return open.load();}
 bool VrOptionsReady(){return ready.load();}
 bool VrOptionsInputOwned(){return owned.load();}
 void RequestVrOptions(bool on){request=on?1:-1;}
-void ResetVrOptionsSession(){menu={};open=false;owned=false;request=0;pointerSurface.reset();previousTime=0;ClearUiPointer();}
+void ResetVrOptionsSession(){menu={};open=false;owned=false;request=0;{std::lock_guard lock(viewMutex);viewPending.reset();++viewGeneration;viewResult=-1;}pointerSurface.reset();previousTime=0;ClearUiPointer();}
 unsigned VrOptionsPage(){return page.load();}
 unsigned VrOptionsRow(){return row.load();}
 bool VrOptionsSaveFailed(){return saveFailed.load();}
+std::wstring VrSetupMessage(){
+ const auto result=viewResult.load();
+ if(result==-1)return L"";
+ if(result==-2)return L"WAITING FOR CURRENT HEADSET POSE";
+ if(result==0)return L"VR VIEW RESET / HEIGHT BASELINE PRESERVED";
+ if(result==10)return L"CURRENT POSTURE CALIBRATED / VR VIEW RESET";
+ if(result%10==2)return L"LOOK STRAIGHT AHEAD AND TRY AGAIN";
+ if(result%10==3)return L"REFERENCE BUSY / TRY AGAIN";
+ return L"NO CURRENT HEADSET POSE / TRY AGAIN";
+}
 bool PsychoscopeGestureEnabled(){return scope.load();}
 bool HolstersEnabled(){return holsters.load();}
 bool WristDisplayEnabled(){return wrist.load();}
 unsigned WristSizePercent(){return wristSize.load();}
+bool BeltHintsEnabled(){return beltHints.load();}
 std::string VrOptionsReport(){return " open="+std::to_string(open.load())+" inputOwned="+std::to_string(owned.load())+
  " saved="+std::to_string(!saveFailed.load())+" psychoscope="+std::to_string(scope.load())+
  " holsters="+std::to_string(holsters.load())+" wrist="+std::to_string(wrist.load())+

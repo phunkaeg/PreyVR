@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <cstring>
 namespace preyvr::dll {
-std::vector<std::uint8_t> DrawVrOptions(const options::Values& values,unsigned page,unsigned selected,bool saveFailed){
+std::vector<std::uint8_t> DrawVrOptions(const options::Values& values,unsigned page,unsigned selected,bool saveFailed,std::wstring_view setupMessage){
  using namespace options;
  HDC dc=CreateCompatibleDC(nullptr);if(!dc)return {};
  BITMAPINFO info{};info.bmiHeader={sizeof(BITMAPINFOHEADER),Width,-static_cast<LONG>(Height),1,32,BI_RGB};
@@ -26,7 +26,7 @@ std::vector<std::uint8_t> DrawVrOptions(const options::Values& values,unsigned p
  for(unsigned p=0;p<Pages;++p){
   const int span=1288/Pages,x=56+static_cast<int>(p)*span;
   fill(x,174,span-8,72,p==page?amber:RGB(27,37,45));
-  text(x+16,194,span-28,45,PageName(p),Pages>5?26:30,p==page?bg:muted,true);
+  text(x+12,194,span-24,45,PageName(p),Pages>7?23:Pages>5?26:30,p==page?bg:muted,true);
  }
  for(unsigned r=0;r<Rows;++r){
   const int id=Item(page,r);
@@ -34,19 +34,19 @@ std::vector<std::uint8_t> DrawVrOptions(const options::Values& values,unsigned p
   const int y=280+static_cast<int>(r)*116;const bool active=r==selected;
   fill(56,y,1288,108,active?RGB(47,48,40):RGB(22,30,37));
   if(active)fill(56,y,6,108,amber);
-  text(83,y+24,710,65,id==-3?L"CLEAR HOLSTER ASSIGNMENTS":id<0?L"RESET VR VIEW":Describe(id).label,32,active?amber:ink,true);
-  const auto value=id==-3?L"CLEAR":id<0?L"RECENTER":Display(id,values[id]);
+  text(83,y+24,710,65,id==-4?L"CALIBRATE CURRENT POSTURE":id==-3?L"CLEAR HOLSTER ASSIGNMENTS":id<0?L"RESET VR VIEW":Describe(id).label,32,active?amber:ink,true);
+  const auto value=id==-4?L"CALIBRATE":id==-3?L"CLEAR":id<0?L"RECENTER":Display(id,values[id]);
   text(813,y+27,44,55,L"<",30,muted);
   text(874,y+27,382,63,value,29,ink,true);
   text(1290,y+27,38,55,L">",30,muted);
  }
  fill(56,778,1288,2,RGB(69,80,83));
  const int selectedId=Item(page,selected);
- text(80,808,1240,103,selectedId==-2?L"Select a setting above.":selectedId==-3?L"Forget both session holsters. Your weapons stay in the native inventory.":selectedId<0?
+ text(80,808,1240,103,selectedId==-2?L"Select a setting above.":selectedId==-4?L"Sit or stand comfortably, look straight ahead, then select. Sets this posture as your height baseline and resets the view. Repeat after changing posture.":selectedId==-3?L"Forget both session holsters. Your weapons stay in the native inventory.":selectedId<0?
       L"Look straight ahead and select to reset the view and controller reference together.":
       Describe(selectedId).help,29,ink);
  text(80,914,1250,52,saveFailed?L"SETTINGS ACTIVE / COULD NOT SAVE TO DISK":
-      L"POINT + TRIGGER   /   STICK: SELECT & ADJUST   /   GRIPS: TABS",24,saveFailed?amber:muted);
+      page==7&&!setupMessage.empty()?std::wstring(setupMessage):L"POINT + TRIGGER   /   STICK: SELECT & ADJUST   /   GRIPS: TABS",24,saveFailed||page==7?amber:muted);
  fill(56,980,1288,80,RGB(36,47,54));
  text(85,1001,1150,54,L"B  /  BACK TO GAME MENU",29,ink,true);
  GdiFlush();std::vector<std::uint8_t> result(Width*Height*4);

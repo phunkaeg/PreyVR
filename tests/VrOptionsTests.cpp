@@ -64,13 +64,20 @@ void SettingsChecks(){
  Check(Defaults()[PsiTarget]==0&&Defaults()[Medkit]==0,"abilities preserve original behavior by default");
  Check(Valid(PsiTarget,2)&&!Valid(PsiTarget,3)&&!Valid(Medkit,2),"ability ranges");
  Menu abilities;Input ai=Base();Open(abilities,ai);abilities.page=6;abilities.row=1;
- ai.y=-1;abilities.Update(ai);Check(abilities.row==0,"navigation skips empty ability rows");
- ai.y=0;abilities.Update(ai);ai.y=1;abilities.Update(ai);Check(abilities.row==1,"reverse navigation skips empty rows");
- ai.y=0;ai.trigger=true;ai.hover=2;Check(abilities.Update(ai).setting==-1&&abilities.row==1,"empty row is not interactive");
+ ai.y=-1;abilities.Update(ai);Check(abilities.row==2,"body slot feedback is an ability setting");
+ ai.y=0;abilities.Update(ai);ai.y=-1;abilities.Update(ai);Check(abilities.row==0,"navigation skips empty ability rows");
+ ai.y=0;abilities.Update(ai);ai.y=1;abilities.Update(ai);Check(abilities.row==2,"reverse navigation skips empty rows");
+ ai.y=0;ai.trigger=true;ai.hover=3;Check(abilities.Update(ai).setting==-1&&abilities.row==2,"empty row is not interactive");
  Menu menu;Input input=Base();Open(menu,input);input.trigger=true;input.hover=7;menu.Update(input);
  Check(menu.Open()&&menu.page==3,"fourth tab is not mistaken for close");
  input.trigger=false;menu.Update(input);input.trigger=true;input.hover=3;
  Check(menu.Update(input).clearHolsters,"clear assignments distinct from recenter");
+ Menu setup;Input si=Base();Open(setup,si);setup.page=7;
+ si.accept=true;const auto calibration=setup.Update(si);
+ Check(calibration.calibrate&&!calibration.recenter&&!calibration.clearHolsters,"posture calibration is a distinct one-shot action");
+ Check(!setup.Update(si).calibrate,"held calibration button never repeats");
+ si.accept=false;setup.Update(si);si.y=-1;setup.Update(si);si.y=0;setup.Update(si);si.accept=true;
+ Check(setup.Update(si).recenter,"setup retains reset without height calibration");
 }
 void GestureChecks(){
  PsychoscopeGesture g;const Vec3 high{-.12f,.18f,-.12f},low{-.12f,-.02f,-.12f};

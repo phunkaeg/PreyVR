@@ -8,7 +8,8 @@ namespace preyvr::options {
 enum Setting : unsigned { Turn, HeadRelative, TurnSpeed, TwoHand, GripToggle,
     SupportSnap, Psychoscope, UiScale, UiMargin, UiCurve, UiGuide, Holsters, Wrist, WristSize,
     SceneReticle, ReticleFallback, Haptics, HapticStrength, PhysicalMelee, PhysicalContacts, SwingSpeed, ContactStrength,
-    PsiTarget, Medkit, Count };
+    PsiTarget, Medkit, BeltHints, Count };
+static_assert(Count<=32); // runtime dirty mailbox is a 32-bit mask
 struct Spec { const char* key; const wchar_t* label; const wchar_t* help; int initial,min,max,step; };
 const Spec& Describe(unsigned id);
 bool Valid(unsigned id,int value);
@@ -18,9 +19,9 @@ std::string Serialize(const Values&);
 // Transactional parse: malformed/unknown fields refuse the whole file.
 bool Parse(std::string_view text,Values& result);
 std::wstring Display(unsigned id,int value);
-constexpr unsigned Width=1400,Height=1100,Pages=7,Rows=4;
+constexpr unsigned Width=1400,Height=1100,Pages=8,Rows=4;
 constexpr int CloseHit=Rows+Pages;
-// -1 = recenter, -2 = empty, -3 = clear holsters; shared renderer/hit layout.
+// -1 = recenter, -2 = empty, -3 = clear holsters, -4 = calibrate posture.
 int Item(unsigned page,unsigned row);
 const wchar_t* PageName(unsigned page);
 struct Input {
@@ -31,7 +32,7 @@ struct Input {
     bool decrease=false;
     std::uint64_t epoch=0;
 };
-struct Change { int setting=-1; int direction=0; bool recenter=false,clearHolsters=false; };
+struct Change { int setting=-1; int direction=0; bool recenter=false,clearHolsters=false,calibrate=false; };
 class Menu {
 public:
     Change Update(const Input&);

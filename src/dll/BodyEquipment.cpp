@@ -4,6 +4,7 @@
 #include "HudBridge.h"
 #include "InputPost.h"
 #include "VrOptionsRuntime.h"
+#include "SlotFeedback.h"
 #include "WeaponAttachment.h"
 #include "preyvr/EquipmentNative.h"
 #include "preyvr/PsychoscopeNative.h"
@@ -37,7 +38,7 @@ bool Gate(std::uintptr_t base){
 }
 // These are direct Steam native functions, never inferred vtable indices.
 // Entry/consumer bytes and complete ABIs are recorded in EquipmentNative.h.
-DWORD Native(const GameplayPoseFrame& frame,int slot,bool readStats,Status* out){
+DWORD Native(const GameplayPoseFrame& frame,int slot,bool readStats,Status* out,bool* didStow){
  __try {
   if(InputDrainThreadId()==0||InputDrainThreadId()!=GetCurrentThreadId())return ERROR_INVALID_THREAD_ID;
   const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
@@ -91,6 +92,7 @@ DWORD Native(const GameplayPoseFrame& frame,int slot,bool readStats,Status* out)
    if(!current||!TryGetEquippedRig(player,rig)||rig.itemId!=current)return ERROR_NOT_READY;
    reinterpret_cast<void(__fastcall*)(std::uintptr_t,bool,bool)>(base+0x12773A0)(weapon,true,false);
    slots[slot]=current;slotWeapons[slot]=rig.weapon;
+   *didStow=true;
   }else{
    const auto stored=reinterpret_cast<std::uintptr_t(__fastcall*)(std::uint32_t)>(base+0x16A5650)(slots[slot]);
    if(!stored||stored!=slotWeapons[slot]||*reinterpret_cast<const std::uint32_t*>(stored+0x60)!=0x7777||
@@ -146,8 +148,12 @@ void UpdateBodyEquipment(const GameplayPoseFrame& frame,bool valid){
  // make a health-read failure disable otherwise independent holster controls.
  status.Clear();
  if(!HolstersEnabled())return;
- Status sample{};const auto result=Native(frame,slot,false,&sample);
- if(slot>=0){if(!result)++dispatched;else ++refused;}
+ Status sample{};bool stored=false;const auto result=Native(frame,slot,false,&sample,&stored);
+ if(slot>=0){
+  if(!result)++dispatched;else ++refused;
+  using N=equipment::SlotNotice;
+  PublishSlotFeedback(result?(slot==0?N::HipDenied:N::ChestDenied):stored?(slot==0?N::HipStored:N::ChestStored):(slot==0?N::HipDraw:N::ChestDraw),frame);
+ }
  if(result!=0&&result!=ERROR_NOT_READY){fault=true;status.Clear();}
 }
 bool ReadWristVitals(equipment::Vitals& out,std::uint64_t epoch){

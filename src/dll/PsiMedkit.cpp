@@ -4,6 +4,7 @@
 #include "HudBridge.h"
 #include "InputPost.h"
 #include "Haptics.h"
+#include "SlotFeedback.h"
 #include "MinHookInit.h"
 #include "preyvr/PsiTargeting.h"
 #include "preyvr/MedkitSlot.h"
@@ -299,11 +300,16 @@ void UpdatePsiMedkit(const GameplayPoseFrame& frame,bool valid){
     const bool wasOwned=slot.OwnsGrip();
     const bool use=slot.Update(f.head,left.gripPose.position,left.gripPressed,left.triggerPressed,slotAllowed,dt);
     medkitGrip=slot.OwnsGrip();
-    if(!wasOwned&&slot.OwnsGrip())QueueHaptic(Hand::left,haptics::Event::ForegripAttached,f);
+    if(!wasOwned&&slot.OwnsGrip()){
+        QueueHaptic(Hand::left,haptics::Event::ForegripAttached,f);
+        PublishSlotFeedback(equipment::SlotNotice::MedkitReady,frame);
+    }
     if(use){
         int result=-1;const auto error=ConsumeMedkit(frame,&result);Error(error);
         if(!error&&result==2){++medkitUsed;QueueHaptic(Hand::left,haptics::Event::WeaponContact,f);}
         else if(!error&&result==0)++medkitAbsent;else ++medkitDenied;
+        PublishSlotFeedback(!error&&result==2?equipment::SlotNotice::MedkitUsed:
+            !error&&result==0?equipment::SlotNotice::MedkitEmpty:equipment::SlotNotice::MedkitDenied,frame);
     }
     const auto event=trigger.Update(left.triggerPressed,valid&&mode.load()&&!slot.OwnsGrip()&&!left.gripPressed&&
         !left.menuAccept&&!left.menuCancel&&!f.hands[1].gripPressed);

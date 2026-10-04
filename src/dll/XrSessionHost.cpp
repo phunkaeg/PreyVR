@@ -18,6 +18,7 @@
 #include "VrOptionsRuntime.h"
 #include "VrOptionsPanel.h"
 #include "BodyEquipment.h"
+#include "SlotFeedback.h"
 #include "NativeWristTexture.h"
 #include "AimTakeover.h"
 #include "preyvr/UiPanel.h"
@@ -111,6 +112,12 @@ struct Host {
     options::Values optionsPainted{};
     unsigned optionsPage=~0u,optionsRow=~0u;
     bool optionsReady=false,optionsSaveFailed=false;
+    std::wstring optionsSetupPainted;
+    std::unique_ptr<InventorySwapchain> slotSwapchain;
+    ID3D11Texture2D* slotTexture=nullptr;
+    DXGI_FORMAT slotFormat=DXGI_FORMAT_UNKNOWN;
+    bool slotAttempted=false,slotReady=false;
+    equipment::SlotNotice slotPainted=equipment::SlotNotice::None;
     std::vector<XrSwapchainImageD3D11KHR> hudImages;
     D3D11_TEXTURE2D_DESC hudDesc{};
     bool guideReady = false, guideAttempted = false;
@@ -663,6 +670,9 @@ void Teardown()
     gHost.inventoryRightSwapchain.reset();
     gHost.optionsSwapchain.reset();
     if(gHost.optionsTexture)gHost.optionsTexture->Release();
+    gHost.slotSwapchain.reset();
+    if(gHost.slotTexture)gHost.slotTexture->Release();
+    ClearSlotFeedback();
     gHost.wristSwapchain.reset();
     gHost.wristFitter.reset();
     ResetNativeWristCapture();
@@ -1784,9 +1794,10 @@ void ServiceXrFrame(void* renderer)
             }
         }
         const auto values=VrOptionsValues();const auto optionPage=VrOptionsPage(),optionRow=VrOptionsRow();const bool failed=VrOptionsSaveFailed();
+        const auto setupMessage=VrSetupMessage();
         if(gHost.optionsTexture&&gHost.optionsSwapchain&&
-           (!gHost.optionsReady||values!=gHost.optionsPainted||optionPage!=gHost.optionsPage||optionRow!=gHost.optionsRow||failed!=gHost.optionsSaveFailed)) {
-            auto pixels=DrawVrOptions(values,optionPage,optionRow,failed);
+           (!gHost.optionsReady||values!=gHost.optionsPainted||optionPage!=gHost.optionsPage||optionRow!=gHost.optionsRow||failed!=gHost.optionsSaveFailed||setupMessage!=gHost.optionsSetupPainted)) {
+            auto pixels=DrawVrOptions(values,optionPage,optionRow,failed,setupMessage);
             if(gHost.optionsFormat==DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
                 for(size_t n=0;n+3<pixels.size();n+=4)std::swap(pixels[n],pixels[n+2]);
             ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
@@ -1795,7 +1806,7 @@ void ServiceXrFrame(void* renderer)
                 const auto upload=gHost.optionsSwapchain->Copy(context,gHost.optionsTexture);
                 gHost.optionsReady=upload==InventorySwapchain::Upload::ready;
                 if(upload==InventorySwapchain::Upload::sessionFault)gStopRequested.store(true);
-                if(gHost.optionsReady){gHost.optionsPainted=values;gHost.optionsPage=optionPage;gHost.optionsRow=optionRow;gHost.optionsSaveFailed=failed;}
+                if(gHost.optionsReady){gHost.optionsPainted=values;gHost.optionsPage=optionPage;gHost.optionsRow=optionRow;gHost.optionsSaveFailed=failed;gHost.optionsSetupPainted=setupMessage;}
             }
             if(context)context->Release();
         }
@@ -1980,6 +1991,62 @@ void ServiceXrFrame(void* renderer)
             wristLayer.subImage.imageRect={{0,0},{NativeWristWidth,NativeWristHeight}};
         }
     }
+    XrCompositionLayerQuad slotLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    bool slotActive=false;
+    equipment::SlotMessage slotMessage{};TrackingFrame slotFrame{};
+    if(rendered&&haveViews&&!panelActive&&!optionsActive&&TryGetTrackingFrame(slotFrame)&&ReadSlotFeedback(slotFrame,slotMessage)){
+        std::array<ui::Eye,2> optical{};
+        for(unsigned eye=0;eye<2;++eye){const auto& p=views[eye].pose;const auto& f=views[eye].fov;
+            optical[eye]={Pose{{p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w},
+                {p.position.x,p.position.y,p.position.z}},f.angleLeft,f.angleRight,f.angleUp,f.angleDown};}
+        const auto panel=equipment::SlotPanel(inputHead,optical);
+        if(panel&&!gHost.slotAttempted){
+            gHost.slotAttempted=true;
+            uint32_t count=0;
+            if(xrEnumerateSwapchainFormats(gHost.session,0,&count,nullptr)==XR_SUCCESS&&count&&count<256){
+                std::vector<int64_t> formats(count);
+                if(xrEnumerateSwapchainFormats(gHost.session,count,&count,formats.data())==XR_SUCCESS)
+                    for(auto format:{DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB})
+                        if(std::find(formats.begin(),formats.end(),format)!=formats.end()){gHost.slotFormat=format;break;}
+            }
+            // GDI pixels are sRGB, independently of the scene's colour encoding.
+            if(gHost.slotFormat!=DXGI_FORMAT_UNKNOWN){
+                D3D11_TEXTURE2D_DESC d{};d.Width=SlotFeedbackWidth;d.Height=SlotFeedbackHeight;d.Format=gHost.slotFormat;
+                d.SampleDesc.Count=d.ArraySize=d.MipLevels=1;d.BindFlags=D3D11_BIND_SHADER_RESOURCE;
+                if(SUCCEEDED(gHost.device->CreateTexture2D(&d,nullptr,&gHost.slotTexture))){
+                    gHost.slotSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
+                        xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
+                        xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
+                    if(!gHost.slotSwapchain->Prepare(gHost.session,d,gHost.slotFormat))gHost.slotSwapchain.reset();
+                }
+            }
+        }
+        if(panel&&gHost.slotTexture&&gHost.slotSwapchain){
+            if(!gHost.slotReady||gHost.slotPainted!=slotMessage.kind){
+                auto pixels=DrawSlotFeedback(slotMessage.kind);
+                if(gHost.slotFormat==DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
+                    for(size_t n=0;n+3<pixels.size();n+=4)std::swap(pixels[n],pixels[n+2]);
+                ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+                if(context&&!pixels.empty()){
+                    context->UpdateSubresource(gHost.slotTexture,0,nullptr,pixels.data(),SlotFeedbackWidth*4,0);
+                    const auto upload=gHost.slotSwapchain->Copy(context,gHost.slotTexture);
+                    gHost.slotReady=upload==InventorySwapchain::Upload::ready;
+                    if(upload==InventorySwapchain::Upload::sessionFault)gStopRequested.store(true);
+                    if(gHost.slotReady)gHost.slotPainted=slotMessage.kind;
+                }
+                if(context)context->Release();
+            }
+            slotActive=gHost.slotReady&&reference==HeadTrackingReferenceGeneration()&&!(reference&1)&&
+                slotMessage.Current(MonotonicNanoseconds(),slotFrame.epoch,reference,HudMenuEpoch());
+            if(slotActive){const auto& p=*panel;
+                slotLayer.space=gHost.space;slotLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+                slotLayer.pose={{p.pose.orientation.x,p.pose.orientation.y,p.pose.orientation.z,p.pose.orientation.w},
+                    {p.pose.position.x,p.pose.position.y,p.pose.position.z}};
+                slotLayer.size={p.width,p.height};slotLayer.subImage.swapchain=gHost.slotSwapchain->Handle();
+                slotLayer.subImage.imageRect={{0,0},{SlotFeedbackWidth,SlotFeedbackHeight}};
+            }
+        }
+    }
     std::vector<const XrCompositionLayerBaseHeader*> layers;
     if(optionsActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&optionsLayer));
     else if(panelActive)layers.push_back(surface.angle>0?reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cylinderLayer):
@@ -1991,6 +2058,7 @@ void ServiceXrFrame(void* renderer)
     if(beamActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&beamLayer));
     if(cursorActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cursorLayer));
     if(wristActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&wristLayer));
+    if(slotActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&slotLayer));
 
     XrFrameEndInfo endInfo{XR_TYPE_FRAME_END_INFO};
     endInfo.displayTime = frameState.predictedDisplayTime;
