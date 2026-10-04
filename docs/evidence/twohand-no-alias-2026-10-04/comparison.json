@@ -1,0 +1,30 @@
+{
+  "positiveContract": "PASS",
+  "leftOnlyHeldAppliedCounter": 1834,
+  "steeringDegrees": 25.94111058112273,
+  "releasedDifferenceFromBaselineDegrees": 0.001259352883389081,
+  "lateControls": {
+    "empty-air": {
+      "verdict": "INCONCLUSIVE",
+      "regionReady": 0,
+      "reason": "fresh native support geometry unavailable"
+    },
+    "return-held": {
+      "verdict": "INCONCLUSIVE",
+      "regionReady": 0,
+      "reason": "fresh native support geometry unavailable"
+    },
+    "reacquired": {
+      "verdict": "INCONCLUSIVE",
+      "regionReady": 0,
+      "reason": "fresh native support geometry unavailable"
+    },
+    "inventory": {
+      "verdict": "INCONCLUSIVE",
+      "regionReady": 0,
+      "reason": "fresh native support geometry unavailable"
+    }
+  },
+  "headsetAcceptance": "NOT_MEASURED",
+  "xrTape": "NOT_ENABLED"
+}

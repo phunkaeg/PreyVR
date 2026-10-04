@@ -1,0 +1,28 @@
+
+undefined1 FUN_1810d7e60(longlong *param_1,undefined8 param_2,undefined1 param_3)
+
+{
+  char cVar1;
+  int local_28 [2];
+  undefined1 local_20;
+  undefined7 uStack_1f;
+
+  param_1 = (longlong *)*param_1;
+  if (param_1 != (longlong *)0x0) {
+    local_28[0] = 2;
+    cVar1 = (**(code **)(*param_1 + 0x38))(param_1,param_2,local_28,0);
+    if ((cVar1 != '\0') && (local_28[0] == 2)) {
+      return local_20;
+    }
+    if (local_28[0] == 6) {
+      if ((longlong *)CONCAT71(uStack_1f,local_20) != (longlong *)0x0) {
+        (**(code **)(*(longlong *)CONCAT71(uStack_1f,local_20) + 0x18))();
+        return param_3;
+      }
+    }
+    else if ((local_28[0] == 7) && (CONCAT71(uStack_1f,local_20) != 0)) {
+      (**(code **)(*DAT_18224d9c0 + 0xc0))();
+    }
+  }
+  return param_3;
+}

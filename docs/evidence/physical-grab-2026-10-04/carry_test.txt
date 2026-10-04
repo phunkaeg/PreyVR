@@ -1,0 +1,233 @@
+
+char * FUN_181594860(longlong param_1,char *param_2,longlong *param_3,int param_4,int *param_5)
+
+{
+  longlong lVar1;
+  char cVar2;
+  int iVar3;
+  int iVar4;
+  undefined4 uVar5;
+  longlong *plVar6;
+  longlong lVar7;
+  undefined8 uVar8;
+  longlong *plVar9;
+  char *pcVar10;
+  char *pcVar11;
+  longlong lVar12;
+  longlong *local_res18;
+  int local_res20 [2];
+  char *local_88;
+  longlong *local_80;
+  longlong local_78;
+  longlong **local_70;
+  longlong *local_68;
+  char *local_60;
+  longlong **local_58;
+  int *local_50;
+  int *local_48;
+  char *local_40;
+
+  local_res18 = param_3;
+  local_res20[0] = param_4;
+  plVar6 = (longlong *)GetArkPlayerInstance();
+  param_2[0] = '\0';
+  param_2[1] = '\0';
+  *(undefined1 **)(param_2 + 8) = &DAT_18224d03c;
+  *(undefined2 **)(param_2 + 0x10) = &DAT_18224df7c;
+  *(undefined1 **)(param_2 + 0x18) = &DAT_18224d03c;
+  *(undefined2 **)(param_2 + 0x20) = &DAT_18224df7c;
+  local_70 = &local_res18;
+  local_58 = &local_res18;
+  local_48 = local_res20;
+  local_50 = param_5;
+  local_88 = param_2;
+  local_80 = plVar6;
+  local_78 = param_1;
+  local_68 = plVar6;
+  local_60 = param_2;
+  local_40 = param_2;
+  switch(*param_5) {
+  case 1:
+    *param_2 = '\x01';
+    goto LAB_181594910;
+  case 2:
+    *param_2 = '\0';
+    FUN_1800944d0(param_2 + 0x18,param_5 + 2);
+    break;
+  case 3:
+    FUN_181592240(&local_58);
+    if (*param_2 == '\0') break;
+LAB_181594910:
+    if (local_res20[0] != 4) {
+      FUN_181594d30(local_res18,param_2 + 1);
+    }
+    break;
+  case 4:
+  case 0xc:
+    uVar5 = (**(code **)(*local_res18 + 8))();
+    uVar8 = FUN_1816fdda0(DAT_182c16840);
+    plVar6 = (longlong *)FUN_18146e070(uVar8,uVar5);
+    if (plVar6 == (longlong *)0x0) {
+      FUN_181592240(&local_58);
+    }
+    else {
+      *param_2 = '\x01';
+      if ((*param_5 == 4) && (cVar2 = (**(code **)(*plVar6 + 0xe8))(plVar6), cVar2 == '\0')) {
+        lVar7 = -1;
+        do {
+          lVar1 = lVar7 + 1;
+          lVar7 = lVar7 + 1;
+        } while ("@use_error_inventoryfull"[lVar1] != '\0');
+        FUN_180095680(param_2 + 0x18);
+      }
+    }
+    pcVar11 = "@use_pickup";
+    lVar7 = -1;
+    do {
+      lVar12 = lVar7 + 1;
+      lVar1 = lVar7 + 1;
+      lVar7 = lVar12;
+    } while ("@use_pickup"[lVar1] != '\0');
+    pcVar10 = param_2 + 8;
+    goto LAB_181594cb4;
+  case 5:
+    *param_2 = '\x01';
+    pcVar11 = "@use_consume";
+    lVar7 = -1;
+    do {
+      lVar12 = lVar7 + 1;
+      lVar1 = lVar7 + 1;
+      lVar7 = lVar12;
+    } while ("@use_consume"[lVar1] != '\0');
+    pcVar10 = param_2 + 8;
+    goto LAB_181594cb4;
+  case 6:
+    cVar2 = FUN_18157e460(plVar6);
+    if (cVar2 != '\0') break;
+    lVar7 = -1;
+    do {
+      lVar1 = lVar7 + 1;
+      lVar7 = lVar7 + 1;
+    } while ("@use_carry"[lVar1] != '\0');
+    FUN_180095680(param_2 + 8);
+    iVar3 = (**(code **)(*plVar6 + 0x140))(plVar6);
+    if (iVar3 == 9) {
+      *param_2 = '\x01';
+    }
+    else {
+      uVar8 = FUN_181593090(local_res18);
+      FUN_1815922f0(&local_88,uVar8);
+      if (*param_2 == '\0') break;
+    }
+    plVar6 = local_res18;
+    if (local_res18 == (longlong *)0x0) {
+LAB_1815949db:
+      if ((*(int *)(param_1 + 0xd8) == 0) || (cVar2 = FUN_181284d20(param_1 + 0x5c), cVar2 == '\0'))
+      break;
+    }
+    else {
+      lVar7 = GetArkPlayerInstance();
+      iVar3 = *(int *)(lVar7 + 0x11b8);
+      iVar4 = (**(code **)(*plVar6 + 8))(plVar6);
+      if (iVar3 != iVar4) goto LAB_1815949db;
+    }
+    *param_2 = '\0';
+    pcVar11 = "@use_error_standingonobject";
+    lVar7 = -1;
+    do {
+      lVar12 = lVar7 + 1;
+      lVar1 = lVar7 + 1;
+      lVar7 = lVar12;
+    } while ("@use_error_standingonobject"[lVar1] != '\0');
+    goto LAB_181594cb0;
+  case 7:
+    lVar7 = -1;
+    do {
+      lVar12 = lVar7 + 1;
+      lVar1 = lVar7 + 1;
+      lVar7 = lVar12;
+    } while ("@use_hack"[lVar1] != '\0');
+    FUN_180095680(param_2 + 8,"@use_hack",lVar12);
+    uVar8 = FUN_1815931e0(local_res18,0,"ability_HackRequirement","ability_HackRequirementOverride")
+    ;
+    FUN_1815922f0(&local_88,uVar8);
+    break;
+  case 8:
+    lVar7 = -1;
+    do {
+      lVar12 = lVar7 + 1;
+      lVar1 = lVar7 + 1;
+      lVar7 = lVar12;
+    } while ("@use_repair"[lVar1] != '\0');
+    FUN_180095680(param_2 + 8,"@use_repair",lVar12);
+    uVar8 = FUN_1815931e0(local_res18,"Repair","ability_RepairRequirement",
+                          "ability_RepairRequirementOverride");
+    FUN_1815922f0(&local_88,uVar8);
+    if (*param_2 != '\0') {
+      FUN_181592460(&local_70,"Repair","archetype_RepairItem");
+    }
+    break;
+  case 9:
+    lVar7 = -1;
+    do {
+      lVar12 = lVar7 + 1;
+      lVar1 = lVar7 + 1;
+      lVar7 = lVar12;
+    } while ("@use_fortify"[lVar1] != '\0');
+    FUN_180095680(param_2 + 8,"@use_fortify",lVar12);
+    uVar8 = FUN_1815931e0(local_res18,"Fortify","ability_FortifyRequirement",
+                          "ability_FortifyRequirementOverride");
+    FUN_1815922f0(&local_88,uVar8);
+    if (*param_2 != '\0') {
+      FUN_181592460(&local_70,"Fortify","archetype_FortifyItem");
+    }
+    break;
+  case 10:
+    cVar2 = FUN_18157e460(plVar6);
+    if (cVar2 != '\0') break;
+    *param_2 = '\x01';
+    FUN_181594d30(local_res18,param_2 + 1);
+    pcVar11 = "@use_examine";
+    lVar7 = -1;
+    do {
+      lVar12 = lVar7 + 1;
+      lVar1 = lVar7 + 1;
+      lVar7 = lVar12;
+    } while ("@use_examine"[lVar1] != '\0');
+    pcVar10 = param_2 + 8;
+    goto LAB_181594cb4;
+  case 0xb:
+    uVar5 = (**(code **)(*local_res18 + 8))();
+    uVar8 = FUN_1816fdda0(DAT_182c16840);
+    plVar9 = (longlong *)FUN_18146e070(uVar8,uVar5);
+    if ((plVar9 == (longlong *)0x0) ||
+       (cVar2 = (**(code **)(*plVar9 + 0x158))(plVar9), cVar2 == '\0')) break;
+    lVar7 = -1;
+    do {
+      lVar1 = lVar7 + 1;
+      lVar7 = lVar7 + 1;
+    } while ("@use_equip"[lVar1] != '\0');
+    FUN_180095680(param_2 + 8);
+    cVar2 = (**(code **)(*(longlong *)(plVar6[0x302] + 0x50) + 0x78))
+                      ((longlong *)(plVar6[0x302] + 0x50),uVar5);
+    if (cVar2 != '\0') {
+      *param_2 = '\x01';
+      break;
+    }
+    pcVar11 = "@use_error_inventoryfull";
+    lVar7 = -1;
+    do {
+      lVar12 = lVar7 + 1;
+      lVar1 = lVar7 + 1;
+      lVar7 = lVar12;
+    } while ("@use_error_inventoryfull"[lVar1] != '\0');
+LAB_181594cb0:
+    pcVar10 = param_2 + 0x18;
+LAB_181594cb4:
+    FUN_180095680(pcVar10,pcVar11,lVar12);
+  }
+  if (((char)param_5[4] != '\0') && (*param_5 != 2)) {
+    FUN_1800944d0(param_2 + 8,param_5 + 2);
+  }
+  return param_2;
+}

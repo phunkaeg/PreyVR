@@ -55,3 +55,13 @@ docs/evidence/psi-medkit-2026-09-30/steam-candidate.txt whitespace=-blank-at-eol
 # Native Windows build/test logs keep their original CRLF bytes.
 docs/evidence/psi-medkit-2026-09-30/build-release.txt whitespace=cr-at-eol
 docs/evidence/psi-medkit-2026-09-30/ctest-release.txt whitespace=cr-at-eol
+
+# Preserve this no-alias native receipt and its artifacts across checkouts.
+docs/TWO-HAND-NO-ALIAS-2026-10-04.md -text
+docs/evidence/twohand-no-alias-2026-10-04/** -text whitespace=cr-at-eol
+docs/receipts/20261004-twohand-no-alias.json -text whitespace=cr-at-eol
+tools/re/verify_twohand_no_alias.py text eol=lf
+
+# Static carry exports and Windows UI build logs retain their original bytes.
+docs/evidence/physical-grab-2026-10-04/** -text whitespace=cr-at-eol
+docs/evidence/posture-slot-feedback-2026-10-04/** -text whitespace=cr-at-eol

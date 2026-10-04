@@ -1,0 +1,117 @@
+
+/* Steam ArkPlayerInteraction::Interact. Reads usable entity id at this+0x46C, evaluates the
+   per-mode ArkInteractionInfo at this+0x128+(mode*0x18), then enters native PerformInteraction. */
+
+undefined8 ArkPlayerInteraction_Interact(longlong param_1,int param_2)
+
+{
+  undefined4 *puVar1;
+  int iVar2;
+  longlong *plVar3;
+  longlong *plVar4;
+  undefined8 uVar5;
+  longlong lVar6;
+  undefined8 uVar7;
+  undefined4 local_res8 [2];
+  undefined8 local_res18 [2];
+  undefined4 *puVar8;
+  undefined4 uVar9;
+  char local_58 [8];
+  longlong local_50;
+  longlong local_48;
+  longlong local_40;
+  longlong local_38;
+
+  plVar3 = (longlong *)
+           (**(code **)(*DAT_18224da38 + 0x70))(DAT_18224da38,*(undefined4 *)(param_1 + 0x46c));
+  if (plVar3 != (longlong *)0x0) {
+    puVar1 = (undefined4 *)(param_1 + 0x128 + (longlong)param_2 * 0x18);
+    puVar8 = puVar1;
+    FUN_181594860(param_1,local_58,plVar3,param_2,puVar1);
+    uVar9 = (undefined4)((ulonglong)puVar8 >> 0x20);
+    if (local_58[0] != '\0') {
+      plVar4 = (longlong *)(**(code **)(*plVar3 + 0x200))(plVar3,2);
+      uVar7 = 0;
+      uVar5 = uVar7;
+      if (plVar4 != (longlong *)0x0) {
+        uVar5 = (**(code **)(*plVar4 + 0x80))(plVar4);
+      }
+      lVar6 = GetArkPlayerInstance();
+      plVar4 = (longlong *)
+               (**(code **)(**(longlong **)(lVar6 + 0x38) + 0x200))(*(longlong **)(lVar6 + 0x38),2);
+      if (plVar4 != (longlong *)0x0) {
+        uVar7 = (**(code **)(*plVar4 + 0x80))(plVar4);
+      }
+      local_res18[0] = uVar7;
+      if (param_2 == 0) {
+        puVar8 = local_res8;
+        local_res8[0] = 0;
+        FUN_181591470(plVar3,uVar5,"OnUsed",local_res18,puVar8);
+        uVar9 = (undefined4)((ulonglong)puVar8 >> 0x20);
+        FUN_1816eaf00(plVar3,uVar5,"OnHoldToUseStarted");
+      }
+      else if (param_2 == 1) {
+        puVar8 = local_res8;
+        local_res8[0] = 0;
+        FUN_181591470(plVar3,uVar5,"OnHoldUsed",local_res18,puVar8);
+        uVar9 = (undefined4)((ulonglong)puVar8 >> 0x20);
+      }
+      else if (param_2 == 2) {
+        puVar8 = local_res8;
+        local_res8[0] = 0;
+        FUN_181591470(plVar3,uVar5,"OnLoot",local_res18,puVar8);
+        uVar9 = (undefined4)((ulonglong)puVar8 >> 0x20);
+      }
+      else if (param_2 == 3) {
+        puVar8 = local_res8;
+        local_res8[0] = 0;
+        FUN_181591470(plVar3,uVar5,"OnSpecialUsed",local_res18,puVar8);
+        uVar9 = (undefined4)((ulonglong)puVar8 >> 0x20);
+      }
+      ArkPlayerInteraction_PerformInteraction
+                (param_1,*puVar1,param_2,plVar3,CONCAT44(uVar9,puVar1[5]));
+      iVar2 = *(int *)(local_38 + -0xc);
+      if ((-1 < iVar2) && (iVar2 = iVar2 + -1, *(int *)(local_38 + -0xc) = iVar2, iVar2 < 1)) {
+        FUN_1800a8b20();
+      }
+      iVar2 = *(int *)(local_40 + -0xc);
+      if ((-1 < iVar2) && (iVar2 = iVar2 + -1, *(int *)(local_40 + -0xc) = iVar2, iVar2 < 1)) {
+        FUN_1800a8b20();
+      }
+      iVar2 = *(int *)(local_48 + -0xc);
+      if ((-1 < iVar2) && (iVar2 = iVar2 + -1, *(int *)(local_48 + -0xc) = iVar2, iVar2 < 1)) {
+        FUN_1800a8b20();
+      }
+      iVar2 = *(int *)(local_50 + -0xc);
+      if (-1 < iVar2) {
+        iVar2 = iVar2 + -1;
+        *(int *)(local_50 + -0xc) = iVar2;
+        if (iVar2 < 1) {
+          FUN_1800a8b20();
+        }
+      }
+      return 1;
+    }
+    iVar2 = *(int *)(local_38 + -0xc);
+    if ((-1 < iVar2) && (iVar2 = iVar2 + -1, *(int *)(local_38 + -0xc) = iVar2, iVar2 < 1)) {
+      FUN_1800a8b20();
+    }
+    iVar2 = *(int *)(local_40 + -0xc);
+    if ((-1 < iVar2) && (iVar2 = iVar2 + -1, *(int *)(local_40 + -0xc) = iVar2, iVar2 < 1)) {
+      FUN_1800a8b20();
+    }
+    iVar2 = *(int *)(local_48 + -0xc);
+    if ((-1 < iVar2) && (iVar2 = iVar2 + -1, *(int *)(local_48 + -0xc) = iVar2, iVar2 < 1)) {
+      FUN_1800a8b20();
+    }
+    iVar2 = *(int *)(local_50 + -0xc);
+    if (-1 < iVar2) {
+      iVar2 = iVar2 + -1;
+      *(int *)(local_50 + -0xc) = iVar2;
+      if (iVar2 < 1) {
+        FUN_1800a8b20();
+      }
+    }
+  }
+  return 0;
+}

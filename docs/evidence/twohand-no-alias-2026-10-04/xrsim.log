@@ -1,0 +1,43 @@
+[10:39:02.042] xrsim: negotiate ok (loader iface 1..1, api 1.0.0..1.1023.4095) -> runtime iface 1 api 1.0.34
+[10:39:02.046] xrsim: headset profile: built-in Meta Quest 3 geometry
+[10:39:02.046] xrsim: instance created for app 'PreyVR' (engine 'CryEngine', api 1.1); graphics extensions: d3d9=0 d3d10=0 d3d11=1 d3d12=0 gl=0 vk=0 vk2=0 headless=0
+[10:39:02.046] xrsim: control channel live at D:\Dev Debug\PreyVR\build\twohand-no-alias-20261004\runs\run-20261004-103830\xrsim
+[10:39:02.123] xrsim: reporting adapter 'NVIDIA GeForce RTX 5070 Ti' LUID 00000000-00015D97 (15995 MB)
+[10:39:02.226] xrsim: compositor ready
+[10:39:02.226] xrsim: session state -> IDLE
+[10:39:02.226] xrsim: session created with D3D11 graphics
+[10:39:02.226] xrsim: action set 'preyvr' created
+[10:39:02.227] xrsim: 18 binding(s) suggested on the touch profile, 16 driven
+[10:39:02.227] xrsim: 18 binding(s) suggested on the index profile, 16 driven
+[10:39:02.227] xrsim: action set(s) attached to the session
+[10:39:02.228] xrsim: swapchain 0 created 1344x1440x2 fmt 29 (3 images)
+[10:39:02.380] xrsim: session state -> READY
+[10:39:02.380] xrsim: session state -> SYNCHRONIZED
+[10:39:02.380] xrsim: session running - the app is now paced by the simulated headset
+[10:39:02.384] xrsim: swapchain 1 created 1024x160x1 fmt 91 (3 images)
+[10:39:02.384] xrsim: swapchain 2 created 32x32x1 fmt 29 (3 images)
+[10:39:02.384] xrsim: session state -> VISIBLE
+[10:39:02.403] xrsim: session state -> FOCUSED
+[10:39:29.744] xrsim: applied 11 command(s): input clear | head pose 0 1.65 0 0 0 0 | hand r follow off | hand l follow off | hand r grip pose 0.18 1.30 -0.35 0 0 0 | hand r aim pose 0.18 1.30 -0.35 0 0 0 | hand r aimtrim 0 0 | hand l grip pose 0.034 1.325 -0.561 0 0 0 | hand l aim pose 0.034 1.325 -0.561 0 0 0 | capture size 672 720 | fov quest3
+[10:39:39.205] xrsim: applied 1 command(s): shot boot
+[10:40:03.920] xrsim: capture written boot (672x720)
+[10:40:25.656] xrsim: swapchain 3 created 1344x1440x1 fmt 28 (3 images)
+[10:40:26.274] xrsim: applied 1 command(s): capture next 1
+[10:40:26.302] xrsim: capture written boot (672x720)
+[10:40:52.612] xrsim: applied 1 command(s): grip r 1
+[10:40:53.299] xrsim: applied 1 command(s): input clear
+[10:40:53.638] xrsim: applied 2 command(s): grip l 1 | shot left-acquired
+[10:40:53.782] xrsim: capture written left-acquired (672x720)
+[10:41:37.596] xrsim: applied 1 command(s): input clear
+[10:41:37.886] xrsim: applied 1 command(s): grip l 1
+[10:41:58.972] xrsim: applied 2 command(s): hand l grip pos 0.20 1.40 -0.56 | shot steered
+[10:41:59.119] xrsim: capture written steered (672x720)
+[10:41:59.865] xrsim: applied 2 command(s): grip l 0 | shot released
+[10:41:59.998] xrsim: capture written released (672x720)
+[10:42:36.081] xrsim: applied 1 command(s): grip l 1
+[10:42:36.662] xrsim: applied 1 command(s): hand l grip pos 0.034 1.325 -0.561
+[10:42:37.164] xrsim: applied 1 command(s): grip l 0
+[10:42:37.438] xrsim: applied 1 command(s): grip l 1
+[10:42:38.912] xrsim: applied 1 command(s): input clear
+[10:42:39.631] xrsim: session torn down
+[10:42:39.631] xrsim: instance destroyed

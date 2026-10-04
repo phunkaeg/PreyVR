@@ -1,0 +1,37 @@
+
+undefined8 * FUN_1814ad0f0(undefined8 *param_1,longlong *param_2)
+
+{
+  longlong *plVar1;
+  longlong *plVar2;
+  longlong *local_res8;
+
+  if (param_2 != (longlong *)0x0) {
+    plVar2 = (longlong *)(**(code **)(*param_2 + 0x200))(param_2,2);
+    if (plVar2 != (longlong *)0x0) {
+      plVar2 = (longlong *)(**(code **)(*plVar2 + 0x80))(plVar2);
+      if (plVar2 != (longlong *)0x0) {
+        (**(code **)(*plVar2 + 0x10))(plVar2);
+        (**(code **)(*plVar2 + 0x10))(plVar2);
+        (**(code **)(*plVar2 + 0x18))(plVar2);
+      }
+      goto LAB_1814ad154;
+    }
+  }
+  plVar2 = (longlong *)0x0;
+LAB_1814ad154:
+  local_res8 = (longlong *)0x0;
+  if (plVar2 != (longlong *)0x0) {
+    FUN_1802c35b0(plVar2,"Properties",&local_res8);
+  }
+  plVar1 = local_res8;
+  *param_1 = local_res8;
+  if (local_res8 != (longlong *)0x0) {
+    (**(code **)(*local_res8 + 0x10))(local_res8);
+    (**(code **)(*plVar1 + 0x18))(plVar1);
+  }
+  if (plVar2 != (longlong *)0x0) {
+    (**(code **)(*plVar2 + 0x18))(plVar2);
+  }
+  return param_1;
+}

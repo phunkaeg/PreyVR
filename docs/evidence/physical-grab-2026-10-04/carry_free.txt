@@ -1,0 +1,12 @@
+
+void FUN_1800a8b20(longlong param_1)
+
+{
+  if (param_1 != 0) {
+                    /* WARNING: Could not recover jumptable at 0x0001800a8b27. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+    (*DAT_182418f60)(param_1,0);
+    return;
+  }
+  return;
+}

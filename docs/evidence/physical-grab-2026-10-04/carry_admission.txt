@@ -1,0 +1,164 @@
+
+/* Steam ArkPlayerInteraction::PerformInteraction. Native action dispatcher for interaction types
+   including carry, hack, examine and hoover; preserve this path and steer only target selection. */
+
+void ArkPlayerInteraction_PerformInteraction
+               (longlong param_1,int param_2,int param_3,longlong *param_4,float param_5)
+
+{
+  char cVar1;
+  undefined4 uVar2;
+  longlong lVar3;
+  longlong lVar4;
+  longlong *plVar5;
+  undefined8 uVar6;
+  longlong *plVar7;
+  ulonglong uVar8;
+  ulonglong uVar9;
+  ulonglong uVar10;
+  undefined4 local_res20 [2];
+  longlong *local_98;
+  longlong *local_90;
+  longlong *local_88;
+  longlong *local_80;
+  undefined8 uStack_78;
+  longlong local_70;
+  undefined4 uStack_68;
+  undefined4 uStack_64;
+  undefined4 local_58;
+  undefined4 uStack_54;
+  undefined4 uStack_50;
+  undefined4 uStack_4c;
+  undefined4 local_48;
+  undefined4 uStack_44;
+  undefined4 uStack_40;
+  undefined4 uStack_3c;
+
+  lVar3 = GetArkPlayerInstance();
+  lVar4 = FUN_1812dc290(param_4);
+  uVar8 = 0;
+  if ((lVar4 == 0) || (cVar1 = FUN_181525590(lVar4), cVar1 == '\0')) {
+    if (param_2 == 6) {
+      if ((param_3 == 4) || (param_5 <= 0.0)) {
+        FUN_18125a250(param_1 + 0x28);
+        FUN_18125c3d0(param_1 + 0x28,param_4,param_3 == 4,0);
+      }
+      else {
+        FUN_181284f80(param_1 + 0x460,param_5,1);
+        plVar5 = (longlong *)FUN_1814ad0f0(&local_88,param_4);
+        local_98 = (longlong *)0x0;
+        if (*plVar5 != 0) {
+          FUN_1802c35b0(*plVar5,"Sound",&local_98);
+        }
+        FUN_1814acef0(&local_90,&local_98);
+        if (local_98 != (longlong *)0x0) {
+          (**(code **)(*local_98 + 0x18))();
+        }
+        plVar5 = (longlong *)&DAT_181c7ce7b;
+        if (local_90 != (longlong *)0x0) {
+          local_80 = (longlong *)CONCAT44(local_80._4_4_,5);
+          cVar1 = (**(code **)(*local_90 + 0x38))
+                            (local_90,"audioTrigger_HoldCarryStart",&local_80,0);
+          if ((cVar1 == '\0') || (plVar5 = uStack_78, (int)local_80 != 5)) {
+            if ((int)local_80 == 6) {
+              plVar5 = (longlong *)&DAT_181c7ce7b;
+              if (uStack_78 != (longlong *)0x0) {
+                (**(code **)(*uStack_78 + 0x18))();
+              }
+            }
+            else {
+              plVar5 = (longlong *)&DAT_181c7ce7b;
+              if (((int)local_80 == 7) && (uStack_78 != (longlong *)0x0)) {
+                (**(code **)(*DAT_18224d9c0 + 0xc0))();
+              }
+            }
+          }
+          uStack_78 = (longlong *)0x0;
+          local_80 = (longlong *)((ulonglong)local_80 & 0xffffffff00000000);
+        }
+        local_res20[0] = 0;
+        if ((plVar5 != (longlong *)0x0) && ((char)*plVar5 != '\0')) {
+          (**(code **)(*DAT_18224da50 + 0x40))(DAT_18224da50,plVar5,local_res20);
+        }
+        FUN_1810de6d0(local_res20,param_4);
+        if (local_90 != (longlong *)0x0) {
+          (**(code **)(*local_90 + 0x18))();
+        }
+        if (local_88 != (longlong *)0x0) {
+          (**(code **)(*local_88 + 0x18))();
+        }
+      }
+    }
+    else if (param_2 == 7) {
+      local_80 = (longlong *)0x0;
+      local_70 = 0;
+      local_58 = 0;
+      uStack_54 = 0;
+      uStack_50 = (undefined4)uStack_78;
+      uStack_4c = uStack_78._4_4_;
+      local_48 = 0;
+      uStack_44 = 0;
+      uStack_40 = uStack_68;
+      uStack_3c = uStack_64;
+      uVar2 = (**(code **)(*param_4 + 8))(param_4);
+      uVar6 = FUN_18119a3a0();
+      uVar6 = FUN_18012c5a0(uVar6);
+      FUN_181626760(uVar6,uVar2,&local_58);
+    }
+    else if (param_2 == 10) {
+      FUN_1815ab250(lVar3 + 0x9b0,1,param_4,param_3 == 4);
+    }
+    else if (param_2 == 0xc) {
+      FUN_18159a610(param_1 + 400);
+      ArkPlayerInteraction_Interact(param_1,0);
+    }
+  }
+  uVar6 = *(undefined8 *)(DAT_182c16840 + 0x308);
+  uVar2 = (**(code **)(*param_4 + 8))(param_4);
+  uVar6 = FUN_1811c0460(uVar6,uVar2);
+  FUN_181591720(&local_80,uVar6);
+  uVar10 = (ulonglong)((longlong)uStack_78 + (7 - (longlong)local_80)) >> 3;
+  if (uStack_78 < local_80) {
+    uVar10 = uVar8;
+  }
+  uVar9 = uVar8;
+  plVar5 = local_80;
+  if (uVar10 != 0) {
+    do {
+      (*(code *)**(undefined8 **)*plVar5)((undefined8 *)*plVar5,param_2,param_3,param_4);
+      uVar9 = uVar9 + 1;
+      plVar5 = plVar5 + 1;
+    } while (uVar9 != uVar10);
+  }
+  plVar5 = local_80;
+  uVar6 = *(undefined8 *)(DAT_182c16840 + 0x3d0);
+  uVar2 = (**(code **)(*param_4 + 8))(param_4);
+  lVar3 = FUN_1813db730(uVar6,uVar2);
+  if (lVar3 != 0) {
+    uVar2 = FUN_1813ddfe0(lVar3);
+    plVar7 = (longlong *)(**(code **)(*DAT_18224da38 + 0x70))(DAT_18224da38,uVar2);
+    if (plVar7 != (longlong *)0x0) {
+      param_4 = plVar7;
+    }
+  }
+  plVar7 = (longlong *)(**(code **)(*param_4 + 0x20))(param_4);
+  if (plVar7 != (longlong *)0x0) {
+    uVar8 = (**(code **)(*plVar7 + 0x18))(plVar7);
+  }
+  uVar2 = (**(code **)(*param_4 + 8))(param_4);
+  uVar6 = FUN_18119a3a0();
+  uVar6 = FUN_181587c50(uVar6);
+  FUN_1813eeeb0(uVar6,8,uVar8,uVar2);
+  if (plVar5 != (longlong *)0x0) {
+    uVar8 = local_70 - (longlong)plVar5 >> 3;
+    if ((0x1fffffffffffffff < uVar8) ||
+       ((plVar7 = plVar5, 0xfff < uVar8 * 8 &&
+        (((((ulonglong)plVar5 & 0x1f) != 0 || (plVar7 = (longlong *)plVar5[-1], plVar5 <= plVar7))
+         || ((char *)0x1f < (char *)((longlong)plVar5 + (-8 - (longlong)plVar7)))))))) {
+                    /* WARNING: Subroutine does not return */
+      _invalid_parameter_noinfo_noreturn();
+    }
+    free(plVar7);
+  }
+  return;
+}

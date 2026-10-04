@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20261004-twohand-no-alias",
+  "recorded_at": "2026-10-04T00:04:18.322593+00:00",
+  "target": {
+    "name": "Steam PreyDll.dll; injected PreyVR 80a186e / f0b66e1bfe680f908462e7c6278fe2f49b2f4d3847cb3484c70549306a77e24e",
+    "identity_kind": "sha256",
+    "identity": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7"
+  },
+  "question": "Does the native GLOO two-hand positive contract work using separate left/right xr-sim squeeze bindings, without the former alias?",
+  "claim": "Right-only squeeze leaves support disengaged. Left-only squeeze acquires and sustains support; moving only the left hand changes native aim by 25.94 degrees with head and right pose fixed. Left release restores one-handed aim within 0.0013 degrees.",
+  "evidence_grade": "LIVE",
+  "environment": "in_game",
+  "method": "Supersedes the alias limitation of receipts/20260914-twohand-native-grip.json. Actual injected Steam Prey, owned run run-20261004-103830 / PID113584, updated process-scoped x64 xr-sim ca14f5b (DLL SHA256 6be19cdbb5dae7b196f9deee4e28e6cfa8023fcd65242d526076032e28c5f25a); no xr-tape. Native reports plus per-hand runtime states and retained rendered captures. Offline reproduce: Python3.12 -E -B tools/re/verify_twohand_no_alias.py. Details in docs/TWO-HAND-NO-ALIAS-2026-10-04.md.",
+  "validity": "VALID",
+  "mutation": "temporary",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Steam module hash verified; launch manifest retains injected DLL hash/source checkpoint, isolated simulator file hash recorded."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Native squeeze and held state agree with simulator per-hand grip states; actual primary pose and head fixed across acquisition, steering and release. Simulator error count zero."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Near-foregrip neutral and right-only squeeze have fresh regionReady=1 but held=0. Positive left-only hold, left-only movement and release also retain fresh regionReady=1. Later negatives excluded due missing geometry."
+    },
+    "scene": {
+      "status": "PASS",
+      "reason": "Native Talos Lobby GLOO and supporting hand visible in retained left/right captures."
+    },
+    "restore": {
+      "status": "PASS",
+      "reason": "VR disabled and owned Prey PID closed normally; shutdown.txt confirms no running Prey. Isolated process runtime selection; shared runtime remains VDXR."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "FAIL",
+    "reason": "Confirmed positive input/aim contract does not approve renderer baseline: retained captures still show the prior horizontal rendering band. No headset acceptance."
+  },
+  "limits": "GLOO only; first left-only attempt lost geometry and fresh rearm acquired sustained hold. Applied count is cumulative, not a contiguous frame duration. Late empty-air, held-return, reacquisition and inventory controls inconclusive because regionReady=0. No shots, physical controllers, other weapons, toggle/free-support preferences, xr-tape or headset comfort. Calibration UI and slot cards built after this native run were not tested live.",
+  "artifacts": [
+    {
+      "path": "docs/TWO-HAND-NO-ALIAS-2026-10-04.md",
+      "sha256": "333d09c5a8246ebc921bf05588d8bb1a8bfa1013b43dbaf37537e60e0e81dcab",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "tools/re/verify_twohand_no_alias.py",
+      "sha256": "095988eaee4aa9414389855e6762b9312f070cfa84b73aefd398ca127ec31dc5",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/comparison.json",
+      "sha256": "a4f4a2636d942cb3ec43ac99a220bed3e3d316ad104e5707d30d69b96a6451d1",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/run.json",
+      "sha256": "7793249f936d4bc5e5a15d06af0ebffaf4ec3f66e674bf340e383cf34587a84f",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/baseline.txt",
+      "sha256": "167b536abff7b6c1170a49df4ddb29ac70f6c78499036f9cca9720e1d86dba52",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/right-only.txt",
+      "sha256": "7b078a893d545399e5ba531b70486913781933d8d475eb109b5835a265b6309a",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/right-only-state.json",
+      "sha256": "81b264deedd854dd71cfdb7c05e9ba55367d612031b4f1e3fdbe52863beab7f7",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/held-settled.txt",
+      "sha256": "4785429368ea401216abcee94016f575d5850d5063e457b30e0d86da46245bf1",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/held-settled-state.json",
+      "sha256": "445e79f196b0b57fe5632178586147224fa3de1b9aaa2e4fe2ad0213b4c3c515",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/steered.txt",
+      "sha256": "4a01feb584d6073f9798ec1eb7d4660b12d82dd6085fcd1b3526dcb67598e8be",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/steered-state.json",
+      "sha256": "b639b9085d74240386d954b505742444869af68262936ea620a46a95ee7e6ec5",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/released.txt",
+      "sha256": "a40eb9cd1130183e448f5fe7964b1be2085ccf0120e64de8526568ca34119463",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/released-state.json",
+      "sha256": "c1bff0555361f16229d0d9e6d51d04aee9a1abd06ea098615d2ec257f35f5f29",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/shutdown.txt",
+      "sha256": "a8790e91276ae1cd6950cadf09c01c3f7bf17c4b96168a1ebd55fd0eb7cc0c8b",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    },
+    {
+      "path": "docs/evidence/twohand-no-alias-2026-10-04/left-acquired_sbs.png",
+      "sha256": "bb10adcd19f7844caa94dbc618b5b3cd7ab92112aa00227a3bed721e69d3c4b3",
+      "role": "Frozen native reports, per-hand controls, capture, restoration or reproducible analysis"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Physical-controller headset acceptance on GLOO, then other long weapons. For negative controls, obtain fresh native geometry throughout the control window before drawing conclusions; investigate later geometry loss separately. Candidate extends prior target evidence; no broad render acceptance or bottleneck clearance."
+}

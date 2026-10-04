@@ -1,5 +1,10 @@
 # Two-handed aim development build
 
+**October 4 update:** the GLOO positive contract has now been rerun using
+independent left/right xr-sim bindings, without the harness alias. See
+[the new report](TWO-HAND-NO-ALIAS-2026-10-04.md). This document remains the
+historical September implementation/test record.
+
 Implemented in the current working tree. Release DLL SHA-256:
 `BFCDBB272FFF37663233F5631D1741EEE386FAFF2CF01584E74C6E8D47FA01E4`.
 This development build includes the pre-existing experimental inventory work;

@@ -1,0 +1,325 @@
+{
+  "targetSHA256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "referenceSHA256": "0485c85bb741d6d2e5af69114bae54c521540d5868aac476a8d9fbd1899f0a63",
+  "classification": "cross-build candidates only; inspect Steam bodies and callers before use",
+  "matches": {
+    "constructor": {
+      "referenceRva": "0x122d6b0",
+      "patterns": [
+        {
+          "bytes": 97,
+          "candidates": [
+            "0x1259e30"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 53,
+          "candidates": [
+            "0x1259e30"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 26,
+          "candidates": [
+            "0x18320",
+            "0x19b00",
+            "0x9ca70",
+            "0xa7400",
+            "0xc0680",
+            "0xf5a80",
+            "0x1254f0",
+            "0x125660",
+            "0x12a920",
+            "0x12ae90",
+            "0x12c320",
+            "0x154260",
+            "0x15a020",
+            "0x15ccd0",
+            "0x1713a0",
+            "0x172fe0",
+            "0x17a660",
+            "0x191200",
+            "0x199c60",
+            "0x1bd820",
+            "0x1c7c30",
+            "0x1d1980",
+            "0x1eb260",
+            "0x1f7d50",
+            "0x209170",
+            "0x20a560",
+            "0x216530",
+            "0x229b20",
+            "0x244b60",
+            "0x2457c0"
+          ],
+          "total": 582
+        }
+      ]
+    },
+    "drop": {
+      "referenceRva": "0x122dad0",
+      "patterns": [
+        {
+          "bytes": 96,
+          "candidates": [
+            "0x125a250"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 48,
+          "candidates": [
+            "0x125a250"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 27,
+          "candidates": [
+            "0x125a250"
+          ],
+          "total": 1
+        }
+      ]
+    },
+    "direction": {
+      "referenceRva": "0x122db50",
+      "patterns": [
+        {
+          "bytes": 96,
+          "candidates": [
+            "0x125a2d0"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 48,
+          "candidates": [
+            "0x125a2d0"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 26,
+          "candidates": [
+            "0x125a2d0"
+          ],
+          "total": 1
+        }
+      ]
+    },
+    "target": {
+      "referenceRva": "0x122dfd0",
+      "patterns": [
+        {
+          "bytes": 98,
+          "candidates": [
+            "0x125a750"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 55,
+          "candidates": [
+            "0x125a750"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 25,
+          "candidates": [
+            "0x125a750"
+          ],
+          "total": 1
+        }
+      ]
+    },
+    "start": {
+      "referenceRva": "0x122fc50",
+      "patterns": [
+        {
+          "bytes": 101,
+          "candidates": [
+            "0x125c3d0"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 48,
+          "candidates": [
+            "0x125c3d0"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 29,
+          "candidates": [
+            "0x125c3d0"
+          ],
+          "total": 1
+        }
+      ]
+    },
+    "stop": {
+      "referenceRva": "0x12307f0",
+      "patterns": [
+        {
+          "bytes": 98,
+          "candidates": [
+            "0x125cf70"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 54,
+          "candidates": [
+            "0x125cf70"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 30,
+          "candidates": [
+            "0x125cf70"
+          ],
+          "total": 1
+        }
+      ]
+    },
+    "throw": {
+      "referenceRva": "0x1231b50",
+      "patterns": [
+        {
+          "bytes": 100,
+          "candidates": [
+            "0x125e2d0"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 51,
+          "candidates": [
+            "0x125e2d0"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 26,
+          "candidates": [
+            "0x125e2d0"
+          ],
+          "total": 1
+        }
+      ]
+    },
+    "update": {
+      "referenceRva": "0x1231c80",
+      "patterns": [
+        {
+          "bytes": 100,
+          "candidates": [
+            "0x125e400"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 54,
+          "candidates": [
+            "0x125e400"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 27,
+          "candidates": [
+            "0x125e400"
+          ],
+          "total": 1
+        }
+      ]
+    },
+    "populate": {
+      "referenceRva": "0x1566ee0",
+      "patterns": [
+        {
+          "bytes": 98,
+          "candidates": [
+            "0x1593d50"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 49,
+          "candidates": [
+            "0x1593d50"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 29,
+          "candidates": [
+            "0x25f6a5",
+            "0x116c810",
+            "0x14811b5",
+            "0x1593d50"
+          ],
+          "total": 4
+        }
+      ]
+    },
+    "entity_from_physics": {
+      "referenceRva": "0x922e30",
+      "patterns": [
+        {
+          "bytes": 96,
+          "candidates": [
+            "0x921a50"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 51,
+          "candidates": [
+            "0x921a50"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 25,
+          "candidates": [
+            "0x921a50"
+          ],
+          "total": 1
+        }
+      ]
+    },
+    "script_release": {
+      "referenceRva": "0xd122a0",
+      "patterns": [
+        {
+          "bytes": 97,
+          "candidates": [
+            "0xd13f30"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 48,
+          "candidates": [
+            "0xd13f30"
+          ],
+          "total": 1
+        },
+        {
+          "bytes": 25,
+          "candidates": [
+            "0xd13f30"
+          ],
+          "total": 1
+        }
+      ]
+    }
+  }
+}

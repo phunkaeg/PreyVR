@@ -1,0 +1,2 @@
+vr=off vrFailure=none uiPanel=1 uiPanelFrames=4535
+No running Prey: True

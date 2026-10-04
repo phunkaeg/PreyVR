@@ -1,0 +1,53 @@
+
+undefined8 FUN_181593090(undefined8 param_1)
+
+{
+  undefined8 uVar1;
+  char cVar2;
+  longlong *plVar3;
+  longlong *local_res10;
+  longlong *local_res18;
+  undefined8 local_res20;
+  longlong *local_28;
+  int local_20 [2];
+  longlong *local_18;
+
+  plVar3 = (longlong *)FUN_1814ace70(&local_28,param_1);
+  local_res10 = (longlong *)0x0;
+  if (*plVar3 != 0) {
+    FUN_1802c35b0(*plVar3,"Properties",&local_res10);
+  }
+  FUN_1814acef0(&local_res18,&local_res10);
+  if (local_res10 != (longlong *)0x0) {
+    (**(code **)(*local_res10 + 0x18))();
+  }
+  local_res20 = 0;
+  if (local_res18 != (longlong *)0x0) {
+    local_20[0] = 5;
+    cVar2 = (**(code **)(*local_res18 + 0x38))(local_res18,"ability_CarryRequirement",local_20,0);
+    if ((cVar2 == '\0') || (plVar3 = local_18, local_20[0] != 5)) {
+      plVar3 = (longlong *)&DAT_181c7ce7b;
+      if (local_20[0] == 6) {
+        if (local_18 != (longlong *)0x0) {
+          (**(code **)(*local_18 + 0x18))();
+        }
+      }
+      else if ((local_20[0] == 7) && (local_18 != (longlong *)0x0)) {
+        (**(code **)(*DAT_18224d9c0 + 0xc0))();
+      }
+    }
+    local_18 = (longlong *)0x0;
+    local_20[0] = 0;
+    if ((char)*plVar3 != '\0') {
+      FUN_1800c69f0(plVar3,"%I64u",&local_res20);
+    }
+  }
+  uVar1 = local_res20;
+  if (local_res18 != (longlong *)0x0) {
+    (**(code **)(*local_res18 + 0x18))();
+  }
+  if (local_28 != (longlong *)0x0) {
+    (**(code **)(*local_28 + 0x18))();
+  }
+  return uVar1;
+}

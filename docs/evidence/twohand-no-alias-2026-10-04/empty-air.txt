@@ -1,0 +1,1 @@
+aim.twohand result=0 enabled=1 held=0 regionReady=0 frames=1948 owner=4 supportMm=-143.346,352.124,-15.8325 usable=0 near=0 squeeze=1 dt=0.0310595 handLocalMm=20.0431,210.017,100.006

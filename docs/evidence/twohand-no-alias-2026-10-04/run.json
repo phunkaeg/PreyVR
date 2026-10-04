@@ -1,0 +1,20 @@
+{
+  "runId": "run-20261004-103830",
+  "startedUtc": "2026-10-03T23:38:40.8412686Z",
+  "gameExe": "D:\\SteamLibrary\\steamapps\\common\\Prey\\Binaries\\Danielle\\x64\\Release\\Prey.exe",
+  "gameRoot": "D:\\SteamLibrary\\steamapps\\common\\Prey",
+  "pid": 113584,
+  "rendererUp": true,
+  "dll": "D:\\Dev Debug\\PreyVR\\build\\psi-medkit\\Release\\PreyVR.dll",
+  "dllSha256": "F0B66E1BFE680F908462E7C6278FE2F49B2F4D3847CB3484C70549306A77E24E",
+  "dllBytes": 1094656,
+  "xrsimDir": "D:\\Dev Debug\\PreyVR\\build\\twohand-no-alias-20261004\\runs\\run-20261004-103830\\xrsim",
+  "tapeDir": null,
+  "logDir": "D:\\Dev Debug\\PreyVR\\build\\twohand-no-alias-20261004\\runs\\run-20261004-103830\\log",
+  "environment": {
+    "SteamAppId": "480490",
+    "XRSIM_DIR": "D:\\Dev Debug\\PreyVR\\build\\twohand-no-alias-20261004\\runs\\run-20261004-103830\\xrsim",
+    "PREYVR_LOG_PATH": "D:\\Dev Debug\\PreyVR\\build\\twohand-no-alias-20261004\\runs\\run-20261004-103830\\log\\PreyVR.log",
+    "XR_RUNTIME_JSON": "D:\\Dev Debug\\PreyVR\\build\\twohand-no-alias-20261004\\runtime\\xrsim-x64.json"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "sourceBase": "80a186e42bfe382d1a0ae9802e5d14f93da1b44a",
+  "dllSHA256": "045E7C389F0D9581899BFD13D53EB38C33096FAECA1C2A36E803BE5396EA667A",
+  "dllBytes": 1104384,
+  "build": "Visual Studio 18 2026 x64 Release",
+  "tests": "57/57 offline checks",
+  "liveTested": false,
+  "headsetTested": false,
+  "sourceCommit": "0c8ea41a0dfd17de8f67bebeda4af504eade8841"
+}
