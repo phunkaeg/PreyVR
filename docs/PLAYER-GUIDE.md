@@ -19,7 +19,7 @@ The launcher starts Prey, loads the mod, waits for the requested render size, an
 | Left Y | — | Y action shown by Prey |
 | Right grip | Native use / reload button | Next tab, on release |
 | Left grip | Hold a long weapon's support grip | Previous tab, on release |
-| Triggers | Right: fire | Previous / next page (LT / RT) |
+| Triggers | Right: fire (hold for automatic fire and to charge the Disruptor) | Previous / next page (LT / RT) |
 | Left menu button | Tap: pause. Hold: VR options | Tap: pause / resume. Hold: VR options |
 | Both grips + left Y | Reset VR view | Reset and bring the panel in front of you |
 | F11 | Enable VR or retry setup | Enable VR or retry setup |
@@ -65,6 +65,12 @@ native menu is already open; `vr.options 1` is the diagnostic equivalent.
   which draws each hand's ray and target, the body slots, the wrist test and the
   foregrip region in the world. Off by default; see
   [the overlay note](DEBUG-OVERLAY-2026-10-06.md).
+  **Shots from the Muzzle (Experimental)** makes every shot leave the weapon's
+  muzzle along your controller's aim, so it lands where the barrel points at any
+  distance, also from the hip or around a corner (otherwise the shot is aimed from
+  your eyes and misses by up to several degrees close by). Off by default;
+  `Start-PreyVR.ps1 -MuzzleAim` turns it on for a session. See
+  [the shot note](SHOT-RAY-2026-10-06.md).
 
 **Psychic targeting:** equip a power using Prey's normal quick wheel. Choose Head
 or Left Controller on the Abilities tab, then hold **left trigger** to target and

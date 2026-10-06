@@ -1,5 +1,6 @@
 #include "AimTakeover.h"
 #include "SceneQuery.h"
+#include "ShotRay.h"
 #include "PhysicalInteractions.h"
 #include "Haptics.h"
 #include "BodyEquipment.h"
@@ -408,6 +409,10 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
             static_cast<int>((&controller.aimPose.orientation.x)[i] * 1000.0f),
             std::memory_order_relaxed);
     }
+    // aim.shot: the published ray starts at the muzzle the shot leaves from, so
+    // the scene query, the reticles and the overlay all describe the shot. The
+    // engine's cached origin stays the eye (see ShotRay.h).
+    if (originMode == 0) { ShotRayFrame(frame, sample); }
     QueryAimScene(frame,sample);
     sample.publishedNs = MonotonicNanoseconds();
     gAimSample.Publish(sample);

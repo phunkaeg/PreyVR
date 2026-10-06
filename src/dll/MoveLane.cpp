@@ -138,6 +138,9 @@ bool gFireHeld = false;
 float gLastFireSent = 0.0f;
 bool gFirePrimed = false;
 std::atomic<bool> gFireNeutralize{false};
+// Hold events for the trigger button while it stays pressed (move.firehold).
+std::atomic<bool> gFireHold{true};
+std::atomic<unsigned long long> gFireHoldPosted{0};
 
 // Recentre-on-both-grips, edge triggered so a held pair fires once.
 bool gRecenterHeld = false;
@@ -480,6 +483,21 @@ void UpdateTurnAndFireLanes()
         // Sent as a press/release EDGE rather than a changed value, because a
         // button posted as "changed" is not a press and the action map wants
         // the transition.
+        // **A held trigger must also be posted as HELD.** CryEngine turns a key
+        // that stays down into one eIS_Down event per frame from its own list of
+        // held symbols, and a posted press never joins that list: the event
+        // carries no device symbol. So the action map saw a press and then
+        // nothing until the release. Every "while held" action was dead -- the
+        // GLOO's automatic fire stopped after one shot (HANDOFF 2026-10-05: "held
+        // 1.2 s, ONE shot") and the Disruptor could not charge at all. This
+        // posts the hold the engine would have, once per frame.
+        if (pressed && gFireHeld && gFireHold.load(std::memory_order_relaxed)) {
+            if (PostRawInputImmediate(input::kTriggerRButton, input::kStateDown, 1000) == 0) {
+                gFireHoldPosted.fetch_add(1, std::memory_order_relaxed);
+            } else {
+                gFireRefused.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
         if (pressed != gFireHeld) {
             const unsigned int state = pressed ? static_cast<unsigned int>(input::kStatePressed)
                                                : static_cast<unsigned int>(input::kStateReleased);
@@ -592,6 +610,15 @@ unsigned int FireLaneEnabled() { return gFireEnabled.load(std::memory_order_rela
 unsigned long long FireLanePressed() { return gFirePressed.load(std::memory_order_relaxed); }
 unsigned long long FireLaneReleased() { return gFireReleased.load(std::memory_order_relaxed); }
 unsigned long long FireLaneRefused() { return gFireRefused.load(std::memory_order_relaxed); }
+DWORD SetFireLaneHold(unsigned int enabled)
+{
+    if (enabled > 1) { return 1; }
+    gFireHold.store(enabled != 0u, std::memory_order_relaxed);
+    Log(std::string("result=0 detail=fire_hold value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+unsigned int FireLaneHold() { return gFireHold.load(std::memory_order_relaxed) ? 1u : 0u; }
+unsigned long long FireLaneHoldPosted() { return gFireHoldPosted.load(std::memory_order_relaxed); }
 
 unsigned int MoveLaneMode() { return gMode.load(std::memory_order_relaxed); }
 DWORD SetInteractionEnabled(unsigned int enabled)

@@ -29,6 +29,8 @@ DWORD SetReticleConvergenceMillimetres(unsigned v){applied[options::ReticleFallb
 DWORD ReticleConvergenceMillimetres(){return applied[options::ReticleFallback];}
 void ClearHolsters(){++holsterClears;}
 DWORD SetDebugOverlay(unsigned v){applied[options::DebugOverlay]=v?1:0;return 0;}
+DWORD SetShotRay(unsigned v){applied[options::MuzzleAim]=v;return 0;}
+unsigned ShotRayEnabled(){return applied[options::MuzzleAim];}
 unsigned DebugOverlayMask(){return applied[options::DebugOverlay];}
 DWORD SetSnapTurnDegrees(unsigned v){applied[options::Turn]=v;return 0;}
 unsigned SnapTurnDegrees(){return applied[options::Turn];}

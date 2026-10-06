@@ -13,5 +13,8 @@ bool QueryPhysicalSegment(const GameplayPoseFrame&,Vec3 origin,Vec3 delta,scene:
 // Input-drain thread only: one full-range ray for the debug overlay. Shares the
 // query's gates and its process-wide fault latch; never changes the reticle.
 bool QueryDebugRay(const GameplayPoseFrame&,Vec3 origin,Vec3 direction,scene::Hit&);
+// Input-drain thread only: is the segment a->b clear? True when the query ran;
+// then hit.distance<0 means clear. Shares the query's gates and fault latch.
+bool QuerySegment(const GameplayPoseFrame&,Vec3 a,Vec3 b,scene::Hit&);
 bool SceneQueryFaulted();
 }

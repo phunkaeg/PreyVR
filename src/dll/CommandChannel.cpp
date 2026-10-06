@@ -20,6 +20,7 @@
 #include "RenderFrame.h"
 #include "ReticleFollow.h"
 #include "SceneQuery.h"
+#include "ShotRay.h"
 #include "PhysicalInteractions.h"
 #include "PsiMedkit.h"
 #include "Haptics.h"
@@ -225,6 +226,7 @@ void WriteReport(std::ostringstream& out)
         << " weaponBone=" << WeaponAttachmentJointIndex()
         << " weaponSim=0x" << std::hex << WeaponAttachmentSimulationFlags() << std::dec
         << WeaponMuzzleAlignmentReport()
+        << ShotRayReport()
         << " aimOriginApplied=" << AimOriginAppliedCount()
         << " aimSamples=" << AimSamplePublishedCount()
         << " aimOriginMode=" << AimOriginMode()
@@ -298,6 +300,7 @@ void WriteReport(std::ostringstream& out)
         << " turnPosted=" << TurnLanePosted() << " turnRefused=" << TurnLaneRefused()
         << " fireEnabled=" << FireLaneEnabled()
         << " firePressed=" << FireLanePressed() << " fireReleased=" << FireLaneReleased()
+        << " fireHold=" << FireLaneHold() << " fireHoldPosted=" << FireLaneHoldPosted()
         << " fireRefused=" << FireLaneRefused()
         << " mirrorFovPct=" << MirrorFovPercent()
         << " xrSyncs=" << XrInputSyncCount()
@@ -401,6 +404,22 @@ bool ExecutePose(const std::vector<std::string>& args, std::ostringstream& out)
             result = mask >= 0 ? SetDebugOverlay(static_cast<unsigned>(mask)) : ERROR_INVALID_PARAMETER;
         }
         out << "dbg.draw result=" << result << DebugOverlayReport();
+    } else if (verb == "move.firehold") {
+        out << "move.firehold result=" << (args.size() > 1 ? SetFireLaneHold(static_cast<unsigned>(arg(1, 1))) : 0)
+            << " hold=" << FireLaneHold() << " posted=" << FireLaneHoldPosted();
+    } else if (verb == "aim.shotprobe") {
+        out << "aim.shotprobe result=" << (args.size() > 1 ? SetShotProbe(static_cast<unsigned>(arg(1, 0))) : 0)
+            << ShotProbeReport();
+    } else if (verb == "aim.shot") {
+        // Bare `aim.shot` only reports (and installs the observers, so a shot
+        // with the lane off is measured too). 1 = the shot leaves the muzzle
+        // along the aim; 0 = the native eye-origin query.
+        DWORD result = 0;
+        if (args.size() > 1) {
+            const int value = arg(1, -1);
+            result = value == 0 || value == 1 ? SetShotRay(static_cast<unsigned>(value)) : ERROR_INVALID_PARAMETER;
+        }
+        out << "aim.shot result=" << result << ShotRayReport();
     } else if (verb == "dbg.report") {
         out << "dbg.report result=0" << DebugOverlayReport();
     } else if (verb == "dbg.marks") {

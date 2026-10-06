@@ -39,6 +39,10 @@ GDI-rasterised Consolas atlas; lines, discs and glyphs are anti-aliased in one p
 | Status (64) | Head-locked panel about 25° below the gaze: both rays, every slot, wrist metrics, foregrip, query count. |
 | Hits (128) | One extra scene query per hand and frame on the input-drain thread (`QueryDebugRay`), sharing the scene query's gates and its process-wide fault latch. Never changes the reticle. |
 
+With `aim.shot 1` the right ray starts at the weapon's muzzle (label `MUZZLE`) and the last shot
+is traced in green for 4 s; gameplay rays are hidden in menus. See
+[the shot note](SHOT-RAY-2026-10-06.md).
+
 ## Controls
 
 - `dbg.draw` reports; `dbg.draw all|on|off|<mask>` sets the layers. `dbg.report` gives counters

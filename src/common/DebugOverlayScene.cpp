@@ -62,7 +62,8 @@ void AddRay(Scene& scene, const HandRay& ray, Color color, unsigned mask, bool r
         label.color = color;
         label.offsetX = .9f;
         label.offsetY = -.5f;
-        const char* role = ray.role == RayRole::Psi ? "PSI " : !rightHand ? "L " : ray.role == RayRole::Weapon ? "" : "NO WEAPON ";
+        const char* role = ray.role == RayRole::Psi ? "PSI " : !rightHand ? "L "
+                         : ray.role == RayRole::Weapon ? (ray.fromMuzzle ? "MUZZLE " : "") : "NO WEAPON ";
         label.text = std::string(role) + (ray.hit ? Fixed(ray.distance, 2) + " m" : "no hit " + Fixed(ray.distance, 0) + " m");
         label.minPixels = 18.0f;
         label.maxPixels = 30.0f;
@@ -220,10 +221,47 @@ Color SlotColor(const Slot& slot)
     return slot.stored ? kStored : kIdle;
 }
 
+void AddShot(Scene& scene, const ShotMark& shot, unsigned mask)
+{
+    if (!shot.valid || !(shot.age >= 0) || shot.age > kShotSeconds || !Finite(shot.spawn) || !Finite(shot.target)) {
+        return;
+    }
+    // Full strength for the first second, then fading out.
+    const float fade = shot.age < 1 ? 1.0f : std::max(0.0f, 1 - (shot.age - 1) / (kShotSeconds - 1));
+    const auto alpha = static_cast<std::uint8_t>(kShot.a * fade);
+    if (alpha < 8) { return; }
+    scene.lines.push_back({shot.spawn, shot.target, WithAlpha(kShot, alpha), .0025f, 1.6f});
+    Marker spawn{};
+    spawn.centre = shot.spawn;
+    spawn.color = WithAlpha(kShot, alpha);
+    spawn.radius = .012f;
+    spawn.minPixels = 6.0f;
+    scene.markers.push_back(spawn);
+    Marker end{};
+    end.centre = shot.target;
+    end.color = WithAlpha(kShot, alpha);
+    end.filled = true;
+    end.radius = .025f;
+    end.minPixels = 7.0f;
+    scene.markers.push_back(end);
+    if (mask & kLabels) {
+        Label label{};
+        label.anchor = shot.target;
+        label.color = WithAlpha(kShot, alpha);
+        label.offsetX = .9f;
+        label.offsetY = .9f;
+        label.text = "SHOT " + Fixed(shot.angleDegrees, 2) + " deg";
+        label.minPixels = 16.0f;
+        label.maxPixels = 26.0f;
+        scene.labels.push_back(label);
+    }
+}
+
 void BuildOverlayScene(const OverlayFrame& frame, unsigned mask, Scene& scene)
 {
     scene.Clear();
     if (mask & kRays) {
+        AddShot(scene, frame.shot, mask);
         AddRay(scene, frame.rays[1], kRight, mask, true);
         AddRay(scene, frame.rays[0], frame.rays[0].role == RayRole::Psi ? kPsi : kLeft, mask, false);
     }
@@ -294,6 +332,10 @@ std::string OverlayStatusText(const OverlayFrame& f, unsigned mask)
                                    " d " + Fixed(f.wrist.distance, 2)
                              : "");
     text += "   Foregrip " + std::string(!f.foregrip.valid ? "-" : f.foregrip.held ? "HELD" : f.foregrip.inRegion ? "in" : "ready");
+    if (f.shot.valid && f.shot.age >= 0 && f.shot.age <= kShotSeconds) {
+        text += "\nShot " + f.shot.route + " " + Fixed(f.shot.angleDegrees, 2) + " deg  spawn " + f.shot.spawnKind +
+                " " + Fixed(f.shot.spawnOffAimMm, 0) + " mm off aim" + (f.shot.projectileSeen ? "" : " (query only)");
+    }
     if (!f.extra.empty()) { text += "\n" + f.extra; }
     return text;
 }

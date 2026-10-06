@@ -14,6 +14,7 @@
 #include "preyvr/LatestSnapshot.h"
 #include "XrSessionHost.h"
 #include "DebugOverlay.h"
+#include "ShotRay.h"
 #include "preyvr/DebugOverlayScene.h"
 #include "Logger.h"
 #include <atomic>
@@ -81,6 +82,7 @@ void Apply(unsigned id,int v){
  case options::UiCurve:SetUiCurveDegrees(v);break;
  case options::UiGuide:SetUiGuideEnabled(v);break;
  case options::DebugOverlay:SetDebugOverlay(v?debugdraw::kAllLayers:0u);break;
+ case options::MuzzleAim:SetShotRay(v);break;
  }
 }
 void Save(){
@@ -111,6 +113,7 @@ options::Values VrOptionsValues(){
  v[options::Holsters]=holsters.load();v[options::Wrist]=wrist.load();v[options::WristSize]=wristSize.load();
  v[options::BeltHints]=beltHints.load();
  v[options::DebugOverlay]=DebugOverlayMask()!=0;
+ v[options::MuzzleAim]=ShotRayEnabled();
  // Read the actual lane settings, including changes made through the command
  // channel. Pending menu edits override only their own row until applied.
  const auto pending=dirty.load();
@@ -130,6 +133,8 @@ void LoadVrOptions(){
   values[i]=v[i];
   // A saved "off" must not undo a debug overlay the launcher or a command enabled.
   if(i==options::DebugOverlay&&!v[i])continue;
+  // Same for shots from the muzzle: off by default, on by a launcher or a command.
+  if(i==options::MuzzleAim&&!v[i])continue;
   Apply(i,v[i]);
  }
  ready.store(true);

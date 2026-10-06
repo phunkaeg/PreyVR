@@ -1,5 +1,6 @@
 #include "preyvr/FiringPosition.h"
 #include "AimTakeover.h"
+#include "ShotRay.h"
 #include "preyvr/AnimIk.h"
 #include <sstream>
 #include "AnimIkTakeover.h"
@@ -111,6 +112,9 @@ void* __fastcall FiringPositionObserved(void* weapon, void* output, std::uint32_
 {
     const auto original = gFiringPositionOriginal.load(std::memory_order_acquire);
     void* result = original ? original(weapon, output, flags, entity) : nullptr;
+    // aim.shot: a camera fallback that a VR reach does not justify goes back to
+    // the muzzle. The observer below then records the shot's real origin.
+    ShotRayAdjustFiringPosition(weapon, result, flags, entity);
     if (!gObserving.load() || entity != nullptr) { return result; }
     GameplayPoseFrame frame{};
     MuzzleSample sample{};
@@ -456,6 +460,8 @@ bool TryGetEquippedRig(std::uintptr_t player, EquippedRig& out)
     return ReadRig(reinterpret_cast<void*>(out.weapon), current) &&
         SameRigBinding(out, current, out.itemId);
 }
+
+bool EnsureFiringPositionHook() { return InstallMuzzleObserver(); }
 
 DWORD SetWeaponAttachmentObserving(unsigned int enabled)
 {

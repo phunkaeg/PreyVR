@@ -4,11 +4,13 @@
 
 #include "AimTakeover.h"
 #include "HeadTrackingHook.h"
+#include "HudBridge.h"
 #include "Logger.h"
 #include "NativeWristTexture.h"
 #include "PsiMedkit.h"
 #include "ReticleFollow.h"
 #include "SceneQuery.h"
+#include "ShotRay.h"
 #include "VrOptionsRuntime.h"
 #include "XrInput.h"
 #include "preyvr/AnimIk.h"
@@ -47,10 +49,14 @@ struct RayRecord { dd::HandRay ray{}; std::uint64_t ns = 0, reference = 0; };
 struct SlotsRecord { std::array<dd::Slot, 2> slots{}; std::uint64_t ns = 0; };
 struct MedkitRecord { dd::Slot slot{}; std::uint64_t ns = 0; };
 struct ForegripRecord { dd::Foregrip grip{}; std::uint64_t ns = 0, reference = 0; };
+// The last shot, re-expressed in OpenXR space every gameplay frame so it stays
+// fixed in the world while the player moves and turns.
+struct ShotRecord { dd::ShotMark shot{}; std::uint64_t shotNs = 0, ns = 0, reference = 0; };
 LatestSnapshot<RayRecord> gRight, gLeft;
 LatestSnapshot<SlotsRecord> gHolsters;
 LatestSnapshot<MedkitRecord> gMedkit;
 LatestSnapshot<ForegripRecord> gForegrip;
+LatestSnapshot<ShotRecord> gShot;
 std::atomic<bool> gHipStored{false}, gChestStored{false};
 // Last notice per slot: 0 hip, 1 chest, 2 medkit.
 std::atomic<int> gNoticeKind[3]{0, 0, 0};
@@ -137,9 +143,16 @@ dd::OverlayFrame Gather(unsigned mask)
         f.hands[h].gripPressed = c.gripPressed;
         f.hands[h].triggerPressed = c.triggerPressed;
     }
+    // In a menu, a death screen or a panel the rays describe nothing the player
+    // can act on, and they draw across the menu: only the status panel stays.
+    const bool gameplay = HudGameplayInputAllowed();
     RayRecord ray{};
-    if (gRight.TryRead(ray) && FreshSample(now, ray.ns, kRayAgeNs) && ray.reference == reference) { f.rays[1] = ray.ray; }
-    if (gLeft.TryRead(ray) && FreshSample(now, ray.ns, kRayAgeNs) && ray.reference == reference) { f.rays[0] = ray.ray; }
+    if (gameplay && gRight.TryRead(ray) && FreshSample(now, ray.ns, kRayAgeNs) && ray.reference == reference) {
+        f.rays[1] = ray.ray;
+    }
+    if (gameplay && gLeft.TryRead(ray) && FreshSample(now, ray.ns, kRayAgeNs) && ray.reference == reference) {
+        f.rays[0] = ray.ray;
+    }
     f.holstersEnabled = HolstersEnabled();
     SlotsRecord slots{};
     if (f.holstersEnabled && gHolsters.TryRead(slots) && FreshSample(now, slots.ns, kSlotAgeNs)) { f.holsters = slots.slots; }
@@ -172,6 +185,12 @@ dd::OverlayFrame Gather(unsigned mask)
         f.wrist.height = f.wrist.width * static_cast<float>(NativeWristHeight) / static_cast<float>(NativeWristWidth);
     } else if (f.wrist.enabled) {
         f.wrist.card.position = {NAN, NAN, NAN};
+    }
+    ShotRecord shotRecord{};
+    if (gameplay && gShot.TryRead(shotRecord) && FreshSample(now, shotRecord.ns, kRayAgeNs) && shotRecord.reference == reference &&
+        now >= shotRecord.shotNs) {
+        f.shot = shotRecord.shot;
+        f.shot.age = static_cast<float>(now - shotRecord.shotNs) * 1e-9f;
     }
     ForegripRecord grip{};
     if (gForegrip.TryRead(grip) && FreshSample(now, grip.ns, kRayAgeNs) && grip.reference == reference) { f.foregrip = grip.grip; }
@@ -577,11 +596,19 @@ void DebugOverlayAim(const GameplayPoseFrame& frame, const aim::Sample& sample)
     ray.valid = true;
     // weaponGeneration is the equipped rig's owner for this frame, 0 with none.
     ray.role = frame.weaponGeneration ? dd::RayRole::Weapon : dd::RayRole::Pointer;
-    ray.origin = right.aimPose.position;
     ray.direction = EngineDirToXr(frame, sample.direction);
-    // The aim sample's ray starts at the native eye (or the muzzle/hand with
-    // aim.origin); its target is converted with the same anchor it was built from.
-    ray.target = EngineToXr(frame, frame.nativeEye, dd::Add(sample.origin, dd::Scale(sample.direction, distance)));
+    if (sample.muzzleOrigin && frame.cameraCentreValid) {
+        // aim.shot: the sample starts at the muzzle, a real world point. Drawn
+        // with the anchor the hands are placed with, it lands on the drawn barrel.
+        ray.fromMuzzle = true;
+        ray.origin = EngineToXr(frame, frame.cameraCentre, sample.origin);
+        ray.target = EngineToXr(frame, frame.cameraCentre, dd::Add(sample.origin, dd::Scale(sample.direction, distance)));
+    } else {
+        ray.origin = right.aimPose.position;
+        // The aim sample's ray starts at the native eye (or the hand with
+        // aim.origin); its target is converted with the same anchor it was built from.
+        ray.target = EngineToXr(frame, frame.nativeEye, dd::Add(sample.origin, dd::Scale(sample.direction, distance)));
+    }
     ray.hit = hit;
     ray.distance = dd::Length(dd::Sub(ray.target, ray.origin));
     record.ns = MonotonicNanoseconds();
@@ -593,6 +620,24 @@ void DebugOverlayGameFrame(const GameplayPoseFrame& frame, bool tracking)
 {
     const unsigned mask = gMask.load(std::memory_order_relaxed);
     if (!(mask & dd::kRays)) { return; }
+    ShotTrace trace{};
+    if (frame.cameraCentreValid && TryGetLastShot(trace) && trace.valid) {
+        ShotRecord record{};
+        auto& s = record.shot;
+        s.valid = true;
+        s.spawn = EngineToXr(frame, frame.cameraCentre, trace.spawn);
+        s.target = EngineToXr(frame, frame.cameraCentre, trace.target);
+        s.hit = trace.entityHit;
+        s.projectileSeen = trace.projectileSeen;
+        s.angleDegrees = trace.angleDegrees;
+        s.spawnOffAimMm = trace.spawnOffLineMm;
+        s.route = shot::RouteName(trace.route);
+        s.spawnKind = shot::SpawnName(trace.spawnKind);
+        record.shotNs = trace.ns;
+        record.ns = MonotonicNanoseconds();
+        record.reference = frame.referenceGeneration;
+        gShot.Publish(record);
+    }
     const auto& left = frame.tracking.hands[static_cast<unsigned>(Hand::left)];
     if (!tracking || frame.twoHand.held || !IsPoseUsable(left.aimPose, left.aimValidity, kPoseAgeNs)) {
         gLeft.Clear();
@@ -792,6 +837,12 @@ std::string DebugOverlayMarks()
         out << "wrist card " << Point(f.wrist.card.position) << projected(f.wrist.card.position) << " gate "
             << f.wrist.gate << " visible " << f.wrist.visible << " facing " << Fixed(f.wrist.facing, 3) << " viewing "
             << Fixed(f.wrist.viewing, 3) << " distance " << Fixed(f.wrist.distance, 3) << "\n";
+    }
+    if (f.shot.valid) {
+        out << "shot " << f.shot.route << " age " << Fixed(f.shot.age, 2) << " spawn " << Point(f.shot.spawn)
+            << projected(f.shot.spawn) << " target " << Point(f.shot.target) << projected(f.shot.target) << " angle "
+            << Fixed(f.shot.angleDegrees, 3) << " offAimMm " << Fixed(f.shot.spawnOffAimMm, 1) << " spawnKind "
+            << f.shot.spawnKind << " seen " << f.shot.projectileSeen << "\n";
     }
     if (f.foregrip.valid) {
         out << "foregrip start " << Point(f.foregrip.start) << projected(f.foregrip.start) << " end "

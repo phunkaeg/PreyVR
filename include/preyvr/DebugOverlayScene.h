@@ -52,6 +52,22 @@ struct HandRay {
     Vec3 origin{}, direction{}, target{};
     bool hit = false;
     float distance = 0;
+    // aim.shot: the ray starts at the weapon's muzzle and IS the shot's path.
+    bool fromMuzzle = false;
+};
+// The last shot as the engine fired it: from where the projectile left toward
+// the target it was sent to. Drawn for a few seconds after the shot.
+inline constexpr float kShotSeconds = 4.0f;
+inline constexpr Color kShot{90, 255, 140, 240};
+struct ShotMark {
+    bool valid = false;
+    Vec3 spawn{}, target{};
+    bool hit = false;
+    bool projectileSeen = false;
+    float age = 0;              // seconds since the shot
+    float angleDegrees = 0;     // projectile direction against the aim direction
+    float spawnOffAimMm = 0;    // spawn's distance from the controller's aim line
+    std::string route, spawnKind;
 };
 struct Controller {
     bool valid = false;
@@ -97,6 +113,7 @@ struct OverlayFrame {
     Pose head{};
     std::array<Controller, 2> hands{};   // 0 = left, 1 = right
     std::array<HandRay, 2> rays{};
+    ShotMark shot{};
     bool holstersEnabled = false, medkitEnabled = false;
     std::array<Slot, 2> holsters{};      // 0 = right hip, 1 = left chest
     Slot medkit{};

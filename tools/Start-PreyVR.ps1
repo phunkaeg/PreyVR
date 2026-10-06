@@ -25,6 +25,9 @@ param(
     # Testing aid, not persisted: 0 off, 255 every layer of the in-game debug
     # overlay (rays, body slots, wrist test, foregrip; see dbg.draw).
     [ValidateRange(0,255)][int]$DebugOverlay=0,
+    # Experimental, not persisted here (the VR Options row persists it): shots
+    # leave the weapon's muzzle along the controller's aim (aim.shot 1).
+    [switch]$MuzzleAim,
     [switch]$DryRun
 )
 Set-StrictMode -Version Latest
@@ -67,7 +70,7 @@ function Resolve-PreyVRComfortSettings {
 }
 
 function Get-PreyVRStartupCommands {
-    param($Comfort, [int]$UiScalePercent, [int]$UiGuide, [int]$DebugOverlay=0)
+    param($Comfort, [int]$UiScalePercent, [int]$UiGuide, [int]$DebugOverlay=0, [bool]$MuzzleAim=$false)
     # One ordered batch, before enabling VR. Successive writes separated by a
     # guessed sleep can overwrite commands while the channel is busy.
     "move.snap $($Comfort.SnapTurnDegrees)"
@@ -76,6 +79,7 @@ function Get-PreyVRStartupCommands {
     "ui.guide $UiGuide"
     'input.hotkeys 1'
     if ($DebugOverlay) {"dbg.draw $DebugOverlay"}
+    if ($MuzzleAim) {'aim.shot 1'}
     'vr.enable'
 }
 
@@ -235,7 +239,7 @@ try {
         if ((Get-Date) -gt $deadline) {throw "Mod startup did not finish. See $log"}
         Start-Sleep -Milliseconds 200
     } while ($true)
-    Get-PreyVRStartupCommands $comfort $UiScalePercent $UiGuide $DebugOverlay |
+    Get-PreyVRStartupCommands $comfort $UiScalePercent $UiGuide $DebugOverlay $MuzzleAim.IsPresent |
         Set-Content -LiteralPath (Join-Path $run 'commands.txt') -Encoding ASCII
     $deadline=(Get-Date).AddSeconds(150)
     Write-Host 'Put on the headset. Enabling VR...'

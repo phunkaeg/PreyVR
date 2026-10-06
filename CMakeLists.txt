@@ -77,6 +77,7 @@ add_library(preyvr_core STATIC
     src/common/ArmPose.cpp
     src/common/DebugDraw.cpp
     src/common/DebugOverlayScene.cpp
+    src/common/ShotRay.cpp
     src/common/WeaponRigAlignment.cpp
     src/common/CameraEdit.cpp
     src/common/ConsolePolicy.cpp
@@ -153,6 +154,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/Psychoscope.cpp
         src/dll/BodyEquipment.cpp
         src/dll/DebugOverlay.cpp
+        src/dll/ShotRay.cpp
         src/dll/SlotFeedback.cpp
         src/dll/NativeWristTexture.cpp
         src/dll/HudLayer.cpp
@@ -395,6 +397,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_debug_draw_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_debug_draw_tests)
     add_test(NAME debug_draw COMMAND preyvr_debug_draw_tests)
+
+    add_executable(preyvr_shot_ray_tests tests/ShotRayTests.cpp)
+    target_link_libraries(preyvr_shot_ray_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_shot_ray_tests)
+    add_test(NAME shot_ray COMMAND preyvr_shot_ray_tests)
 
     add_executable(preyvr_weapon_rig_alignment_tests tests/WeaponRigAlignmentTests.cpp)
     target_link_libraries(preyvr_weapon_rig_alignment_tests PRIVATE preyvr_core)

@@ -95,6 +95,8 @@ int WeaponBarrelOffsetMillimetres(unsigned int axis);
 // Passive firing-position observer. Reports a matched sample's actual native
 // origin, fallback flag and separation from aim/grip; never replaces firing.
 std::string WeaponMuzzleAlignmentReport();
+// Installs that observer on its own (aim.shot needs it without the IK lane).
+bool EnsureFiringPositionHook();
 
 DWORD SetWeaponAttachmentObserving(unsigned int enabled);
 

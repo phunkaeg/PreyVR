@@ -79,6 +79,8 @@ void SettingsChecks(){
  si.accept=false;setup.Update(si);si.y=-1;setup.Update(si);si.y=0;setup.Update(si);si.accept=true;
  Check(setup.Update(si).recenter,"setup retains reset without height calibration");
  Check(Item(7,2)==DebugOverlay&&Defaults()[DebugOverlay]==0,"debug overlay is an opt-in setup row");
+ Check(Item(7,3)==MuzzleAim&&Defaults()[MuzzleAim]==0,"shots from the muzzle are an opt-in setup row");
+ Check(Parse("version=1\nmuzzle_aim=1\n",parsed)&&parsed[MuzzleAim]==1&&!Valid(MuzzleAim,2),"muzzle aim persists as on/off");
  Check(Parse("version=1\ndebug_overlay=1\n",parsed)&&parsed[DebugOverlay]==1&&!Valid(DebugOverlay,2),"debug overlay persists as on/off");
 }
 void GestureChecks(){

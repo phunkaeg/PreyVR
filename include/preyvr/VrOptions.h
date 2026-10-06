@@ -8,7 +8,7 @@ namespace preyvr::options {
 enum Setting : unsigned { Turn, HeadRelative, TurnSpeed, TwoHand, GripToggle,
     SupportSnap, Psychoscope, UiScale, UiMargin, UiCurve, UiGuide, Holsters, Wrist, WristSize,
     SceneReticle, ReticleFallback, Haptics, HapticStrength, PhysicalMelee, PhysicalContacts, SwingSpeed, ContactStrength,
-    PsiTarget, Medkit, BeltHints, DebugOverlay, Count };
+    PsiTarget, Medkit, BeltHints, DebugOverlay, MuzzleAim, Count };
 static_assert(Count<=32); // runtime dirty mailbox is a 32-bit mask
 struct Spec { const char* key; const wchar_t* label; const wchar_t* help; int initial,min,max,step; };
 const Spec& Describe(unsigned id);
