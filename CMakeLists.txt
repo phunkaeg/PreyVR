@@ -78,6 +78,7 @@ add_library(preyvr_core STATIC
     src/common/DebugDraw.cpp
     src/common/DebugOverlayScene.cpp
     src/common/ShotRay.cpp
+    src/common/NearParticles.cpp
     src/common/WeaponRigAlignment.cpp
     src/common/CameraEdit.cpp
     src/common/ConsolePolicy.cpp
@@ -179,6 +180,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/HandRigTakeover.cpp
         src/dll/NearFovOverride.cpp
         src/dll/NearViewStereo.cpp
+        src/dll/NearParticleStereo.cpp
         src/dll/RenderFrame.cpp
         src/dll/WeaponAttachment.cpp
         src/dll/PassCameraProbe.cpp
@@ -402,6 +404,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_shot_ray_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_shot_ray_tests)
     add_test(NAME shot_ray COMMAND preyvr_shot_ray_tests)
+
+    add_executable(preyvr_near_particles_tests tests/NearParticlesTests.cpp)
+    target_link_libraries(preyvr_near_particles_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_near_particles_tests)
+    add_test(NAME near_particles COMMAND preyvr_near_particles_tests)
 
     add_executable(preyvr_weapon_rig_alignment_tests tests/WeaponRigAlignmentTests.cpp)
     target_link_libraries(preyvr_weapon_rig_alignment_tests PRIVATE preyvr_core)

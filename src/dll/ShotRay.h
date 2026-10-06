@@ -61,6 +61,11 @@ bool TryGetLastShot(ShotTrace& out);
 
 std::string ShotRayReport();
 
+// `aim.beam`: the Q-Beam's last beam, observed only (installs the observers).
+// Pairs the damage raycast with the drawn beam and compares both with the drawn
+// muzzle, the aim direction and the aim lane's scene hit (the amber marker).
+std::string BeamReport();
+
 // Research: records the return addresses of every read of the cached reticle
 // ray (IArkPlayer::GetReticleViewPositionAndDir) while on. 1 starts afresh.
 DWORD SetShotProbe(unsigned enabled);

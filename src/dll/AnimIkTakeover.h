@@ -84,6 +84,23 @@ DWORD DumpAnimIk();
 // Logs, once, every joint of the owning rig: name, parent (derived from the
 // pose), relative pose and absolute pose before/after the native ADIK pass.
 DWORD RequestAnimIkSkeletonDump();
+// ik.helpers: logs the held weapon's attachments, joints and bounds on the next
+// alignment pass (diagnostic, read-only).
+DWORD RequestAnimIkHelperDump();
+// ik.widesupport: accept a two-handed foregrip up to 45 cm beside and 80 cm ahead
+// of the barrel (default 1; the Q-Beam's), or only 25/70 cm (0, the original).
+DWORD SetAnimIkWideSupport(unsigned enabled);
+unsigned AnimIkWideSupport();
+// ik.supportlatch: the two-handed support region is one settled socket per
+// weapon (1, default) or the raw animated native palm every frame (0, A/B).
+DWORD SetAnimIkSupportLatch(unsigned enabled);
+// ik.longreach [on comfortMm maxBackMm supportBackMm twistDeg]: a weapon whose
+// foregrip lies beyond comfortMm ahead of the trigger wrist is held back by the
+// difference (at most maxBackMm), its grab region reaches supportBackMm behind
+// the foregrip, and the drawn torso turns twistDeg while it is held two-handed.
+DWORD SetAnimIkLongReach(int enabled, int comfortMm, int maxBackMm, int supportBackMm, int twistDeg);
+std::string AnimIkLongReachReport();
+unsigned AnimIkSupportLatch();
 
 // **The VR hand pose** (jordi/hand-pose; see the pose.* notes in the .cpp).
 // Mode 1 (default): the free hand's orientation is anatomical (the game hand's

@@ -14,6 +14,7 @@
 #include "preyvr/AnimIk.h"
 #include "preyvr/ArmPose.h"
 #include "preyvr/HandPose.h"
+#include "preyvr/TwoHandedAim.h"
 #include "preyvr/WeaponRigAlignment.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/StereoCamera.h"
@@ -642,6 +643,11 @@ armpose::TorsoYaw gTorsoYaw;
 std::uint64_t gTorsoNs = 0, gPoleNs[2]{};
 Vec3 gPole[2]{};
 ArmStats gArmStats;
+// Long weapons held further back (twohand::HoldBack; ik.longreach), mm/deg.
+std::atomic<bool> gLongOn{true};
+std::atomic<int> gLongComfortMm{450}, gLongMaxBackMm{200}, gLongSupportBackMm{100}, gLongTwistDeg{30};
+std::atomic<int> gHoldBackMm{0};
+std::atomic<std::uint64_t> gLongGeneration{0};
 
 // Model <-> the app's OpenXR space, through the same anchor the hands use.
 struct XrMap {
@@ -692,8 +698,14 @@ void PrepareArms(const GameplayPoseFrame& frame, const animik::Location& locatio
         const float dt = gTorsoNs != 0 ? static_cast<float>(now - gTorsoNs) * 1e-9f : 0.0f;
         gTorsoNs = now;
         const float yaw = gTorsoYaw.Update(headYaw, dt, pose.torsoDeadzone, pose.torsoRelax);
-        torso = armpose::TorsoFromYaw(yaw);
-        gArmStats.torsoYawDeg = yaw * 57.29578f;
+        // Two hands on a long weapon: the shooter's bladed stance, left
+        // shoulder forward (the torso turns right), so the drawn support arm
+        // reaches the foregrip. Eased by the hold's own blend.
+        const std::uint64_t longOwner = gLongGeneration.load(std::memory_order_relaxed);
+        const float twist = longOwner != 0 && frame.weaponGeneration == longOwner && frame.twoHand.blend > 0.0f
+            ? gLongTwistDeg.load(std::memory_order_relaxed) * 0.01745329f * frame.twoHand.blend : 0.0f;
+        torso = armpose::TorsoFromYaw(yaw - twist);
+        gArmStats.torsoYawDeg = (yaw - twist) * 57.29578f;
         gArmStats.headYawDeg = headYaw * 57.29578f;
     }
     const armpose::Body& body = pose.body;
@@ -732,6 +744,79 @@ void CopyName(const char* name, char* out, std::size_t capacity)
         out[i] = '\0';
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         std::snprintf(out, capacity, "?");
+    }
+}
+
+std::atomic<bool> gHelperDump{false};
+// The native left palm in the barrel frame (mm), last alignment pass: where the
+// two-handed support region would be, accepted or not.
+std::atomic<int> gSupportSocketMm[3]{};
+std::atomic<bool> gWideSupport{true};
+// One settled support socket per weapon (ik.supportlatch, default 1).
+std::atomic<bool> gSupportLatchOn{true};
+std::mutex gSupportLatchMutex;
+preyvr::twohand::RegionLatch gSupportLatch;
+// Long weapons held further back (twohand::HoldBack; ik.longreach). Settings in
+// mm/deg; the applied hold-back is eased in per weapon (no jump at the latch).
+float gHoldBackEased = 0.0f;
+std::uint64_t gHoldBackOwner = 0, gHoldBackNs = 0;
+// The held weapon's concrete vtable (RVA), for identifying weapons by class.
+std::atomic<std::uint32_t> gWeaponVtableRva{0};
+std::uint32_t ReadVtableRva(std::uintptr_t object)
+{
+    const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
+    __try {
+        const std::uintptr_t vtable = object ? *reinterpret_cast<const std::uintptr_t*>(object) : 0;
+        return base && vtable > base && vtable - base < 0x10000000ull ? static_cast<std::uint32_t>(vtable - base) : 0;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return 0; }
+}
+std::string WeaponVtableText()
+{
+    char text[16];
+    std::snprintf(text, sizeof(text), "0x%X", gWeaponVtableRva.load(std::memory_order_relaxed));
+    return text;
+}
+preyvr::twohand::LongReach LongReachSettings()
+{
+    preyvr::twohand::LongReach r{};
+    r.comfortForward = gLongComfortMm.load(std::memory_order_relaxed) * .001f;
+    r.maxHoldBack = gLongOn.load(std::memory_order_relaxed) ? gLongMaxBackMm.load(std::memory_order_relaxed) * .001f : 0.0f;
+    r.supportBack = gLongSupportBackMm.load(std::memory_order_relaxed) * .001f;
+    return r;
+}
+std::string SupportLatched()
+{
+    std::lock_guard lock(gSupportLatchMutex);
+    if (!gSupportLatch.Latched()) { return "0"; }
+    const Vec3 s = gSupportLatch.Socket();
+    return "1 latchedSupportMm=" + std::to_string(static_cast<int>(s.x * 1000.f)) + "," +
+        std::to_string(static_cast<int>(s.y * 1000.f)) + "," + std::to_string(static_cast<int>(s.z * 1000.f));
+}
+// Each frame's +Y (the native "forward" of a helper) and +Z in the weapon model,
+// so an authored helper can be compared against the model's long axis.
+void DumpWeaponFrames(const RigIdentity& owner)
+{
+    static weaponrig::HelperInfo frames[400];
+    unsigned count = 0;
+    Vec3 lo{}, hi{};
+    if (!weaponrig::ListWeaponFrames({nullptr, ReadAlignmentMemory},
+            reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll")), owner, frames, 400, count, lo, hi)) {
+        lifecycle::Log("preyvr_anim_ik helpers result=refused");
+        return;
+    }
+    char line[320];
+    std::snprintf(line, sizeof(line), "preyvr_anim_ik helpers result=0 count=%u boundsMm=%.0f,%.0f,%.0f..%.0f,%.0f,%.0f",
+                  count, lo.x * 1000, lo.y * 1000, lo.z * 1000, hi.x * 1000, hi.y * 1000, hi.z * 1000);
+    lifecycle::Log(line);
+    for (unsigned i = 0; i < count; ++i) {
+        const auto& f = frames[i];
+        const Vec3 y = Rotate(f.frame.orientation, Vec3{0, 1, 0});
+        const Vec3 z = Rotate(f.frame.orientation, Vec3{0, 0, 1});
+        std::snprintf(line, sizeof(line),
+                      "preyvr_anim_ik helper %s name=%s posMm=%.0f,%.0f,%.0f yAxis=%.3f,%.3f,%.3f zAxis=%.3f,%.3f,%.3f",
+                      f.joint ? "joint" : (f.bone ? "bone" : "skin"), f.name, f.frame.position.x * 1000,
+                      f.frame.position.y * 1000, f.frame.position.z * 1000, y.x, y.y, y.z, z.x, z.y, z.z);
+        lifecycle::Log(line);
     }
 }
 
@@ -812,6 +897,10 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
     bool aligned = false;
     Quaternion candidateOffset{};
     SupportGripGeometry supportGeometry{};
+    Vec3 supportCandidate{};
+    bool supportInBounds=false;
+    float holdBack=0.0f;   // metres the weapon sits back along the barrel (long weapons)
+    float appliedRoll = 0.0f;   // pose.roll about the barrel this pass (radians)
     const bool twoHand=frame.weaponGeneration==owner.generation&&frame.twoHand.blend>0&&TwoHandedAimEnabled();
     const bool supportLocked=hand==1&&twoHand&&frame.twoHand.snapSupport&&supportPrimary;
     // pose.mode 1 on a rig whose hand was identified.
@@ -878,6 +967,7 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
         goal = animik::WorldToModel(location, world.position);
         if (hand == 0 && gAlignWeapon) {
             gAlignGeneration = owner.generation;
+            gWeaponVtableRva.store(ReadVtableRva(owner.weapon), std::memory_order_relaxed);
             gAlignSequence = frame.tracking.sequence;
             gAlignBasis = {};
             if (!IsPoseUsable(state.aimPose, state.aimValidity, 200000000ull)) {
@@ -889,6 +979,7 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
                 reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll")), owner,
                 reinterpret_cast<std::uintptr_t>(absolute), poseCount, handJoint, gAlignBasis);
             if (gAlignStatus != weaponrig::Status::ready) { ++gAlignRefused; return; }
+            if (gHelperDump.exchange(false)) { DumpWeaponFrames(owner); }
             // Both wrist poses are still native here. Convert their separation
             // into the actual barrel basis, never into a controller-at-equip basis.
             QuatT nativeLeft{};
@@ -909,13 +1000,50 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
                                  (nativeLeftPoint.y-wrist.t[1])*location.s,
                                  (nativeLeftPoint.z-wrist.t[2])*location.s};
                 const Vec3 socket=Rotate(Quaternion{-nativeBarrel.x,-nativeBarrel.y,-nativeBarrel.z,nativeBarrel.w},delta);
-                if(socket.y>=.16f&&socket.y<=.7f&&std::fabs(socket.x)<.25f&&std::fabs(socket.z)<.25f) {
-                    supportGeometry.region.start={socket.x,socket.y-.04f,socket.z};
-                    supportGeometry.region.end={socket.x,socket.y+.04f,socket.z};
-                    supportGeometry.owner=owner.generation;
-                    supportGeometry.reference=frame.referenceGeneration;
-                    supportGeometry.epoch=frame.tracking.epoch;
-                }
+                gSupportSocketMm[0].store(static_cast<int>(socket.x*1000.f),std::memory_order_relaxed);
+                gSupportSocketMm[1].store(static_cast<int>(socket.y*1000.f),std::memory_order_relaxed);
+                gSupportSocketMm[2].store(static_cast<int>(socket.z*1000.f),std::memory_order_relaxed);
+                // A foregrip ahead of the grip, near the barrel. Wide (ik.widesupport,
+                // default): the Q-Beam's front handle is on the side of a 1.25 m
+                // weapon, native left palm at (375, 616, 198) mm in the barrel frame
+                // (measured 2026-10-07); the solver's own ClosestGrip still bounds
+                // the reach to 0.8 m and requires it ahead of the grip.
+                const bool wide=gWideSupport.load(std::memory_order_relaxed);
+                const float side=wide?.45f:.25f, ahead=wide?.8f:.7f;
+                supportCandidate=socket;
+                supportInBounds=socket.y>=.16f&&socket.y<=ahead&&std::fabs(socket.x)<side&&std::fabs(socket.z)<side;
+            }
+            // The handle does not move on the weapon; the native palm does
+            // (firing/cooling animations). One settled socket per weapon
+            // (twohand::RegionLatch); ik.supportlatch 0 = the raw palm, for A/B.
+            Vec3 socket{};
+            bool haveSocket=false;
+            if(gSupportLatchOn.load(std::memory_order_relaxed)) {
+                std::lock_guard lock(gSupportLatchMutex);
+                haveSocket=gSupportLatch.Update(owner.generation,supportInBounds,supportCandidate,socket);
+            } else if(supportInBounds) { socket=supportCandidate;haveSocket=true; }
+            // A long weapon (its foregrip beyond reach) is held back by the
+            // difference, eased in once its socket is known; 0 for the others.
+            const auto reachSettings=LongReachSettings();
+            const float holdTarget=haveSocket?preyvr::twohand::HoldBack(socket,reachSettings):0.0f;
+            {
+                const std::uint64_t now=preyvr::timing::MonotonicNanoseconds();
+                if(gHoldBackOwner!=owner.generation){gHoldBackOwner=owner.generation;gHoldBackEased=0.0f;gHoldBackNs=0;}
+                const float dt=gHoldBackNs&&now>gHoldBackNs?std::min(static_cast<float>(now-gHoldBackNs)*1e-9f,.1f):0.0f;
+                gHoldBackNs=now;
+                gHoldBackEased+=(holdTarget-gHoldBackEased)*(1.0f-std::exp(-dt*8.0f));
+                if(std::fabs(holdTarget-gHoldBackEased)<.0005f)gHoldBackEased=holdTarget;
+                holdBack=gHoldBackEased;
+                gHoldBackMm.store(static_cast<int>(holdBack*1000.0f),std::memory_order_relaxed);
+                gLongGeneration.store(holdTarget>0?owner.generation:0,std::memory_order_relaxed);
+            }
+            if(haveSocket) {
+                const auto region=preyvr::twohand::SupportRegion(socket,holdTarget,reachSettings);
+                supportGeometry.region.start=region.start;
+                supportGeometry.region.end=region.end;
+                supportGeometry.owner=owner.generation;
+                supportGeometry.reference=frame.referenceGeneration;
+                supportGeometry.epoch=frame.tracking.epoch;
             }
             const Vec3 aimAnchor = (gCameraAnchor.load(std::memory_order_acquire) &&
                                     frame.cameraCentreValid)
@@ -949,11 +1077,17 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
                     const Vec3 to[2] = {Rotate(real, gHandRig.frame[hand].palm),
                                         Rotate(real, gHandRig.frame[hand].thumb)};
                     const float roll = handpose::RollToMatch(axis, from, to, 2);
+                    appliedRoll = roll;
                     wristWorld = Normalize(Multiply(handpose::AxisAngle(axis, roll), wristWorld));
                     rotation = animik::WorldToModel(location, wristWorld);
                     gWeaponRollMilliDeg.store(static_cast<int>(roll * 57295.78f), std::memory_order_relaxed);
                 }
-                goal = animik::WorldToModel(location, Sub3(world.position,
+                // A long weapon sits back in the hand: the drawn trigger hand
+                // stays on its grip, both move back along the barrel.
+                const Vec3 held = holdBack > 0.0f
+                    ? Sub3(world.position, Scale3(Rotate(aimWorld.orientation, Vec3{0.0f, 1.0f, 0.0f}), holdBack))
+                    : world.position;
+                goal = animik::WorldToModel(location, Sub3(held,
                     Rotate(wristWorld, Scale3(GripPointLocal(hand, pose), location.s))));
             }
         } else if (posed) {
@@ -1126,6 +1260,18 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
                                           actual.y-traceControllerWorld.y,
                                           actual.z-traceControllerWorld.z};
         supportGeometry.publishedNs=preyvr::timing::MonotonicNanoseconds();
+        // **The region is in the NATIVE barrel frame; the solver reads it in the
+        // aim frame.** They agree only while the barrel's roll is the native
+        // one. pose.roll turns weapon and hand about the barrel to fit the real
+        // hand (Q-Beam 174.9 deg, measured 2026-10-07), so the native foregrip
+        // turns with them: without this the region sat mirrored across the
+        // barrel, away from the drawn left hand. Same rotation, about the aim's
+        // forward (+Y) axis.
+        if (supportGeometry.owner && appliedRoll != 0.0f) {
+            const Quaternion turn = handpose::AxisAngle(Vec3{0.0f, 1.0f, 0.0f}, appliedRoll);
+            supportGeometry.region.start = Rotate(turn, supportGeometry.region.start);
+            supportGeometry.region.end = Rotate(turn, supportGeometry.region.end);
+        }
         PublishSupportGripGeometry(supportGeometry); // owner=0 actively withdraws an unsupported region
     }
     if (calibrating) {
@@ -1711,7 +1857,15 @@ std::string AnimIkWeaponAlignmentReport()
         " generation=" + std::to_string(gAlignGeneration) +
         " sequence=" + std::to_string(gAlignSequence) +
         " applied=" + std::to_string(gAlignApplied) +
-        " refused=" + std::to_string(gAlignRefused);
+        " refused=" + std::to_string(gAlignRefused) +
+        " wideSupport=" + std::to_string(AnimIkWideSupport()) +
+        " supportLatch=" + std::to_string(AnimIkSupportLatch()) + "/" + SupportLatched() +
+        " longReach=" + std::to_string(gLongOn.load() ? 1 : 0) + " holdBackMm=" + std::to_string(gHoldBackMm.load()) +
+        " comfortMm=" + std::to_string(gLongComfortMm.load()) + " maxBackMm=" + std::to_string(gLongMaxBackMm.load()) +
+        " supportBackMm=" + std::to_string(gLongSupportBackMm.load()) + " twistDeg=" + std::to_string(gLongTwistDeg.load()) +
+        " weaponVtable=" + WeaponVtableText() +
+        " nativeSupportMm=" + std::to_string(gSupportSocketMm[0].load()) + "," +
+        std::to_string(gSupportSocketMm[1].load()) + "," + std::to_string(gSupportSocketMm[2].load());
 }
 
 DWORD SetAnimIkJointSignature(unsigned int joints)
@@ -2166,6 +2320,42 @@ std::string HandPoseMarks()
         }
     }
     return out.str();
+}
+
+DWORD SetAnimIkWideSupport(unsigned enabled)
+{
+    if (enabled > 1) { return 1; }
+    gWideSupport.store(enabled != 0, std::memory_order_relaxed);
+    return 0;
+}
+DWORD SetAnimIkLongReach(int enabled, int comfortMm, int maxBackMm, int supportBackMm, int twistDeg)
+{
+    if (enabled < 0 || enabled > 1 || comfortMm < 100 || comfortMm > 1500 || maxBackMm < 0 || maxBackMm > 400 ||
+        supportBackMm < 0 || supportBackMm > 300 || twistDeg < 0 || twistDeg > 60) { return ERROR_INVALID_PARAMETER; }
+    gLongOn.store(enabled != 0); gLongComfortMm.store(comfortMm); gLongMaxBackMm.store(maxBackMm);
+    gLongSupportBackMm.store(supportBackMm); gLongTwistDeg.store(twistDeg);
+    return 0;
+}
+std::string AnimIkLongReachReport()
+{
+    return " longReach=" + std::to_string(gLongOn.load() ? 1 : 0) + " comfortMm=" + std::to_string(gLongComfortMm.load()) +
+        " maxBackMm=" + std::to_string(gLongMaxBackMm.load()) + " supportBackMm=" + std::to_string(gLongSupportBackMm.load()) +
+        " twistDeg=" + std::to_string(gLongTwistDeg.load()) + " holdBackMm=" + std::to_string(gHoldBackMm.load());
+}
+DWORD SetAnimIkSupportLatch(unsigned enabled)
+{
+    if (enabled > 1) { return ERROR_INVALID_PARAMETER; }
+    gSupportLatchOn.store(enabled != 0, std::memory_order_relaxed);
+    return 0;
+}
+unsigned AnimIkSupportLatch() { return gSupportLatchOn.load(std::memory_order_relaxed) ? 1u : 0u; }
+unsigned AnimIkWideSupport() { return gWideSupport.load(std::memory_order_relaxed) ? 1u : 0u; }
+
+DWORD RequestAnimIkHelperDump()
+{
+    if (!gInstalled.load(std::memory_order_acquire)) { return 1; }
+    gHelperDump.store(true);
+    return 0;
 }
 
 DWORD RequestAnimIkSkeletonDump()

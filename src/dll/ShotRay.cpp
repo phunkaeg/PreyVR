@@ -71,6 +71,29 @@ constexpr std::array<std::uint8_t, 23> kPelletsPrologue{
 constexpr std::uintptr_t kGetterRva = 0x157CBB0;
 constexpr std::array<std::uint8_t, 14> kGetterPrologue{
     0x8B, 0x81, 0x94, 0x17, 0x00, 0x00, 0x89, 0x02, 0x8B, 0x81, 0x98, 0x17, 0x00, 0x00};
+// The Q-Beam (Instalaser), observed only. Its beam update 0x16A29E0 (RCX =
+// weapon+0x190) raycasts the damage ray from 0.7 m behind the ammo helper along
+// the beam direction, 0x16AD790 (RCX hit-out, RDX &origin, R8 &direction, XMM3
+// range, six more; the 7th is the weapon's entity; returns > 0 on a hit, the hit
+// point at out+0x3C), call at 0x16A2E49; then draws the beam with
+// CArkLaserBeam::UpdateLaser 0x1671690 (RCX = weapon+0x520, RDX &position = the
+// helper, R8 &direction, R9 &up), calls at 0x16A3302 / 0x16A332C.
+constexpr std::uintptr_t kBeamRayRva = 0x16AD790;
+constexpr std::uint32_t kBeamRayReturn = 0x16A2E4E;
+constexpr std::array<std::uint8_t, 24> kBeamRayPrologue{
+    0x48, 0x8B, 0xC4, 0x55, 0x53, 0x57, 0x41, 0x55, 0x41, 0x56, 0x48, 0x8D,
+    0xA8, 0xD8, 0xFC, 0xFF, 0xFF, 0x48, 0x81, 0xEC, 0x00, 0x04, 0x00, 0x00};
+constexpr std::size_t kBeamRayHitPoint = 0x3C;
+constexpr std::uintptr_t kUpdateLaserRva = 0x1671690;
+constexpr std::uint32_t kUpdateLaserReturnHit = 0x16A3307, kUpdateLaserReturnMiss = 0x16A3331;
+constexpr std::array<std::uint8_t, 24> kUpdateLaserPrologue{
+    0x48, 0x89, 0x6C, 0x24, 0x18, 0x56, 0x57, 0x41, 0x56, 0x48, 0x81, 0xEC,
+    0x10, 0x01, 0x00, 0x00, 0x48, 0x83, 0x79, 0x10, 0x00, 0x49, 0x8B, 0xE9};
+constexpr std::size_t kWeaponBeam = 0x520;
+constexpr float kBeamRayBehind = .7f;   // 0x1C8FD90
+using BeamRayFn = float(__fastcall*)(void*, const Vec3*, const Vec3*, float, std::uint64_t, std::uint64_t,
+                                     std::uint64_t, std::uint64_t, std::uint64_t, std::uint64_t);
+using UpdateLaserFn = void*(__fastcall*)(void*, const Vec3*, const Vec3*, const Vec3*);
 using GetterFn = void*(__fastcall*)(void* player, void* out);
 using QueryFn = void*(__fastcall*)(void* weapon, void* out);
 using FiringPositionFn = void*(__fastcall*)(void*, void*, std::uint32_t, void*);
@@ -84,7 +107,9 @@ std::atomic<QueryFn> gQueryOriginal{nullptr};
 std::atomic<ProjectileSpawnFn> gProjectileOriginal{nullptr};
 std::atomic<PelletsFn> gPelletsOriginal{nullptr};
 std::atomic<GetterFn> gGetterOriginal{nullptr};
-bool gGetterHooked = false;
+std::atomic<BeamRayFn> gBeamRayOriginal{nullptr};
+std::atomic<UpdateLaserFn> gUpdateLaserOriginal{nullptr};
+bool gGetterHooked = false, gBeamHooked = false;
 std::atomic<bool> gProbe{false};
 struct CallerSlot { std::atomic<std::uint32_t> rva{0}; std::atomic<unsigned long long> count{0}; };
 std::array<CallerSlot, 64> gCallers{};
@@ -431,6 +456,148 @@ void* __fastcall GetterHook(void* player, void* out)
     return result;
 }
 
+// --- Q-Beam observer ----------------------------------------------------------
+//
+// Read-only. The beam update raycasts, then draws; the raycast opens a record on
+// this thread and the draw that follows completes and publishes it, so every
+// published beam pairs the damage ray with the beam the player sees.
+struct BeamTrace {
+    bool valid = false;
+    std::uint64_t ns = 0;
+    std::uintptr_t weapon = 0;
+    Vec3 rayOrigin{}, rayDirection{};
+    float range = 0, rayResult = 0;
+    bool hit = false;
+    Vec3 hitPoint{};
+    Vec3 beamPosition{}, beamDirection{};
+    bool haveMuzzle = false;
+    Vec3 muzzle{}, muzzleAxis{};
+    bool haveAim = false;
+    aim::Sample aim{};
+    bool twoHand = false;
+};
+thread_local BeamTrace tBeam;
+LatestSnapshot<BeamTrace> gLastBeam;
+std::atomic<unsigned long long> gBeamRays{0}, gBeamDraws{0}, gBeamForeign{0}, gBeamUnpaired{0};
+std::atomic<std::uint64_t> gBeamLogNs{0};
+
+std::uintptr_t EquippedWeaponNow(bool& twoHand)
+{
+    ShotContext ctx{};
+    EquippedRig rig{};
+    if (!ReadContext(ctx) || !TryGetEquippedRig(ctx.frame.player, rig)) { return 0; }
+    twoHand = ctx.frame.twoHand.held;
+    return rig.weapon;
+}
+
+struct BeamMetrics {
+    float beamFromMuzzleMm = -1, beamAngleDeg = -1, rayAngleDeg = -1, rayBehindMm = -1, rayOffBeamMm = -1;
+    float hitOffBarrelMm = -1, hitDistance = -1, hitFromMarkerMm = -1, markerDistance = -1, muzzleAxisDeg = -1;
+};
+BeamMetrics Measure(const BeamTrace& t)
+{
+    BeamMetrics m{};
+    const Vec3 d = t.aim.direction;
+    if (t.haveMuzzle) {
+        m.beamFromMuzzleMm = Len(Sub(t.beamPosition, t.muzzle)) * 1000.0f;
+        if (t.haveAim) { m.muzzleAxisDeg = shot::AngleDegrees(t.muzzleAxis, d); }
+    }
+    if (t.haveAim) {
+        m.beamAngleDeg = shot::AngleDegrees(t.beamDirection, d);
+        m.rayAngleDeg = shot::AngleDegrees(t.rayDirection, d);
+    }
+    m.rayBehindMm = Dot(Sub(t.beamPosition, t.rayOrigin), t.rayDirection) * 1000.0f;
+    m.rayOffBeamMm = shot::DistanceToLine(t.beamPosition, t.rayOrigin, t.rayDirection) * 1000.0f;
+    if (t.hit) {
+        m.hitDistance = Dot(Sub(t.hitPoint, t.beamPosition), t.beamDirection);
+        // The barrel's line: from the drawn muzzle along the aim.
+        if (t.haveAim && t.haveMuzzle) { m.hitOffBarrelMm = shot::DistanceToLine(t.hitPoint, t.muzzle, d) * 1000.0f; }
+        // The amber marker: where the aim lane's own scene query of that ray landed.
+        if (t.haveAim && t.aim.sceneDistance > 0) {
+            m.markerDistance = t.aim.sceneDistance;
+            m.hitFromMarkerMm = Len(Sub(t.hitPoint, Add(t.aim.origin, Scale(d, t.aim.sceneDistance)))) * 1000.0f;
+        }
+    }
+    return m;
+}
+std::string BeamLine(const BeamTrace& t)
+{
+    const BeamMetrics m = Measure(t);
+    std::ostringstream line;
+    line << " beamFromMuzzleMm=" << Fixed(m.beamFromMuzzleMm, 1) << " beamAngleDeg=" << Fixed(m.beamAngleDeg, 3)
+         << " rayAngleDeg=" << Fixed(m.rayAngleDeg, 3) << " rayBehindMm=" << Fixed(m.rayBehindMm, 1)
+         << " rayOffBeamMm=" << Fixed(m.rayOffBeamMm, 1) << " hit=" << t.hit << " hitDist=" << Fixed(m.hitDistance, 3)
+         << " hitOffBarrelMm=" << Fixed(m.hitOffBarrelMm, 1) << " markerDist=" << Fixed(m.markerDistance, 3)
+         << " hitFromMarkerMm=" << Fixed(m.hitFromMarkerMm, 1) << " muzzleAxisDeg=" << Fixed(m.muzzleAxisDeg, 3)
+         << " aimFromMuzzle=" << t.aim.muzzleOrigin << " twoHand=" << t.twoHand << " beam=" << Point(t.beamPosition)
+         << " beamDir=" << Point(t.beamDirection) << " aimDir=" << Point(t.aim.direction)
+         << " hitPoint=" << Point(t.hitPoint) << " rayResult=" << Fixed(t.rayResult, 3);
+    return line.str();
+}
+
+float __fastcall BeamRayHook(void* out, const Vec3* origin, const Vec3* direction, float range, std::uint64_t a5,
+                             std::uint64_t a6, std::uint64_t entity, std::uint64_t a8, std::uint64_t a9,
+                             std::uint64_t a10)
+{
+    const float result =
+        gBeamRayOriginal.load(std::memory_order_acquire)(out, origin, direction, range, a5, a6, entity, a8, a9, a10);
+    if (static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(_ReturnAddress()) - gBase) != kBeamRayReturn) {
+        return result;
+    }
+    tBeam.valid = false;
+    bool twoHand = false;
+    const std::uintptr_t weapon = EquippedWeaponNow(twoHand);
+    std::uint64_t weaponEntity = 0;
+    BeamTrace t{};
+    if (!weapon || !CopyBytes(&weaponEntity, reinterpret_cast<const void*>(weapon + kWeaponEntity), 8) ||
+        weaponEntity != entity || !CopyBytes(&t.rayOrigin, origin, sizeof(Vec3)) ||
+        !CopyBytes(&t.rayDirection, direction, sizeof(Vec3))) {
+        gBeamForeign.fetch_add(1, std::memory_order_relaxed);
+        return result;
+    }
+    t.weapon = weapon;
+    t.twoHand = twoHand;
+    t.range = range;
+    t.rayResult = result;
+    t.hit = result > 0 && CopyBytes(&t.hitPoint, static_cast<const std::uint8_t*>(out) + kBeamRayHitPoint, sizeof(Vec3)) &&
+            Finite(t.hitPoint);
+    t.haveMuzzle = ReadMuzzle(weapon, t.muzzle, t.muzzleAxis);
+    t.haveAim = TryGetAimSample(t.aim) && Len(t.aim.direction) > .5f;
+    t.ns = MonotonicNanoseconds();
+    t.valid = true;
+    tBeam = t;
+    gBeamRays.fetch_add(1, std::memory_order_relaxed);
+    return result;
+}
+
+void* __fastcall UpdateLaserHook(void* beam, const Vec3* position, const Vec3* direction, const Vec3* up)
+{
+    void* const result = gUpdateLaserOriginal.load(std::memory_order_acquire)(beam, position, direction, up);
+    const auto rva = static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(_ReturnAddress()) - gBase);
+    if (rva != kUpdateLaserReturnHit && rva != kUpdateLaserReturnMiss) { return result; }
+    BeamTrace& t = tBeam;
+    if (!t.valid || reinterpret_cast<std::uintptr_t>(beam) != t.weapon + kWeaponBeam ||
+        MonotonicNanoseconds() - t.ns > 20000000ull || !CopyBytes(&t.beamPosition, position, sizeof(Vec3)) ||
+        !CopyBytes(&t.beamDirection, direction, sizeof(Vec3))) {
+        gBeamUnpaired.fetch_add(1, std::memory_order_relaxed);
+        t.valid = false;
+        return result;
+    }
+    t.valid = false;
+    BeamTrace published = t;
+    published.valid = true;
+    gLastBeam.Publish(published);
+    gBeamDraws.fetch_add(1, std::memory_order_relaxed);
+    // One line when the beam starts and then at most one a second.
+    const auto now = MonotonicNanoseconds();
+    const auto last = gBeamLogNs.load(std::memory_order_relaxed);
+    if (now - last > 1000000000ull) {
+        gBeamLogNs.store(now, std::memory_order_relaxed);
+        lifecycle::Log("preyvr_beam n=" + std::to_string(gBeamDraws.load()) + BeamLine(published));
+    }
+    return result;
+}
+
 template <class Fn, std::size_t N>
 bool HookAt(std::uintptr_t rva, const std::array<std::uint8_t, N>& prologue, void* detour, std::atomic<Fn>& original,
             const char* name)
@@ -475,10 +642,14 @@ bool Install()
                             "pellets");
     gGetterHooked = HookAt(kGetterRva, kGetterPrologue, reinterpret_cast<void*>(&GetterHook), gGetterOriginal,
                            "ray_getter");
+    gBeamHooked = HookAt(kBeamRayRva, kBeamRayPrologue, reinterpret_cast<void*>(&BeamRayHook), gBeamRayOriginal,
+                         "beam_ray") &&
+                  HookAt(kUpdateLaserRva, kUpdateLaserPrologue, reinterpret_cast<void*>(&UpdateLaserHook),
+                         gUpdateLaserOriginal, "update_laser");
     Log(std::string("result=") + (gQueryHooked && gHelperOk ? "0" : "unavailable") +
         " query=" + std::to_string(gQueryHooked) + " helper=" + std::to_string(gHelperOk) +
         " firing=" + std::to_string(firing) + " projectileSpawn=" + std::to_string(gProjectileHooked) +
-        " pellets=" + std::to_string(gPelletsHooked));
+        " pellets=" + std::to_string(gPelletsHooked) + " beam=" + std::to_string(gBeamHooked));
     return gQueryHooked && gHelperOk;
 }
 
@@ -592,6 +763,19 @@ bool ShotRayAdjustFiringPosition(void* weapon, void* result, std::uint32_t, void
 }
 
 bool TryGetLastShot(ShotTrace& out) { return gLastShot.TryRead(out); }
+
+std::string BeamReport()
+{
+    if (!Install()) { return " beamHooked=0"; }
+    std::ostringstream out;
+    out << " beamHooked=" << gBeamHooked << " beamRays=" << gBeamRays.load() << " beamDraws=" << gBeamDraws.load()
+        << " beamForeign=" << gBeamForeign.load() << " beamUnpaired=" << gBeamUnpaired.load();
+    BeamTrace t{};
+    if (gLastBeam.TryRead(t) && t.valid) {
+        out << " ageMs=" << (MonotonicNanoseconds() - t.ns) / 1000000ull << BeamLine(t);
+    }
+    return out.str();
+}
 
 DWORD SetShotProbe(unsigned enabled)
 {

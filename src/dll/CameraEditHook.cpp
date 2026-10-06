@@ -1150,6 +1150,7 @@ void __fastcall RenderWithCameraEdit(void* system)
             ? locked
             : static_cast<int>(gEyeCounter.fetch_add(1, std::memory_order_relaxed) & 1ull);
         const float renderIpd = gStereoIpd.load(std::memory_order_acquire);
+        const stereo::Matrix34 centre = stereo::ReadMatrix(edited);
         built = BuildSyntheticEye(edited, eye,
                                   renderIpd,
                                   gStereoHalfFov.load(std::memory_order_acquire));
@@ -1163,6 +1164,7 @@ void __fastcall RenderWithCameraEdit(void* system)
                 BuiltEye record{};
                 record.position[0] = m[3];  record.position[1] = m[7];  record.position[2] = m[11];
                 record.right[0] = m[0];     record.right[1] = m[4];     record.right[2] = m[8];
+                record.centre[0] = centre[3]; record.centre[1] = centre[7]; record.centre[2] = centre[11];
                 record.eye = eye;
                 record.serial = gBuiltEyeSerial.fetch_add(1, std::memory_order_relaxed) + 1;
                 gBuiltEyes[record.serial % kBuiltEyeSlots] = record;

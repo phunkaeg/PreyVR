@@ -51,4 +51,12 @@ struct ContactGeometry {Pose weaponInWrist{};Vec3 minimum{},maximum{};bool wrenc
 bool ReadContactGeometry(const Memory&,std::uintptr_t moduleBase,const RigIdentity&,
                          std::uintptr_t absolutePose,unsigned count,int wristJoint,ContactGeometry&);
 
+// Diagnostic (ik.helpers): every attachment of the bound weapon character with
+// its default frame in the weapon model, every joint with its bind frame, and
+// the model bounds. Read-only, same guarded reader. Returns false when the
+// owner does not resolve; `count`/`jointCount` say how many entries were filled.
+struct HelperInfo { char name[64]{}; Pose frame{}; bool bone = false; bool joint = false; };
+bool ListWeaponFrames(const Memory&, std::uintptr_t moduleBase, const RigIdentity&, HelperInfo* out,
+                      unsigned capacity, unsigned& count, Vec3& minimum, Vec3& maximum);
+
 } // namespace preyvr::weaponrig

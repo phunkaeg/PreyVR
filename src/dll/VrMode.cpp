@@ -8,6 +8,7 @@
 #include "ConsoleBridgeWin32.h"
 #include "HeadTrackingHook.h"
 #include "NearViewStereo.h"
+#include "NearParticleStereo.h"
 #include "NearFovOverride.h"
 #include "InputPost.h"
 #include "InputPathProbe.h"
@@ -150,6 +151,9 @@ void TickVrMode() {
             SetNearViewStereo(1)!=0 || SetNearViewIpdMetres(ipd)!=0 || SetNearFovDeciDegrees(nearFov)!=0) {
             Fail("stereo_and_tracking"); return;
         }
+        // DrawNear particles in the weapon's camera space (preyvr/NearParticles.h).
+        // Not fatal: without the hook they keep the native double parallax.
+        EnsureNearParticleStereo();
         if(SetMoveLaneMode(2)!=0 || SetTurnLaneEnabled(1)!=0 || SetFireLaneEnabled(1)!=0 ||
             SetInteractionEnabled(1)!=0 || SetAimTakeoverEnabled(1)!=0 ||
             SetReticleFollowEnabled(1)!=0 || SetReticleDispatchEnabled(1)!=0 ||

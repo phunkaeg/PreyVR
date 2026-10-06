@@ -282,6 +282,50 @@ bool ReadContactGeometry(const Memory& memory,std::uintptr_t base,const RigIdent
     candidate.wrench=basis.source==Source::wrenchModel;out=candidate;return true;
 }
 
+bool ListWeaponFrames(const Memory& memory, std::uintptr_t base, const RigIdentity& owner, HelperInfo* out,
+                      unsigned capacity, unsigned& count, Vec3& minimum, Vec3& maximum)
+{
+    count = 0;
+    const Reader r{memory};
+    std::uintptr_t weaponCharacter = 0, skeleton = 0, joints = 0, helpers = 0, bindArray = 0;
+    unsigned jointCount = 0, helperCount = 0;
+    if (!owner.binding || !r.Get(owner.binding, 8, weaponCharacter) ||
+        !Skeleton(r, base, weaponCharacter, skeleton, joints, jointCount)) { return false; }
+    r.Get(weaponCharacter, 0x9f0, minimum);
+    r.Get(weaponCharacter, 0x9fc, maximum);
+    const std::uintptr_t manager = weaponCharacter + 0x18;
+    if (r.Is(manager, base + kManagerVtable) && r.Get(manager, 0x20, helpers) &&
+        r.Count(helpers, kMaxAttachments, helperCount)) {
+        for (unsigned i = 0; i < helperCount && count < capacity; ++i) {
+            std::uintptr_t helper = 0, namePointer = 0;
+            char name[128]{};
+            if (!r.Get(helpers, i * 8ull, helper)) { break; }
+            const bool bone = r.Is(helper, base + kBoneVtable);
+            const bool skin = r.Is(helper, base + kSkinVtable);
+            if ((!bone && !skin) || !r.Get(helper, skin ? 0x18 : 0x10, namePointer) ||
+                !r.String(namePointer, name)) { continue; }
+            HelperInfo& info = out[count];
+            std::memcpy(info.name, name, sizeof(info.name) - 1);
+            info.bone = bone;
+            if (bone) { r.Get(helper, 0x114, info.frame); }
+            ++count;
+        }
+    }
+    if (r.Get(skeleton, 0x30, bindArray)) {
+        for (unsigned i = 0; i < jointCount && count < capacity; ++i) {
+            std::uintptr_t namePointer = 0;
+            char name[128]{};
+            if (!r.Get(joints, i * 0xA8ull, namePointer) || !r.String(namePointer, name)) { continue; }
+            HelperInfo& info = out[count];
+            std::memcpy(info.name, name, sizeof(info.name) - 1);
+            info.joint = true;
+            r.Get(bindArray, i * 0x1Cull, info.frame);
+            ++count;
+        }
+    }
+    return true;
+}
+
 const char* SourceName(Source source)
 {
     switch (source) {

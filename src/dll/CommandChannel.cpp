@@ -17,6 +17,7 @@
 #include "HeadTrackingHook.h"
 #include "Logger.h"
 #include "NearViewStereo.h"
+#include "NearParticleStereo.h"
 #include "RenderFrame.h"
 #include "ReticleFollow.h"
 #include "SceneQuery.h"
@@ -174,6 +175,7 @@ void WriteReport(std::ostringstream& out)
         << " nearNoProvenance=" << NearViewNoProvenanceCount()
         << " eyeLookupMiss=" << BuiltEyeLookupMissCount()
         << " nearDeltaUm=" << NearViewLastDeltaMicrometres()
+        << " " << NearParticleStereoReport()
         << " handMatched=" << HandRigMatchedCount()
         << " handSkipped=" << HandRigSkippedCount()
         << " handApplied=" << HandRigAppliedCount()
@@ -358,6 +360,21 @@ bool ExecutePose(const std::vector<std::string>& args, std::ostringstream& out)
     };
     if (verb == "ik.skel") {
         out << "ik.skel result=" << RequestAnimIkSkeletonDump();
+    } else if (verb == "ik.widesupport") {
+        out << "ik.widesupport result=" << (args.size() > 1 ? SetAnimIkWideSupport(static_cast<unsigned>(arg(1, 1))) : 0)
+            << " wide=" << AnimIkWideSupport();
+    } else if (verb == "ik.supportlatch") {
+        out << "ik.supportlatch result=" << (args.size() > 1 ? SetAnimIkSupportLatch(static_cast<unsigned>(arg(1, 1))) : 0)
+            << " latch=" << AnimIkSupportLatch();
+    } else if (verb == "ik.longreach") {
+        // ik.longreach [on comfortMm maxBackMm supportBackMm twistDeg]; bare reports.
+        DWORD result = 0;
+        if (args.size() > 1) {
+            result = SetAnimIkLongReach(arg(1, 1), arg(2, 450), arg(3, 200), arg(4, 100), arg(5, 30));
+        }
+        out << "ik.longreach result=" << result << AnimIkLongReachReport();
+    } else if (verb == "ik.helpers") {
+        out << "ik.helpers result=" << RequestAnimIkHelperDump() << " (see PreyVR.log: preyvr_anim_ik helper)";
     } else if (verb == "pose.mode") {
         out << "pose.mode result=" << (args.size() > 1 ? SetHandPoseMode(static_cast<unsigned>(arg(1, 1))) : 0)
             << HandPoseReport();
@@ -420,6 +437,25 @@ bool ExecutePose(const std::vector<std::string>& args, std::ostringstream& out)
             result = value == 0 || value == 1 ? SetShotRay(static_cast<unsigned>(value)) : ERROR_INVALID_PARAMETER;
         }
         out << "aim.shot result=" << result << ShotRayReport();
+    } else if (verb == "aim.beam") {
+        // Q-Beam: the last beam (damage ray + drawn beam) against the muzzle,
+        // the aim and the amber marker. Observation only.
+        out << "aim.beam result=0" << BeamReport();
+    } else if (verb == "near.fx") {
+        // Bare `near.fx` only reports. 1 = DrawNear particles in the weapon's
+        // camera space (default), 0 = native, for A/B.
+        DWORD result = 0;
+        if (args.size() > 1) {
+            const int value = arg(1, -1);
+            result = value == 0 || value == 1 ? SetNearParticleStereo(static_cast<unsigned>(value))
+                                              : ERROR_INVALID_PARAMETER;
+        }
+        out << "near.fx result=" << result << " " << NearParticleStereoReport();
+    } else if (verb == "near.fxbridge") {
+        out << "near.fxbridge result=" << (args.size() > 1 ? SetNearParticleBridge(static_cast<unsigned>(arg(1, 1))) : 0)
+            << " " << NearParticleStereoReport();
+    } else if (verb == "near.fxhide") {
+        out << "near.fxhide result=" << SetNearParticleHide(static_cast<unsigned>(arg(1, 1)));
     } else if (verb == "dbg.report") {
         out << "dbg.report result=0" << DebugOverlayReport();
     } else if (verb == "dbg.marks") {

@@ -51,6 +51,7 @@ LatestSnapshot<GameplayPoseFrame> gGameplayFrame;
 LatestSnapshot<preyvr::aim::Sample> gAimSample;
 LatestSnapshot<SupportGripGeometry> gSupportGeometry;
 LatestSnapshot<twohand::Input> gSupportInput;
+std::atomic<unsigned> gTwoHandGates{0}, gTwoHandGatesSeen{0};
 std::atomic<bool> gTwoHandEnabled{true};
 std::atomic<bool> gTwoHandToggle{false},gTwoHandSnap{true};
 std::atomic<unsigned int> gTwoHandReset{0};
@@ -135,11 +136,16 @@ void SolveTwoHandedFrame(GameplayPoseFrame& frame, bool tracking)
         FreshSample(now,geometry.publishedNs);
     if(region) { input.region=geometry.region;input.visualPrimaryOffset=geometry.primaryOffsetWorld; }
     gTwoHandRegionReady.store(region);
-    input.usable=region&&tracking&&!MedkitOwnsGrip()&&frame.headYawUsable&&frame.cameraCentreValid&&
-        gEnabled.load()&&gTwoHandEnabled.load()&&HudGameplayInputAllowed()&&
-        IsPoseUsable(right.aimPose,right.aimValidity,200000000ull)&&
-        IsPoseUsable(right.gripPose,right.gripValidity,200000000ull)&&
-        IsPoseUsable(left.gripPose,left.gripValidity,200000000ull);
+    // Each gate as a bit, for aim.twohand: which one released a held foregrip.
+    const unsigned gates=(region?0u:1u)|(tracking?0u:2u)|(MedkitOwnsGrip()?4u:0u)|
+        (frame.headYawUsable?0u:8u)|(frame.cameraCentreValid?0u:16u)|
+        (gEnabled.load()&&gTwoHandEnabled.load()?0u:32u)|(HudGameplayInputAllowed()?0u:64u)|
+        (IsPoseUsable(right.aimPose,right.aimValidity,200000000ull)&&
+         IsPoseUsable(right.gripPose,right.gripValidity,200000000ull)&&
+         IsPoseUsable(left.gripPose,left.gripValidity,200000000ull)?0u:128u);
+    gTwoHandGates.store(gates);
+    if(gates) gTwoHandGatesSeen.fetch_or(gates);
+    input.usable=gates==0;
     frame.twoHand=gTwoHandSolver.Update(input);
     frame.twoHand.snapSupport=gTwoHandSnap.load();
     DebugOverlayForegrip(frame,input,frame.twoHand,region);
@@ -524,7 +530,9 @@ bool TwoHandedAimHeld(){return gTwoHandEnabled.load()&&gTwoHandHeld.load();}
 std::string TwoHandedAimStatus() {
     std::ostringstream out;
     out<<" enabled="<<TwoHandedAimEnabled()<<" held="<<gTwoHandHeld.load()
-       <<" regionReady="<<gTwoHandRegionReady.load()<<" frames="<<gTwoHandFrames.load();
+       <<" regionReady="<<gTwoHandRegionReady.load()<<" frames="<<gTwoHandFrames.load()
+       // 1 region 2 tracking 4 medkit 8 headYaw 16 camera 32 disabled 64 hud 128 poses
+       <<" gates="<<gTwoHandGates.load()<<" gatesSeen="<<gTwoHandGatesSeen.exchange(0);
     SupportGripGeometry geometry{};
     if(gSupportGeometry.TryRead(geometry)) out<<" owner="<<geometry.owner
         <<" supportMm="<<geometry.region.start.x*1000<<","<<geometry.region.start.y*1000<<","<<geometry.region.start.z*1000;

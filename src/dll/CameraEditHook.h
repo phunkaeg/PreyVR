@@ -79,6 +79,9 @@ DWORD SetCameraYawEdit(float degrees);
 struct BuiltEye {
     float position[3];
     float right[3];
+    // The camera this eye was offset FROM: the cyclops the game built the frame
+    // around. Camera-space content (the near pass) is relative to it.
+    float centre[3];
     int eye;
     unsigned long long serial;
 };

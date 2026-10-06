@@ -49,6 +49,28 @@ bool ClosestGrip(const Input& i,Vec3& point) {
     return point.y>=.12f&&length>=.0144f&&length<=.64f&&
         Dot(Sub(local,point),Sub(local,point))<=i.region.radius*i.region.radius;
 }
+float HoldBack(Vec3 socket,const LongReach& reach) {
+    if(!Finite(socket)||!std::isfinite(reach.comfortForward)||!std::isfinite(reach.maxHoldBack)) return 0;
+    return std::clamp(socket.y-reach.comfortForward,0.f,std::max(reach.maxHoldBack,0.f));
+}
+Region SupportRegion(Vec3 socket,float holdBack,const LongReach& reach) {
+    const float back=.04f+(holdBack>0&&std::isfinite(reach.supportBack)?std::clamp(reach.supportBack,0.f,.3f):0.f);
+    Region r{};r.start={socket.x,socket.y-back,socket.z};r.end={socket.x,socket.y+.04f,socket.z};
+    return r;
+}
+bool RegionLatch::Update(std::uint64_t owner,bool candidateValid,Vec3 candidate,Vec3& socket) {
+    if(owner!=owner_) { *this={};owner_=owner; }
+    if(!owner) return false;
+    if(!candidateValid||!Finite(candidate)) steady_=0;
+    else {
+        const Vec3 d=Sub(candidate,anchor_);
+        if(steady_>0&&Dot(d,d)<=kSettleMetres*kSettleMetres) ++steady_;
+        else { anchor_=candidate;steady_=1; }
+        if(!latched_&&steady_>=kSettleSamples) { latched_=true;socket_=anchor_; }
+    }
+    if(latched_) socket=socket_;
+    return latched_;
+}
 Output Solver::Update(const Input& i) {
     Output out{};out.orientation=i.aim.orientation;
     const bool changed=i.owner!=owner_||i.reference!=reference_||i.epoch!=epoch_||i.toggleGrip!=toggleGrip_;
