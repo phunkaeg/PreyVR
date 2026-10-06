@@ -46,6 +46,7 @@ void Tick(bool fire=false,bool grip=false,bool valid=true,float dt=.01f){
 HMODULE TestModule(const wchar_t*){return reinterpret_cast<HMODULE>(moduleBase);}
 namespace preyvr::dll {
 void PublishSlotFeedback(equipment::SlotNotice,const GameplayPoseFrame&){}
+void DebugOverlayMedkit(bool,Vec3,Vec3,bool,bool,bool,bool){}
 bool EnsureMinHook(){return false;}
 bool EnsureGameplayPoseObservation(){return true;}
 DWORD InputDrainThreadId(){return drainThread;}

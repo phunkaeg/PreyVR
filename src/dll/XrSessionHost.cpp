@@ -21,6 +21,7 @@
 #include "SlotFeedback.h"
 #include "NativeWristTexture.h"
 #include "AimTakeover.h"
+#include "DebugOverlay.h"
 #include "preyvr/UiPanel.h"
 #include "preyvr/LatestSnapshot.h"
 #include "preyvr/HudCapturePair.h"
@@ -681,6 +682,7 @@ void Teardown()
     DestroyXrInput();
     ResetHeadTrackingReference();
     gTrackingSpaceType=XR_REFERENCE_SPACE_TYPE_MAX_ENUM;
+    ReleaseDebugOverlay();   // its render target views hold the eye images
     for (auto*& image : gHost.eyeImage) {
         if (image != nullptr) {
             image->Release();
@@ -948,13 +950,21 @@ bool SubmitStereoPair(
         }
         D3D11_TEXTURE2D_DESC hold = desc;
         hold.Usage = D3D11_USAGE_DEFAULT;
-        hold.BindFlags = 0;
+        // A render target so the debug overlay (dbg.draw) can draw into the eye
+        // it belongs to. CopyResource ignores bind flags; without the flag the
+        // overlay is refused and the image is unaffected.
+        hold.BindFlags = D3D11_BIND_RENDER_TARGET;
         hold.CPUAccessFlags = 0;
         hold.MiscFlags = 0;
         gHost.heldWidth = hold.Width;
         gHost.heldHeight = hold.Height;
         gHost.heldFormat = static_cast<std::uint32_t>(hold.Format);
         if (FAILED(gHost.device->CreateTexture2D(&hold, nullptr, &gHost.eyeImage[eye]))) {
+            hold.BindFlags = 0;
+            gHost.eyeImage[eye] = nullptr;
+        }
+        if (gHost.eyeImage[eye] == nullptr &&
+            FAILED(gHost.device->CreateTexture2D(&hold, nullptr, &gHost.eyeImage[eye]))) {
             gHost.eyeImage[eye] = nullptr;
             LogOnce("result=failed step=create_eye_image");
             return false;
@@ -994,6 +1004,11 @@ bool SubmitStereoPair(
     if (eye == 0 || eye == 1) {
         const int target = gSwapEyes.load(std::memory_order_acquire) ? (1 - eye) : eye;
         context->CopyResource(gHost.eyeImage[target], backBuffer);
+        // Drawn into this eye with the contract that rendered it, so the
+        // overlay and the pixels beneath it can never belong to different poses.
+        const float shown[4] = {std::tan(views[target].fov.angleLeft), std::tan(views[target].fov.angleRight),
+                                std::tan(views[target].fov.angleUp), std::tan(views[target].fov.angleDown)};
+        DrawDebugOverlay(gHost.device, context, gHost.eyeImage[target], contract, shown);
         gHost.hudCapturePair.RecordEye(target,hudCaptured);
         // Publish the pixels and the contract that produced them together. The
         // copy and these three writes are the one publication unit; nothing
@@ -1955,6 +1970,7 @@ void ServiceXrFrame(void* renderer)
         IsPoseUsable(wristFrame.hands[0].gripPose,wristFrame.hands[0].gripValidity,200000000);
     const auto wristPose=equipment::WristPose(wristFrame.hands[0].gripPose);
     gHost.wristVisible=wristInput&&equipment::WristVisible(wristFrame.head,wristPose,gHost.wristVisible);
+    DebugOverlayWristDecision(wristInput,gHost.wristVisible);
     RequestNativeWristCapture(gHost.wristVisible);
     if(gHost.wristVisible){
         if(nativeWristTexture){

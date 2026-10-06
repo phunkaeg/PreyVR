@@ -6,6 +6,7 @@
 #include "Psychoscope.h"
 #include "PsiMedkit.h"
 #include "WeaponAttachment.h"
+#include "DebugOverlay.h"
 #include "preyvr/AnimIk.h"
 #include "MinHookInit.h"
 #include "preyvr/LatestSnapshot.h"
@@ -140,6 +141,7 @@ void SolveTwoHandedFrame(GameplayPoseFrame& frame, bool tracking)
         IsPoseUsable(left.gripPose,left.gripValidity,200000000ull);
     frame.twoHand=gTwoHandSolver.Update(input);
     frame.twoHand.snapSupport=gTwoHandSnap.load();
+    DebugOverlayForegrip(frame,input,frame.twoHand,region);
     gSupportInput.Publish(input);
     const bool wasHeld=gTwoHandHeld.exchange(frame.twoHand.held);
     if(frame.twoHand.held&&!wasHeld)
@@ -300,6 +302,7 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     UpdatePsychoscopeGesture(frame,haveTracking&&gEnabled.load());
     UpdateBodyEquipment(frame,haveTracking&&gEnabled.load());
     UpdatePhysicalInteractions(frame,haveTracking&&gEnabled.load());
+    DebugOverlayGameFrame(frame,haveTracking);
     if (!haveTracking) { gRejNoPose.fetch_add(1); return; }
     // A frame whose play-space yaw is unknown cannot aim, and must not silently
     // aim with the camera-relative yaw the body-yaw mode exists to replace.
@@ -409,6 +412,7 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     sample.publishedNs = MonotonicNanoseconds();
     gAimSample.Publish(sample);
     gAimSamplePublished.fetch_add(1, std::memory_order_relaxed);
+    DebugOverlayAim(frame, sample);
 
     // Screen projection is deferred until CSystem::Render has installed the
     // actual eye camera. Here the global camera still has gameplay projection;

@@ -1,5 +1,6 @@
 #include "BodyEquipment.h"
 #include "AimTakeover.h"
+#include "DebugOverlay.h"
 #include "HeadTrackingHook.h"
 #include "HudBridge.h"
 #include "InputPost.h"
@@ -127,6 +128,8 @@ void UpdateHolsterInput(const TrackingFrame& f,bool valid){
   !TwoHandedAimHeld()&&l.squeezeValue<.45f&&!r.triggerPressed&&!r.menuAccept&&!r.menuCancel&&!r.weaponWheelPressed;
  const int slot=gesture.Update(f.head,r.gripPose.position,r.gripPressed,valid,dt);
  gripOwned=gesture.OwnsGrip();
+ DebugOverlayHolsters(gesture.BodyValid(),{gesture.ZoneCentre(f.head.position,0),gesture.ZoneCentre(f.head.position,1)},
+  r.gripPose.position,r.gripPressed,gesture.Armed(),gesture.OwnsGrip());
  if(!valid)request={};
  else if(slot>=0)request={slot,f.epoch,ref,f.publishedNs};
 }
@@ -149,6 +152,7 @@ void UpdateBodyEquipment(const GameplayPoseFrame& frame,bool valid){
  status.Clear();
  if(!HolstersEnabled())return;
  Status sample{};bool stored=false;const auto result=Native(frame,slot,false,&sample,&stored);
+ DebugOverlayHolsterSlots(slots[0]!=0,slots[1]!=0);
  if(slot>=0){
   if(!result)++dispatched;else ++refused;
   using N=equipment::SlotNotice;

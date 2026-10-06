@@ -13,6 +13,8 @@
 #include "preyvr/MenuNavigator.h"
 #include "preyvr/LatestSnapshot.h"
 #include "XrSessionHost.h"
+#include "DebugOverlay.h"
+#include "preyvr/DebugOverlayScene.h"
 #include "Logger.h"
 #include <atomic>
 #include <filesystem>
@@ -78,6 +80,7 @@ void Apply(unsigned id,int v){
  case options::UiMargin:SetUiFitMarginPercent(v);break;
  case options::UiCurve:SetUiCurveDegrees(v);break;
  case options::UiGuide:SetUiGuideEnabled(v);break;
+ case options::DebugOverlay:SetDebugOverlay(v?debugdraw::kAllLayers:0u);break;
  }
 }
 void Save(){
@@ -107,6 +110,7 @@ options::Values VrOptionsValues(){
  v[options::Psychoscope]=scope.load();
  v[options::Holsters]=holsters.load();v[options::Wrist]=wrist.load();v[options::WristSize]=wristSize.load();
  v[options::BeltHints]=beltHints.load();
+ v[options::DebugOverlay]=DebugOverlayMask()!=0;
  // Read the actual lane settings, including changes made through the command
  // channel. Pending menu edits override only their own row until applied.
  const auto pending=dirty.load();
@@ -122,7 +126,12 @@ void LoadVrOptions(){
    options::Values parsed{};if(options::Parse(data,parsed))v=parsed;else lifecycle::Log("preyvr_options load=invalid defaults_retained=1");
   }
  }catch(...){lifecycle::Log("preyvr_options load=failed defaults_retained=1");}
- for(unsigned i=0;i<options::Count;++i){values[i]=v[i];Apply(i,v[i]);}
+ for(unsigned i=0;i<options::Count;++i){
+  values[i]=v[i];
+  // A saved "off" must not undo a debug overlay the launcher or a command enabled.
+  if(i==options::DebugOverlay&&!v[i])continue;
+  Apply(i,v[i]);
+ }
  ready.store(true);
 }
 void ServiceVrOptions(){

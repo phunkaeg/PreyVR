@@ -85,6 +85,20 @@ bool QueryPhysicalSegment(const GameplayPoseFrame& frame,Vec3 origin,Vec3 delta,
     }
     return result==ERROR_SUCCESS;
 }
+bool QueryDebugRay(const GameplayPoseFrame& frame,Vec3 origin,Vec3 direction,scene::Hit& hit){
+    hit={};hit.distance=-1;
+    if(fault.load()||!HudGameplayInputAllowed()||!FreshSample(MonotonicNanoseconds(),frame.tracking.publishedNs)||
+       frame.referenceGeneration!=HeadTrackingReferenceGeneration())return false;
+    thread_local bool busy=false;
+    if(busy)return false;
+    busy=true;const auto result=Query(frame,origin,direction,scene::Range,hit);busy=false;
+    if(result){lastError=result;++refused;
+        if(result!=ERROR_NOT_READY&&result!=ERROR_INVALID_THREAD_ID)fault=true;
+        hit={};hit.distance=-1;
+    }
+    return result==ERROR_SUCCESS;
+}
+bool SceneQueryFaulted(){return fault.load();}
 void SetSceneReticle(unsigned on){enabled=on!=0;}
 unsigned SceneReticleEnabled(){return enabled.load()?1u:0u;}
 std::string SceneQueryReport(){return " enabled="+std::to_string(enabled.load())+" fault="+std::to_string(fault.load())+

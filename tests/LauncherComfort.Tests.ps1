@@ -51,4 +51,6 @@ if (($commands -join "`n") -cne ($expected -join "`n")) {throw 'Startup must app
 $smooth=Resolve-PreyVRComfortSettings $null @{} 0 0 'local'
 $commands=@(Get-PreyVRStartupCommands $smooth 100 0)
 if ($commands[0] -ne 'move.snap 0' -or $commands[1] -ne 'move.headrelative 0' -or $commands[3] -ne 'ui.guide 0') {throw 'Explicit off values were lost'}
+$commands=@(Get-PreyVRStartupCommands $smooth 100 0 255)
+if ($commands[-2] -ne 'dbg.draw 255' -or $commands[-1] -ne 'vr.enable') {throw 'Debug overlay must be requested before enabling VR'}
 Write-Output 'PASS: comfort defaults, saved/explicit precedence, range refusal, restart persistence, settings preservation and ordered startup commands.'

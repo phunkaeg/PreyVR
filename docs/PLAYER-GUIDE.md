@@ -61,6 +61,10 @@ native menu is already open; `vr.options 1` is the diagnostic equivalent.
   holster assignments. Both new features default off.
 - **Abilities:** psychic targeting (Original / Head / Left Controller) and the
   optional left-hip medkit slot. Original targeting and slot off are the defaults.
+- **Setup:** calibrate posture, reset VR view, and **Debug Overlay (Testing)**,
+  which draws each hand's ray and target, the body slots, the wrist test and the
+  foregrip region in the world. Off by default; see
+  [the overlay note](DEBUG-OVERLAY-2026-10-06.md).
 
 **Psychic targeting:** equip a power using Prey's normal quick wheel. Choose Head
 or Left Controller on the Abilities tab, then hold **left trigger** to target and

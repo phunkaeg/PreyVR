@@ -5,6 +5,7 @@
 #include "InputPost.h"
 #include "Haptics.h"
 #include "SlotFeedback.h"
+#include "DebugOverlay.h"
 #include "MinHookInit.h"
 #include "preyvr/PsiTargeting.h"
 #include "preyvr/MedkitSlot.h"
@@ -300,6 +301,8 @@ void UpdatePsiMedkit(const GameplayPoseFrame& frame,bool valid){
     const bool wasOwned=slot.OwnsGrip();
     const bool use=slot.Update(f.head,left.gripPose.position,left.gripPressed,left.triggerPressed,slotAllowed,dt);
     medkitGrip=slot.OwnsGrip();
+    if(medkit.load())DebugOverlayMedkit(slot.Zone().BodyValid(),slot.Zone().ZoneCentre(f.head.position,0),
+        left.gripPose.position,left.gripPressed,slot.Zone().Armed(),slot.OwnsGrip(),slot.TriggerArmed());
     if(!wasOwned&&slot.OwnsGrip()){
         QueueHaptic(Hand::left,haptics::Event::ForegripAttached,f);
         PublishSlotFeedback(equipment::SlotNotice::MedkitReady,frame);

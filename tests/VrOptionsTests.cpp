@@ -78,6 +78,8 @@ void SettingsChecks(){
  Check(!setup.Update(si).calibrate,"held calibration button never repeats");
  si.accept=false;setup.Update(si);si.y=-1;setup.Update(si);si.y=0;setup.Update(si);si.accept=true;
  Check(setup.Update(si).recenter,"setup retains reset without height calibration");
+ Check(Item(7,2)==DebugOverlay&&Defaults()[DebugOverlay]==0,"debug overlay is an opt-in setup row");
+ Check(Parse("version=1\ndebug_overlay=1\n",parsed)&&parsed[DebugOverlay]==1&&!Valid(DebugOverlay,2),"debug overlay persists as on/off");
 }
 void GestureChecks(){
  PsychoscopeGesture g;const Vec3 high{-.12f,.18f,-.12f},low{-.12f,-.02f,-.12f};

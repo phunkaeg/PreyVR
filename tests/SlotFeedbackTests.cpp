@@ -10,6 +10,7 @@ void Check(bool ok,const char* why){if(!ok){std::cerr<<why<<'\n';std::exit(1);}}
 }
 namespace preyvr::dll {
 bool BeltHintsEnabled(){return hints;}
+void DebugOverlayNotice(equipment::SlotNotice){}
 bool HudGameplayInputAllowed(){return gameplay;}
 unsigned long long HudMenuEpoch(){return menu;}
 unsigned long long HeadTrackingReferenceGeneration(){return reference;}

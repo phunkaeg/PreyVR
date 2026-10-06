@@ -23,7 +23,7 @@ public:
       Vec3{hand.x-head.position.x,hand.y-head.position.y,hand.z-head.position.z});};
   auto distance=[](Vec3 a,Vec3 b){return std::sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)+(a.z-b.z)*(a.z-b.z));};
   auto point=local();int zone=-1;
-  for(int n=0;n<2;++n)if(distance(point,zones_[n])<.14f)zone=n;
+  for(int n=0;n<2;++n)if(distance(point,zones_[n])<Radius)zone=n;
   // A head turn alone cannot drag an already-reached holster under the hand.
   // Outside both zones follow only beyond a 45-degree head/body deadband.
   if(!squeeze&&zone<0){
@@ -38,6 +38,14 @@ public:
  }
  bool OwnsGrip()const{return owned_;}
  void Reset(){armed_=false;bodyValid_=false;owned_=false;}
+ // Diagnostics (dbg.draw): the torso estimate this gesture measures against.
+ bool BodyValid()const{return bodyValid_;}
+ bool Armed()const{return armed_;}
+ Vec3 ZoneCentre(Vec3 head,int n)const{
+  const auto z=Rotate(Quaternion{0,std::sin(bodyYaw_/2),0,std::cos(bodyYaw_/2)},zones_[n]);
+  return {head.x+z.x,head.y+z.y,head.z+z.z};
+ }
+ static constexpr float Radius=.14f;
 private:
  std::array<Vec3,2> zones_;
  bool armed_=false,owned_=false,bodyValid_=false;float bodyYaw_=0;
@@ -53,14 +61,22 @@ inline int DisplayValue(float v,float scale=1.f){
 // Grip-local card: over the inner left wrist, extending back towards the arm.
 // +Z is the visible face of an OpenXR quad. Palm-up inspection faces it at eyes.
 inline Pose WristPose(Pose grip){return Compose(grip,Pose{{-.70710678f,0,0,.70710678f},{0,.045f,.11f}});}
-inline bool WristVisible(Pose head,Pose wrist,bool wasVisible){
+// The three numbers the visibility test compares: eye distance, how squarely
+// the card faces the eye, and how close to the gaze centre it sits (cosines).
+struct WristView {float distance=0,facing=0,viewing=0;};
+inline WristView MeasureWrist(Pose head,Pose wrist){
  const Vec3 toEye{head.position.x-wrist.position.x,head.position.y-wrist.position.y,head.position.z-wrist.position.z};
  const float d=std::sqrt(toEye.x*toEye.x+toEye.y*toEye.y+toEye.z*toEye.z);
- if(!std::isfinite(d)||d<.23f||d>1.f)return false;
+ if(!std::isfinite(d)||d<=0)return {d,0,0};
  const auto face=Rotate(wrist.orientation,{0,0,1});
  const auto look=Rotate(head.orientation,{0,0,-1});
- const float facing=(face.x*toEye.x+face.y*toEye.y+face.z*toEye.z)/d;
- const float viewing=-(look.x*toEye.x+look.y*toEye.y+look.z*toEye.z)/d;
- return facing>(wasVisible?.35f:.55f)&&viewing>(wasVisible?.5f:.65f);
+ return {d,(face.x*toEye.x+face.y*toEye.y+face.z*toEye.z)/d,-(look.x*toEye.x+look.y*toEye.y+look.z*toEye.z)/d};
+}
+inline constexpr float WristFacingNeeded(bool wasVisible){return wasVisible?.35f:.55f;}
+inline constexpr float WristViewingNeeded(bool wasVisible){return wasVisible?.5f:.65f;}
+inline bool WristVisible(Pose head,Pose wrist,bool wasVisible){
+ const auto m=MeasureWrist(head,wrist);
+ if(!std::isfinite(m.distance)||m.distance<.23f||m.distance>1.f)return false;
+ return m.facing>WristFacingNeeded(wasVisible)&&m.viewing>WristViewingNeeded(wasVisible);
 }
 }

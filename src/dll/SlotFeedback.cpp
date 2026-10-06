@@ -1,5 +1,6 @@
 #include "SlotFeedback.h"
 #include "AimTakeover.h"
+#include "DebugOverlay.h"
 #include "HeadTrackingHook.h"
 #include "HudBridge.h"
 #include "PsiMedkit.h"
@@ -9,6 +10,7 @@
 namespace preyvr::dll {
 namespace { LatestSnapshot<equipment::SlotMessage> feedback; }
 void PublishSlotFeedback(equipment::SlotNotice kind,const GameplayPoseFrame& f){
+    DebugOverlayNotice(kind);
     if(!BeltHintsEnabled())return;
     feedback.Publish({kind,f.tracking.epoch,f.referenceGeneration,HudMenuEpoch(),MonotonicNanoseconds()});
 }
