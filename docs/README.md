@@ -7,7 +7,11 @@ The notebook separates evidence from plans so implementation follows demonstrate
 > test queued next. Then [`FAILURE_REGISTRY.md`](FAILURE_REGISTRY.md) for the
 > traps that have each cost a session, and
 > [`RE-INVESTIGATION-GUIDE.md`](RE-INVESTIGATION-GUIDE.md) for how a static claim
-> has to be established here.
+> has to be established here. Testing in the mock or the headset: the save games
+> kept as test environments, and which one "Continue" loads, are in
+> [`TEST-SAVES.md`](TEST-SAVES.md).
+> World interaction (the left hand points and uses, the right grip reloads):
+> [`INTERACTION-LEFT-HAND-2026-10-06.md`](INTERACTION-LEFT-HAND-2026-10-06.md).
 >
 > [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) remains
 > the record of binary identity and lifecycle decisions.

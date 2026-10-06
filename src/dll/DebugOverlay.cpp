@@ -5,6 +5,7 @@
 #include "AimTakeover.h"
 #include "HeadTrackingHook.h"
 #include "HudBridge.h"
+#include "InteractionLane.h"
 #include "Logger.h"
 #include "NativeWristTexture.h"
 #include "PsiMedkit.h"
@@ -196,9 +197,10 @@ dd::OverlayFrame Gather(unsigned mask)
     if (gForegrip.TryRead(grip) && FreshSample(now, grip.ns, kRayAgeNs) && grip.reference == reference) { f.foregrip = grip.grip; }
     f.psiMode = PsiTargetMode();
     f.sceneQueryFault = SceneQueryFaulted();
+    if (mask & dd::kStatus) { f.extra = UseStatusLine(); }
     if (mask & dd::kHits) {
-        f.extra = "queries " + std::to_string(gQueries.load()) + "   scene reticle " +
-                  std::string(SceneReticleEnabled() ? "on" : "off");
+        f.extra += std::string(f.extra.empty() ? "" : "\n") + "queries " + std::to_string(gQueries.load()) +
+                   "   scene reticle " + std::string(SceneReticleEnabled() ? "on" : "off");
     }
     return f;
 }
@@ -641,6 +643,42 @@ void DebugOverlayGameFrame(const GameplayPoseFrame& frame, bool tracking)
     const auto& left = frame.tracking.hands[static_cast<unsigned>(Hand::left)];
     if (!tracking || frame.twoHand.held || !IsPoseUsable(left.aimPose, left.aimValidity, kPoseAgeNs)) {
         gLeft.Clear();
+        return;
+    }
+    UsePointer use{};
+    if (PsiTargetMode() != 2 && frame.cameraCentreValid && TryGetUsePointer(use) && use.valid &&
+        use.reference == frame.referenceGeneration) {
+        // The use pointer: the ray the native selector looks along, ending on
+        // what it selected. Same anchor as the hands, so it starts in the hand.
+        RayRecord record{};
+        auto& ray = record.ray;
+        ray.valid = true;
+        ray.role = dd::RayRole::Use;
+        ray.origin = EngineToXr(frame, frame.cameraCentre, use.hand);
+        ray.direction = EngineDirToXr(frame, use.direction);
+        ray.selected = use.target;
+        ray.onLine = use.onLine;
+        ray.held = use.held;
+        ray.suppressed = use.suppressed;
+        Vec3 end = use.end;
+        float distance = 0;
+        if (!use.target && Hit(frame, use.hand, use.direction, mask, distance) &&
+            distance < dd::Length(dd::Sub(use.end, use.hand))) {
+            end = dd::Add(use.hand, dd::Scale(use.direction, distance));
+            ray.hit = true;
+        }
+        ray.target = EngineToXr(frame, frame.cameraCentre, end);
+        ray.distance = dd::Length(dd::Sub(ray.target, ray.origin));
+        if (use.target) {
+            ray.label = use.name;
+            if (use.action[0]) { ray.label += std::string("\n") + use.action; }
+        }
+        for (unsigned i = 0; i < use.candidateCount && i < ray.candidates.size(); ++i) {
+            ray.candidates[ray.candidateCount++] = EngineToXr(frame, frame.cameraCentre, use.candidates[i]);
+        }
+        record.ns = MonotonicNanoseconds();
+        record.reference = frame.referenceGeneration;
+        gLeft.Publish(record);
         return;
     }
     const Vec3 forward = Rotate(Normalize(left.aimPose.orientation), {0, 0, -1});

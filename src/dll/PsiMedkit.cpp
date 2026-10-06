@@ -13,6 +13,7 @@
 #include "preyvr/PsychoscopeNative.h"
 #include <MinHook.h>
 #include <atomic>
+#include <cmath>
 #include <mutex>
 
 namespace preyvr::dll {
@@ -20,7 +21,7 @@ namespace {
 namespace native=abilities::native;
 std::atomic<unsigned> mode{0},medkit{0};
 std::atomic<std::uint64_t> generation{1};
-std::atomic<bool> installed{false},fault{false},medkitGrip{false};
+std::atomic<bool> installed{false},fault{false},medkitGrip{false},medkitZone{false};
 std::atomic<unsigned long long> previews{0},rayReads{0},casts{0},rejectedCasts{0},
     medkitUsed{0},medkitAbsent{0},medkitDenied{0};
 std::atomic<DWORD> lastError{0};
@@ -275,6 +276,7 @@ DWORD SetMedkitSlot(unsigned value){
 }
 unsigned MedkitSlotEnabled(){return medkit.load();}
 bool MedkitOwnsGrip(){return medkitGrip.load();}
+bool MedkitZoneHasLeftHand(){return medkitZone.load()||medkitGrip.load();}
 void UpdatePsiMedkit(const GameplayPoseFrame& frame,bool valid){
     if(InputDrainThreadId()!=GetCurrentThreadId())return;
     const auto& f=frame.tracking;const auto ref=frame.referenceGeneration,gen=generation.load();
@@ -286,7 +288,7 @@ void UpdatePsiMedkit(const GameplayPoseFrame& frame,bool valid){
     const auto menuEpoch=HudMenuEpoch();
     const bool changed=inputOwner!=frame.player||inputEpoch!=f.epoch||inputReference!=ref||inputGeneration!=gen||inputMenu!=menuEpoch;
     if(!valid||changed){
-        Error(StopOwned());trigger.Reset();slot.Reset();medkitGrip=false;previousTime=0;preview={};
+        Error(StopOwned());trigger.Reset();slot.Reset();medkitGrip=false;medkitZone=false;previousTime=0;preview={};
         inputOwner=frame.player;inputEpoch=f.epoch;inputReference=ref;inputGeneration=gen;inputMenu=menuEpoch;
         if(!valid)return;
     }
@@ -301,6 +303,13 @@ void UpdatePsiMedkit(const GameplayPoseFrame& frame,bool valid){
     const bool wasOwned=slot.OwnsGrip();
     const bool use=slot.Update(f.head,left.gripPose.position,left.gripPressed,left.triggerPressed,slotAllowed,dt);
     medkitGrip=slot.OwnsGrip();
+    {
+        // Inside the slot's sphere, owned or not: a squeeze there is the medkit's.
+        const auto centre=slot.Zone().ZoneCentre(f.head.position,0);
+        const Vec3 d{left.gripPose.position.x-centre.x,left.gripPose.position.y-centre.y,left.gripPose.position.z-centre.z};
+        medkitZone=slotAllowed&&slot.Zone().BodyValid()&&
+            std::sqrt(d.x*d.x+d.y*d.y+d.z*d.z)<=equipment::HolsterGesture::Radius;
+    }
     if(medkit.load())DebugOverlayMedkit(slot.Zone().BodyValid(),slot.Zone().ZoneCentre(f.head.position,0),
         left.gripPose.position,left.gripPressed,slot.Zone().Armed(),slot.OwnsGrip(),slot.TriggerArmed());
     if(!wasOwned&&slot.OwnsGrip()){

@@ -86,6 +86,8 @@ DWORD SetTwoHandSupportSnap(unsigned enabled);
 bool TwoHandGripToggle();
 bool TwoHandSupportSnap();
 bool TwoHandedAimHeld();
+// The left hand is inside the equipped weapon's foregrip region this frame.
+bool SupportGripNear();
 std::string TwoHandedAimStatus();
 bool EnsureGameplayPoseObservation();
 bool TryGetGameplayPoseFrame(GameplayPoseFrame& out, bool requireTracking = true);

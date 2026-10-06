@@ -1,6 +1,9 @@
 #include "MoveLane.h"
 #include "AimTakeover.h"
 #include "BodyEquipment.h"
+#include "InteractionLane.h"
+#include "PsiMedkit.h"
+#include "Psychoscope.h"
 
 #include "InputPost.h"
 #include "HeadTrackingHook.h"
@@ -9,6 +12,7 @@
 #include "MinHookInit.h"
 #include "XrInput.h"
 #include "preyvr/InputEvent.h"
+#include "preyvr/InteractionUse.h"
 #include "preyvr/Locomotion.h"
 #include "preyvr/ComfortControls.h"
 #include "preyvr/StereoCamera.h"
@@ -95,7 +99,7 @@ struct ActionBinding {
 };
 
 ActionBinding gActions[kActionCount] = {
-    {{input::kButtonX}, {0}, {0}, {0}, false},   // interact  <- right grip
+    {{input::kButtonX}, {0}, {0}, {0}, false},   // use/reload <- grips (preyvr/InteractionUse.h)
     {{input::kBack}, {0}, {0}, {0}, false},      // inventory <- left X
     {{input::kButtonA}, {0}, {0}, {0}, false},   // jump      <- right A
     {{input::kButtonB}, {0}, {0}, {0}, false},   // crouch    <- right B
@@ -105,6 +109,10 @@ ActionBinding gActions[kActionCount] = {
 };
 std::atomic<bool> gActionsEnabled{false};
 std::atomic<bool> gActionsNeutralize{false};
+// Use/reload: which hand presses the shared button, and whether the selection
+// is cleared first. Owned by the frame thread.
+use::UseButton gUseButton;
+std::atomic<unsigned long long> gUseHoldPosted{0};
 
 std::atomic<unsigned int> gMode{0};
 std::atomic<unsigned int> gDeadzoneHundredths{15};
@@ -523,8 +531,31 @@ void UpdateTurnAndFireLanes()
     const bool releaseActions = gActionsNeutralize.exchange(false, std::memory_order_acq_rel);
     {
         const bool haveLeftHand = haveInput;
+        // **Use and reload share the native button (X).** With use.hand left
+        // (the default) the left grip uses what the left hand points at and
+        // the right grip only reloads, clearing the selection first; with
+        // use.hand 0 the right grip is the button, as before.
+        use::ButtonInput useIn{};
+        useIn.gameplay = actionsOn && !releaseActions && haveInput;
+        useIn.leftHand = UseHandLeft() != 0;
+        useIn.leftGrip = haveLeftHand && leftHand.gripPressed;
+        useIn.rightGrip = haveInput && right.gripPressed;
+        useIn.leftBusy = gRecenterHeld || MedkitZoneHasLeftHand() || SupportGripNear() || TwoHandedAimHeld() ||
+                         PsychoscopeZoneHasLeftHand();
+        // A paired squeeze is a hold, not use/reload.
+        // While something is carried the button drops it: the left grip lets
+        // go, and the right one (reload) has nothing to do.
+        const bool carrying = UseCarrying();
+        useIn.rightBusy = gRecenterHeld || HolsterOwnsGrip() || TwoHandedAimHeld() ||
+                          (haveLeftHand && leftHand.squeezeValue >= .45f && !useIn.leftHand) ||
+                          (carrying && useIn.leftHand);
+        useIn.target = UseTargetPresent() || carrying;
+        const use::ButtonOutput useOut = gUseButton.Update(useIn);
+        RequestUseTargetSuppression(useOut.suppressTarget);
+        NoteUseButton(useOut.down, static_cast<unsigned>(useOut.owner), useOut.pressed, useOut.released,
+                      (useOut.noTarget ? 1u : 0u) | (useOut.gaveUp ? 2u : 0u) | (useOut.busy ? 4u : 0u));
         const bool sources[kActionCount] = {
-            right.gripPressed,                        // use/reload; support chord suppresses below
+            useOut.down,                              // use/reload, decided above
             haveLeftHand && leftHand.menuAccept,      // inventory <- left X
             right.menuAccept,                         // jump      <- right A
             right.menuCancel,                         // crouch    <- right B
@@ -532,11 +563,8 @@ void UpdateTurnAndFireLanes()
         };
         static bool blocked[kActionCount]{};
         for (int slot = 0; slot < kActionCount; ++slot) {
-            // A paired squeeze is a hold, not use/reload. Require the right
-            // grip to release before use returns, including after support release.
-            if(slot==0&&right.gripPressed&&
-               (gRecenterHeld||HolsterOwnsGrip()||TwoHandedAimHeld()||(haveLeftHand&&leftHand.squeezeValue>=.45f))) blocked[slot]=true;
-            if (!HudGameplayInputAllowed() && sources[slot]) blocked[slot]=true;
+            // Slot 0's grip arbitration lives in the use button above.
+            if (slot != kActionInteract && !HudGameplayInputAllowed() && sources[slot]) blocked[slot]=true;
             if (!sources[slot]) blocked[slot]=false;
             ActionBinding& binding = gActions[slot];
             const bool wanted = actionsOn && !releaseActions && sources[slot] && !blocked[slot];
@@ -558,6 +586,16 @@ void UpdateTurnAndFireLanes()
                 binding.refused.fetch_add(1, std::memory_order_relaxed);
             }
         }
+        // **A held use button must also be posted as HELD**, for the reason the
+        // fire lane gives: a posted press never joins the engine's held-symbol
+        // list, so "hold to carry" (a bin, a body) would never complete.
+        static bool useHeldLastFrame = false;
+        ActionBinding& useBinding = gActions[kActionInteract];
+        if (useBinding.held && useHeldLastFrame && UseHoldEnabled() &&
+            PostRawInputImmediate(useBinding.keyId.load(std::memory_order_acquire), input::kStateDown, 1000) == 0) {
+            gUseHoldPosted.fetch_add(1, std::memory_order_relaxed);
+        }
+        useHeldLastFrame = useBinding.held;
     }
 
 }
@@ -644,7 +682,8 @@ std::string InteractionReport()
     static const char* const kSlotNames[kActionCount] = {
         "interact", "inventory", "jump", "crouch", "wheel"};
     std::ostringstream out;
-    out << " actions=" << (gActionsEnabled.load(std::memory_order_relaxed) ? 1 : 0);
+    out << " actions=" << (gActionsEnabled.load(std::memory_order_relaxed) ? 1 : 0)
+        << " useHoldPosted=" << gUseHoldPosted.load(std::memory_order_relaxed);
     for (int slot = 0; slot < kActionCount; ++slot) {
         const int keyId = gActions[slot].keyId.load(std::memory_order_relaxed);
         const char* const name = input::KeyNameFor(keyId);

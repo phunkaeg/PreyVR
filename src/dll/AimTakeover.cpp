@@ -8,6 +8,7 @@
 #include "PsiMedkit.h"
 #include "WeaponAttachment.h"
 #include "DebugOverlay.h"
+#include "InteractionLane.h"
 #include "preyvr/AnimIk.h"
 #include "MinHookInit.h"
 #include "preyvr/LatestSnapshot.h"
@@ -55,7 +56,7 @@ std::atomic<unsigned> gTwoHandGates{0}, gTwoHandGatesSeen{0};
 std::atomic<bool> gTwoHandEnabled{true};
 std::atomic<bool> gTwoHandToggle{false},gTwoHandSnap{true};
 std::atomic<unsigned int> gTwoHandReset{0};
-std::atomic<bool> gTwoHandHeld{false}, gTwoHandRegionReady{false};
+std::atomic<bool> gTwoHandHeld{false}, gTwoHandRegionReady{false}, gSupportNear{false};
 std::atomic<unsigned long long> gTwoHandFrames{0};
 thread_local twohand::Solver gTwoHandSolver;
 thread_local unsigned int gTwoHandSeenReset=0;
@@ -147,6 +148,12 @@ void SolveTwoHandedFrame(GameplayPoseFrame& frame, bool tracking)
     if(gates) gTwoHandGatesSeen.fetch_or(gates);
     input.usable=gates==0;
     frame.twoHand=gTwoHandSolver.Update(input);
+    {
+        Vec3 point{};
+        // The left hand inside the foregrip region: a squeeze there is the
+        // two-hand hold, never a use (InteractionUse.h).
+        gSupportNear.store(region&&input.usable&&twohand::ClosestGrip(input,point));
+    }
     frame.twoHand.snapSupport=gTwoHandSnap.load();
     DebugOverlayForegrip(frame,input,frame.twoHand,region);
     gSupportInput.Publish(input);
@@ -309,6 +316,7 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     UpdatePsychoscopeGesture(frame,haveTracking&&gEnabled.load());
     UpdateBodyEquipment(frame,haveTracking&&gEnabled.load());
     UpdatePhysicalInteractions(frame,haveTracking&&gEnabled.load());
+    UpdateInteractionLane(frame,haveTracking&&gEnabled.load());
     DebugOverlayGameFrame(frame,haveTracking);
     if (!haveTracking) { gRejNoPose.fetch_add(1); return; }
     // A frame whose play-space yaw is unknown cannot aim, and must not silently
@@ -527,6 +535,7 @@ DWORD SetTwoHandSupportSnap(unsigned enabled) {
 bool TwoHandGripToggle(){return gTwoHandToggle.load();}
 bool TwoHandSupportSnap(){return gTwoHandSnap.load();}
 bool TwoHandedAimHeld(){return gTwoHandEnabled.load()&&gTwoHandHeld.load();}
+bool SupportGripNear(){return gTwoHandEnabled.load()&&gSupportNear.load();}
 std::string TwoHandedAimStatus() {
     std::ostringstream out;
     out<<" enabled="<<TwoHandedAimEnabled()<<" held="<<gTwoHandHeld.load()

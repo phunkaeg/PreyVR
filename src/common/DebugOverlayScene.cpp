@@ -31,9 +31,65 @@ const char* NoticeText(Notice notice)
     }
 }
 
+// The left hand's use pointer: faint while it selects nothing, bright and
+// ending on the object when the game selected one, green while the use button
+// is held. A pick the native cone made off the line shows as a bend.
+void AddUseRay(Scene& scene, const HandRay& ray, unsigned mask)
+{
+    const Color color = ray.suppressed ? kMuted : ray.held ? kUseHeld : ray.selected ? kLeft : kUseIdle;
+    if (ray.selected && !ray.onLine) {
+        // The straight pointing line, faint, then the bend to the object.
+        const float d = Length(Sub(ray.target, ray.origin));
+        scene.lines.push_back({ray.origin, Add(ray.origin, Scale(ray.direction, d)), WithAlpha(color, 70), .003f, 1.5f});
+        Line bend{Add(ray.origin, Scale(ray.direction, d * .55f)), ray.target, color, .004f, 2.0f};
+        scene.lines.push_back({ray.origin, bend.a, color, .0045f, 2.0f});
+        scene.lines.push_back(bend);
+    } else {
+        scene.lines.push_back({ray.origin, ray.target, color, ray.selected ? .0045f : .003f, ray.selected ? 2.0f : 1.4f});
+    }
+    if (ray.selected) { scene.lines.push_back({ray.origin, ray.target, WithAlpha(color, 50), .012f, 4.0f}); }
+    Marker end{};
+    end.centre = ray.target;
+    end.color = color;
+    end.filled = ray.selected || ray.hit;
+    end.radius = ray.selected ? .02f : .014f;
+    end.minPixels = ray.selected ? 6.0f : 4.0f;
+    scene.markers.push_back(end);
+    if (ray.selected) {
+        Marker halo = end;
+        halo.filled = false;
+        halo.radius = .045f;
+        halo.minPixels = 11.0f;
+        halo.color = WithAlpha(color, 160);
+        scene.markers.push_back(halo);
+    }
+    if (mask & kLabels) {
+        for (unsigned i = 0; i < ray.candidateCount && i < ray.candidates.size(); ++i) {
+            Marker c{};
+            c.centre = ray.candidates[i];
+            c.color = WithAlpha(kLeft, 150);
+            c.radius = .012f;
+            c.minPixels = 4.0f;
+            scene.markers.push_back(c);
+        }
+        if (!ray.label.empty()) {
+            Label label{};
+            label.anchor = ray.target;
+            label.color = color;
+            label.offsetX = .9f;
+            label.offsetY = -.5f;
+            label.text = ray.label;
+            label.minPixels = 18.0f;
+            label.maxPixels = 30.0f;
+            scene.labels.push_back(label);
+        }
+    }
+}
+
 void AddRay(Scene& scene, const HandRay& ray, Color color, unsigned mask, bool rightHand)
 {
     if (!ray.valid || !Finite(ray.origin) || !Finite(ray.target)) { return; }
+    if (ray.role == RayRole::Use) { AddUseRay(scene, ray, mask); return; }
     // The right hand without a weapon still has the game's aim ray, but no shot
     // follows it: drawn faint so it is not mistaken for a weapon's.
     if (rightHand && ray.role != RayRole::Weapon) { color = WithAlpha(color, 120); }
@@ -319,7 +375,9 @@ std::string OverlayStatusText(const OverlayFrame& f, unsigned mask)
     std::snprintf(head, sizeof(head), "PREYVR DEBUG  dbg.draw %u", mask);
     std::string text = head;
     text += "\nR  " + ray(f.rays[1]) + (f.rays[1].valid && f.rays[1].role != RayRole::Weapon ? " (no weapon)" : "");
-    text += "   L " + std::string(f.rays[0].role == RayRole::Psi ? "psi " : "") + ray(f.rays[0]);
+    text += "   L " + std::string(f.rays[0].role == RayRole::Psi ? "psi " : f.rays[0].role == RayRole::Use ? "use " : "") +
+            (f.rays[0].role == RayRole::Use && f.rays[0].selected ? "TARGET " + Fixed(f.rays[0].distance, 2) + " m"
+                                                                  : ray(f.rays[0]));
     const char* psi[] = {"native", "head", "left"};
     text += "   psi " + std::string(psi[std::min(f.psiMode, 2u)]);
     if (f.sceneQueryFault) { text += "  QUERY FAULT"; }

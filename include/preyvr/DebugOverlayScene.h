@@ -40,7 +40,11 @@ inline constexpr Color kDenied{255, 70, 70, 245};
 inline constexpr Color kStored{110, 160, 255, 235};
 inline constexpr Color kMuted{150, 150, 150, 140};
 
-enum class RayRole : std::uint8_t { None, Weapon, Psi, Pointer };
+enum class RayRole : std::uint8_t { None, Weapon, Psi, Pointer, Use };
+// The use pointer's states (InteractionLane): pointing at something the game
+// selected, using it (button held), or blanked while the right grip reloads.
+inline constexpr Color kUseHeld{90, 235, 120, 245};
+inline constexpr Color kUseIdle{80, 205, 255, 120};
 // One hand's ray. `origin`/`direction` are what is drawn from (the controller's
 // aim pose); `target` is where the game's own ray ends -- its scene hit when
 // `hit`, otherwise the fallback range. For the weapon the game's ray starts at
@@ -54,6 +58,14 @@ struct HandRay {
     float distance = 0;
     // aim.shot: the ray starts at the weapon's muzzle and IS the shot's path.
     bool fromMuzzle = false;
+    // RayRole::Use: what the game selected along this ray.
+    bool selected = false;      // `target` is on the selected object's bounds
+    bool onLine = false;        // the ray passes through those bounds (else a cone pick)
+    bool held = false;          // the use button is down
+    bool suppressed = false;    // the right grip is reloading: nothing selectable
+    std::string label;          // object name and the game's prompt
+    std::array<Vec3, 8> candidates{};
+    unsigned candidateCount = 0;
 };
 // The last shot as the engine fired it: from where the projectile left toward
 // the target it was sent to. Drawn for a few seconds after the shot.

@@ -18,6 +18,9 @@
 #include "HudLayer.h"
 #include "UiPointer.h"
 #include "AnimIkTakeover.h"
+#include "InteractionLane.h"
+#include "DebugOverlay.h"
+#include "preyvr/DebugOverlayScene.h"
 #include "preyvr/LatestSnapshot.h"
 #include <algorithm>
 #include <cmath>
@@ -161,6 +164,13 @@ void TickVrMode() {
             SetAnimIkWeaponAlignment(1)!=0 || SetAnimIkHands(3)!=0 || SetAnimIkReachPercent(65)!=0) {
             Fail("motion_controls"); return;
         }
+        // World interaction from the LEFT hand: it points, its grip uses; the
+        // right grip only reloads (InteractionLane.h). Not fatal: without the
+        // selector hook the right grip stays the native use/reload button.
+        if(SetUseHand(1)!=0) Log("use_hand=right reason=selector_unavailable");
+        // Both hands' rays drawn in gameplay while interaction is being tested
+        // (user, 2026-10-06). The VR options' Debug overlay switch turns them off.
+        if(DebugOverlayMask()==0) SetDebugOverlay(debugdraw::kRays|debugdraw::kHits);
         wchar_t hudSetting[8]{};
         GetEnvironmentVariableW(L"PREYVR_HUD_LAYER",hudSetting,8);
         if(hudSetting[0]!=L'0' && SetHudLayerEnabled(1)!=0)Log("hud_layer=unavailable native_hud=retained");

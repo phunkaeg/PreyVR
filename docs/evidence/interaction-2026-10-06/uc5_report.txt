@@ -1,0 +1,33 @@
+=== 2026-10-06T21:01:22 UseCases
+medkit.slot: medkit.slot result=0 targetMode=0 medkitSlot=1 installed=1 previews=0 rayReads=0 casts=0 castRefused=0 medkitGrip=0 medkitUsed=0 medkitAbsent=0 medkitDenied=0 fault=0 error=0
+samples=216 selected=94
+  3412 ArkGameplayArchitecture.Containers/Misc.Lobby ArkContainer           3:-            n=12  at 80/-40 90/-40 100/-40 80/-25 90/-25 100/-25 80/-10 90/-10 100/-10 80/5 90/5 100/5
+ 64595 ArkPickups.Crafting.RecyclerJunk.Exotic.AlienOrganSmall ArkRecyclerJunkExotic  4:- 12:-       n=9   at -80/-70 -70/-70 -60/-70 -50/-70 -40/-70 -90/-55 -80/-55 -70/-55 -60/-55
+ 65047 ArkHumans.Scientists.JovanGavrilovic         ArkHuman               6:-            n=8   at -180/-40 140/-40 150/-40 160/-40 170/-40 -180/-25 160/-25 170/-25
+ 64594 ArkPickups.Crafting.RecyclerJunk.Exotic.MimicTumor ArkRecyclerJunkExotic  4:- 12:-       n=8   at 30/-55 40/-55 50/-55 20/-40 30/-40 40/-40 50/-40 60/-40
+ 64596 ArkPickups.Crafting.RecyclerJunk.PlasticTubing ArkRecyclerJunk        4:- 12:-       n=7   at 10/-40 0/-25 10/-25 20/-25 30/-25 10/-10 20/-10
+  3408 ArkGameplayArchitecture.Containers/Misc.Lobby ArkContainer           3:-            n=7   at 70/-40 60/-25 70/-25 60/-10 70/-10 60/5 70/5
+ 64587 ArkPickups.Crafting.RecyclerJunk.TestTubeSample ArkRecyclerJunk        4:- 12:-       n=7   at -50/-55 -40/-55 -30/-55 -70/-40 -60/-40 -50/-40 -40/-40
+ 64589 ArkPickups.Food.Bag.SunDriedTomatoJerky      ArkFood                4:- 12:-       n=6   at -50/-25 -40/-25 -30/-25 -50/-10 -40/-10 -30/-10
+  5510 ArkGameplayArchitecture.Containers/Misc.Trash_Can_Small ArkContainer           3:- 6:-        n=6   at 60/-55 70/-55 80/-55 90/-55 100/-55 110/-55
+  3409 ArkPhysicsProps.Bathroom.Towels              RigidBodyEx            6:-            n=6   at -90/-25 -80/-25 -90/-10 -80/-10 -90/5 -80/5
+  3410 ArkPhysicsProps.Bathroom.Towels              RigidBodyEx            6:-            n=5   at -100/-25 -110/-10 -100/-10 -110/5 -100/5
+  3415 ArkPhysicsProps.Chairs.Bench_Leather         RigidBodyEx            6:-/hold0.75   n=5   at -30/-40 -20/-40 -10/-40 0/-40 -20/-25
+  3011 ArkPhysicsProps.Office.Desk_Fan              RigidBodyEx            6:-            n=3   at -10/-25 -10/-10 0/-10
+  3407 ArkPhysicsProps.Bathroom.Towels              RigidBodyEx            6:-            n=2   at 40/-25 30/-10
+  3413 ArkPhysicsProps.Misc.Clothes_Shoes_A_Male1_R RigidBodyEx            6:-            n=2   at -90/-40 -80/-40
+  3005 ArkPhysicsProps.Kitchen.Coffee_Mug_A         ArkBreakable           6:-            n=1   at -20/-10
+[PASS] carry towel (3410)  carried=3410 after drop=0
+[PASS] carry shoe (3413)  carried=3413 after drop=0
+[PASS] throw mug (3005)  carried=3005 after throw=0
+[PASS] take SunDriedTomatoJerky (64589)  events: button press owner=use usable=64589 / button release owner=none usable=64589 / perform type=4 mode=0 / interact mode=0 entity=64589
+[PASS] take PlasticTubing (64596)  events: button press owner=use usable=64596 / button release owner=none usable=64596 / perform type=4 mode=0 / interact mode=0 entity=64596
+[FAIL] take MimicTumor  could not aim at 64594
+[PASS] take AlienOrganSmall (64595)  events: button press owner=use usable=64595 / button release owner=none usable=64595 / perform type=4 mode=0 / interact mode=0 entity=64595
+[PASS] take TestTubeSample (64587)  events: button press owner=use usable=64587 / button release owner=none usable=64587 / perform type=4 mode=0 / interact mode=0 entity=64587
+[PASS] carry fan (3011)  carried=3011 after drop=0
+[PASS] trash can tap (5510)  search
+[PASS] trash can hold (5510)  carried=5510 after drop=0
+[PASS] corpse tap (65047)  search
+[PASS] corpse hold (65047)  dragged=65047 after drop=0
+[PASS] locker 3408  takes=4 (grid crops uc5_locker3408_before/after_hud.png)

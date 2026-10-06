@@ -1,0 +1,68 @@
+=== 2026-10-06T20:09:54 UseCases
+samples=216 selected=94
+  3412 ArkGameplayArchitecture.Containers/Misc.Lobby ArkContainer           3:-            n=12  at 80/-40 90/-40 100/-40 80/-25 90/-25 100/-25 80/-10 90/-10 100/-10 80/5 90/5 100/5
+ 64595 ArkPickups.Crafting.RecyclerJunk.Exotic.AlienOrganSmall ArkRecyclerJunkExotic  4:- 12:-       n=9   at -80/-70 -70/-70 -60/-70 -50/-70 -40/-70 -90/-55 -80/-55 -70/-55 -60/-55
+ 65047 ArkHumans.Scientists.JovanGavrilovic         ArkHuman               6:-            n=8   at -180/-40 140/-40 150/-40 160/-40 170/-40 -180/-25 160/-25 170/-25
+ 64594 ArkPickups.Crafting.RecyclerJunk.Exotic.MimicTumor ArkRecyclerJunkExotic  4:- 12:-       n=8   at 30/-55 40/-55 50/-55 20/-40 30/-40 40/-40 50/-40 60/-40
+ 64596 ArkPickups.Crafting.RecyclerJunk.PlasticTubing ArkRecyclerJunk        4:- 12:-       n=7   at 10/-40 0/-25 10/-25 20/-25 30/-25 10/-10 20/-10
+  3408 ArkGameplayArchitecture.Containers/Misc.Lobby ArkContainer           3:-            n=7   at 70/-40 60/-25 70/-25 60/-10 70/-10 60/5 70/5
+ 64587 ArkPickups.Crafting.RecyclerJunk.TestTubeSample ArkRecyclerJunk        4:- 12:-       n=7   at -50/-55 -40/-55 -30/-55 -70/-40 -60/-40 -50/-40 -40/-40
+ 64589 ArkPickups.Food.Bag.SunDriedTomatoJerky      ArkFood                4:- 12:-       n=6   at -50/-25 -40/-25 -30/-25 -50/-10 -40/-10 -30/-10
+  5510 ArkGameplayArchitecture.Containers/Misc.Trash_Can_Small ArkContainer           3:- 6:-        n=6   at 60/-55 70/-55 80/-55 90/-55 100/-55 110/-55
+  3409 ArkPhysicsProps.Bathroom.Towels              RigidBodyEx            6:-            n=6   at -90/-25 -80/-25 -90/-10 -80/-10 -90/5 -80/5
+  3410 ArkPhysicsProps.Bathroom.Towels              RigidBodyEx            6:-            n=5   at -100/-25 -110/-10 -100/-10 -110/5 -100/5
+  3415 ArkPhysicsProps.Chairs.Bench_Leather         RigidBodyEx            6:-/hold0.75   n=5   at -30/-40 -20/-40 -10/-40 0/-40 -20/-25
+  3011 ArkPhysicsProps.Office.Desk_Fan              RigidBodyEx            6:-            n=3   at -10/-25 -10/-10 0/-10
+  3407 ArkPhysicsProps.Bathroom.Towels              RigidBodyEx            6:-            n=2   at 40/-25 30/-10
+  3413 ArkPhysicsProps.Misc.Clothes_Shoes_A_Male1_R RigidBodyEx            6:-            n=2   at -90/-40 -80/-40
+  3005 ArkPhysicsProps.Kitchen.Coffee_Mug_A         ArkBreakable           6:-            n=1   at -20/-10
+[PASS] carry towel (3410)  carried=3410 after drop=0
+[PASS] carry shoe (3413)  carried=3413 after drop=0
+[PASS] throw mug (3005)  carried=3005 after throw=0
+[PASS] take SunDriedTomatoJerky (64589)  events: button press owner=use usable=64589 / button release owner=none usable=64589 / perform type=4 mode=0 / interact mode=0 entity=64589
+[PASS] take PlasticTubing (64596)  events: button press owner=use usable=64596 / button release owner=none usable=64596 / perform type=4 mode=0 / interact mode=0 entity=64596
+[FAIL] take MimicTumor  could not aim at 64594
+[PASS] take AlienOrganSmall (64595)  events: button press owner=use usable=64595 / button release owner=none usable=64595 / perform type=4 mode=0 / interact mode=0 entity=64595
+[FAIL] take TestTubeSample  could not aim at 64587
+[PASS] carry fan (3011)  carried=3011 after drop=0
+[PASS] trash can tap (5510)  search
+[PASS] trash can hold (5510)  carried=5510 after drop=0
+[FAIL] bench  not found / not aimed
+[PASS] corpse tap (65047)  search
+[PASS] corpse hold (65047)  dragged=65047 after drop=0
+[PASS] locker 3408  takes=4 (grid crops uc1_locker3408_before/after_hud.png)
+[PASS] locker 3412  takes=4 (grid crops uc1_locker3412_before/after_hud.png)
+[PASS] right grip reloads, does not use  left target=64587 kept=True events: button press owner=reload usable=0 / interact mode=0 entity=0 name= class= result=0 / button release owner=none usable=0
+reload check: fired 17 before the reload; one continuous burst after it fired 42 (a full clip if it reloaded)
+tremor: edge between 3413 and 65461 at yaw -5.5
+tremor: refined edge yaw -5.84
+tremor: filter=0 jitter=0.4 deg: selection changes in 8 s = 44
+tremor: filter=1 jitter=0.4 deg: selection changes in 8 s = 3
+tremor: filter=0 jitter=0.4 deg: selection changes in 8 s = 42
+tremor: filter=1 jitter=0.4 deg: selection changes in 8 s = 1
+
+SUMMARY: 14/17 passed
+
+case                                ok detail                                                                          
+----                                -- ------                                                                          
+carry towel (3410)                True carried=3410 after drop=0                                                       
+carry shoe (3413)                 True carried=3413 after drop=0                                                       
+throw mug (3005)                  True carried=3005 after throw=0                                                      
+take SunDriedTomatoJerky (64589)  True events: button press owner=use usable=64589 / button release owner=none usabl...
+take PlasticTubing (64596)        True events: button press owner=use usable=64596 / button release owner=none usabl...
+take MimicTumor                  False could not aim at 64594                                                          
+take AlienOrganSmall (64595)      True events: button press owner=use usable=64595 / button release owner=none usabl...
+take TestTubeSample              False could not aim at 64587                                                          
+carry fan (3011)                  True carried=3011 after drop=0                                                       
+trash can tap (5510)              True search                                                                          
+trash can hold (5510)             True carried=5510 after drop=0                                                       
+bench                            False not found / not aimed                                                           
+corpse tap (65047)                True search                                                                          
+corpse hold (65047)               True dragged=65047 after drop=0                                                      
+locker 3408                       True takes=4 (grid crops uc1_locker3408_before/after_hud.png)                        
+locker 3412                       True takes=4 (grid crops uc1_locker3412_before/after_hud.png)                        
+right grip reloads, does not use  True left target=64587 kept=True events: button press owner=reload usable=0 / inte...
+
+
+
+use.report: use.report result=0 installed=1 observers=1 hand=left hold=1 filter=1,1,2,0.75 backMm=100 selectorCalls=71112 steered=71063 suppressed=43 unsteered=6 foreign=0 faults=0 targetChanges=438 interacts=20 performs=19 presses=25 releases=25 noTarget=0 gaveUp=0 busy=0 button=0 owner=0 suppress=0 reach=2.50 innerAim=0.980 outerAim=0.960 hoovering=0 forced=0 usable=3413 name=ArkPhysicsProps.Misc.Clothes_Shoes_A_Male1_R class=RigidBodyEx m0=6:- angleDeg=18.8 distM=0.63 boundsMin=827.237,1583.535,15.638 boundsMax=827.598,1583.701,15.800 entityVtableRva=0x1D30BD0 carry=0 candidates=2 [65461:ArkProjectiles.Gloo.Glo p=1.000 aim=0.974] [3413:ArkPhysicsProps.Misc.Cl p=1.960 aim=0.960] rayOrigin=827.639,1584.023,16.278 rayDir=-0.144,-0.752,-0.643 events={perform t3 m0 ArkGameplayArchitecture.Containers/Misc.Lobby Locker A}{interact m0 ArkGameplayArchitecture.Containers/Misc.Lobby Locker A ok}{menu open}{menu closed}{menu open}{menu closed}{press reload}{interact m0  refused}

@@ -12,7 +12,7 @@
 namespace preyvr::dll {
 namespace {
 std::atomic<unsigned long long> sent{0},refused{0};
-std::atomic<bool> fault{false};
+std::atomic<bool> fault{false},zone{false};
 DWORD Toggle(std::uintptr_t player){
  __try {
   if(InputDrainThreadId()==0||InputDrainThreadId()!=GetCurrentThreadId())return ERROR_INVALID_THREAD_ID;
@@ -45,7 +45,7 @@ void UpdatePsychoscopeGesture(const GameplayPoseFrame& frame,bool tracking){
  }
  const bool enabled=PsychoscopeGestureEnabled()&&!fault.load();
  if(!enabled||!tracking||!HudGameplayInputAllowed()||frame.twoHand.held){
-  gesture={};previous=0;return;
+  gesture={};previous=0;zone=false;return;
  }
  if(previous==f.displayTime)return; // one recognition step per coherent XR sample
  const float dt=previous&&f.displayTime>previous?static_cast<float>(f.displayTime-previous)*1e-9f:0;
@@ -57,11 +57,13 @@ void UpdatePsychoscopeGesture(const GameplayPoseFrame& frame,bool tracking){
  const auto& q=f.head.orientation;
  const Vec3 delta{hand.gripPose.position.x-f.head.position.x,hand.gripPose.position.y-f.head.position.y,hand.gripPose.position.z-f.head.position.z};
  const auto local=Rotate(Quaternion{-q.x,-q.y,-q.z,q.w},delta);
+ zone=PsychoscopeGesture::InZone(local);
  if(!gesture.Update(local,hand.gripPressed,usable,dt,f.epoch))return;
  const auto result=Toggle(frame.player);
  if(result){++refused;fault=true;}else ++sent;
  lifecycle::Log("preyvr_psychoscope dispatched="+std::to_string(result==0)+" result="+std::to_string(result)+
      " native_acceptance=unverified");
 }
+bool PsychoscopeZoneHasLeftHand(){return zone.load();}
 std::string PsychoscopeReport(){return " dispatched="+std::to_string(sent.load())+" refused="+std::to_string(refused.load())+" fault="+std::to_string(fault.load());}
 }

@@ -17,8 +17,8 @@ The launcher starts Prey, loads the mod, waits for the requested render size, an
 | Right A / B | Jump / crouch | Select / back |
 | Left X | Open inventory | X action shown by Prey |
 | Left Y | — | Y action shown by Prey |
-| Right grip | Native use / reload button | Next tab, on release |
-| Left grip | Hold a long weapon's support grip | Previous tab, on release |
+| Right grip | Reload (never uses what the left hand points at) | Next tab, on release |
+| Left grip | Use what the left hand points at (tap or hold, as Prey's prompt says); drop what you carry; hold a long weapon's support grip | Previous tab, on release |
 | Triggers | Right: fire (hold for automatic fire and to charge the Disruptor) | Previous / next page (LT / RT) |
 | Left menu button | Tap: pause. Hold: VR options | Tap: pause / resume. Hold: VR options |
 | Both grips + left Y | Reset VR view | Reset and bring the panel in front of you |
@@ -32,8 +32,14 @@ For two-handed aiming, bring your left hand to the weapon's foregrip and squeeze
 the left grip. Keep it squeezed while aiming with both hands; release to return
 smoothly to one hand. A squeeze away from the weapon does nothing. Changing
 weapons, opening a menu or losing tracking requires releasing and grabbing again.
-Use/reload remains on the right grip when the support grip is detached. To recenter,
-hold both grips, then press left Y; F12 also works.
+To recenter, hold both grips, then press left Y; F12 also works.
+
+To use something, point at it with the left hand: the cyan ray ends on what Prey selected (it bends to it when
+Prey picked it from near the line) and Prey shows its usual prompt. Squeeze the left grip briefly for the
+prompt's tap action (take, carry, search, take the highlighted item of a locker) or keep it squeezed for the
+hold action (drag a body, carry a heavy object). Squeeze again to drop what you carry; the right trigger
+throws it. A squeeze on the foregrip, at the left-hip medkit slot or in the recenter chord never uses
+anything. `use.hand 0` restores the previous layout (right grip uses and reloads along the weapon's aim).
 `aim.twohand 0` disables support aiming; `aim.twohand 1` enables it (default).
 
 To equip a weapon, open inventory with **X**, highlight it with the right stick, press **X** for Prey's Equip action, then **B** to return to the game. Follow the native button prompts for other items. B backs out one level at a time in nested screens.

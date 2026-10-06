@@ -22,6 +22,7 @@
 #include "ReticleFollow.h"
 #include "SceneQuery.h"
 #include "ShotRay.h"
+#include "InteractionLane.h"
 #include "PhysicalInteractions.h"
 #include "PsiMedkit.h"
 #include "Haptics.h"
@@ -358,7 +359,30 @@ bool ExecutePose(const std::vector<std::string>& args, std::ostringstream& out)
         }
         return value;
     };
-    if (verb == "ik.skel") {
+    if (verb == "use.report") {
+        out << "use.report result=0" << UseReport();
+    } else if (verb == "use.find" && args.size() > 1) {
+        out << "use.find result=0" << UseFind(static_cast<std::uint32_t>(arg(1, 0)));
+    } else if (verb == "use.hand" || verb == "use.hold" || verb == "use.trace" || verb == "use.back") {
+        // Bare verbs report; a value sets. use.hand 1 = left hand points and
+        // uses, right grip reloads (default); 0 = right grip, weapon ray.
+        DWORD result = 0;
+        if (args.size() > 1) {
+            const unsigned v = static_cast<unsigned>(arg(1, 1));
+            result = verb == "use.hand" ? SetUseHand(v) : verb == "use.hold" ? SetUseHold(v)
+                   : verb == "use.trace" ? SetUseTrace(v) : SetUseBackMillimetres(v);
+        }
+        out << verb << " result=" << result << UseReport();
+    } else if (verb == "use.filter") {
+        // use.filter <0|1> [minCutoffCentiHz 100] [betaHundredths 200] [backlashCentiDegrees 75]:
+        // One Euro then a dead band on the pointer.
+        DWORD result = 0;
+        if (args.size() > 1) {
+            result = SetUseFilter(static_cast<unsigned>(arg(1, 1)), static_cast<float>(arg(2, 100)) * .01f,
+                                  static_cast<float>(arg(3, 200)) * .01f, static_cast<float>(arg(4, 75)) * .01f);
+        }
+        out << "use.filter result=" << result << UseReport();
+    } else if (verb == "ik.skel") {
         out << "ik.skel result=" << RequestAnimIkSkeletonDump();
     } else if (verb == "ik.widesupport") {
         out << "ik.widesupport result=" << (args.size() > 1 ? SetAnimIkWideSupport(static_cast<unsigned>(arg(1, 1))) : 0)
