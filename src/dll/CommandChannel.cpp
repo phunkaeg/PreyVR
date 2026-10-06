@@ -340,6 +340,59 @@ const char* ObserverStatusName(DWORD value)
     }
 }
 
+// The hand-pose verbs (jordi/hand-pose). Kept out of Execute's chain, which is
+// at MSVC's block-nesting limit (C1061).
+bool ExecutePose(const std::vector<std::string>& args, std::ostringstream& out)
+{
+    const std::string& verb = args[0];
+    const auto arg = [&](std::size_t i, int fallback) {
+        int value = fallback;
+        if (i < args.size()) {
+            ParseInt(args[i], value);
+        }
+        return value;
+    };
+    if (verb == "ik.skel") {
+        out << "ik.skel result=" << RequestAnimIkSkeletonDump();
+    } else if (verb == "pose.mode") {
+        out << "pose.mode result=" << (args.size() > 1 ? SetHandPoseMode(static_cast<unsigned>(arg(1, 1))) : 0)
+            << HandPoseReport();
+    } else if (verb == "pose.curl") {
+        out << "pose.curl result=" << (args.size() > 1 ? SetHandPoseCurlPercent(arg(1, 100)) : 0) << HandPoseReport();
+    } else if (verb == "pose.grip") {
+        out << "pose.grip result="
+            << (args.size() > 4 ? SetHandPoseGrip(arg(1, 550), arg(2, 35), arg(3, 0), arg(4, 150)) : 0)
+            << HandPoseReport();
+    } else if (verb == "pose.reach") {
+        out << "pose.reach result="
+            << (args.size() > 2 ? SetHandPoseReach(static_cast<unsigned>(arg(1, 1)), arg(2, 85)) : 0)
+            << HandPoseReport();
+    } else if (verb == "near.follow") {
+        out << "near.follow result=" << (args.size() > 1 ? SetNearFovFollow(static_cast<unsigned>(arg(1, 1))) : 0)
+            << " followedDeci=" << NearFovFollowed();
+    } else if (verb == "pose.roll") {
+        out << "pose.roll result=" << (args.size() > 1 ? SetHandPoseWeaponRoll(static_cast<unsigned>(arg(1, 1))) : 0)
+            << HandPoseReport();
+    } else if (verb == "pose.stretch") {
+        out << "pose.stretch result=" << (args.size() > 1 ? SetHandPoseStretchPercent(arg(1, 120)) : 0)
+            << HandPoseReport();
+    } else if (verb == "arm.report") {
+        out << "arm.report result=0" << ArmReport();
+    } else if (verb.rfind("arm.", 0) == 0) {
+        int values[4]{};
+        unsigned count = 0;
+        for (std::size_t i = 1; i < args.size() && count < 4; ++i) { values[count++] = arg(i, 0); }
+        out << verb << " result=" << (count > 0 ? SetArmSetting(verb.substr(4), values, count) : 0) << ArmReport();
+    } else if (verb == "pose.report") {
+        out << "pose.report result=0" << HandPoseReport();
+    } else if (verb == "pose.marks") {
+        out << "pose.marks result=0\n" << HandPoseMarks();
+    } else {
+        return false;
+    }
+    return true;
+}
+
 // One verb, one operation. Deliberately not a name-to-export lookup: that would
 // be a call-anything primitive whose argument is a text file.
 void Execute(const std::vector<std::string>& args, std::ostringstream& out)
@@ -353,6 +406,9 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         return value;
     };
 
+    if (ExecutePose(args, out)) {
+        return;
+    }
     if (verb == "vr.options") {
         if(args.size()>1)RequestVrOptions(arg(1,0)!=0);
         out << "vr.options" << VrOptionsReport() << PsychoscopeReport() << BodyEquipmentReport();
@@ -464,6 +520,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         DWORD result = 0;
         if (args.size() > 1) {
             int value = 0;
+            // An explicit value is a choice: stop following the world FOV.
+            SetNearFovFollow(0);
             result = args.size() == 2 && ParseInt(args[1], value) && value >= 0
                 ? SetNearFovDeciDegrees(static_cast<unsigned int>(value)) : 1u;
         }

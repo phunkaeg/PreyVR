@@ -73,6 +73,8 @@ target_include_directories(preyvr_headers INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}
 add_library(preyvr_core STATIC
     src/common/AimState.cpp
     src/common/AnimIk.cpp
+    src/common/HandPose.cpp
+    src/common/ArmPose.cpp
     src/common/WeaponRigAlignment.cpp
     src/common/CameraEdit.cpp
     src/common/ConsolePolicy.cpp
@@ -375,6 +377,16 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_anim_ik_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_anim_ik_tests)
     add_test(NAME anim_ik COMMAND preyvr_anim_ik_tests)
+
+    add_executable(preyvr_hand_pose_tests tests/HandPoseTests.cpp)
+    target_link_libraries(preyvr_hand_pose_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_hand_pose_tests)
+    add_test(NAME hand_pose COMMAND preyvr_hand_pose_tests)
+
+    add_executable(preyvr_arm_pose_tests tests/ArmPoseTests.cpp)
+    target_link_libraries(preyvr_arm_pose_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_arm_pose_tests)
+    add_test(NAME arm_pose COMMAND preyvr_arm_pose_tests)
 
     add_executable(preyvr_weapon_rig_alignment_tests tests/WeaponRigAlignmentTests.cpp)
     target_link_libraries(preyvr_weapon_rig_alignment_tests PRIVATE preyvr_core)

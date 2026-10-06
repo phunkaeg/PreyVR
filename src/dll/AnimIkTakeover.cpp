@@ -12,13 +12,18 @@
 #include "MinHookInit.h"
 #include "XrInput.h"
 #include "preyvr/AnimIk.h"
+#include "preyvr/ArmPose.h"
+#include "preyvr/HandPose.h"
 #include "preyvr/WeaponRigAlignment.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/StereoCamera.h"
 #include "preyvr/VrMath.h"
 
 #include <MinHook.h>
+#include <algorithm>
 #include <array>
+#include <cstdio>
+#include <sstream>
 #include <atomic>
 #include <cmath>
 #include <cstring>
@@ -386,14 +391,413 @@ bool ReadAlignmentMemory(void*, std::uintptr_t address, void* output, std::size_
     __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
 
+// --- VR hand pose (pose.*) ------------------------------------------------------
+//
+// **The hand is where the player's hand is, shaped like a hand that holds
+// nothing unless it holds the weapon.** Changes over the original lane, each
+// switchable for A/B (pose.mode 0 = all of them off; docs/HAND-POSE-2026-10-06.md):
+//
+//  1. Orientation of the free (left) hand is ANATOMICAL: the game hand's own
+//     frame (from its knuckles) is mapped onto the player's real hand frame,
+//     which the OpenXR grip pose defines. The original captured "controller ->
+//     animated wrist" at one instant and kept it, so the hand's angle to the
+//     controller depended on what the weapon animation was doing then.
+//  2. The PALM, not the wrist, goes to the controller: the IK target is the
+//     wrist joint, and the grip pose's origin is in the middle of the fist, so
+//     the wrist goal is the controller minus the palm offset (both hands).
+//  3. The free hand's fingers take one relaxed open pose (handpose::Relaxed*),
+//     and while the left grip holds a two-handed weapon the hand takes the
+//     NATIVE two-handed hold instead -- the animation's own left hand on the
+//     weapon, position and rotation carried rigidly with the right wrist.
+//  4. A held weapon keeps its barrel on the aim ray but is ROLLED about it
+//     until the hand holding it lies like the real hand (pose.roll): the
+//     muzzle helper's authored roll held the Boltcaster upside down.
+//  5. Reach: exact up to a knee, then a smooth approach (pose.reach), to an
+//     arm the native solve may lengthen by pose.stretch -- instead of the
+//     original 65% linear compression, which moved every hand off its
+//     controller even at rest.
+struct PoseSettings {
+    unsigned mode = 1;          // 0 original, 1 hand pose
+    float curl = 1.0f;          // relaxed flexion scale
+    float tubeLean = 15.0f * 3.14159265f / 180.0f;
+    handpose::GripPoint point{};
+    unsigned reachMode = 1;     // 0 linear percent (original), 1 exact to the knee then soft
+    float knee = 0.85f;
+    bool weaponRoll = true;     // roll a held weapon about its barrel to fit the real hand
+    float stretch = 1.20f;      // reach limit over the rig's arm length (native solve allows 1.25)
+    // The arm (arm.*, docs/ARM-POSE-2026-10-06.md): from the player's shoulder.
+    unsigned armMode = 1;       // 0: the native arm, hung from the animated shoulder
+    armpose::Body body{};
+    float torsoDeadzone = 35.0f * 3.14159265f / 180.0f;
+    float torsoRelax = 0.6f;    // fraction per second towards the head's yaw
+    float armKnee = 0.92f;      // exact reach up to this fraction of the stretched arm
+    float poleTau = 0.06f;      // elbow pole smoothing, seconds
+    armpose::WristLimits wrist{};
+};
+std::mutex gPoseSettingsMutex;
+PoseSettings gPoseSettings;
+PoseSettings ReadPoseSettings() { std::lock_guard lock(gPoseSettingsMutex); return gPoseSettings; }
+
+// The hand's joints and frames on the identified rig. Rebuilt when the rig
+// changes; read and written under gIkMutex.
+struct HandRig {
+    std::uintptr_t skeleton = 0;
+    bool valid[2]{};
+    int wrist[2]{-1, -1};
+    int joint[2][handpose::kJointCount]{};
+    handpose::Frame frame[2]{};
+    float knuckle[2]{};
+    // For pose.marks only: the arm and head the IK does not drive (-1 if absent).
+    int clavicle[2]{-1, -1}, upperArm[2]{-1, -1}, lowerArm[2]{-1, -1};
+    int neck = -1, head = -1, headEnd = -1;
+    int handProp[2]{-1, -1};
+    // Carried rigidly with the upper arm (top, twist, muscle) and the forearm (twist).
+    int upperChild[2][3]{{-1, -1, -1}, {-1, -1, -1}};
+    int lowerTwist[2]{-1, -1};
+};
+HandRig gHandRig;
+
+
+// Per callback: what the drive decided for the fingers, consumed around the
+// native pass.
+struct FingerPlan {
+    bool apply = false;
+    float weight = 0.0f;        // 1 relaxed, 0 native
+    float support = 0.0f;       // the native two-handed hold's blend
+};
+std::atomic<int> gWeaponRollMilliDeg{0};   // last roll correction, for the report
+
+// What the last owned frame looked like, for pose.marks / pose.report. All
+// positions in the app's OpenXR tracking space, so they compare directly with
+// what the runtime reports and what the mock draws.
+struct HandMarks {
+    bool valid = false;
+    Vec3 joint[2][handpose::kJointCount]{};
+    Vec3 tip[2][handpose::kJointCount]{};   // only for the distal joints
+    Vec3 wrist[2]{};
+    Vec3 gripPoint[2]{};                    // the game palm's grip point
+    Vec3 length[2]{}, palm[2]{};            // the game hand's frame
+    Pose grip[2]{}, aim[2]{};               // what the runtime reported
+    bool posed[2]{};                        // pose.mode applied to this hand
+    // The arm as drawn, and what the drive asked of it: the wrist goal before
+    // any reach shaping (palm on the controller) and the one written.
+    Vec3 clavicle[2]{}, shoulder[2]{}, elbow[2]{};
+    bool arm[2]{};
+    Vec3 goalRaw[2]{}, goalWritten[2]{};
+    bool goal[2]{};
+    Vec3 neck{}, headJoint{}, headEnd{};
+    bool headValid = false;
+    Pose head{};                            // the HMD, same space
+    float support = 0.0f;
+    std::uint64_t stamp = 0;
+};
+std::mutex gMarksMutex;
+HandMarks gMarks;
+// DriveHand -> CaptureMarks, same callback and thread: the wrist goals in
+// model space (before reach shaping, and as written).
+struct MarkGoal { bool set = false; Vec3 raw{}, written{}; };
+MarkGoal gMarkGoal[2];
+
+int ParentOf(const std::uint8_t* skeleton, int index)
+{
+    void* table = nullptr;
+    int field = -1;
+    if (!ReadPointer(skeleton + kSkelJoints, &table) || table == nullptr ||
+        !ReadInt(static_cast<std::uint8_t*>(table) + static_cast<std::size_t>(index) * kJointStride + 0x18, &field)) {
+        return -2;
+    }
+    // Low 16 bits: the parent (0xFFFF = none); high 16 bits: the depth.
+    const int parent = field & 0xFFFF;
+    return parent == 0xFFFF ? -1 : parent;
+}
+
+// Under gIkMutex. Names identify the joints; the joint table's parent field
+// must agree with the expected chain or the hand is left alone.
+void BuildHandRig(std::uint8_t* skeleton, unsigned jointCount, std::uint8_t* relative, unsigned poseCount)
+{
+    HandRig rig{};
+    rig.skeleton = reinterpret_cast<std::uintptr_t>(skeleton);
+    for (int s = 0; s < 2; ++s) {
+        const auto side = s == 1 ? handpose::Side::left : handpose::Side::right;
+        rig.wrist[s] = JointIndexByName(skeleton, jointCount, handpose::WristName(side));
+        bool ok = rig.wrist[s] >= 0;
+        for (int j = 0; ok && j < handpose::kJointCount; ++j) {
+            rig.joint[s][j] = JointIndexByName(skeleton, jointCount, handpose::JointName(side, j));
+            const int role = handpose::ParentRole(j);
+            const int expected = role < 0 ? rig.wrist[s] : rig.joint[s][role];
+            ok = rig.joint[s][j] >= 0 && static_cast<unsigned>(rig.joint[s][j]) < poseCount &&
+                 ParentOf(skeleton, rig.joint[s][j]) == expected;
+        }
+        if (!ok) { continue; }
+        const int bases[4] = {handpose::kIndexBase, handpose::kMiddleBase, handpose::kRingBase, handpose::kPinkyBase};
+        Vec3 baseOffset[4], firstOffset[4];
+        Quaternion baseRotation[4];
+        for (int f = 0; f < 4 && ok; ++f) {
+            QuatT base{}, first{};
+            ok = ReadQuatT(relative, poseCount, rig.joint[s][bases[f]], base) &&
+                 ReadQuatT(relative, poseCount, rig.joint[s][bases[f] + 1], first);
+            baseOffset[f] = {base.t[0], base.t[1], base.t[2]};
+            firstOffset[f] = {first.t[0], first.t[1], first.t[2]};
+            baseRotation[f] = handpose::RelaxedRelative(side, bases[f], 1.0f);
+        }
+        rig.valid[s] = ok && handpose::MeasureHandFrame(side, baseOffset, baseRotation, firstOffset,
+                                                         rig.frame[s], rig.knuckle[s]);
+    }
+    const auto armJoint = [&](const char* name) {
+        const int j = JointIndexByName(skeleton, jointCount, name);
+        return j >= 0 && static_cast<unsigned>(j) < poseCount ? j : -1;
+    };
+    rig.clavicle[0] = armJoint("r_clavicle_jnt"); rig.clavicle[1] = armJoint("l_clavicle_jnt");
+    rig.upperArm[0] = armJoint("r_upperArm_jnt"); rig.upperArm[1] = armJoint("l_upperArm_jnt");
+    rig.lowerArm[0] = armJoint("r_lowerArm_jnt"); rig.lowerArm[1] = armJoint("l_lowerArm_jnt");
+    rig.neck = armJoint("neck_jnt"); rig.head = armJoint("head_jnt"); rig.headEnd = armJoint("headEnd_jnt");
+    rig.handProp[0] = armJoint("r_handProp_jnt"); rig.handProp[1] = armJoint("l_handProp_jnt");
+    for (int s = 0; s < 2; ++s) {
+        const std::string p = s == 0 ? "r_" : "l_";
+        rig.upperChild[s][0] = armJoint((p + "upperArmTop_jnt").c_str());
+        rig.upperChild[s][1] = armJoint((p + "upperArmTwist_jnt").c_str());
+        rig.upperChild[s][2] = armJoint((p + "upperArmMuscle_jnt").c_str());
+        rig.lowerTwist[s] = armJoint((p + "lowerArmTwist_jnt").c_str());
+    }
+    gHandRig = rig;
+    char line[256];
+    std::snprintf(line, sizeof(line),
+        "result=0 detail=hand_rig right=%d left=%d knuckleR=%.4f knuckleL=%.4f "
+        "lenL=%.3f,%.3f,%.3f palmL=%.3f,%.3f,%.3f",
+        rig.valid[0] ? 1 : 0, rig.valid[1] ? 1 : 0, rig.knuckle[0], rig.knuckle[1],
+        rig.frame[1].length.x, rig.frame[1].length.y, rig.frame[1].length.z,
+        rig.frame[1].palm.x, rig.frame[1].palm.y, rig.frame[1].palm.z);
+    Log(line);
+}
+
+Vec3 Sub3(Vec3 a, Vec3 b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
+Vec3 Add3(Vec3 a, Vec3 b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
+Vec3 Scale3(Vec3 a, float s) { return {a.x * s, a.y * s, a.z * s}; }
+Quaternion Conj(Quaternion q) { return {-q.x, -q.y, -q.z, q.w}; }
+
+// Engine world -> the app's OpenXR space: the inverse of ControllerWorldFromHead.
+Vec3 WorldToOpenXr(const GameplayPoseFrame& frame, const Vec3& anchor, const Vec3& world)
+{
+    const Vec3 engine = Rotate(Conj(stereo::YawQuaternion(frame.yaw)), Sub3(world, anchor));
+    return Add3(frame.tracking.head.position, Rotate(Conj(stereo::kOpenXrToEngine), engine));
+}
+
+// The wrist rotation (engine world) that puts the game hand's anatomical frame
+// on the player's, given the controller's grip orientation in engine world.
+Quaternion AnatomicalWrist(unsigned hand, const Quaternion& gripWorld, const PoseSettings& settings)
+{
+    const auto side = hand == 1 ? handpose::Side::left : handpose::Side::right;
+    const Quaternion handInGrip = handpose::FrameToFrame(gHandRig.frame[hand],
+                                                         handpose::GripHandFrame(side, settings.tubeLean));
+    return Normalize(Multiply(Multiply(gripWorld, stereo::kOpenXrToEngine), handInGrip));
+}
+
+// The grip point (middle of the fist) in the wrist's local frame, model units.
+Vec3 GripPointLocal(unsigned hand, const PoseSettings& settings)
+{
+    return handpose::GripPointInWrist(gHandRig.frame[hand], gHandRig.knuckle[hand], settings.point);
+}
+
+// --- VR arm (arm.*) ---------------------------------------------------------------
+//
+// **The arm hangs from the player's shoulder, not the weapon animation's.**
+// The native two-bone pass solves from the animated upper-arm joint, which the
+// weapon's idle puts 4-16 cm from where the player's shoulder is (the GLOO
+// protracts one clavicle and retracts the other; the pistol pulls the right
+// shoulder back and in). Measured on the mock with an anatomical reference arm:
+// hands short of the controller at full extension, elbows 10-30 cm off.
+//
+// Before the pass, the player's shoulder is placed (armpose: torso yaw from the
+// HMD, an adult's glenohumeral centre, reached by rotating the rig's clavicle)
+// and the hand's reach is measured from there. After the pass -- which keeps
+// recomputing the animated shoulder from the clavicle, so it cannot be moved
+// before -- the arm is rewritten in the absolute pose: clavicle, upper arm,
+// elbow (the most likely one for the player's REAL hand, from the controller's
+// grip pose: armpose::ChooseElbowPole), forearm, and the hand on its goal with
+// everything it carries. Measured: the skinned mesh and the held weapon follow
+// absolute writes made after the pass. On the mock, against arms whose elbow is
+// known: shoulders on target, palms 0 cm, elbows 0.2-6.7 cm with every weapon
+// (the native arm: shoulders 4-16 cm, elbows 15-21 cm with the pistol).
+struct ArmPlan {
+    bool valid = false;
+    armpose::TorsoFrame torso{};
+    Vec3 clavicleXr{}, targetXr{}, shoulderXr{};
+    Vec3 shoulderModel{};
+    float reachModel = 0.0f;    // the stretched arm's reach, model units
+    bool goalSet = false;       // DriveHand wrote this wrist goal (model)
+    Vec3 goal{};
+};
+
+// What the last solve did, for arm.report and pose.marks.
+struct ArmStats {
+    bool solved[2]{};
+    Vec3 target[2]{}, shoulder[2]{}, elbow[2]{};   // OpenXR
+    float handMoveCm[2]{};      // how far the native pass left the hand from its goal
+    float scale[2]{};           // segment stretch applied
+    bool straight[2]{};
+    float torsoYawDeg = 0.0f, headYawDeg = 0.0f;
+};
+std::mutex gArmMutex;           // the torso filter, pole smoothing and stats
+armpose::TorsoYaw gTorsoYaw;
+std::uint64_t gTorsoNs = 0, gPoleNs[2]{};
+Vec3 gPole[2]{};
+ArmStats gArmStats;
+
+// Model <-> the app's OpenXR space, through the same anchor the hands use.
+struct XrMap {
+    const GameplayPoseFrame* frame = nullptr;
+    Vec3 anchor{};
+    animik::Location location{};
+    Vec3 ToXr(const Vec3& model) const
+    {
+        return WorldToOpenXr(*frame, anchor, animik::ModelToWorld(location, model));
+    }
+    Vec3 ToModel(const Vec3& xr) const
+    {
+        const Vec3 engine = Rotate(stereo::kOpenXrToEngine, Sub3(xr, frame->tracking.head.position));
+        return animik::WorldToModel(location, Add3(anchor, Rotate(stereo::YawQuaternion(frame->yaw), engine)));
+    }
+};
+
+bool ArmAnchor(const GameplayPoseFrame& frame, Vec3& anchor)
+{
+    if (gCameraAnchor.load(std::memory_order_acquire)) {
+        if (!frame.cameraCentreValid) { return false; }
+        anchor = frame.cameraCentre;
+        return true;
+    }
+    anchor = frame.nativeEye;
+    return true;
+}
+
+float Dist3(Vec3 a, Vec3 b)
+{
+    const Vec3 d = Sub3(a, b);
+    return std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
+}
+
+// Before the native pass, under gIkMutex: the torso and each shoulder.
+void PrepareArms(const GameplayPoseFrame& frame, const animik::Location& location, std::uint8_t* absolute,
+                 unsigned count, const PoseSettings& pose, ArmPlan plan[2])
+{
+    if (pose.mode != 1 || pose.armMode == 0 || gHandRig.skeleton != gRigSkeleton.load()) { return; }
+    XrMap map{&frame, {}, location};
+    if (!ArmAnchor(frame, map.anchor) || !(location.s > 1e-4f)) { return; }
+    const Pose& head = frame.tracking.head;
+    const float headYaw = armpose::HeadYaw(head.orientation);
+    armpose::TorsoFrame torso;
+    {
+        std::lock_guard lock(gArmMutex);
+        const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
+        const float dt = gTorsoNs != 0 ? static_cast<float>(now - gTorsoNs) * 1e-9f : 0.0f;
+        gTorsoNs = now;
+        const float yaw = gTorsoYaw.Update(headYaw, dt, pose.torsoDeadzone, pose.torsoRelax);
+        torso = armpose::TorsoFromYaw(yaw);
+        gArmStats.torsoYawDeg = yaw * 57.29578f;
+        gArmStats.headYawDeg = headYaw * 57.29578f;
+    }
+    const armpose::Body& body = pose.body;
+    for (int s = 0; s < 2; ++s) {
+        QuatT clavicle{}, upper{};
+        if (!ReadQuatT(absolute, count, gHandRig.clavicle[s], clavicle) ||
+            !ReadQuatT(absolute, count, gHandRig.upperArm[s], upper)) { continue; }
+        ArmPlan& p = plan[s];
+        p.torso = torso;
+        p.clavicleXr = map.ToXr(Vec3{clavicle.t[0], clavicle.t[1], clavicle.t[2]});
+        const Vec3 animated = map.ToXr(Vec3{upper.t[0], upper.t[1], upper.t[2]});
+        p.targetXr = armpose::ShoulderTarget(head.position, torso, s == 0 ? 1 : -1, body);
+        p.shoulderXr = armpose::PlaceShoulder(p.clavicleXr, Dist3(animated, p.clavicleXr), p.targetXr,
+                                              body.clavicleStretch);
+        p.shoulderModel = map.ToModel(p.shoulderXr);
+        p.reachModel = 0.995f * (body.upper + body.fore) * body.armStretch / location.s;
+        p.valid = std::isfinite(p.shoulderModel.x) && std::isfinite(p.shoulderModel.y) &&
+                  std::isfinite(p.shoulderModel.z);
+    }
+}
+
+// --- skeleton dump (ik.skel) ------------------------------------------------------
+//
+// One-shot research record of the owning rig: every joint's name, the joint
+// table's candidate parent fields, the parent DERIVED from the pose itself
+// (the p whose abs * rel[j] lands on abs[j]), and the relative and absolute
+// pose before and after the engine's ADIK pass. It is what the hand-pose work
+// is designed from; the derived parent does not trust any table offset.
+std::atomic<int> gSkelDump{0};   // 1 = requested, consumed by the next matched frame
+
+void CopyName(const char* name, char* out, std::size_t capacity)
+{
+    __try {
+        std::size_t i = 0;
+        for (; name != nullptr && i + 1 < capacity && name[i] != '\0'; ++i) { out[i] = name[i]; }
+        out[i] = '\0';
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        std::snprintf(out, capacity, "?");
+    }
+}
+
+void DumpSkeletonPose(std::uint8_t* character, std::uint8_t* relative, const std::uint8_t* before,
+                      std::uint8_t* absolute, unsigned count)
+{
+    void* skeletonPtr = nullptr;
+    if (!ReadPointer(character + kCharSkeleton, &skeletonPtr) || skeletonPtr == nullptr) { return; }
+    auto* const skeleton = static_cast<std::uint8_t*>(skeletonPtr);
+    void* table = nullptr;
+    ReadPointer(skeleton + kSkelJoints, &table);
+    Log("skel begin joints=" + std::to_string(count));
+    for (unsigned j = 0; j < count && j < kMaxJoints; ++j) {
+        QuatT rel{}, abs{}, pre{};
+        ReadFloats(relative + j * kQuatTStride, &rel.q[0], 7);
+        ReadFloats(absolute + j * kQuatTStride, &abs.q[0], 7);
+        std::memcpy(&pre, before + j * kQuatTStride, sizeof(pre));
+        int fields[6]{-9, -9, -9, -9, -9, -9};
+        if (table != nullptr) {
+            for (int k = 0; k < 6; ++k) {
+                ReadInt(static_cast<std::uint8_t*>(table) + j * kJointStride + 8 + 4 * k, &fields[k]);
+            }
+        }
+        // abs[p] * rel[j] == abs[j], judged on the pre-ADIK pose (consistent by construction).
+        int parent = -1;
+        float best = 1e9f;
+        for (unsigned p = 0; p < count; ++p) {
+            if (p == j) { continue; }
+            QuatT a{};
+            std::memcpy(&a, before + p * kQuatTStride, sizeof(a));
+            const Vec3 r = Rotate(Quaternion{a.q[0], a.q[1], a.q[2], a.q[3]}, Vec3{rel.t[0], rel.t[1], rel.t[2]});
+            const float dx = a.t[0] + r.x - pre.t[0], dy = a.t[1] + r.y - pre.t[1], dz = a.t[2] + r.z - pre.t[2];
+            const Quaternion q = Multiply(Quaternion{a.q[0], a.q[1], a.q[2], a.q[3]},
+                                          Quaternion{rel.q[0], rel.q[1], rel.q[2], rel.q[3]});
+            const float dq = std::fabs(q.x * pre.q[0] + q.y * pre.q[1] + q.z * pre.q[2] + q.w * pre.q[3]);
+            const float err = std::sqrt(dx * dx + dy * dy + dz * dz) + (1.0f - dq);
+            if (err < best) { best = err; parent = static_cast<int>(p); }
+        }
+        char name[64];
+        CopyName(JointName(skeleton, static_cast<int>(j)), name, sizeof(name));
+        char line[512];
+        std::snprintf(line, sizeof(line),
+            "skel j=%u name=%s f=%d,%d,%d,%d,%d,%d parent=%d perr=%.5f "
+            "rel=%.4f,%.4f,%.4f,%.4f|%.4f,%.4f,%.4f pre=%.4f,%.4f,%.4f,%.4f|%.4f,%.4f,%.4f "
+            "abs=%.4f,%.4f,%.4f,%.4f|%.4f,%.4f,%.4f",
+            j, name, fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], parent, best,
+            rel.q[0], rel.q[1], rel.q[2], rel.q[3], rel.t[0], rel.t[1], rel.t[2],
+            pre.q[0], pre.q[1], pre.q[2], pre.q[3], pre.t[0], pre.t[1], pre.t[2],
+            abs.q[0], abs.q[1], abs.q[2], abs.q[3], abs.t[0], abs.t[1], abs.t[2]);
+        Log(line);
+    }
+    Log("skel end");
+}
+
 void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute,
                unsigned poseCount, const animik::Location& location, const GameplayPoseFrame& frame,
-               const EquippedRig& owner, Vec3* writtenPrimary = nullptr,
-               const Vec3* supportPrimary = nullptr, bool* primaryWritten = nullptr)
+               const EquippedRig& owner, const PoseSettings& pose, Vec3* writtenPrimary = nullptr,
+               const Vec3* supportPrimary = nullptr, bool* primaryWritten = nullptr,
+               Quaternion* writtenRotation = nullptr, const Quaternion* supportPrimaryRotation = nullptr,
+               FingerPlan* fingers = nullptr, ArmPlan* arm = nullptr)
 {
     const int target = gTargetJoint[hand].load(std::memory_order_relaxed);
     const int weight = gWeightJoint[hand].load(std::memory_order_relaxed);
     const int handJoint = gHandJoint[hand].load(std::memory_order_relaxed);
+    if (hand < 2) { gMarkGoal[hand].set = false; }
+    Vec3 markRaw{};
     if (poseCount>kMaxJoints || !animik::ValidJoint(target, poseCount) ||
         !animik::ValidJoint(weight, poseCount) ||
         !animik::ValidJoint(handJoint, poseCount)) { return; }
@@ -410,6 +814,25 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
     SupportGripGeometry supportGeometry{};
     const bool twoHand=frame.weaponGeneration==owner.generation&&frame.twoHand.blend>0&&TwoHandedAimEnabled();
     const bool supportLocked=hand==1&&twoHand&&frame.twoHand.snapSupport&&supportPrimary;
+    // pose.mode 1 on a rig whose hand was identified.
+    const bool posed = pose.mode == 1 && gHandRig.valid[hand] && gHandRig.skeleton == gRigSkeleton.load();
+    // The native two-handed hold, carried with the written right wrist.
+    bool carry = false;
+    Quaternion carryRotation{};
+    Vec3 carryGoal{};
+    if (posed && supportLocked && supportPrimaryRotation) {
+        QuatT nativeRight{};
+        if (ReadQuatT(absolute, poseCount, gHandJoint[0].load(std::memory_order_relaxed), nativeRight)) {
+            const Quaternion turn = Normalize(Multiply(*supportPrimaryRotation,
+                Conj(Quaternion{nativeRight.q[0], nativeRight.q[1], nativeRight.q[2], nativeRight.q[3]})));
+            carryRotation = Normalize(Multiply(turn, Quaternion{wrist.q[0], wrist.q[1], wrist.q[2], wrist.q[3]}));
+            carryGoal = Add3(*supportPrimary, Rotate(turn, Vec3{wrist.t[0] - nativeRight.t[0],
+                                                                wrist.t[1] - nativeRight.t[1],
+                                                                wrist.t[2] - nativeRight.t[2]}));
+            carry = true;
+        }
+    }
+    bool posedFree = false;   // the free hand's anatomical goal was computed
 
     // Hoisted purely so the trace can see them: the controller values are built
     // inside the drive branch, while the reach maths that consumes the goal sits
@@ -474,9 +897,17 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
                 const Quaternion nativeBarrel=Normalize(Multiply(Multiply(
                     Quaternion{wrist.q[0],wrist.q[1],wrist.q[2],wrist.q[3]},
                     gAlignBasis.weaponInWrist),gAlignBasis.barrelInWeapon));
-                const Vec3 delta{(nativeLeft.t[0]-wrist.t[0])*location.s,
-                                 (nativeLeft.t[1]-wrist.t[1])*location.s,
-                                 (nativeLeft.t[2]-wrist.t[2])*location.s};
+                // With pose.mode 1 a controller stands for the PALM, so the
+                // support region is where the native left palm is, not its wrist.
+                Vec3 nativeLeftPoint{nativeLeft.t[0], nativeLeft.t[1], nativeLeft.t[2]};
+                if (posed && gHandRig.valid[1]) {
+                    nativeLeftPoint = Add3(nativeLeftPoint, Rotate(
+                        Quaternion{nativeLeft.q[0], nativeLeft.q[1], nativeLeft.q[2], nativeLeft.q[3]},
+                        GripPointLocal(1, pose)));
+                }
+                const Vec3 delta{(nativeLeftPoint.x-wrist.t[0])*location.s,
+                                 (nativeLeftPoint.y-wrist.t[1])*location.s,
+                                 (nativeLeftPoint.z-wrist.t[2])*location.s};
                 const Vec3 socket=Rotate(Quaternion{-nativeBarrel.x,-nativeBarrel.y,-nativeBarrel.z,nativeBarrel.w},delta);
                 if(socket.y>=.16f&&socket.y<=.7f&&std::fabs(socket.x)<.25f&&std::fabs(socket.z)<.25f) {
                     supportGeometry.region.start={socket.x,socket.y-.04f,socket.z};
@@ -499,6 +930,43 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
             }
             aligned = true;
             writeRotation = true;
+            if (posed) {
+                // The weapon's grip sets the wrist's rotation; the palm goes to
+                // the controller's grip point (the IK target is the wrist).
+                Quaternion wristWorld = Normalize(Multiply(location.q, rotation));
+                if (pose.weaponRoll) {
+                    // **The barrel stays on the aim ray; its ROLL is the hand's.**
+                    // The roll above comes from the muzzle helper's authored
+                    // frame, which is the weapon artist's, not the hand's: with
+                    // the Huntress Boltcaster it put the right palm facing out
+                    // (measured 166 deg from the real palm) although the game's
+                    // own idle holds it palm-in. Roll the weapon and hand about
+                    // the barrel until the drawn hand lies like the player's.
+                    const Vec3 axis = Rotate(aimWorld.orientation, Vec3{0.0f, 1.0f, 0.0f});
+                    const Quaternion real = AnatomicalWrist(hand, world.orientation, pose);
+                    const Vec3 from[2] = {Rotate(wristWorld, gHandRig.frame[hand].palm),
+                                          Rotate(wristWorld, gHandRig.frame[hand].thumb)};
+                    const Vec3 to[2] = {Rotate(real, gHandRig.frame[hand].palm),
+                                        Rotate(real, gHandRig.frame[hand].thumb)};
+                    const float roll = handpose::RollToMatch(axis, from, to, 2);
+                    wristWorld = Normalize(Multiply(handpose::AxisAngle(axis, roll), wristWorld));
+                    rotation = animik::WorldToModel(location, wristWorld);
+                    gWeaponRollMilliDeg.store(static_cast<int>(roll * 57295.78f), std::memory_order_relaxed);
+                }
+                goal = animik::WorldToModel(location, Sub3(world.position,
+                    Rotate(wristWorld, Scale3(GripPointLocal(hand, pose), location.s))));
+            }
+        } else if (posed) {
+            // The free hand: the game hand's anatomical frame on the player's.
+            // The raw controller, not a two-handed support orientation: the
+            // support hold is the native one, blended in below.
+            const Pose raw = animik::ControllerWorldFromHead(frame.yaw, anchor, frame.tracking.head, state.gripPose);
+            const Quaternion wristWorld = AnatomicalWrist(hand, raw.orientation, pose);
+            rotation = animik::WorldToModel(location, wristWorld);
+            goal = animik::WorldToModel(location, Sub3(raw.position,
+                Rotate(wristWorld, Scale3(GripPointLocal(hand, pose), location.s))));
+            writeRotation = true;
+            posedFree = true;
         } else {
             const Quaternion controllerModel = animik::WorldToModel(location, world.orientation);
             calibrating = gCalibration.Pending(hand);
@@ -532,6 +1000,17 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
             if (!std::isfinite(reach) || reach <= 1e-6f) { return; }
             const Vec3 shoulder{upperAbs.t[0], upperAbs.t[1], upperAbs.t[2]};
             const Vec3 goalRaw = goal;
+            markRaw = goalRaw;
+            // The character's arm (0.516 m shoulder -> wrist) is shorter than a
+            // player's; pose.stretch lets the native two-bone solve lengthen it
+            // (it stretches the forearm, up to 1.25x natively) instead of
+            // leaving the hand short of the controller at full extension.
+            // With the arm on (arm.mode 1) the reach is the player's arm,
+            // measured from the player's shoulder: the arm is rewritten from
+            // there after the pass, so the animated shoulder no longer limits it.
+            const bool anatomical = posed && arm != nullptr && arm->valid;
+            const Vec3 reachFrom = anatomical ? arm->shoulderModel : shoulder;
+            const float limit = anatomical ? arm->reachModel : (posed ? reach * pose.stretch : reach);
             // Compress the player's reach into the character's BEFORE clamping,
             // so a longer-armed player keeps continuous motion instead of dead
             // travel at full extension.
@@ -541,8 +1020,23 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
             // still moves the goal by 35% of any shoulder movement. Zero clamping
             // does not mean zero shoulder contribution.
             const unsigned int reachPercent = gReachPercent.load(std::memory_order_relaxed);
-            goal = animik::ScaleReach(shoulder, goal, reachPercent / 100.0f);
-            if(supportLocked) {
+            if (posed && pose.reachMode == 1) {
+                // Exact to the knee, then a soft approach to the arm's reach.
+                goal = handpose::SoftReach(reachFrom, goal, limit, anatomical ? pose.armKnee : pose.knee);
+            } else {
+                goal = animik::ScaleReach(shoulder, goal, reachPercent / 100.0f);
+            }
+            if (posed && hand == 1) {
+                // Free hand -> the native two-handed hold, by the support blend.
+                const float blend = carry ? frame.twoHand.blend : 0.0f;
+                if (carry) {
+                    goal = {goal.x + (carryGoal.x - goal.x) * blend, goal.y + (carryGoal.y - goal.y) * blend,
+                            goal.z + (carryGoal.z - goal.z) * blend};
+                    rotation = posedFree ? handpose::Slerp(rotation, carryRotation, blend) : carryRotation;
+                    writeRotation = true;
+                }
+                if (fingers) { fingers->apply = posedFree; fingers->weight = 1.0f - blend; fingers->support = blend; }
+            } else if(supportLocked) {
                 // The weapon follows the already compressed primary wrist.
                 // Compressing the support arm independently would pull it off the gun.
                 const Vec3 worldOffset=Rotate(frame.twoHand.orientation,frame.twoHand.socket);
@@ -555,7 +1049,7 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
                 goal={goal.x+(attached.x-goal.x)*blend,goal.y+(attached.y-goal.y)*blend,goal.z+(attached.z-goal.z)*blend};
             }
             const Vec3 goalScaled = goal;
-            const Vec3 clamped = animik::ClampToReach(shoulder, goal, reach);
+            const Vec3 clamped = animik::ClampToReach(reachFrom, goal, limit);
             const bool didClamp =
                 clamped.x != goal.x || clamped.y != goal.y || clamped.z != goal.z;
             if (didClamp) {
@@ -622,6 +1116,7 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
         return;
     }
     if (aligned) { gAlignStatus = weaponrig::Status::applied; ++gAlignApplied; }
+    if (writtenRotation) { *writtenRotation = rotation; }
     if(hand==0&&aligned) {
         if(contactReady)PublishPhysicalWeapon(frame,owner,location,Pose{rotation,goal},contactGeometry);
         if(writtenPrimary) *writtenPrimary=goal;
@@ -640,10 +1135,277 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
     }
     gUsedSequence.store(frame.tracking.sequence);
     gWritten[hand].fetch_add(1, std::memory_order_relaxed);
+    if (hand < 2) { gMarkGoal[hand] = {true, markRaw, goal}; }
+    if (arm != nullptr) { arm->goal = goal; arm->goalSet = true; }
     if (hand == 0) {
         gLastGoalMm[0].store(static_cast<int>(goal.x * 1000.0f), std::memory_order_relaxed);
         gLastGoalMm[1].store(static_cast<int>(goal.y * 1000.0f), std::memory_order_relaxed);
         gLastGoalMm[2].store(static_cast<int>(goal.z * 1000.0f), std::memory_order_relaxed);
+    }
+}
+
+bool WriteFloatsGuarded(std::uint8_t* at, const float* values, unsigned count)
+{
+    __try { std::memcpy(at, values, count * sizeof(float)); return true; }
+    __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+
+// Before the native pass: the left hand's finger joints take the relaxed pose,
+// blended with the animation's by `weight` (1 = relaxed). Relative rotations
+// only; their offsets (bone lengths) are the rig's.
+bool ApplyRelaxedFingers(std::uint8_t* relative, unsigned count, float weight, float curl)
+{
+    if (weight <= 0.0f) { return false; }
+    for (int j = 0; j < handpose::kJointCount; ++j) {
+        const int index = gHandRig.joint[1][j];
+        QuatT rel{};
+        if (!ReadQuatT(relative, count, index, rel)) { return false; }
+        const Quaternion native{rel.q[0], rel.q[1], rel.q[2], rel.q[3]};
+        const Quaternion target = handpose::Slerp(native,
+            handpose::RelaxedRelative(handpose::Side::left, j, curl), weight);
+        const float q[4] = {target.x, target.y, target.z, target.w};
+        if (!WriteFloatsGuarded(relative + static_cast<std::size_t>(index) * kQuatTStride, q, 4)) { return false; }
+    }
+    return true;
+}
+
+// After the native pass, which placed the wrist: the finger joints' absolute
+// poses from their (rewritten) relatives, parents first. Idempotent with the
+// pass's own re-propagation; makes the result independent of whether it did.
+void PropagateFingers(std::uint8_t* relative, std::uint8_t* absolute, unsigned count, const HandRig& rig)
+{
+    for (int j = 0; j < handpose::kJointCount; ++j) {
+        const int role = handpose::ParentRole(j);
+        const int parent = role < 0 ? rig.wrist[1] : rig.joint[1][role];
+        QuatT p{}, r{};
+        if (!ReadQuatT(absolute, count, parent, p) || !ReadQuatT(relative, count, rig.joint[1][j], r)) { return; }
+        const Quaternion pq{p.q[0], p.q[1], p.q[2], p.q[3]};
+        const Quaternion q = Normalize(Multiply(pq, Quaternion{r.q[0], r.q[1], r.q[2], r.q[3]}));
+        const Vec3 t = Add3(Vec3{p.t[0], p.t[1], p.t[2]}, Rotate(pq, Vec3{r.t[0], r.t[1], r.t[2]}));
+        const float out[7] = {q.x, q.y, q.z, q.w, t.x, t.y, t.z};
+        if (!WriteFloatsGuarded(absolute + static_cast<std::size_t>(rig.joint[1][j]) * kQuatTStride, out, 7)) { return; }
+    }
+}
+
+// After the native pass: the arm from the player's shoulder (see ArmPlan).
+// Every write is to the absolute pose, which is what the engine skins, and
+// each joint the arm carries keeps its offset from its parent as the pass left
+// it -- lengthened along the bone with the segment.
+bool WriteQuatT(std::uint8_t* absolute, unsigned count, int index, const Quaternion& q, const Vec3& t)
+{
+    if (index < 0 || static_cast<unsigned>(index) >= count) { return false; }
+    const Quaternion n = Normalize(q);
+    const float v[7] = {n.x, n.y, n.z, n.w, t.x, t.y, t.z};
+    return WriteFloatsGuarded(absolute + static_cast<std::size_t>(index) * kQuatTStride, v, 7);
+}
+
+// A child of `parent` re-placed under the parent's new pose; its offset along
+// the bone (local X) scaled with the segment.
+void CarryChild(std::uint8_t* absolute, unsigned count, int child, const QuatT& parentOld,
+                const Quaternion& parentNew, const Vec3& parentNewT, float alongScale)
+{
+    QuatT c{};
+    if (!ReadQuatT(absolute, count, child, c)) { return; }
+    const Quaternion po{parentOld.q[0], parentOld.q[1], parentOld.q[2], parentOld.q[3]};
+    Vec3 local = Rotate(Conj(po), Vec3{c.t[0] - parentOld.t[0], c.t[1] - parentOld.t[1], c.t[2] - parentOld.t[2]});
+    local.x *= alongScale;
+    const Quaternion localQ = Multiply(Conj(po), Quaternion{c.q[0], c.q[1], c.q[2], c.q[3]});
+    WriteQuatT(absolute, count, child, Multiply(parentNew, localQ), Add3(parentNewT, Rotate(parentNew, local)));
+}
+
+void SolveArms(const GameplayPoseFrame& frame, std::uint8_t* absolute, unsigned count,
+               const animik::Location& location, const HandRig& rig, const ArmPlan plan[2],
+               const PoseSettings& pose)
+{
+    XrMap map{&frame, {}, location};
+    if (!ArmAnchor(frame, map.anchor)) { return; }
+    const armpose::Body& body = pose.body;
+    ArmStats stats{};
+    const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
+    for (int s = 0; s < 2; ++s) {
+        const ArmPlan& p = plan[s];
+        if (!p.valid || !p.goalSet) { continue; }
+        QuatT clav{}, upper{}, lower{}, hand{};
+        if (!ReadQuatT(absolute, count, rig.clavicle[s], clav) || !ReadQuatT(absolute, count, rig.upperArm[s], upper) ||
+            !ReadQuatT(absolute, count, rig.lowerArm[s], lower) || !ReadQuatT(absolute, count, rig.wrist[s], hand)) {
+            continue;
+        }
+        const Vec3 c0{clav.t[0], clav.t[1], clav.t[2]};
+        const Vec3 s0{upper.t[0], upper.t[1], upper.t[2]};
+        const Vec3 e0{lower.t[0], lower.t[1], lower.t[2]};
+        const Vec3 w0{hand.t[0], hand.t[1], hand.t[2]};
+        const Quaternion handQ{hand.q[0], hand.q[1], hand.q[2], hand.q[3]};
+        // The solve, in OpenXR metres.
+        const Vec3 shoulder = p.shoulderXr;
+        const Vec3 wrist = map.ToXr(p.goal);
+        const armpose::Side side = s == 0 ? 1 : -1;
+        const Vec3 bodyPole = armpose::BodyPole(p.torso, side);
+        // The elbow the PLAYER's hand allows: the real hand's frame from the
+        // controller's grip pose (OpenXR defines it), not the drawn hand's --
+        // a held weapon turns the drawn hand to its barrel, the real one stays.
+        const auto& state = frame.tracking.hands[s == 0 ? static_cast<unsigned>(Hand::right)
+                                                        : static_cast<unsigned>(Hand::left)];
+        const handpose::Frame real = handpose::GripHandFrame(s == 1 ? handpose::Side::left : handpose::Side::right,
+                                                             pose.tubeLean);
+        const Vec3 handLength = Rotate(state.gripPose.orientation, real.length);
+        const Vec3 handPalm = Rotate(state.gripPose.orientation, real.palm);
+        Vec3 pole{};
+        {
+            std::lock_guard lock(gArmMutex);
+            const float dt = gPoleNs[s] != 0 ? static_cast<float>(now - gPoleNs[s]) * 1e-9f : 0.0f;
+            const bool fresh = gPoleNs[s] != 0 && dt < 0.5f;
+            gPoleNs[s] = now;
+            pole = armpose::ChooseElbowPole(shoulder, wrist, body.upper, body.fore, body.armStretch, handLength,
+                                            handPalm, side, bodyPole, pose.wrist, fresh ? &gPole[s] : nullptr);
+            pole = fresh ? armpose::SmoothDirection(gPole[s], pole, dt, pose.poleTau) : pole;
+            gPole[s] = pole;
+        }
+        const armpose::ArmSolution arm = armpose::SolveElbow(shoulder, wrist, body.upper, body.fore, pole,
+                                                             body.armStretch);
+        // Back to the model, and the joints.
+        const Vec3 sm = p.shoulderModel, em = map.ToModel(arm.elbow), wm = p.goal;
+        if (!std::isfinite(em.x) || !std::isfinite(em.y) || !std::isfinite(em.z)) { continue; }
+        const auto unit = [](Vec3 v) {
+            const float l = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+            return l > 1e-6f ? Scale3(v, 1.0f / l) : Vec3{1, 0, 0};
+        };
+        const auto len = [](Vec3 v) { return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z); };
+        // Clavicle: turned about its root towards the new shoulder.
+        const Quaternion clavQ{clav.q[0], clav.q[1], clav.q[2], clav.q[3]};
+        const Quaternion clavNew = Multiply(armpose::FromTo(unit(Sub3(s0, c0)), unit(Sub3(sm, c0))), clavQ);
+        WriteQuatT(absolute, count, rig.clavicle[s], clavNew, c0);
+        // Upper arm: at the shoulder, along shoulder -> elbow.
+        const Quaternion upperQ{upper.q[0], upper.q[1], upper.q[2], upper.q[3]};
+        const Quaternion upperNew = Multiply(armpose::FromTo(unit(Sub3(e0, s0)), unit(Sub3(em, sm))), upperQ);
+        const float upperScale = len(Sub3(e0, s0)) > 1e-4f ? len(Sub3(em, sm)) / len(Sub3(e0, s0)) : 1.0f;
+        for (int k = 0; k < 3; ++k) {
+            CarryChild(absolute, count, rig.upperChild[s][k], upper, upperNew, sm, upperScale);
+        }
+        WriteQuatT(absolute, count, rig.upperArm[s], upperNew, sm);
+        // Forearm: at the elbow, along elbow -> wrist.
+        const Quaternion lowerQ{lower.q[0], lower.q[1], lower.q[2], lower.q[3]};
+        const Quaternion lowerNew = Multiply(armpose::FromTo(unit(Sub3(w0, e0)), unit(Sub3(wm, em))), lowerQ);
+        const float lowerScale = len(Sub3(w0, e0)) > 1e-4f ? len(Sub3(wm, em)) / len(Sub3(w0, e0)) : 1.0f;
+        CarryChild(absolute, count, rig.lowerTwist[s], lower, lowerNew, em, lowerScale);
+        WriteQuatT(absolute, count, rig.lowerArm[s], lowerNew, em);
+        // The hand on its goal, its rotation as the pass left it, and what it
+        // carries (fingers, the weapon's prop joint) moved with it.
+        const Vec3 move = Sub3(wm, w0);
+        if (len(move) > 1e-6f) {
+            const auto shift = [&](int j) {
+                QuatT a{};
+                if (ReadQuatT(absolute, count, j, a)) {
+                    WriteQuatT(absolute, count, j, Quaternion{a.q[0], a.q[1], a.q[2], a.q[3]},
+                               Add3(Vec3{a.t[0], a.t[1], a.t[2]}, move));
+                }
+            };
+            shift(rig.wrist[s]);
+            shift(rig.handProp[s]);
+            if (rig.valid[s]) {
+                for (int j = 0; j < handpose::kJointCount; ++j) { shift(rig.joint[s][j]); }
+            }
+        }
+        stats.solved[s] = true;
+        stats.target[s] = p.targetXr;
+        stats.shoulder[s] = shoulder;
+        stats.elbow[s] = arm.elbow;
+        stats.handMoveCm[s] = len(move) * location.s * 100.0f;
+        stats.scale[s] = arm.scale;
+        stats.straight[s] = arm.straight;
+    }
+    std::lock_guard lock(gArmMutex);
+    stats.torsoYawDeg = gArmStats.torsoYawDeg;
+    stats.headYawDeg = gArmStats.headYawDeg;
+    gArmStats = stats;
+}
+
+// After the native pass: the hands as the engine will skin them, in the app's
+// OpenXR space, for pose.marks and pose.report.
+void CaptureMarks(const GameplayPoseFrame& frame, std::uint8_t* absolute, unsigned count,
+                  const animik::Location& location, const HandRig& rig, const FingerPlan& fingers)
+{
+    if (!frame.cameraCentreValid && gCameraAnchor.load()) { return; }
+    const Vec3 anchor = gCameraAnchor.load() ? frame.cameraCentre : frame.nativeEye;
+    const PoseSettings settings = ReadPoseSettings();
+    HandMarks marks{};
+    const auto toXr = [&](const Vec3& model) {
+        return WorldToOpenXr(frame, anchor, animik::ModelToWorld(location, model));
+    };
+    for (int s = 0; s < 2; ++s) {
+        if (!rig.valid[s]) { continue; }
+        QuatT w{};
+        if (!ReadQuatT(absolute, count, rig.wrist[s], w)) { return; }
+        const Quaternion wq{w.q[0], w.q[1], w.q[2], w.q[3]};
+        const Vec3 wt{w.t[0], w.t[1], w.t[2]};
+        marks.wrist[s] = toXr(wt);
+        for (int j = 0; j < handpose::kJointCount; ++j) {
+            QuatT a{};
+            if (!ReadQuatT(absolute, count, rig.joint[s][j], a)) { return; }
+            const Vec3 at{a.t[0], a.t[1], a.t[2]};
+            marks.joint[s][j] = toXr(at);
+            const bool distal = j == handpose::kThumb3 || j == handpose::kIndex3 || j == handpose::kMiddle3 ||
+                                j == handpose::kRing3 || j == handpose::kPinky3;
+            if (distal) {
+                // No tip joint in the rig: the distal phalanx, ~2.2 cm along its bone.
+                marks.tip[s][j] = toXr(Add3(at, Rotate(Quaternion{a.q[0], a.q[1], a.q[2], a.q[3]},
+                                                       Vec3{0.022f, 0.0f, 0.0f})));
+            }
+        }
+        const Vec3 point = handpose::GripPointInWrist(rig.frame[s], rig.knuckle[s], settings.point);
+        marks.gripPoint[s] = toXr(Add3(wt, Rotate(wq, point)));
+        // Axes as directions in OpenXR space: difference of two mapped points.
+        const auto dir = [&](const Vec3& local) {
+            return Sub3(toXr(Add3(wt, Rotate(wq, local))), marks.wrist[s]);
+        };
+        marks.length[s] = dir(rig.frame[s].length);
+        marks.palm[s] = dir(rig.frame[s].palm);
+        const auto& state = frame.tracking.hands[s == 0 ? static_cast<unsigned>(Hand::right)
+                                                        : static_cast<unsigned>(Hand::left)];
+        marks.grip[s] = state.gripPose;
+        marks.aim[s] = state.aimPose;
+        marks.posed[s] = settings.mode == 1;
+        QuatT c{}, u{}, l{};
+        if (rig.clavicle[s] >= 0 && rig.upperArm[s] >= 0 && rig.lowerArm[s] >= 0 &&
+            ReadQuatT(absolute, count, rig.clavicle[s], c) && ReadQuatT(absolute, count, rig.upperArm[s], u) &&
+            ReadQuatT(absolute, count, rig.lowerArm[s], l)) {
+            marks.clavicle[s] = toXr(Vec3{c.t[0], c.t[1], c.t[2]});
+            marks.shoulder[s] = toXr(Vec3{u.t[0], u.t[1], u.t[2]});
+            marks.elbow[s] = toXr(Vec3{l.t[0], l.t[1], l.t[2]});
+            marks.arm[s] = true;
+        }
+        if (gMarkGoal[s].set) {
+            marks.goalRaw[s] = toXr(gMarkGoal[s].raw);
+            marks.goalWritten[s] = toXr(gMarkGoal[s].written);
+            marks.goal[s] = true;
+            gMarkGoal[s].set = false;
+        }
+    }
+    {
+        QuatT n{}, h{}, e{};
+        if (rig.neck >= 0 && rig.head >= 0 && rig.headEnd >= 0 && ReadQuatT(absolute, count, rig.neck, n) &&
+            ReadQuatT(absolute, count, rig.head, h) && ReadQuatT(absolute, count, rig.headEnd, e)) {
+            marks.neck = toXr(Vec3{n.t[0], n.t[1], n.t[2]});
+            marks.headJoint = toXr(Vec3{h.t[0], h.t[1], h.t[2]});
+            marks.headEnd = toXr(Vec3{e.t[0], e.t[1], e.t[2]});
+            marks.headValid = true;
+        }
+    }
+    marks.head = frame.tracking.head;
+    marks.support = fingers.support;
+    marks.stamp = frame.tracking.sequence;
+    marks.valid = true;
+    {
+        std::unique_lock lock(gMarksMutex, std::try_to_lock);
+        if (lock.owns_lock()) { gMarks = marks; }
+    }
+    // Every 30 s into the log: on a headset this records what the mock can only
+    // estimate -- the runtime's grip pose relative to its aim pose -- and how
+    // far each drawn palm is from the controller, with no command to type.
+    static std::atomic<std::uint64_t> lastLog{0};
+    const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
+    std::uint64_t last = lastLog.load();
+    if ((last == 0 || now - last > 30000000000ull) && lastLog.compare_exchange_strong(last, now)) {
+        Log("pose_report" + HandPoseReport());
     }
 }
 
@@ -688,9 +1450,20 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
     if (haveOwner && gCalibration.Bind(owner.generation, frame.referenceGeneration, frame.tracking.epoch)) {
         for (auto& flag : gCalibrated) { flag.store(false); }
         gRigSkeleton.store(0);
+        gHandRig.skeleton = 0;   // re-identify the hand's joints with the rig
         gOwnerGeneration.store(owner.generation);
         gOwnerCharacter.store(owner.character);
     }
+    // The owning rig's pose arrays when this callback drove it, for the work
+    // that has to follow the native pass (finger propagation, measurement).
+    FingerPlan fingerPlan{};
+    ArmPlan armPlan[2]{};
+    PoseSettings ownedSettings{};
+    std::uint8_t* ownedRelative = nullptr;
+    std::uint8_t* ownedAbsolute = nullptr;
+    unsigned ownedCount = 0;
+    animik::Location ownedLocation{};
+    HandRig ownedHandRig{};
     if (mode != 0 && haveOwner && owner.character == reinterpret_cast<std::uintptr_t>(character) && params != nullptr) {
         auto* const ch = static_cast<std::uint8_t*>(character);
         if (IdentifyRig(ch)) {
@@ -736,24 +1509,78 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
                     ReadPointer(static_cast<std::uint8_t*>(pose) + kPoseAbsolute, &absolute) &&
                     relative != nullptr && absolute != nullptr) {
                     const unsigned int hands = gHands.load(std::memory_order_relaxed);
+                    const PoseSettings poseSettings = ReadPoseSettings();
+                    const std::uintptr_t skeleton = gRigSkeleton.load();
+                    if (skeleton != 0 && gHandRig.skeleton != skeleton) {
+                        BuildHandRig(reinterpret_cast<std::uint8_t*>(skeleton), gRigJoints.load(),
+                                     static_cast<std::uint8_t*>(relative), static_cast<unsigned>(poseCount));
+                    }
+                    PrepareArms(frame, location, static_cast<std::uint8_t*>(absolute),
+                                static_cast<unsigned>(poseCount), poseSettings, armPlan);
                     Vec3 primaryGoal{};
+                    Quaternion primaryRotation{};
                     bool primaryWritten=false;
                     if (hands & 1u) {
                         DriveHand(0, static_cast<std::uint8_t*>(relative), static_cast<std::uint8_t*>(absolute),
-                                  static_cast<unsigned>(poseCount), location, frame, owner,&primaryGoal,nullptr,&primaryWritten);
+                                  static_cast<unsigned>(poseCount), location, frame, owner, poseSettings,
+                                  &primaryGoal, nullptr, &primaryWritten, &primaryRotation, nullptr, nullptr,
+                                  &armPlan[0]);
                     }
                     if ((hands & 2u) && gMode.load() == 2) {
                         DriveHand(1, static_cast<std::uint8_t*>(relative), static_cast<std::uint8_t*>(absolute),
-                                  static_cast<unsigned>(poseCount), location, frame, owner,nullptr,primaryWritten?&primaryGoal:nullptr);
+                                  static_cast<unsigned>(poseCount), location, frame, owner, poseSettings,
+                                  nullptr, primaryWritten ? &primaryGoal : nullptr, nullptr, nullptr,
+                                  primaryWritten ? &primaryRotation : nullptr, &fingerPlan, &armPlan[1]);
                     }
+                    if (fingerPlan.apply && gHandRig.valid[1]) {
+                        fingerPlan.apply = ApplyRelaxedFingers(static_cast<std::uint8_t*>(relative),
+                            static_cast<unsigned>(poseCount), fingerPlan.weight, poseSettings.curl);
+                    }
+                    ownedRelative = static_cast<std::uint8_t*>(relative);
+                    ownedAbsolute = static_cast<std::uint8_t*>(absolute);
+                    ownedCount = static_cast<unsigned>(poseCount);
+                    ownedLocation = location;
+                    ownedHandRig = gHandRig;
+                    ownedSettings = poseSettings;
                 }
             }
+        }
+    }
+    // ik.skel: the pose arrays of the owning rig, captured around the native pass.
+    std::uint8_t* dumpRelative = nullptr;
+    std::uint8_t* dumpAbsolute = nullptr;
+    unsigned dumpCount = 0;
+    static std::uint8_t dumpBefore[kMaxJoints * kQuatTStride];
+    if (gSkelDump.load() == 1 && haveOwner && owner.character == reinterpret_cast<std::uintptr_t>(character) &&
+        params != nullptr) {
+        void* pose = nullptr;
+        void* rel = nullptr;
+        void* abs = nullptr;
+        int n = 0;
+        auto* const p = static_cast<std::uint8_t*>(params);
+        if (ReadPointer(p + kParamsPose, &pose) && pose != nullptr &&
+            ReadInt(static_cast<std::uint8_t*>(pose) + 8, &n) && n > 0 && n <= static_cast<int>(kMaxJoints) &&
+            ReadPointer(static_cast<std::uint8_t*>(pose) + kPoseRelative, &rel) &&
+            ReadPointer(static_cast<std::uint8_t*>(pose) + kPoseAbsolute, &abs) && rel && abs &&
+            ReadFloats(abs, reinterpret_cast<float*>(dumpBefore), static_cast<unsigned>(n) * 7)) {
+            dumpRelative = static_cast<std::uint8_t*>(rel);
+            dumpAbsolute = static_cast<std::uint8_t*>(abs);
+            dumpCount = static_cast<unsigned>(n);
         }
     }
     if (stateLock.owns_lock()) { stateLock.unlock(); }
     const ProcessAdikFn original = gOriginal.load(std::memory_order_acquire);
     if (original != nullptr) {
         original(character, params);
+    }
+    if (ownedAbsolute != nullptr) {
+        if (fingerPlan.apply) { PropagateFingers(ownedRelative, ownedAbsolute, ownedCount, ownedHandRig); }
+        SolveArms(frame, ownedAbsolute, ownedCount, ownedLocation, ownedHandRig, armPlan, ownedSettings);
+        CaptureMarks(frame, ownedAbsolute, ownedCount, ownedLocation, ownedHandRig, fingerPlan);
+    }
+    int expected = 1;
+    if (dumpCount != 0 && gSkelDump.compare_exchange_strong(expected, 0)) {
+        DumpSkeletonPose(static_cast<std::uint8_t*>(character), dumpRelative, dumpBefore, dumpAbsolute, dumpCount);
     }
 }
 
@@ -1028,6 +1855,323 @@ DWORD DumpAnimIk()
         }
     }
     Log("result=0 detail=dumped");
+    return 0;
+}
+
+DWORD SetHandPoseMode(unsigned int mode)
+{
+    if (mode > 1) { return 1; }
+    { std::lock_guard lock(gPoseSettingsMutex); gPoseSettings.mode = mode; }
+    Log("result=0 detail=pose_mode value=" + std::to_string(mode));
+    return 0;
+}
+
+DWORD SetHandPoseCurlPercent(int percent)
+{
+    if (percent < 0 || percent > 300) { return 1; }
+    { std::lock_guard lock(gPoseSettingsMutex); gPoseSettings.curl = percent / 100.0f; }
+    return 0;
+}
+
+DWORD SetHandPoseGrip(int alongPermille, int outOfPalmMm, int towardThumbMm, int leanDeciDegrees)
+{
+    if (alongPermille < 0 || alongPermille > 1500 || outOfPalmMm < -100 || outOfPalmMm > 150 ||
+        towardThumbMm < -100 || towardThumbMm > 100 || leanDeciDegrees < -900 || leanDeciDegrees > 900) { return 1; }
+    std::lock_guard lock(gPoseSettingsMutex);
+    gPoseSettings.point.alongHand = alongPermille / 1000.0f;
+    gPoseSettings.point.outOfPalm = outOfPalmMm / 1000.0f;
+    gPoseSettings.point.towardThumb = towardThumbMm / 1000.0f;
+    gPoseSettings.tubeLean = leanDeciDegrees / 10.0f * 3.14159265f / 180.0f;
+    return 0;
+}
+
+// arm.* -- see the declaration. Values are integers: mm, permille, degrees.
+DWORD SetArmSetting(const std::string& what, const int* v, unsigned n)
+{
+    std::lock_guard lock(gPoseSettingsMutex);
+    PoseSettings& p = gPoseSettings;
+    armpose::Body& b = p.body;
+    const auto mm = [](int x) { return x * 0.001f; };
+    if (what == "mode" && n >= 1 && v[0] >= 0 && v[0] <= 1) {
+        p.armMode = static_cast<unsigned>(v[0]);
+    } else if (what == "shoulder" && n >= 3 && std::abs(v[0]) <= 300 && v[1] >= 50 && v[1] <= 350 &&
+               v[2] <= -50 && v[2] >= -450) {
+        b.shoulderForward = mm(v[0]); b.shoulderOut = mm(v[1]); b.shoulderUp = mm(v[2]);
+    } else if (what == "len" && n >= 2 && v[0] >= 150 && v[0] <= 450 && v[1] >= 150 && v[1] <= 450) {
+        b.upper = mm(v[0]); b.fore = mm(v[1]);
+    } else if (what == "stretch" && n >= 2 && v[0] >= 0 && v[0] <= 500 && v[1] >= 1000 && v[1] <= 1300) {
+        b.clavicleStretch = v[0] / 1000.0f; b.armStretch = v[1] / 1000.0f;
+    } else if (what == "prior" && n >= 4 && v[0] >= 5 && v[0] <= 180 && v[1] >= -40 && v[1] <= 30 &&
+               v[2] >= 3 && v[2] <= 90 && v[3] >= 3 && v[3] <= 180) {
+        p.wrist.flexionSigmaDeg = static_cast<float>(v[0]); p.wrist.deviationRestDeg = static_cast<float>(v[1]);
+        p.wrist.deviationSigmaDeg = static_cast<float>(v[2]); p.wrist.swivelSigmaDeg = static_cast<float>(v[3]);
+    } else if (what == "rom" && n >= 4 && v[0] >= 10 && v[0] <= 120 && v[1] >= 10 && v[1] <= 120 &&
+               v[2] >= 5 && v[2] <= 90 && v[3] >= 5 && v[3] <= 90) {
+        p.wrist.flexionMaxDeg = static_cast<float>(v[0]); p.wrist.extensionMaxDeg = static_cast<float>(v[1]);
+        p.wrist.radialMaxDeg = static_cast<float>(v[2]); p.wrist.ulnarMaxDeg = static_cast<float>(v[3]);
+    } else if (what == "hold" && n >= 2 && v[0] >= 0 && v[0] <= 360 && v[1] >= 0 && v[1] <= 1000) {
+        p.wrist.holdSigmaDeg = static_cast<float>(v[0]); p.poleTau = v[1] / 1000.0f;
+    } else if (what == "torso" && n >= 2 && v[0] >= 0 && v[0] <= 180 && v[1] >= 0 && v[1] <= 10000) {
+        p.torsoDeadzone = v[0] * 3.14159265f / 180.0f; p.torsoRelax = v[1] / 1000.0f;
+    } else if (what == "knee" && n >= 1 && v[0] >= 500 && v[0] <= 1000) {
+        p.armKnee = v[0] / 1000.0f;
+    } else {
+        return 1;
+    }
+    return 0;
+}
+
+std::string ArmReport()
+{
+    const PoseSettings p = ReadPoseSettings();
+    ArmStats st;
+    {
+        std::lock_guard lock(gArmMutex);
+        st = gArmStats;
+    }
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    out << std::fixed;
+    out.precision(1);
+    const armpose::Body& b = p.body;
+    out << " armMode=" << p.armMode << " shoulderMm=" << b.shoulderForward * 1000 << ',' << b.shoulderOut * 1000
+        << ',' << b.shoulderUp * 1000 << " lenMm=" << b.upper * 1000 << ',' << b.fore * 1000
+        << " clavStretch=" << b.clavicleStretch << " armStretch=" << b.armStretch << " knee=" << p.armKnee
+        << " priorDeg=" << p.wrist.flexionSigmaDeg << ',' << p.wrist.deviationRestDeg << ','
+        << p.wrist.deviationSigmaDeg << ',' << p.wrist.swivelSigmaDeg
+        << " romDeg=" << p.wrist.flexionMaxDeg << ',' << p.wrist.extensionMaxDeg << ','
+        << p.wrist.radialMaxDeg << ',' << p.wrist.ulnarMaxDeg
+        << " holdDeg=" << p.wrist.holdSigmaDeg << " poleTauMs=" << p.poleTau * 1000
+        << " torsoDeadzoneDeg=" << p.torsoDeadzone * 57.29578f << " torsoRelax=" << p.torsoRelax
+        << " headYawDeg=" << st.headYawDeg << " torsoYawDeg=" << st.torsoYawDeg;
+    for (int s = 0; s < 2; ++s) {
+        const char* t = s == 0 ? "R" : "L";
+        out << " solved" << t << '=' << st.solved[s];
+        if (!st.solved[s]) { continue; }
+        const Vec3 d = Sub3(st.shoulder[s], st.target[s]);
+        out << " shoulderToTargetCm" << t << '=' << std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z) * 100.0f
+            << " handMoveCm" << t << '=' << st.handMoveCm[s];
+        out.precision(3);
+        out << " scale" << t << '=' << st.scale[s];
+        out.precision(1);
+        out << " straight" << t << '=' << st.straight[s];
+    }
+    return out.str();
+}
+
+DWORD SetHandPoseStretchPercent(int percent)
+{
+    if (percent < 90 || percent > 125) { return 1; }
+    std::lock_guard lock(gPoseSettingsMutex);
+    gPoseSettings.stretch = percent / 100.0f;
+    return 0;
+}
+
+DWORD SetHandPoseWeaponRoll(unsigned int enabled)
+{
+    if (enabled > 1) { return 1; }
+    std::lock_guard lock(gPoseSettingsMutex);
+    gPoseSettings.weaponRoll = enabled != 0;
+    return 0;
+}
+
+DWORD SetHandPoseReach(unsigned int mode, int kneePercent)
+{
+    if (mode > 1 || kneePercent < 50 || kneePercent > 99) { return 1; }
+    std::lock_guard lock(gPoseSettingsMutex);
+    gPoseSettings.reachMode = mode;
+    gPoseSettings.knee = kneePercent / 100.0f;
+    return 0;
+}
+
+namespace {
+float Len(Vec3 v) { return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
+float AngleDeg(Vec3 a, Vec3 b)
+{
+    const float la = Len(a), lb = Len(b);
+    if (la < 1e-6f || lb < 1e-6f) { return -1.0f; }
+    const float c = std::clamp((a.x * b.x + a.y * b.y + a.z * b.z) / (la * lb), -1.0f, 1.0f);
+    return std::acos(c) * 57.29578f;
+}
+HandMarks LatestMarks() { std::lock_guard lock(gMarksMutex); return gMarks; }
+}
+
+std::string HandPoseReport()
+{
+    const PoseSettings settings = ReadPoseSettings();
+    const HandMarks marks = LatestMarks();
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    out << std::fixed;
+    out.precision(1);
+    out << " poseMode=" << settings.mode << " curl=" << settings.curl * 100.0f
+        << " along=" << settings.point.alongHand * 1000.0f << " outOfPalmMm=" << settings.point.outOfPalm * 1000.0f
+        << " thumbMm=" << settings.point.towardThumb * 1000.0f
+        << " leanDeg=" << settings.tubeLean * 57.29578f
+        << " reachMode=" << settings.reachMode << " knee=" << settings.knee * 100.0f
+        << " weaponRoll=" << (settings.weaponRoll ? 1 : 0) << " stretch=" << settings.stretch * 100.0f
+        << " rollDeg=" << gWeaponRollMilliDeg.load(std::memory_order_relaxed) / 1000.0f;
+    {
+        std::lock_guard lock(gIkMutex);
+        out << " rigR=" << gHandRig.valid[0] << " rigL=" << gHandRig.valid[1];
+    }
+    out << " marks=" << (marks.valid ? "fresh" : "none");
+    if (!marks.valid) { return out.str(); }
+    out << " support=" << marks.support;
+    for (int s = 0; s < 2; ++s) {
+        const char* tag = s == 0 ? "R" : "L";
+        const auto side = s == 1 ? handpose::Side::left : handpose::Side::right;
+        const Pose& grip = marks.grip[s];
+        const handpose::Frame expected = handpose::GripHandFrame(side, settings.tubeLean);
+        const Vec3 lenExp = Rotate(grip.orientation, expected.length);
+        const Vec3 palmExp = Rotate(grip.orientation, expected.palm);
+        // The game palm's grip point against the controller's grip origin,
+        // and the game hand's axes against the real hand's.
+        out << " palmErrCm" << tag << '=' << Len(Sub3(marks.gripPoint[s], grip.position)) * 100.0f
+            << " lenErrDeg" << tag << '=' << AngleDeg(marks.length[s], lenExp)
+            << " palmNormErrDeg" << tag << '=' << AngleDeg(marks.palm[s], palmExp)
+            << " wristToGripCm" << tag << '=' << Len(Sub3(marks.wrist[s], grip.position)) * 100.0f;
+        // The game hand's axes in the controller's grip frame (unit), to read
+        // WHICH way a hand is off, not only by how much.
+        const auto inGrip = [&](Vec3 v) {
+            const float l = Len(v);
+            return l > 1e-6f ? Rotate(Conj(grip.orientation), Scale3(v, 1.0f / l)) : Vec3{};
+        };
+        const Vec3 lg = inGrip(marks.length[s]), pg = inGrip(marks.palm[s]);
+        out.precision(2);
+        out << " lenInGrip" << tag << '=' << lg.x << ',' << lg.y << ',' << lg.z
+            << " palmInGrip" << tag << '=' << pg.x << ',' << pg.y << ',' << pg.z;
+        out.precision(1);
+        // grip in aim: what a real runtime says about its controller; the mock
+        // uses an estimate (DVR_MockGrip.txt) until a headset has reported it.
+        const Pose& aim = marks.aim[s];
+        const Quaternion rel = Normalize(Multiply(Conj(aim.orientation), grip.orientation));
+        const Vec3 off = Rotate(Conj(aim.orientation), Sub3(grip.position, aim.position));
+        const float angle = handpose::AngleBetween(aim.orientation, grip.orientation) * 57.29578f;
+        out.precision(3);
+        out << " gripInAim" << tag << "=q" << rel.x << ',' << rel.y << ',' << rel.z << ',' << rel.w;
+        out.precision(1);
+        out << "|deg" << angle << "|cm" << off.x * 100.0f << ',' << off.y * 100.0f << ',' << off.z * 100.0f;
+    }
+    return out.str();
+}
+
+std::string HandPoseMarks()
+{
+    const PoseSettings settings = ReadPoseSettings();
+    const HandMarks marks = LatestMarks();
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    out << std::fixed;
+    out.precision(4);
+    if (!marks.valid) { return out.str(); }
+    const auto seg = [&](Vec3 a, Vec3 b, int r, int g, int bl) {
+        out << a.x << ' ' << a.y << ' ' << a.z << ' ' << b.x << ' ' << b.y << ' ' << b.z << ' '
+            << r << ' ' << g << ' ' << bl << '\n';
+    };
+    const auto unit = [](Vec3 v, float length) {
+        const float l = Len(v);
+        return l > 1e-6f ? Scale3(v, length / l) : Vec3{};
+    };
+    for (int s = 0; s < 2; ++s) {
+        const int r = s == 1 ? 255 : 255, g = s == 1 ? 255 : 200, b = s == 1 ? 255 : 120;
+        // The skeleton: wrist -> metacarpal -> three phalanges -> tip, and the thumb.
+        const int chains[5][4] = {
+            {handpose::kThumb1, handpose::kThumb2, handpose::kThumb3, -1},
+            {handpose::kIndexBase, handpose::kIndex1, handpose::kIndex2, handpose::kIndex3},
+            {handpose::kMiddleBase, handpose::kMiddle1, handpose::kMiddle2, handpose::kMiddle3},
+            {handpose::kRingBase, handpose::kRing1, handpose::kRing2, handpose::kRing3},
+            {handpose::kPinkyBase, handpose::kPinky1, handpose::kPinky2, handpose::kPinky3},
+        };
+        for (const auto& chain : chains) {
+            Vec3 previous = marks.wrist[s];
+            int last = -1;
+            for (int k = 0; k < 4 && chain[k] >= 0; ++k) {
+                seg(previous, marks.joint[s][chain[k]], r, g, b);
+                previous = marks.joint[s][chain[k]];
+                last = chain[k];
+            }
+            if (last >= 0) { seg(previous, marks.tip[s][last], r, g, b); }
+        }
+        // The game hand's frame at its grip point: length cyan, palm normal magenta.
+        const Vec3 p = marks.gripPoint[s];
+        seg(p, Add3(p, unit(marks.length[s], 0.08f)), 0, 255, 255);
+        seg(p, Add3(p, unit(marks.palm[s], 0.06f)), 255, 0, 255);
+        // The real hand's frame at the controller's grip origin, darker.
+        const auto side = s == 1 ? handpose::Side::left : handpose::Side::right;
+        const handpose::Frame expected = handpose::GripHandFrame(side, settings.tubeLean);
+        const Pose& grip = marks.grip[s];
+        seg(grip.position, Add3(grip.position, Scale3(Rotate(grip.orientation, expected.length), 0.08f)), 0, 110, 110);
+        seg(grip.position, Add3(grip.position, Scale3(Rotate(grip.orientation, expected.palm), 0.06f)), 110, 0, 110);
+        // The drawn arm, orange: clavicle -> shoulder -> elbow -> wrist.
+        if (marks.arm[s]) {
+            seg(marks.clavicle[s], marks.shoulder[s], 255, 140, 0);
+            seg(marks.shoulder[s], marks.elbow[s], 255, 140, 0);
+            seg(marks.elbow[s], marks.wrist[s], 255, 140, 0);
+        }
+        // The wrist goals as small crosses: white before reach shaping, red as written.
+        const auto cross = [&](Vec3 c, int r, int g, int bl) {
+            const float h = 0.015f;
+            seg(Vec3{c.x - h, c.y, c.z}, Vec3{c.x + h, c.y, c.z}, r, g, bl);
+            seg(Vec3{c.x, c.y - h, c.z}, Vec3{c.x, c.y + h, c.z}, r, g, bl);
+            seg(Vec3{c.x, c.y, c.z - h}, Vec3{c.x, c.y, c.z + h}, r, g, bl);
+        };
+        if (marks.goal[s]) {
+            cross(marks.goalRaw[s], 255, 255, 255);
+            cross(marks.goalWritten[s], 255, 40, 40);
+        }
+    }
+    if (marks.headValid) {
+        seg(marks.neck, marks.headJoint, 255, 140, 0);
+        seg(marks.headJoint, marks.headEnd, 255, 140, 0);
+    }
+    // The same as data (not drawn: the mock reads numeric lines only).
+    const auto point = [&](const char* name, Vec3 v) {
+        out << "J " << name << ' ' << v.x << ' ' << v.y << ' ' << v.z << '\n';
+    };
+    const auto pose = [&](const char* name, const Pose& p) {
+        out << "P " << name << ' ' << p.position.x << ' ' << p.position.y << ' ' << p.position.z << ' '
+            << p.orientation.x << ' ' << p.orientation.y << ' ' << p.orientation.z << ' ' << p.orientation.w << '\n';
+    };
+    pose("head", marks.head);
+    {
+        ArmStats st;
+        {
+            std::lock_guard lock(gArmMutex);
+            st = gArmStats;
+        }
+        for (int s = 0; s < 2; ++s) {
+            if (!st.solved[s]) { continue; }
+            point(s == 0 ? "shoulderTargetR" : "shoulderTargetL", st.target[s]);
+        }
+        out << "A torsoYawDeg " << st.torsoYawDeg << " headYawDeg " << st.headYawDeg << '\n';
+    }
+    if (marks.headValid) { point("neck", marks.neck); point("headJnt", marks.headJoint); point("headEnd", marks.headEnd); }
+    for (int s = 0; s < 2; ++s) {
+        const std::string t = s == 0 ? "R" : "L";
+        pose(("grip" + t).c_str(), marks.grip[s]);
+        pose(("aim" + t).c_str(), marks.aim[s]);
+        point(("wrist" + t).c_str(), marks.wrist[s]);
+        point(("palm" + t).c_str(), marks.gripPoint[s]);
+        point(("handLen" + t).c_str(), marks.length[s]);     // directions, not points
+        point(("handPalm" + t).c_str(), marks.palm[s]);
+        if (marks.arm[s]) {
+            point(("clavicle" + t).c_str(), marks.clavicle[s]);
+            point(("shoulder" + t).c_str(), marks.shoulder[s]);
+            point(("elbow" + t).c_str(), marks.elbow[s]);
+        }
+        if (marks.goal[s]) {
+            point(("goalRaw" + t).c_str(), marks.goalRaw[s]);
+            point(("goalWritten" + t).c_str(), marks.goalWritten[s]);
+        }
+    }
+    return out.str();
+}
+
+DWORD RequestAnimIkSkeletonDump()
+{
+    if (!gInstalled.load(std::memory_order_acquire)) { return 1; }
+    gSkelDump.store(1);
     return 0;
 }
 

@@ -18,6 +18,7 @@
 #include "UiPointer.h"
 #include "AnimIkTakeover.h"
 #include "preyvr/LatestSnapshot.h"
+#include <algorithm>
 #include <cmath>
 #include <sstream>
 
@@ -31,6 +32,8 @@ unsigned long long deadline=0, consoleCount=0, calibratedOwner=0, calibratedRefe
 bool consolePending=false;
 unsigned desiredWidth=0,desiredHeight=0;
 unsigned long long firstFrame=0;
+bool nearFollow=true;
+unsigned followedNearFov=0;
 unsigned long long nextInputProbe=0;
 const char* settings[]={"r_MotionBlur 0","r_AntialiasingMode 1"};
 void Log(const std::string& s) { lifecycle::Log("preyvr_vr " + s); }
@@ -174,8 +177,39 @@ void TickVrMode() {
             calibratedOwner=owner;
             calibratedReference=reference;
         }
+        FollowNearFov();
     }
 }
+// **The near pass must project exactly like the world.** The arms and the held
+// weapon are drawn by the near (viewmodel) pass at r_DrawNearFoV, the world at
+// the camera's own frustum, and the image is declared to the runtime with the
+// WORLD's tangents. Since the IK places the hands in world space, any other near
+// FOV draws them at the wrong angle from the eye: the activation value assumed
+// a 120-degree horizontal FOV slider, and with the slider at 98 (cl_hfov 98,
+// measured 2026-10-06) the hands were drawn at 0.66 of their angle, pulled
+// towards the centre -- short arms, a weapon above the real hand. The near
+// FOV now follows the vertical FOV the world camera actually rendered.
+void FollowNearFov() {
+    if(!nearFollow)return;
+    float left=0,right=0,up=0,down=0;
+    if(!RenderedEyeTangents(left,right,up,down))return;
+    const float vertical=std::max(std::fabs(up),std::fabs(down));
+    if(!std::isfinite(vertical) || vertical<.2f || vertical>10.f)return;
+    const auto deci=static_cast<unsigned>(std::lround(2*std::atan(vertical)*572.9577951f));
+    // Against the value in force, not the last one followed: activation and a
+    // VR restart set their own, which must be replaced again.
+    if(deci!=NearFovDeciDegrees() && SetNearFovDeciDegrees(deci)==0) {
+        if(deci!=followedNearFov)Log("near_fov=follow deci_degrees="+std::to_string(deci));
+        followedNearFov=deci;
+    }
+}
+DWORD SetNearFovFollow(unsigned enabled) {
+    if(enabled>1)return 1;
+    nearFollow=enabled!=0; followedNearFov=0;
+    Log(std::string("near_fov_follow=")+(nearFollow?"1":"0"));
+    return 0;
+}
+unsigned NearFovFollowed() { return nearFollow?followedNearFov:0; }
 std::string VrModeReport() {
     const char* names[]={"off","preparing","settings","tracking","rendering","active","failed"};
     std::ostringstream s;

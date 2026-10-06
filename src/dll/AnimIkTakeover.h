@@ -81,6 +81,49 @@ DWORD SetAnimIkReachPercent(int percent);
 int AnimIkReachPercent();
 // Logs the matched rig's ADIK table and limbs.
 DWORD DumpAnimIk();
+// Logs, once, every joint of the owning rig: name, parent (derived from the
+// pose), relative pose and absolute pose before/after the native ADIK pass.
+DWORD RequestAnimIkSkeletonDump();
+
+// **The VR hand pose** (jordi/hand-pose; see the pose.* notes in the .cpp).
+// Mode 1 (default): the free hand's orientation is anatomical (the game hand's
+// frame on the real hand's, from the grip pose), the palm -- not the wrist --
+// goes to the controller on both hands, the free hand holds one relaxed open
+// pose and takes the native two-handed hold on the weapon while gripping.
+// Mode 0: the original lane (calibrated offset, wrist at the grip).
+DWORD SetHandPoseMode(unsigned int mode);
+// Relaxed flexion, percent (100 default, 0 straight fingers).
+DWORD SetHandPoseCurlPercent(int percent);
+// The grip point in the hand (fraction of the wrist -> knuckle distance in
+// permille, millimetres out of the palm and towards the thumb) and the fist's
+// tube lean in tenths of a degree.
+DWORD SetHandPoseGrip(int alongPermille, int outOfPalmMm, int towardThumbMm, int leanDeciDegrees);
+// 0: the linear reach percent (ik.reach); 1: exact up to knee% of the arm's
+// reach, then a smooth approach to it.
+DWORD SetHandPoseReach(unsigned int mode, int kneePercent);
+// 1 (default): a held weapon is rolled about its barrel (the aim ray) until
+// the hand holding it lies like the real hand; 0: the muzzle helper's roll.
+DWORD SetHandPoseWeaponRoll(unsigned int enabled);
+// The reach limit over the rig's arm length, percent (90..125, default 120).
+DWORD SetHandPoseStretchPercent(int percent);
+// The arm from the player's shoulder (docs/ARM-POSE-2026-10-06.md), arm.<what>:
+//   mode 0|1                     native arm / player's shoulder (default 1)
+//   shoulder <fwd> <out> <up>    shoulder joint from the centre eye, torso frame, mm
+//   len <upper> <fore>           drawn segments, mm (default 285 275)
+//   stretch <clav> <arm>         permille the clavicle may stretch, arm stretch limit (150 1100)
+//   prior <flexSd> <devRest> <devSd> <swivelSd>  the elbow's MAP priors, degrees (45 -8 12 25)
+//   rom <flex> <ext> <radial> <ulnar>            the wrist's range of motion, degrees (75 65 20 35)
+//   hold <sd> <tauMs>            temporal prior on the elbow (deg) and pole smoothing (45 60)
+//   torso <deadzoneDeg> <relax>  torso yaw deadzone and relax per second, permille (35 600)
+//   knee <permille>              exact reach up to this fraction of the stretched arm (920)
+DWORD SetArmSetting(const std::string& what, const int* values, unsigned count);
+std::string ArmReport();
+// Settings, the measured error of each hand against the controller (palm
+// position, hand axes) and the grip pose relative to the aim pose.
+std::string HandPoseReport();
+// The hands as drawn, as segments in the app's OpenXR space, one per line:
+// "x1 y1 z1 x2 y2 z2 r g b" (the mock compositor draws them).
+std::string HandPoseMarks();
 
 // Last accepted identity/sample, and failed prerequisite/lock attempts.
 unsigned long long AnimIkOwnerCharacter();
