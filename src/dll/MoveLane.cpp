@@ -4,6 +4,7 @@
 #include "BodyEquipment.h"
 #include "InteractionLane.h"
 #include "CarryLane.h"
+#include "GrenadeLane.h"
 #include "PsiMedkit.h"
 #include "Psychoscope.h"
 
@@ -511,6 +512,10 @@ void UpdateTurnAndFireLanes()
         if (pressed != gFireHeld) {
             const unsigned int state = pressed ? static_cast<unsigned int>(input::kStatePressed)
                                                : static_cast<unsigned int>(input::kStateReleased);
+            // A grenade leaves the hand at this edge, with the hand's motion as
+            // of now (GrenadeLane.h). Noted BEFORE the post: posting runs the
+            // game's fire handler -- and the release -- synchronously.
+            NoteGrenadeTrigger(pressed);
             if (PostRawInputImmediate(input::kTriggerRButton, state, pressed ? 1000 : 0) == 0) {
                 gFireHeld = pressed;
                 (pressed ? gFirePressed : gFireReleased)

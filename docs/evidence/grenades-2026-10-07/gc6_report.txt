@@ -1,0 +1,5 @@
+=== 2026-10-07T14:54:35 GrenadeCases kind=emp
+hold: deploy=0 deploySuppressedFrames=996 equipped=grenade weaponArchetype=ArkSpecialWeapons.EMPGrenadeWeapon minSpeed=10.00 maxSpeed=35.00 chargeDuration=1.50 deployReady=0 deployRange=1.25
+[PASS] E medium throw  how=early delayMs=0,0 thrown=1 hand=4,67 speed=8,60 gain=1,84 spawnFrom=1 spawnFromGripCm=2,0 v2ErrPct=-2,0 v2AngleDeg=1,17 v2Err=0,244 onFloor=1 range=4,56 model=4,48 real=4,55 lateral=0,000 rest=5,90 g=12,9 k=0,85 skipped=1 throws=1
+[PASS] H walking backwards  how=early delayMs=0,0 thrown=1 hand=4,67 speed=7,13 gain=1,53 spawnFrom=1 spawnFromGripCm=2,0 v2ErrPct=-4,1 v2AngleDeg=2,09 v2Err=0,216 onFloor=1 range=1,57 model=1,59 real=1,62 lateral=0,000 rest=1,96 g=13,0 k=0,85 skipped=1 throws=1 playerSpeed=3,65
+=== 2/2 PASS

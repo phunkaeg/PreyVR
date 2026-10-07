@@ -13,6 +13,10 @@
 //   prop is pulled to), GetDragCorpseConstraintPos 0x125A670 (a body's drag point),
 //   StartCarrying 0x125C3D0 (what was picked up), StopCarrying 0x125CF70 (the
 //   release, and the velocity it leaves with).
+namespace preyvr::carry {
+struct Motion;
+}
+
 namespace preyvr::dll {
 
 struct GameplayPoseFrame;
@@ -31,6 +35,9 @@ unsigned CarryHoldToHold();
 
 // XR thread, once per located frame: the hands' motion history.
 void RecordCarryMotion(const TrackingFrame& frame);
+// A hand's release motion as of its newest sample (the peak of the last
+// ~0.12 s, tracking space): what a throw leaves with. False without history.
+bool EstimateHandMotion(unsigned hand, carry::Motion& out);
 // Game thread, once per gameplay frame (after the interaction lane).
 void UpdateCarryLane(const GameplayPoseFrame& frame, bool tracking);
 // Input lane: the grip that holds something opened (or a press asked to let

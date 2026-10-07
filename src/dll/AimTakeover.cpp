@@ -11,6 +11,7 @@
 #include "DebugOverlay.h"
 #include "InteractionLane.h"
 #include "CarryLane.h"
+#include "GrenadeLane.h"
 #include "preyvr/AnimIk.h"
 #include "MinHookInit.h"
 #include "preyvr/LatestSnapshot.h"
@@ -320,6 +321,7 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     UpdatePhysicalInteractions(frame,haveTracking&&gEnabled.load());
     UpdateInteractionLane(frame,haveTracking&&gEnabled.load());
     UpdateCarryLane(frame,haveTracking&&gEnabled.load());
+    UpdateGrenadeLane(frame,haveTracking&&gEnabled.load());
     UpdateArmsLane(frame,haveTracking&&gEnabled.load());
     DebugOverlayGameFrame(frame,haveTracking);
     if (!haveTracking) { gRejNoPose.fetch_add(1); return; }

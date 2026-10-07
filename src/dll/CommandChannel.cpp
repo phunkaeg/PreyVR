@@ -24,6 +24,7 @@
 #include "ShotRay.h"
 #include "InteractionLane.h"
 #include "CarryLane.h"
+#include "GrenadeLane.h"
 #include "ArmsLane.h"
 #include "PhysicalInteractions.h"
 #include "PsiMedkit.h"
@@ -505,7 +506,7 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         return value;
     };
 
-    if (ExecutePose(args, out) || ExecuteCarryCommand(args, out) || ExecuteArmsCommand(args, out)) {
+    if (ExecutePose(args, out) || ExecuteCarryCommand(args, out) || ExecuteGrenadeCommand(args, out) || ExecuteArmsCommand(args, out)) {
         return;
     }
     if (verb == "vr.options") {

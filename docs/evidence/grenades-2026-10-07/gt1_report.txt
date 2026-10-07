@@ -1,0 +1,21 @@
+=== 2026-10-07T14:47:12 GrenadeTypes
+--- emp: ArkSpecialWeapons.EMPGrenadeWeapon min=10.00 max=35.00 charge=1.50 deployRange=1.25
+  hand: palmErrCmR=0.0 lenErrDegR=0.0 palmNormErrDegR=0.0 propInGripCmR=-3.6,-2.1,-1.8 propXInGripR=-0.01,0.05,1.00 propYInGripR=-0.41,0.91,-0.05 propZInGripR=-0.91,-0.41,0.01
+  throw: how=early delayMs=0.1 handSpeed=4.67 gain=1.84 speed=8.59 physics=1 gravity=13.00 damping=0.850 name=ArkProjectiles.Charges.EMP
+  flight: v=0.480,7.905,2.887 expected=0.486,8.000,3.102
+  contact: onFloor=1 range=4.54 gameRange=4.47 realRange=4.54 rangeError=0.064 lateral=0.000 gravity=12.90 damping=0.849
+--- recycler: ArkSpecialWeapons.RecyclerGrenadeWeapon min=10.00 max=35.00 charge=1.50 deployRange=1.25
+  hand: palmErrCmR=0.0 lenErrDegR=0.0 palmNormErrDegR=0.0 propInGripCmR=-5.3,-1.2,-0.9 propXInGripR=0.06,-0.16,0.99 propYInGripR=0.58,0.81,0.09 propZInGripR=-0.81,0.57,0.14
+  throw: how=early delayMs=0.0 handSpeed=4.67 gain=1.84 speed=8.59 physics=1 gravity=13.00 damping=0.850 name=ArkProjectiles.Charges.Recycler
+  flight: v=0.480,7.895,2.865 expected=0.486,7.999,3.102
+  contact: onFloor=1 range=4.55 gameRange=4.46 realRange=4.53 rangeError=0.092 lateral=0.000 gravity=12.89 damping=0.848
+--- nullwave: ArkSpecialWeapons.NullwaveTransmitterWeapon min=10.00 max=35.00 charge=1.50 deployRange=1.25
+  hand: palmErrCmR=0.0 lenErrDegR=0.0 palmNormErrDegR=0.0 propInGripCmR=-5.2,-2.6,-0.4 propXInGripR=-0.63,0.36,-0.69 propYInGripR=-0.02,-0.89,-0.45 propZInGripR=-0.78,-0.26,0.57
+  throw: how=early delayMs=0.0 handSpeed=4.67 gain=1.84 speed=8.59 physics=1 gravity=13.00 damping=0.850 name=ArkProjectiles.Charges.Nullwave
+  flight: v=0.479,7.893,2.860 expected=0.486,7.999,3.102
+  contact: onFloor=1 range=4.49 gameRange=4.45 realRange=4.53 rangeError=0.038 lateral=0.000 gravity=12.89 damping=0.849
+--- lure: ArkSpecialWeapons.LureGrenadeWeapon min=10.00 max=35.00 charge=1.50 deployRange=1.25
+  hand: palmErrCmR=0.0 lenErrDegR=0.0 palmNormErrDegR=0.0 propInGripCmR=-1.5,-2.1,-0.6 propXInGripR=0.98,0.22,0.03 propYInGripR=0.22,-0.97,0.07 propZInGripR=0.05,-0.06,-1.00
+  throw: how=early delayMs=0.0 handSpeed=4.67 gain=1.84 speed=8.60 physics=1 gravity=13.00 damping=0.850 name=ArkProjectiles.Charges.Lure
+  flight: v=0.480,7.900,2.864 expected=0.486,8.005,3.105
+  contact: onFloor=1 range=4.55 gameRange=4.47 realRange=4.55 rangeError=0.080 lateral=0.000 gravity=12.90 damping=0.849

@@ -1007,7 +1007,8 @@ bool CarryHoldingInHand() { return gHolding.load(); }
 
 void RecordCarryMotion(const TrackingFrame& frame)
 {
-    if (!gInstalled) { return; }
+    // Kept whether or not the carry hooks installed: the grenade lane throws
+    // with the right hand's history too.
     std::lock_guard lock(gMotionMutex);
     for (unsigned h = 0; h < 2; ++h) {
         const auto& s = frame.hands[h];
@@ -1023,6 +1024,14 @@ void RecordCarryMotion(const TrackingFrame& frame)
         gMotionSamples.fetch_add(1, std::memory_order_relaxed);
         if (m.velocityValid) { gRuntimeVelocitySamples.fetch_add(1, std::memory_order_relaxed); }
     }
+}
+
+bool EstimateHandMotion(unsigned hand, carry::Motion& out)
+{
+    if (hand > 1) { return false; }
+    std::lock_guard lock(gMotionMutex);
+    out = gMotion[hand].Estimate();
+    return out.valid;
 }
 
 void RequestCarryRelease()

@@ -19,7 +19,7 @@ The launcher starts Prey, loads the mod, waits for the requested render size, an
 | Left Y | — | Y action shown by Prey |
 | Right grip | Tap: reload (never uses what the left hand points at). Hold: holster the weapon. With the weapon holstered: draw it again | Next tab, on release |
 | Left grip | Use what the left hand points at (tap or hold, as Prey's prompt says); keep it closed to hold what you picked up, open it to drop or throw; hold a long weapon's support grip | Previous tab, on release |
-| Triggers | Right: fire (hold for automatic fire and to charge the Disruptor) | Previous / next page (LT / RT) |
+| Triggers | Right: fire (hold for automatic fire and to charge the Disruptor); with a grenade: hold it, let go during a throwing motion to throw it | Previous / next page (LT / RT) |
 | Left menu button | Tap: pause. Hold: VR options | Tap: pause / resume. Hold: VR options |
 | Both grips + left Y | Reset VR view | Reset and bring the panel in front of you |
 | F11 | Enable VR or retry setup | Enable VR or retry setup |
@@ -42,6 +42,12 @@ is closed: a light object flies to the hand and is held by the side you pointed 
 follows the hand, a body is dragged from it. Open the hand to drop it, or open it during a throwing motion to
 throw it with the hand's speed; the right trigger still throws it the game's way. `carry.hold 0` restores
 "squeeze again to drop".
+
+**Grenades** (EMP, Recycler, Nullwave, Lure) sit in the right hand. Hold the right trigger, throw with your
+arm and let go of the trigger: the grenade leaves at that instant with your hand's speed and direction, and comes
+down about where a real ball thrown the same way would. Let go with the hand still and it drops at your feet.
+Looking at a nearby surface no longer sticks the grenade to it. `grenade.hand 0` restores the game's own
+charged throw along the view.
 
 With no weapon drawn -- holstered, or while carrying something -- both hands stay visible at the controllers
 (open; the left one closes around what it carries). Hold the right grip to holster the weapon, squeeze it again

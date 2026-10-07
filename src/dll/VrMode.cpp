@@ -20,6 +20,7 @@
 #include "AnimIkTakeover.h"
 #include "InteractionLane.h"
 #include "CarryLane.h"
+#include "GrenadeLane.h"
 #include "DebugOverlay.h"
 #include "preyvr/DebugOverlayScene.h"
 #include "preyvr/LatestSnapshot.h"
@@ -173,6 +174,10 @@ void TickVrMode() {
         // thrown with the hand's motion (CarryLane.h). Not fatal: without the
         // hooks the game's own carry stays, toggled like in phase 1.
         else if(SetCarryHand(1)!=0) Log("carry_hand=native reason=hooks_unavailable");
+        // Grenades leave the right hand at the trigger's release with its
+        // motion (GrenadeLane.h). Not fatal: without the hooks the game's own
+        // charged throw along the view stays.
+        if(SetGrenadeHand(1)!=0) Log("grenade_hand=native reason=hooks_unavailable");
         // The arms stay at the controllers with no weapon drawn: holstered (the
         // right grip held) or carrying (AnimIkTakeover arms.free; arms.free 0 =
         // the game lowers them out of view, as before).

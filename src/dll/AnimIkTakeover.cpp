@@ -6,6 +6,7 @@
 #include "AimTakeover.h"
 #include "WeaponAttachment.h"
 #include "CarryLane.h"
+#include "GrenadeLane.h"
 #include "PhysicalInteractions.h"
 #include <mutex>
 #include "HeadTrackingHook.h"
@@ -528,6 +529,10 @@ struct HandMarks {
     Vec3 neck{}, headJoint{}, headEnd{};
     bool headValid = false;
     Pose head{};                            // the HMD, same space
+    // The hand's prop joint (r/l_handProp_jnt): what a held grenade is bound
+    // to (the arms' "weapon" attachment), and its axes (directions).
+    Vec3 prop[2]{}, propAxis[2][3]{};
+    bool propValid[2]{};
     float support = 0.0f;
     std::uint64_t stamp = 0;
 };
@@ -1009,7 +1014,11 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
         traceGrip = state.gripPose.position;
         traceControllerWorld = world.position;
         goal = animik::WorldToModel(location, world.position);
-        if (hand == 0 && gAlignWeapon && owner.weapon != 0) {
+        // A grenade has no barrel to align (status missing_helper, and the hand
+        // then stayed where the native animation holds it, 10-20 cm off the
+        // controller): the hand holding it is driven like a free hand, the
+        // grenade in the native fingers (GrenadeLane.h).
+        if (hand == 0 && gAlignWeapon && owner.weapon != 0 && !GrenadeHeldByHand(owner.weapon)) {
             gAlignGeneration = owner.generation;
             gWeaponVtableRva.store(ReadVtableRva(owner.weapon), std::memory_order_relaxed);
             gAlignSequence = frame.tracking.sequence;
@@ -1573,6 +1582,17 @@ void CaptureMarks(const GameplayPoseFrame& frame, std::uint8_t* absolute, unsign
                                                         : static_cast<unsigned>(Hand::left)];
         marks.grip[s] = state.gripPose;
         marks.aim[s] = state.aimPose;
+        QuatT pj{};
+        if (rig.handProp[s] >= 0 && ReadQuatT(absolute, count, rig.handProp[s], pj)) {
+            const Quaternion pq{pj.q[0], pj.q[1], pj.q[2], pj.q[3]};
+            const Vec3 pt{pj.t[0], pj.t[1], pj.t[2]};
+            marks.prop[s] = toXr(pt);
+            const Vec3 axes[3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+            for (int a = 0; a < 3; ++a) {
+                marks.propAxis[s][a] = Sub3(toXr(Add3(pt, Rotate(pq, Scale3(axes[a], 0.05f)))), marks.prop[s]);
+            }
+            marks.propValid[s] = true;
+        }
         marks.posed[s] = settings.mode == 1;
         QuatT c{}, u{}, l{};
         if (rig.clavicle[s] >= 0 && rig.upperArm[s] >= 0 && rig.lowerArm[s] >= 0 &&
@@ -2315,6 +2335,18 @@ std::string HandPoseReport()
         out << " gripInAim" << tag << "=q" << rel.x << ',' << rel.y << ',' << rel.z << ',' << rel.w;
         out.precision(1);
         out << "|deg" << angle << "|cm" << off.x * 100.0f << ',' << off.y * 100.0f << ',' << off.z * 100.0f;
+        // The prop joint (a held grenade's) in the grip frame: cm, and its axes (unit).
+        if (marks.propValid[s]) {
+            const Vec3 at = Rotate(Conj(grip.orientation), Sub3(marks.prop[s], grip.position));
+            const Vec3 px = inGrip(marks.propAxis[s][0]), py = inGrip(marks.propAxis[s][1]),
+                       pz = inGrip(marks.propAxis[s][2]);
+            out << " propInGripCm" << tag << '=' << at.x * 100.0f << ',' << at.y * 100.0f << ',' << at.z * 100.0f;
+            out.precision(2);
+            out << " propXInGrip" << tag << '=' << px.x << ',' << px.y << ',' << px.z << " propYInGrip" << tag << '='
+                << py.x << ',' << py.y << ',' << py.z << " propZInGrip" << tag << '=' << pz.x << ',' << pz.y << ','
+                << pz.z;
+            out.precision(1);
+        }
     }
     return out.str();
 }
@@ -2383,6 +2415,13 @@ std::string HandPoseMarks()
             cross(marks.goalRaw[s], 255, 255, 255);
             cross(marks.goalWritten[s], 255, 40, 40);
         }
+        // The prop joint (what a held grenade hangs on): pale red/green/blue axes.
+        if (marks.propValid[s] && s == 0) {
+            const Vec3 o = marks.prop[s];
+            seg(o, Add3(o, marks.propAxis[s][0]), 255, 120, 120);
+            seg(o, Add3(o, marks.propAxis[s][1]), 120, 255, 120);
+            seg(o, Add3(o, marks.propAxis[s][2]), 120, 160, 255);
+        }
     }
     if (marks.headValid) {
         seg(marks.neck, marks.headJoint, 255, 140, 0);
@@ -2427,6 +2466,7 @@ std::string HandPoseMarks()
             point(("goalRaw" + t).c_str(), marks.goalRaw[s]);
             point(("goalWritten" + t).c_str(), marks.goalWritten[s]);
         }
+        if (marks.propValid[s]) { point(("prop" + t).c_str(), marks.prop[s]); }
     }
     return out.str();
 }

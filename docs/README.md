@@ -14,6 +14,8 @@ The notebook separates evidence from plans so implementation follows demonstrate
 > [`INTERACTION-LEFT-HAND-2026-10-06.md`](INTERACTION-LEFT-HAND-2026-10-06.md).
 > The arms with no weapon drawn, holster/draw on the right grip and carried objects held by
 > their near side: [`ARMS-NO-WEAPON-2026-10-07.md`](ARMS-NO-WEAPON-2026-10-07.md).
+> Grenades in the right hand, thrown with it (leave at the trigger's release, land where a real ball would):
+> [`GRENADES-HAND-2026-10-07.md`](GRENADES-HAND-2026-10-07.md).
 >
 > [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) remains
 > the record of binary identity and lifecycle decisions.

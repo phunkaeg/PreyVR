@@ -1,0 +1,8 @@
+=== 2026-10-07T14:39:36 GrenadeCases kind=emp
+hold: deploy=0 deploySuppressedFrames=970 equipped=grenade weaponArchetype=ArkSpecialWeapons.EMPGrenadeWeapon minSpeed=10.00 maxSpeed=35.00 chargeDuration=1.50 deployReady=0 deployRange=1.25
+[PASS] E medium throw  how=early delayMs=0,1 thrown=1 hand=4,67 speed=8,59 gain=1,84 spawnFrom=1 spawnFromGripCm=2,0 v2ErrPct=-2,0 v2AngleDeg=1,16 v2Err=0,241 onFloor=1 range=4,53 model=4,46 real=4,53 lateral=0,000 rest=5,99 g=12,9 k=0,85 skipped=1 throws=1
+[FAIL] H walking backwards  how=early delayMs=0,0 thrown=1 hand=4,67 speed=8,59 gain=1,84 spawnFrom=1 spawnFromGripCm=2,0 v2ErrPct=-2,0 v2AngleDeg=1,17 v2Err=0,242 onFloor=1 range=4,55 model=4,47 real=4,54 lateral=0,000 rest=5,74 g=12,9 k=0,85 skipped=1 throws=1 playerSpeed=0,00
+[PASS] K three in a row  throws=3 early=3 skipped=3
+[PASS] N native (grenade.hand 0)  how=event delayMs=136,1 thrown=0 hand=0,00 speed=0,00 gain=1,00 spawnFrom=-1 spawnFromGripCm=NaN v2ErrPct=NaN v2AngleDeg=NaN v2Err=NaN onFloor=0 range=-1,00 model=11,34 real=-1,00 lateral=-1,000 rest=10,30 g=12,9 k=0,85 skipped=0 throws=1
+[PASS] O at the event (grenade.early 0)  how=event delayMs=131,2 thrown=1 hand=4,64 speed=8,58 gain=1,85 spawnFrom=1 spawnFromGripCm=2,0 v2ErrPct=-2,1 v2AngleDeg=1,24 v2Err=0,255 onFloor=1 range=4,61 model=4,52 real=4,60 lateral=0,000 rest=5,56 g=12,9 k=0,85 skipped=0 throws=1
+=== 4/5 PASS
