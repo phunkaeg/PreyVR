@@ -147,6 +147,13 @@ unsigned long long AnimIkOwnerCharacter();
 unsigned long long AnimIkOwnerGeneration();
 unsigned long long AnimIkPoseSequence();
 unsigned long long AnimIkNoOwner();
+// arms.free: with no weapon drawn (holstered, carrying) the player's own arms
+// rig is driven as well (open hands; the carrying hand closes).
+DWORD SetAnimIkFreeArms(unsigned enabled);
+unsigned AnimIkFreeArms();
+// The IK is driving the no-weapon arms right now.
+bool AnimIkFreeArmsBound();
+std::string AnimIkFreeArmsReport();
 unsigned long long AnimIkBusy();
 unsigned int AnimIkMode();
 unsigned int AnimIkHooked();

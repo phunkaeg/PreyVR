@@ -1,0 +1,30 @@
+=== 2026-10-07T12:29:53 CarryCases
+carry: installed=1 hand=1 holdToHold=1 velocityQueue=1
+[PASS] J drag the body (hold)  grab=1 entity=65047 kind=corpse mass=80.00 diag=2.52 hold=0.00 corpsePoints=148 written=1 centreErrorM=0.674 gripDistM=0.647 constrained=0
+[PASS] J drag point at the hand  pointToGripM=0,04 grab=1 entity=65047 kind=corpse mass=80.00 diag=2.52 hold=0.00 corpsePoints=406 written=1 centreErrorM=0.454 gripDistM=0.465 constrained=0
+[PASS] J drag point follows the hand left/down  pointToGripM=0,00
+[PASS] J body let go  entity=65047 impulse=0.00 angular=0 thrown=0 ours=0 sentThrown=0
+[PASS] H toggle: stays after the grip opens, drops on the next press  id=3407 held=True dropped=True
+[PASS] I carry.hand 0: native carry, toggled  grab=1 entity=3413 kind=native mass=1.00 diag=0.40 hold=0.00 corpsePoints=0 written=0 constrained=1
+[PASS] K grab a prop to throw while walking  grab=1 entity=3413 kind=light mass=1.00 diag=0.40 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.083 rotErrDeg=0.0 constrained=1
+[PASS] K throw while walking: flies with hand + player velocity  thrown=1 hand=5,01 m/s asked=8,87 flew=8,83 m/s angle=0,0 deg
+    player velocity at the release: 2,00 m/s
+[PASS] K the thrown prop stays in the world  use.find result=0 id=3413 found=1 name=ArkPhysicsProps.Misc.Clothes_Shoes_A_Male1_R bounds=1 centre=827.641,1591.331,15.866 lhandYaw=0.69 lhandPitch=-19.58 distM=3.08
+
+SUMMARY 9/9 PASS
+
+case                                                            ok detail                                                                                                                                                   
+----                                                            -- ------                                                                                                                                                   
+J drag the body (hold)                                        True grab=1 entity=65047 kind=corpse mass=80.00 diag=2.52 hold=0.00 corpsePoints=148 written=1 centreErrorM=0.674 gripDistM=0.647 constrained=0               
+J drag point at the hand                                      True pointToGripM=0,04 grab=1 entity=65047 kind=corpse mass=80.00 diag=2.52 hold=0.00 corpsePoints=406 written=1 centreErrorM=0.454 gripDistM=0.465 constra...
+J drag point follows the hand left/down                       True pointToGripM=0,00                                                                                                                                        
+J body let go                                                 True entity=65047 impulse=0.00 angular=0 thrown=0 ours=0 sentThrown=0                                                                                         
+H toggle: stays after the grip opens, drops on the next press True id=3407 held=True dropped=True                                                                                                                           
+I carry.hand 0: native carry, toggled                         True grab=1 entity=3413 kind=native mass=1.00 diag=0.40 hold=0.00 corpsePoints=0 written=0 constrained=1                                                      
+K grab a prop to throw while walking                          True grab=1 entity=3413 kind=light mass=1.00 diag=0.40 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.083 rotErrDeg=0.0 constrained=1      
+K throw while walking: flies with hand + player velocity      True thrown=1 hand=5,01 m/s asked=8,87 flew=8,83 m/s angle=0,0 deg                                                                                            
+K the thrown prop stays in the world                          True use.find result=0 id=3413 found=1 name=ArkPhysicsProps.Misc.Clothes_Shoes_A_Male1_R bounds=1 centre=827.641,1591.331,15.866 lhandYaw=0.69 lhandPitch=-...
+
+
+
+carry: carry.report result=0 installed=1 hand=1 holdToHold=1 grabPointMode=1 holding=0 velocityQueue=1 updates=6820 starts=4 stops=5 releasesAsked=2 releasesDone=1 refused=0 throws=1 drops=0 nativeThrows=0 velocitySets=1 velocityFaults=0 faults=0 stale=0 motionSamples=30224 runtimeVelocitySamples=30224 gain=1.40 throwSpeed=1.60 maxSpeed=16.00 heavyMaxSpeed=5.00 grab=0 entity=3413 name=ArkPhysicsProps.Misc.Clothes_Shoes_A_Male1_R class=RigidBodyEx kind=light mass=1.00 diag=0.40 hold=0.00 articulated=0 targets=896 writes=892 corpsePoints=0 written=1 grabPoint=1 grabLocal=0.001,0.034,0.152 native=827.627,1587.242,16.849 target=827.473,1587.987,16.394 wantCentre=827.471,1587.967,16.467 grip=827.467,1587.914,16.532 centreErrorM=0.068 gripDistM=0.082 rotErrDeg=0.0 lastRelease=throw releasedEntity=3413 handSpeed=5.01 handWorld=0.275,4.534,2.121 spinWorld=9.708,-0.590,0.000 playerV=0.121,1.996,0.000 velocity=0.507,8.344,2.969 angular=9.708,-0.590,0.000 capped=0 motionRuntime=1 motionSamples=14 settledDrop=0.513 restored=1 restoredFrame=47 impulseMode=0 nativeImpulseScale=3.00 flightV2=0.506,8.337,2.854 flightSpeed2=8.83 flightSpeed12=8.45 expected=0.143,2.356,2.969 lastStop={entity=3413 impulse=0.00 angular=0 thrown=0 ours=1 sentThrown=1} kickBacks=0.00,1.00,2.00,3.00 grabberBreakSq=1.00 lerpSpeed=20.00 lerpObstructed=20.00 lerpAccel=300.00 lerpObstructedAccel=50.00 maxTimeUnder=1.00 constrained=1 justThrown=0 constraintId=0 dragHeight=-0.35 dragDistance=0.00 dragBreakSq=6.76

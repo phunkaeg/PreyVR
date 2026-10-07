@@ -232,6 +232,39 @@ void TestSlerp()
 
 } // namespace
 
+void TestHandShape()
+{
+    const Vec3 bone{1, 0, 0};
+    // fist 0 is the relaxed hand, for every joint, both hands, any curl.
+    for (int s = 0; s < 2; ++s) {
+        const Side side = s ? Side::left : Side::right;
+        for (int j = 0; j < kJointCount; ++j) {
+            const Quaternion a = ShapeRelative(side, j, 0.7f, 0.0f), b = RelaxedRelative(side, j, 0.7f);
+            Require(std::fabs(a.x - b.x) + std::fabs(a.y - b.y) + std::fabs(a.z - b.z) + std::fabs(a.w - b.w) < 1e-5f,
+                    "fist 0 == relaxed");
+        }
+    }
+    // Closing flexes every phalanx further towards the palm, in its own plane.
+    for (int j : {kIndex1, kIndex2, kMiddle1, kRing2, kPinky1}) {
+        const Vec3 open = Rotate(ShapeRelative(Side::left, j, 1.0f, 0.0f), bone);
+        const Vec3 half = Rotate(ShapeRelative(Side::left, j, 1.0f, 0.5f), bone);
+        const Vec3 shut = Rotate(ShapeRelative(Side::left, j, 1.0f, 1.0f), bone);
+        Require(shut.y < half.y && half.y < open.y, "the fist closes towards the palm");
+        Require(std::fabs(shut.z) < 1e-5f, "in the phalanx's own plane");
+    }
+    // A closed knuckle bends past 60 degrees; the metacarpals keep the palm's arch.
+    Require(AngleBetween(ShapeRelative(Side::left, kMiddle1, 1.0f, 1.0f), Quaternion{}) > 60.0f * 3.14159f / 180.0f,
+            "a real fist");
+    Require(AngleBetween(ShapeRelative(Side::left, kRingBase, 1.0f, 1.0f),
+                         ShapeRelative(Side::left, kRingBase, 1.0f, 0.0f)) < 2e-3f, "metacarpals unchanged");
+    // Clamped, and mirrored for the right hand like the relaxed pose.
+    Require(AngleBetween(ShapeRelative(Side::left, kIndex2, 1.0f, 3.0f), ShapeRelative(Side::left, kIndex2, 1.0f, 1.0f)) < 2e-3f,
+            "fist clamped to 1");
+    const Vec3 l = Rotate(ShapeRelative(Side::left, kIndex2, 1.0f, 1.0f), bone);
+    const Vec3 r = Rotate(ShapeRelative(Side::right, kIndex2, 1.0f, 1.0f), bone);
+    Require(NearVec(l, r, 1e-5f), "both fists close the same way in their own frames");
+}
+
 int main()
 {
     TestNames();
@@ -239,6 +272,7 @@ int main()
     TestMeasuredHandFrame();
     TestAnatomicalMapping();
     TestRelaxedPose();
+    TestHandShape();
     TestGripPoint();
     TestSoftReach();
     TestRollToMatch();

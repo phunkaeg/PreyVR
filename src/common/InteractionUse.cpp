@@ -30,6 +30,7 @@ const char* OwnerName(Owner owner)
     case Owner::Reload: return "reload";
     case Owner::Legacy: return "legacy";
     case Owner::Hold: return "hold";
+    case Owner::Draw: return "draw";
     default: return "none";
     }
 }
@@ -118,6 +119,7 @@ ButtonOutput UseButton::Update(const ButtonInput& in)
         } else if (rightEdge) {
             rightArmed_ = false;
             if (in.rightBusy || in.leftGrip) { out.busy = true; }
+            else if (in.holstered && !in.carrying) { owner_ = Owner::Draw; out.drawWeapon = true; }
             else { owner_ = Owner::Reload; clear_ = 0; waited_ = 0; out.suppressTarget = true; }
         }
         break;
@@ -182,6 +184,11 @@ ButtonOutput UseButton::Update(const ButtonInput& in)
         break;
     case Owner::Legacy:
         release();
+        break;
+    case Owner::Draw:
+        // The X button never goes down: holding on would holster again.
+        if (!in.rightGrip) { owner_ = Owner::None; }
+        if (in.leftGrip) { leftArmed_ = false; }
         break;
     case Owner::Hold:
         if (!in.carrying) {

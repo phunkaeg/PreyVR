@@ -5,6 +5,7 @@
 #include "HandRigTakeover.h"
 #include "AimTakeover.h"
 #include "WeaponAttachment.h"
+#include "CarryLane.h"
 #include "PhysicalInteractions.h"
 #include <mutex>
 #include "HeadTrackingHook.h"
@@ -93,6 +94,27 @@ std::atomic<std::uint64_t> gOwnerGeneration{0}, gOwnerCharacter{0}, gUsedSequenc
 std::atomic<unsigned long long> gNoOwner{0}, gBusy{0};
 std::atomic<unsigned int> gSignatureJoints{101};
 std::atomic<unsigned int> gHands{1};
+// arms.free: with no weapon drawn (holstered, or carrying something) the game
+// lowers the first-person arms out of view; the same rig is still skinned and
+// drawn, so it is driven too. Its owner is the player's own character
+// (ArkPlayer::GetAnimatedCharacter 0x157C6D0 = [player+0x1808]; the animated
+// character caches its ICharacterInstance at +0x710, live == the weapon rig's
+// owning character, 2026-10-07).
+std::atomic<unsigned int> gFreeArms{0};
+std::atomic<bool> gFreeBound{false};
+std::atomic<unsigned long long> gFreeFrames{0}, gFreeGateZero{0};
+std::atomic<int> gFreeFistMilli[2]{0, 0};
+float gFreeFist[2]{};               // eased, under gIkMutex
+std::uint64_t gFreeFistNs = 0;
+std::uint64_t gFreeSinceNs = 0;     // when the free owner bound (fingers ease in), under gIkMutex
+constexpr std::uint64_t kFreeGenerationBit = 1ull << 62;
+constexpr std::size_t kPlayerAnimatedCharacter = 0x1808;
+constexpr std::size_t kAnimatedCharacterInstance = 0x710;
+constexpr std::uintptr_t kArmsCharacterVtableRva = 0x1D22200;
+// Not during a cinematic: ArkPlayerInput (player+0x8E0, vtable 0x1E580E0) +0x94,
+// the gate Funk's body holsters use (BodyEquipment.cpp).
+constexpr std::size_t kPlayerInput = 0x8E0, kInputCinematic = 0x94;
+constexpr std::uintptr_t kPlayerInputVtableRva = 0x1E580E0;
 std::atomic<int> gReachPercent{100};
 
 std::atomic<unsigned long long> gCalls{0};
@@ -261,6 +283,23 @@ int JointIndexByName(const std::uint8_t* skeleton, unsigned int count, const cha
 // The signature identifies an asset, not a live owner. The caller first checks
 // the current selected weapon's attachment-manager owner; validate indices anew
 // on each matching callback, even when a skeleton pointer is reused.
+
+bool TryGetFreeArms(std::uintptr_t player, EquippedRig& out)
+{
+    const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
+    if (!base || !player) { return false; }
+    __try {
+        if (*reinterpret_cast<std::uintptr_t*>(player + kPlayerInput) != base + kPlayerInputVtableRva ||
+            *reinterpret_cast<int*>(player + kPlayerInput + kInputCinematic) != 0) { return false; }
+        const auto animated = *reinterpret_cast<std::uintptr_t*>(player + kPlayerAnimatedCharacter);
+        if (!animated) { return false; }
+        const auto character = *reinterpret_cast<std::uintptr_t*>(animated + kAnimatedCharacterInstance);
+        if (!character || *reinterpret_cast<std::uintptr_t*>(character) != base + kArmsCharacterVtableRva) { return false; }
+        out = {};
+        out.character = character;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
 
 bool IdentifyRig(std::uint8_t* character)
 {
@@ -627,6 +666,11 @@ struct ArmPlan {
     float reachModel = 0.0f;    // the stretched arm's reach, model units
     bool goalSet = false;       // DriveHand wrote this wrist goal (model)
     Vec3 goal{};
+    // arms.free: the wrist's rotation is set after the pass as well, with what
+    // the hand carries: the lowered no-weapon pose may run no native IK at all.
+    bool forceRotation = false;
+    bool rotationSet = false;
+    Quaternion rotation{};
 };
 
 // What the last solve did, for arm.report and pose.marks.
@@ -965,7 +1009,7 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
         traceGrip = state.gripPose.position;
         traceControllerWorld = world.position;
         goal = animik::WorldToModel(location, world.position);
-        if (hand == 0 && gAlignWeapon) {
+        if (hand == 0 && gAlignWeapon && owner.weapon != 0) {
             gAlignGeneration = owner.generation;
             gWeaponVtableRva.store(ReadVtableRva(owner.weapon), std::memory_order_relaxed);
             gAlignSequence = frame.tracking.sequence;
@@ -1170,6 +1214,9 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
                     writeRotation = true;
                 }
                 if (fingers) { fingers->apply = posedFree; fingers->weight = 1.0f - blend; fingers->support = blend; }
+            } else if (posed && hand == 0 && fingers) {
+                // arms.free: the right hand holds nothing either.
+                fingers->apply = posedFree; fingers->weight = 1.0f; fingers->support = 0.0f;
             } else if(supportLocked) {
                 // The weapon follows the already compressed primary wrist.
                 // Compressing the support arm independently would pull it off the gun.
@@ -1282,7 +1329,7 @@ void DriveHand(unsigned int hand, std::uint8_t* relative, std::uint8_t* absolute
     gUsedSequence.store(frame.tracking.sequence);
     gWritten[hand].fetch_add(1, std::memory_order_relaxed);
     if (hand < 2) { gMarkGoal[hand] = {true, markRaw, goal}; }
-    if (arm != nullptr) { arm->goal = goal; arm->goalSet = true; }
+    if (arm != nullptr) { arm->goal = goal; arm->goalSet = true; arm->rotation = rotation; arm->rotationSet = writeRotation; }
     if (hand == 0) {
         gLastGoalMm[0].store(static_cast<int>(goal.x * 1000.0f), std::memory_order_relaxed);
         gLastGoalMm[1].store(static_cast<int>(goal.y * 1000.0f), std::memory_order_relaxed);
@@ -1299,16 +1346,17 @@ bool WriteFloatsGuarded(std::uint8_t* at, const float* values, unsigned count)
 // Before the native pass: the left hand's finger joints take the relaxed pose,
 // blended with the animation's by `weight` (1 = relaxed). Relative rotations
 // only; their offsets (bone lengths) are the rig's.
-bool ApplyRelaxedFingers(std::uint8_t* relative, unsigned count, float weight, float curl)
+bool ApplyRelaxedFingers(std::uint8_t* relative, unsigned count, float weight, float curl, int side = 1,
+                         float fist = 0.0f)
 {
     if (weight <= 0.0f) { return false; }
+    const auto hand = side == 0 ? handpose::Side::right : handpose::Side::left;
     for (int j = 0; j < handpose::kJointCount; ++j) {
-        const int index = gHandRig.joint[1][j];
+        const int index = gHandRig.joint[side][j];
         QuatT rel{};
         if (!ReadQuatT(relative, count, index, rel)) { return false; }
         const Quaternion native{rel.q[0], rel.q[1], rel.q[2], rel.q[3]};
-        const Quaternion target = handpose::Slerp(native,
-            handpose::RelaxedRelative(handpose::Side::left, j, curl), weight);
+        const Quaternion target = handpose::Slerp(native, handpose::ShapeRelative(hand, j, curl, fist), weight);
         const float q[4] = {target.x, target.y, target.z, target.w};
         if (!WriteFloatsGuarded(relative + static_cast<std::size_t>(index) * kQuatTStride, q, 4)) { return false; }
     }
@@ -1318,18 +1366,18 @@ bool ApplyRelaxedFingers(std::uint8_t* relative, unsigned count, float weight, f
 // After the native pass, which placed the wrist: the finger joints' absolute
 // poses from their (rewritten) relatives, parents first. Idempotent with the
 // pass's own re-propagation; makes the result independent of whether it did.
-void PropagateFingers(std::uint8_t* relative, std::uint8_t* absolute, unsigned count, const HandRig& rig)
+void PropagateFingers(std::uint8_t* relative, std::uint8_t* absolute, unsigned count, const HandRig& rig, int side = 1)
 {
     for (int j = 0; j < handpose::kJointCount; ++j) {
         const int role = handpose::ParentRole(j);
-        const int parent = role < 0 ? rig.wrist[1] : rig.joint[1][role];
+        const int parent = role < 0 ? rig.wrist[side] : rig.joint[side][role];
         QuatT p{}, r{};
-        if (!ReadQuatT(absolute, count, parent, p) || !ReadQuatT(relative, count, rig.joint[1][j], r)) { return; }
+        if (!ReadQuatT(absolute, count, parent, p) || !ReadQuatT(relative, count, rig.joint[side][j], r)) { return; }
         const Quaternion pq{p.q[0], p.q[1], p.q[2], p.q[3]};
         const Quaternion q = Normalize(Multiply(pq, Quaternion{r.q[0], r.q[1], r.q[2], r.q[3]}));
         const Vec3 t = Add3(Vec3{p.t[0], p.t[1], p.t[2]}, Rotate(pq, Vec3{r.t[0], r.t[1], r.t[2]}));
         const float out[7] = {q.x, q.y, q.z, q.w, t.x, t.y, t.z};
-        if (!WriteFloatsGuarded(absolute + static_cast<std::size_t>(rig.joint[1][j]) * kQuatTStride, out, 7)) { return; }
+        if (!WriteFloatsGuarded(absolute + static_cast<std::size_t>(rig.joint[side][j]) * kQuatTStride, out, 7)) { return; }
     }
 }
 
@@ -1449,6 +1497,22 @@ void SolveArms(const GameplayPoseFrame& frame, std::uint8_t* absolute, unsigned 
             shift(rig.handProp[s]);
             if (rig.valid[s]) {
                 for (int j = 0; j < handpose::kJointCount; ++j) { shift(rig.joint[s][j]); }
+            }
+        }
+        if (p.forceRotation && p.rotationSet) {
+            // Turn the hand and all it carries about the wrist onto the drive's rotation.
+            const Quaternion turn = Normalize(Multiply(p.rotation, Conj(handQ)));
+            const auto spin = [&](int j) {
+                QuatT a{};
+                if (ReadQuatT(absolute, count, j, a)) {
+                    const Vec3 t = Add3(wm, Rotate(turn, Sub3(Vec3{a.t[0], a.t[1], a.t[2]}, wm)));
+                    WriteQuatT(absolute, count, j, Multiply(turn, Quaternion{a.q[0], a.q[1], a.q[2], a.q[3]}), t);
+                }
+            };
+            spin(rig.wrist[s]);
+            spin(rig.handProp[s]);
+            if (rig.valid[s]) {
+                for (int j = 0; j < handpose::kJointCount; ++j) { spin(rig.joint[s][j]); }
             }
         }
         stats.solved[s] = true;
@@ -1583,8 +1647,17 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
     std::unique_lock stateLock(gIkMutex, std::try_to_lock);
     GameplayPoseFrame frame{};
     EquippedRig owner{};
-    const bool haveOwner = stateLock.owns_lock() && TryGetGameplayPoseFrame(frame, gDrive.load()) &&
-        TryGetEquippedRig(frame.player, owner);
+    const bool haveFrame = stateLock.owns_lock() && TryGetGameplayPoseFrame(frame, gDrive.load());
+    bool haveOwner = haveFrame && TryGetEquippedRig(frame.player, owner);
+    // arms.free: no weapon drawn -> the player's own arms. A generation of its
+    // own makes calibration and the hand rig rebind on every switch.
+    bool free = false;
+    if (haveFrame && !haveOwner && gFreeArms.load(std::memory_order_acquire) != 0 &&
+        TryGetFreeArms(frame.player, owner)) {
+        owner.generation = kFreeGenerationBit | WeaponEquipGeneration();
+        haveOwner = free = true;
+    }
+    if (stateLock.owns_lock()) { gFreeBound.store(free, std::memory_order_relaxed); }
     if (stateLock.owns_lock() && gAlignWeapon) {
         gAlignStatus = weaponrig::Status::noSample;
         gAlignBasis = {};
@@ -1600,9 +1673,13 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
         gOwnerGeneration.store(owner.generation);
         gOwnerCharacter.store(owner.character);
     }
+    // The other characters' fast pass-through compares this with the equip
+    // generation; the free owner holds until the next equip bumps it.
+    if (free) { gOwnerGeneration.store(WeaponEquipGeneration()); }
     // The owning rig's pose arrays when this callback drove it, for the work
     // that has to follow the native pass (finger propagation, measurement).
     FingerPlan fingerPlan{};
+    FingerPlan rightFingers{};
     ArmPlan armPlan[2]{};
     PoseSettings ownedSettings{};
     std::uint8_t* ownedRelative = nullptr;
@@ -1643,7 +1720,11 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
                 gLocYawMilli.store(static_cast<int>(animik::YawOf(location.q) * 57295.78f),
                                    std::memory_order_relaxed);
             }
-            if (mode == 2 && validLocation && gate != 0 && cvar != 0 && cvar != -1 &&
+            if (free) {
+                gFreeFrames.fetch_add(1, std::memory_order_relaxed);
+                if (gate == 0) { gFreeGateZero.fetch_add(1, std::memory_order_relaxed); }
+            }
+            if (mode == 2 && validLocation && (gate != 0 || free) && cvar != 0 && cvar != -1 &&
                 HandRigMode() != 2 && !WeaponRotationDriveArmed() && !WeaponOffsetArmed()) {
                 void* pose = nullptr;
                 void* relative = nullptr;
@@ -1663,14 +1744,27 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
                     }
                     PrepareArms(frame, location, static_cast<std::uint8_t*>(absolute),
                                 static_cast<unsigned>(poseCount), poseSettings, armPlan);
+                    armPlan[0].forceRotation = armPlan[1].forceRotation = free;
+                    // The hand that holds a carried object closes around it.
+                    {
+                        const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
+                        const float dt = gFreeFistNs != 0 && now > gFreeFistNs
+                            ? std::min(static_cast<float>(now - gFreeFistNs) * 1e-9f, 0.1f) : 0.0f;
+                        gFreeFistNs = now;
+                        for (int s = 0; s < 2; ++s) {
+                            const float want = free && s == 1 && CarryHoldingInHand() ? 1.0f : 0.0f;
+                            gFreeFist[s] += (want - gFreeFist[s]) * (1.0f - std::exp(-dt * 14.0f));
+                            gFreeFistMilli[s].store(static_cast<int>(gFreeFist[s] * 1000.0f), std::memory_order_relaxed);
+                        }
+                    }
                     Vec3 primaryGoal{};
                     Quaternion primaryRotation{};
                     bool primaryWritten=false;
                     if (hands & 1u) {
                         DriveHand(0, static_cast<std::uint8_t*>(relative), static_cast<std::uint8_t*>(absolute),
                                   static_cast<unsigned>(poseCount), location, frame, owner, poseSettings,
-                                  &primaryGoal, nullptr, &primaryWritten, &primaryRotation, nullptr, nullptr,
-                                  &armPlan[0]);
+                                  &primaryGoal, nullptr, &primaryWritten, &primaryRotation, nullptr,
+                                  free ? &rightFingers : nullptr, &armPlan[0]);
                     }
                     if ((hands & 2u) && gMode.load() == 2) {
                         DriveHand(1, static_cast<std::uint8_t*>(relative), static_cast<std::uint8_t*>(absolute),
@@ -1678,9 +1772,23 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
                                   nullptr, primaryWritten ? &primaryGoal : nullptr, nullptr, nullptr,
                                   primaryWritten ? &primaryRotation : nullptr, &fingerPlan, &armPlan[1]);
                     }
+                    if (free) {
+                        // From a weapon's grip to the open hand over 150 ms, not in one frame.
+                        const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
+                        if (gFreeSinceNs == 0) { gFreeSinceNs = now; }
+                        const float ramp = std::clamp(static_cast<float>(now - gFreeSinceNs) * 1e-9f / 0.15f, 0.0f, 1.0f);
+                        fingerPlan.weight *= ramp;
+                        rightFingers.weight *= ramp;
+                    } else {
+                        gFreeSinceNs = 0;
+                    }
                     if (fingerPlan.apply && gHandRig.valid[1]) {
                         fingerPlan.apply = ApplyRelaxedFingers(static_cast<std::uint8_t*>(relative),
-                            static_cast<unsigned>(poseCount), fingerPlan.weight, poseSettings.curl);
+                            static_cast<unsigned>(poseCount), fingerPlan.weight, poseSettings.curl, 1, gFreeFist[1]);
+                    }
+                    if (rightFingers.apply && gHandRig.valid[0]) {
+                        rightFingers.apply = ApplyRelaxedFingers(static_cast<std::uint8_t*>(relative),
+                            static_cast<unsigned>(poseCount), rightFingers.weight, poseSettings.curl, 0, gFreeFist[0]);
                     }
                     ownedRelative = static_cast<std::uint8_t*>(relative);
                     ownedAbsolute = static_cast<std::uint8_t*>(absolute);
@@ -1721,6 +1829,7 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
     }
     if (ownedAbsolute != nullptr) {
         if (fingerPlan.apply) { PropagateFingers(ownedRelative, ownedAbsolute, ownedCount, ownedHandRig); }
+        if (rightFingers.apply) { PropagateFingers(ownedRelative, ownedAbsolute, ownedCount, ownedHandRig, 0); }
         SolveArms(frame, ownedAbsolute, ownedCount, ownedLocation, ownedHandRig, armPlan, ownedSettings);
         CaptureMarks(frame, ownedAbsolute, ownedCount, ownedLocation, ownedHandRig, fingerPlan);
     }
@@ -2369,6 +2478,26 @@ unsigned long long AnimIkOwnerCharacter() { return gOwnerCharacter.load(); }
 unsigned long long AnimIkOwnerGeneration() { return gOwnerGeneration.load(); }
 unsigned long long AnimIkPoseSequence() { return gUsedSequence.load(); }
 unsigned long long AnimIkNoOwner() { return gNoOwner.load(); }
+
+DWORD SetAnimIkFreeArms(unsigned enabled)
+{
+    gFreeArms.store(enabled != 0 ? 1u : 0u, std::memory_order_release);
+    Log(std::string("result=0 detail=free_arms value=") + (enabled != 0 ? "1" : "0"));
+    return 0;
+}
+unsigned AnimIkFreeArms() { return gFreeArms.load(); }
+bool AnimIkFreeArmsBound() { return gFreeArms.load() != 0 && gFreeBound.load(); }
+
+std::string AnimIkFreeArmsReport()
+{
+    std::ostringstream out;
+    out << " free=" << gFreeArms.load() << " freeBound=" << (gFreeBound.load() ? 1 : 0)
+        << " freeFrames=" << gFreeFrames.load() << " freeGateZero=" << gFreeGateZero.load()
+        << " fistMilli=" << gFreeFistMilli[0].load() << "," << gFreeFistMilli[1].load()
+        << " ikMatched=" << gMatched.load() << " ikWritten=" << gWritten[0].load() << "," << gWritten[1].load()
+        << " ikNoOwner=" << gNoOwner.load();
+    return out.str();
+}
 unsigned long long AnimIkBusy() { return gBusy.load(); }
 unsigned int AnimIkMode() { return gMode.load(std::memory_order_relaxed); }
 unsigned int AnimIkHooked() { return gInstalled.load(std::memory_order_relaxed) ? 1u : 0u; }

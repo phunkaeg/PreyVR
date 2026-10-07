@@ -1,0 +1,71 @@
+=== 2026-10-07T12:18:40 CarryCases
+carry: installed=1 hand=1 holdToHold=1 velocityQueue=1
+[PASS] A grab towel  grab=1 entity=3410 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.298 rotErrDeg=0.0 constrained=1
+[PASS] A towel sits in the hand (front)  grab=1 entity=3410 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.298 rotErrDeg=0.0 constrained=1
+[PASS] A towel follows (left)  grab=1 entity=3410 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.298 rotErrDeg=0.0 constrained=1
+[PASS] A towel follows (up)  grab=1 entity=3410 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.298 rotErrDeg=0.0 constrained=1
+[PASS] A towel follows (roll60)  grab=1 entity=3410 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.298 rotErrDeg=0.0 constrained=1
+[PASS] A towel follows (pitch-50)  grab=1 entity=3410 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.298 rotErrDeg=0.0 constrained=1
+[PASS] B the towel lands on the floor (stays in the world)  use.find result=0 id=3410 found=1 name=ArkPhysicsProps.Bathroom.Towels bounds=1 centre=827.599,1583.588,15.534 lhandYaw=-1.91 lhandPitch=-80.52 distM=1.40
+[PASS] B slow release drops (no throw, no extra speed)  thrown=0 flew=0,09 m/s stop={entity=3410 impulse=0.00 angular=0 thrown=0 ours=1 sentThrown=0}
+[PASS] J drag the body (hold)  grab=1 entity=65047 kind=corpse mass=80.00 diag=2.52 hold=0.00 corpsePoints=131 written=1 centreErrorM=0.680 gripDistM=0.649 constrained=1
+[FAIL] J drag point at the hand  pointToGripM=0,44 grab=1 entity=65047 kind=corpse mass=80.00 diag=2.52 hold=0.00 corpsePoints=391 written=1 centreErrorM=0.645 gripDistM=0.635 constrained=1
+[PASS] J drag point follows the hand left/down  pointToGripM=0,20
+[PASS] J body let go  entity=65047 impulse=0.00 angular=0 thrown=0 ours=0 sentThrown=0
+[PASS] C grab a towel to throw  grab=1 entity=3011 kind=light mass=3.00 diag=0.89 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.410 rotErrDeg=0.0 constrained=1
+[PASS] C throw: flies with the hand velocity (runtime velocity)  thrown=1 hand=5,05 m/s asked=7,08 flew=7,03 m/s angle=0,0 deg
+[PASS] C the thrown towel stays in the world  use.find result=0 id=3011 found=1 name=ArkPhysicsProps.Office.Desk_Fan bounds=1 centre=825.603,1588.521,15.569 lhandYaw=-22.94 lhandPitch=-16.91 distM=4.63
+[PASS] D grab a shoe to throw  grab=1 entity=3406 kind=light mass=1.00 diag=0.40 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.201 rotErrDeg=0.0 constrained=1
+[PASS] D throw without runtime velocity (pose differences)  thrown=1 hand=4,77 m/s asked=6,68 flew=6,64 m/s angle=0,0 deg
+[PASS] D the thrown shoe stays in the world  use.find result=0 id=3406 found=1 name=ArkPhysicsProps.Misc.Clothes_Shoes_A_Male1_L bounds=1 centre=826.031,1588.100,15.475 lhandYaw=-26.92 lhandPitch=-20.20 distM=4.16
+[PASS] E item: taken at once, once, no hoover with the grip held 1.8 s  takes=1 hoover=0 tookMs=82
+[PASS] F grab bench (hold)  grab=1 entity=3415 kind=heavy mass=2000.00 diag=3.12 hold=0.75 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.330 rotErrDeg=0.0 constrained=1
+[PASS] F bench stays carried (not dropped as stuck) at the native place  grab=1 entity=3415 kind=heavy mass=2000.00 diag=3.12 hold=0.75 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.330 rotErrDeg=0.0 constrained=1
+[PASS] F bench follows the hand 30 cm left  grab=1 entity=3415 kind=heavy mass=2000.00 diag=3.12 hold=0.75 corpsePoints=0 written=1 centreErrorM=0.114 gripDistM=0.418 rotErrDeg=0.0 constrained=1
+[PASS] F bench rises with the hand  grab=1 entity=3415 kind=heavy mass=2000.00 diag=3.12 hold=0.75 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.330 rotErrDeg=0.0 constrained=1
+[PASS] F bench let go  stop={entity=3415 impulse=0.00 angular=0 thrown=0 ours=1 sentThrown=0}
+[PASS] F the bench stays in the world  use.find result=0 id=3415 found=1 name=ArkPhysicsProps.Chairs.Bench_Leather bounds=1 centre=826.994,1582.806,15.677 lhandYaw=-165.50 lhandPitch=-82.09 distM=1.50
+[PASS] G grab the mug (or the next small prop)  grab=1 entity=3005 kind=light mass=1.00 diag=0.24 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.076 rotErrDeg=0.0 constrained=1
+[PASS] G trigger: native throw  entity=3005 impulse=12.00 angular=1 thrown=1 ours=0 sentThrown=1
+[PASS] H toggle: stays after the grip opens, drops on the next press  id=3407 held=True dropped=True
+[FAIL] I carry.hand 0: native carry, toggled  grab=0 entity=3407 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.235 rotErrDeg=0.0 constrained=1
+[FAIL] K grab a prop to throw while walking  grab=0 entity=3407 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.235 rotErrDeg=0.0 constrained=1
+
+SUMMARY 27/30 PASS
+
+case                                                                ok detail                                                                                                                                               
+----                                                                -- ------                                                                                                                                               
+A grab towel                                                      True grab=1 entity=3410 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.298 rotErrDeg=0.0 constrained=1  
+A towel sits in the hand (front)                                  True grab=1 entity=3410 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.298 rotErrDeg=0.0 constrained=1  
+A towel follows (left)                                            True grab=1 entity=3410 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.298 rotErrDeg=0.0 constrained=1  
+A towel follows (up)                                              True grab=1 entity=3410 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.298 rotErrDeg=0.0 constrained=1  
+A towel follows (roll60)                                          True grab=1 entity=3410 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.298 rotErrDeg=0.0 constrained=1  
+A towel follows (pitch-50)                                        True grab=1 entity=3410 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.298 rotErrDeg=0.0 constrained=1  
+B the towel lands on the floor (stays in the world)               True use.find result=0 id=3410 found=1 name=ArkPhysicsProps.Bathroom.Towels bounds=1 centre=827.599,1583.588,15.534 lhandYaw=-1.91 lhandPitch=-80.52 di...
+B slow release drops (no throw, no extra speed)                   True thrown=0 flew=0,09 m/s stop={entity=3410 impulse=0.00 angular=0 thrown=0 ours=1 sentThrown=0}                                                        
+J drag the body (hold)                                            True grab=1 entity=65047 kind=corpse mass=80.00 diag=2.52 hold=0.00 corpsePoints=131 written=1 centreErrorM=0.680 gripDistM=0.649 constrained=1           
+J drag point at the hand                                         False pointToGripM=0,44 grab=1 entity=65047 kind=corpse mass=80.00 diag=2.52 hold=0.00 corpsePoints=391 written=1 centreErrorM=0.645 gripDistM=0.635 con...
+J drag point follows the hand left/down                           True pointToGripM=0,20                                                                                                                                    
+J body let go                                                     True entity=65047 impulse=0.00 angular=0 thrown=0 ours=0 sentThrown=0                                                                                     
+C grab a towel to throw                                           True grab=1 entity=3011 kind=light mass=3.00 diag=0.89 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.410 rotErrDeg=0.0 constrained=1  
+C throw: flies with the hand velocity (runtime velocity)          True thrown=1 hand=5,05 m/s asked=7,08 flew=7,03 m/s angle=0,0 deg                                                                                        
+C the thrown towel stays in the world                             True use.find result=0 id=3011 found=1 name=ArkPhysicsProps.Office.Desk_Fan bounds=1 centre=825.603,1588.521,15.569 lhandYaw=-22.94 lhandPitch=-16.91 d...
+D grab a shoe to throw                                            True grab=1 entity=3406 kind=light mass=1.00 diag=0.40 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.201 rotErrDeg=0.0 constrained=1  
+D throw without runtime velocity (pose differences)               True thrown=1 hand=4,77 m/s asked=6,68 flew=6,64 m/s angle=0,0 deg                                                                                        
+D the thrown shoe stays in the world                              True use.find result=0 id=3406 found=1 name=ArkPhysicsProps.Misc.Clothes_Shoes_A_Male1_L bounds=1 centre=826.031,1588.100,15.475 lhandYaw=-26.92 lhandP...
+E item: taken at once, once, no hoover with the grip held 1.8 s   True takes=1 hoover=0 tookMs=82                                                                                                                           
+F grab bench (hold)                                               True grab=1 entity=3415 kind=heavy mass=2000.00 diag=3.12 hold=0.75 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.330 rotErrDeg=0.0 constrain...
+F bench stays carried (not dropped as stuck) at the native place  True grab=1 entity=3415 kind=heavy mass=2000.00 diag=3.12 hold=0.75 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.330 rotErrDeg=0.0 constrain...
+F bench follows the hand 30 cm left                               True grab=1 entity=3415 kind=heavy mass=2000.00 diag=3.12 hold=0.75 corpsePoints=0 written=1 centreErrorM=0.114 gripDistM=0.418 rotErrDeg=0.0 constrain...
+F bench rises with the hand                                       True grab=1 entity=3415 kind=heavy mass=2000.00 diag=3.12 hold=0.75 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.330 rotErrDeg=0.0 constrain...
+F bench let go                                                    True stop={entity=3415 impulse=0.00 angular=0 thrown=0 ours=1 sentThrown=0}                                                                               
+F the bench stays in the world                                    True use.find result=0 id=3415 found=1 name=ArkPhysicsProps.Chairs.Bench_Leather bounds=1 centre=826.994,1582.806,15.677 lhandYaw=-165.50 lhandPitch=-8...
+G grab the mug (or the next small prop)                           True grab=1 entity=3005 kind=light mass=1.00 diag=0.24 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.076 rotErrDeg=0.0 constrained=1  
+G trigger: native throw                                           True entity=3005 impulse=12.00 angular=1 thrown=1 ours=0 sentThrown=1                                                                                     
+H toggle: stays after the grip opens, drops on the next press     True id=3407 held=True dropped=True                                                                                                                       
+I carry.hand 0: native carry, toggled                            False grab=0 entity=3407 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.235 rotErrDeg=0.0 constrained=1  
+K grab a prop to throw while walking                             False grab=0 entity=3407 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.235 rotErrDeg=0.0 constrained=1  
+
+
+
+carry: carry.report result=0 installed=1 hand=1 holdToHold=1 grabPointMode=1 holding=0 velocityQueue=1 updates=49657 starts=8 stops=9 releasesAsked=6 releasesDone=5 refused=0 throws=2 drops=3 nativeThrows=1 velocitySets=5 velocityFaults=0 faults=0 stale=0 motionSamples=115808 runtimeVelocitySamples=107050 gain=1.40 throwSpeed=1.60 maxSpeed=16.00 heavyMaxSpeed=5.00 grab=0 entity=3407 name=ArkPhysicsProps.Bathroom.Towels class=RigidBodyEx kind=light mass=1.00 diag=0.66 hold=0.00 articulated=0 targets=281 writes=281 corpsePoints=0 written=1 grabPoint=1 grabLocal=-0.128,-0.195,0.061 native=826.812,1582.413,16.775 target=827.162,1582.654,16.787 wantCentre=827.157,1582.540,16.788 grip=826.968,1582.595,16.918 centreErrorM=0.000 gripDistM=0.235 rotErrDeg=0.0 lastRelease=drop releasedEntity=3415 handSpeed=0.00 handWorld=0.000,0.000,0.000 spinWorld=0.000,0.000,0.000 playerV=0.000,0.000,0.000 velocity=0.000,0.000,0.000 angular=0.000,0.000,0.000 capped=0 motionRuntime=1 motionSamples=18 settledDrop=0.944 restored=1 restoredFrame=58 impulseMode=0 nativeImpulseScale=1.00 flightV2=0.000,0.000,-0.092 flightSpeed2=0.09 flightSpeed12=1.01 expected=0.000,0.000,0.000 lastStop={entity=3407 impulse=0.00 angular=0 thrown=0 ours=0 sentThrown=0} kickBacks=0.00,1.00,2.00,3.00 grabberBreakSq=1.00 lerpSpeed=20.00 lerpObstructed=20.00 lerpAccel=300.00 lerpObstructedAccel=50.00 maxTimeUnder=1.00 constrained=1 justThrown=0 constraintId=0 dragHeight=-0.35 dragDistance=0.00 dragBreakSq=6.76

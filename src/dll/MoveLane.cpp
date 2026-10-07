@@ -1,4 +1,5 @@
 #include "MoveLane.h"
+#include "ArmsLane.h"
 #include "AimTakeover.h"
 #include "BodyEquipment.h"
 #include "InteractionLane.h"
@@ -556,8 +557,10 @@ void UpdateTurnAndFireLanes()
         useIn.holdToHold = CarryHoldToHold() != 0;
         useIn.targetId = UseTargetId();
         useIn.tapOnly = UseTargetTapOnly();
+        useIn.holstered = ArmsHolstered();
         const use::ButtonOutput useOut = gUseButton.Update(useIn);
         if (useOut.releaseCarry) { RequestCarryRelease(); }
+        if (useOut.drawWeapon) { RequestDrawWeapon(); }
         RequestUseTargetSuppression(useOut.suppressTarget);
         NoteUseButton(useOut.down, static_cast<unsigned>(useOut.owner), useOut.pressed, useOut.released,
                       (useOut.noTarget ? 1u : 0u) | (useOut.gaveUp ? 2u : 0u) | (useOut.busy ? 4u : 0u));

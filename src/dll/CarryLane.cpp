@@ -154,6 +154,9 @@ struct Grab {
     float mass = 0, diagonal = 0, hold = -1;
     bool articulated = false;
     Quaternion handToObject{};
+    // Light props: held by the point the pointing ray met them at (carry.grabpoint 1).
+    bool haveGrabPoint = false;
+    Vec3 grabLocal{};
     carry::HeavyGrab heavy{};
     carry::Follow follow{};
     std::uint64_t startNs = 0, lastTargetNs = 0;
@@ -200,6 +203,9 @@ Watch gWatch;
 // 0 of 5), so 1 and 2 are for A/B only.
 std::atomic<int> gImpulseMode{0};
 std::atomic<float> gLastScale{1.0f};
+// carry.grabpoint 1 (default): a light prop is held by the point the pointing
+// ray met it at (carry::LightHoldAt); 0: its centre in the palm, as before.
+std::atomic<bool> gGrabPoint{true};
 
 // Report snapshot.
 struct Last {
@@ -552,6 +558,13 @@ void CaptureGrab(std::uintptr_t entity)
         g.handToObject = Normalize(Multiply(carry::Inverse(hand.grip.orientation), object));
         g.heavy.handOffset = Sub(hand.grip.position, hand.head);
         g.heavy.yaw = hand.yaw;
+        // The point the left hand's ray met it at, if this carry is what it pointed at.
+        UsePointer pointer{};
+        if (TryGetUsePointer(pointer) && pointer.valid && pointer.entity == g.entity &&
+            MonotonicNanoseconds() - pointer.ns < 500000000ull &&
+            carry::GrabPointLocal(tm, g.box, pointer.hand, pointer.direction, g.grabLocal)) {
+            g.haveGrabPoint = true;
+        }
     }
     g.active = true;
     g.startNs = MonotonicNanoseconds();
@@ -713,7 +726,8 @@ float* __fastcall TargetHook(std::uintptr_t carry, float* out, std::uintptr_t en
     carry::EntityPose pose{};
     const carry::HoldSettings hold = Get(gHoldSettings);
     if (g.kind == carry::Kind::Light) {
-        pose = carry::LightHold(hand.grip, hand.palm, g.handToObject, g.box, hold);
+        pose = g.haveGrabPoint && gGrabPoint.load() ? carry::LightHoldAt(hand.grip, g.handToObject, g.grabLocal)
+                                                    : carry::LightHold(hand.grip, hand.palm, g.handToObject, g.box, hold);
     } else {
         // The game's own place for it, moved by the hand; eased in from zero
         // and smoothed a little on top of the grabber's lag: weight, not jitter.
@@ -902,7 +916,8 @@ std::string GrabLine(const Grab& g)
                       " diag=" + Fixed(g.diagonal, 2) + " hold=" + Fixed(g.hold, 2) +
                       " articulated=" + std::to_string(g.articulated) + " targets=" + std::to_string(g.targets) +
                       " writes=" + std::to_string(g.writes) + " corpsePoints=" + std::to_string(g.corpsePoints) +
-                      " written=" + std::to_string(g.written);
+                      " written=" + std::to_string(g.written) + " grabPoint=" + std::to_string(g.haveGrabPoint);
+    if (g.haveGrabPoint) { out += " grabLocal=" + Point(g.grabLocal); }
     if (g.nativeValid) { out += " native=" + Point(g.native); }
     if (g.written) {
         out += " target=" + Point(g.target) + " wantCentre=" + Point(g.wantCentre) + " grip=" + Point(g.grip);
@@ -1119,6 +1134,7 @@ std::string CarryReport()
     const auto player = CallGetPlayer();
     std::ostringstream out;
     out << " installed=" << gInstalled << " hand=" << gHand.load() << " holdToHold=" << gHoldToHold.load()
+        << " grabPointMode=" << gGrabPoint.load()
         << " holding=" << gHolding.load() << " velocityQueue=" << gVelocityQueueOk << " updates=" << gUpdates.load()
         << " starts=" << gStarts.load() << " stops=" << gStops.load() << " releasesAsked=" << gReleasesAsked.load()
         << " releasesDone=" << gReleasesDone.load() << " refused=" << gReleasesRefused.load()
@@ -1175,6 +1191,8 @@ bool ExecuteCarryCommand(const std::vector<std::string>& args, std::ostringstrea
         if (args.size() > 1) { result = SetCarryHoldToHold(static_cast<unsigned>(arg(1, 1))); }
     } else if (verb == "carry.impulse") {
         if (args.size() > 1) { gImpulseMode.store(std::clamp(arg(1, 0), 0, 2)); }
+    } else if (verb == "carry.grabpoint") {
+        if (args.size() > 1) { gGrabPoint.store(arg(1, 1) != 0); }
     } else if (verb == "carry.trace") {
         if (args.size() > 1) { gTrace.store(arg(1, 1) != 0); }
     } else if (verb == "carry.throw") {

@@ -68,6 +68,23 @@ const Relaxed kLeft[kJointCount] = {
     /* pinky1/2/3 */ {{}, -20.0f}, {{}, -30.0f}, {{}, -14.0f},
 };
 
+// A closed hand around something held (a carried object's handle, a fist):
+// the same metacarpals, the phalanges flexed most at the middle joint, the
+// thumb folded over the index and middle fingers. Left hand, like kLeft.
+const Relaxed kFist[kJointCount] = {
+    /* thumb1 */ {{0.7630f, -0.3729f, 0.2534f, 0.4633f}, -18.0f},
+    /* thumb2 */ {{}, -32.0f},
+    /* thumb3 */ {{}, -38.0f},
+    /* indexBase  */ {{0.0522f, -0.0170f, 0.0482f, 0.9973f}, 0.0f},
+    /* index1/2/3 */ {{}, -72.0f}, {{}, -92.0f}, {{}, -50.0f},
+    /* middleBase */ {{-0.0149f, 0.0216f, 0.0393f, 0.9989f}, 0.0f},
+    /* middle1/2/3 */ {{}, -78.0f}, {{}, -96.0f}, {{}, -50.0f},
+    /* ringBase   */ {{-0.0716f, 0.0452f, -0.0018f, 0.9964f}, 0.0f},
+    /* ring1/2/3 */ {{}, -82.0f}, {{}, -96.0f}, {{}, -50.0f},
+    /* pinkyBase  */ {{-0.1240f, 0.0845f, 0.0121f, 0.9886f}, 0.0f},
+    /* pinky1/2/3 */ {{}, -86.0f}, {{}, -92.0f}, {{}, -48.0f},
+};
+
 const char* const kRoleNames[kJointCount] = {
     "thumb1", "thumb2", "thumb3",
     "indexBase", "index1", "index2", "index3",
@@ -114,6 +131,20 @@ Quaternion RelaxedRelative(Side side, int joint, float curl)
         // +Z vs -Z; length +X and palm -Y on both): reflect the rotation axis.
         q = {-q.x, -q.y, q.z, q.w};
     }
+    return q;
+}
+
+Quaternion ShapeRelative(Side side, int joint, float curl, float fist)
+{
+    if (joint < 0 || joint >= kJointCount) { return {}; }
+    const float closed = std::clamp(fist, 0.0f, 1.0f);
+    // Blend the flexion angles, not the quaternions: every phalanx flexes about
+    // the same local axis, so the in-between hand is a real hand.
+    const Relaxed& open = kLeft[joint];
+    const Relaxed& shut = kFist[joint];
+    const float flex = open.flexDegrees * curl * (1.0f - closed) + shut.flexDegrees * closed;
+    Quaternion q = Normalize(Multiply(open.rotation, AboutZ(flex * kDegrees)));
+    if (side == Side::right) { q = {-q.x, -q.y, q.z, q.w}; }
     return q;
 }
 

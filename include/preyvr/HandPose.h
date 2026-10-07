@@ -48,6 +48,9 @@ int ParentRole(int joint);
 // The relaxed open hand. `curl` scales every flexion (1 = the default relaxed
 // hand, 0 = straight fingers). Defined for the left hand, the free one.
 Quaternion RelaxedRelative(Side side, int joint, float curl);
+// The relaxed hand (`curl` as above) closed by `fist` (0 open .. 1 a closed
+// hand around a held object). ShapeRelative(s, j, c, 0) == RelaxedRelative(s, j, c).
+Quaternion ShapeRelative(Side side, int joint, float curl, float fist);
 
 // An orthonormal anatomical frame. `palm` points out of the palm.
 struct Frame {

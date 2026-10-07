@@ -1,4 +1,5 @@
 #include "AimTakeover.h"
+#include "ArmsLane.h"
 #include "SceneQuery.h"
 #include "ShotRay.h"
 #include "PhysicalInteractions.h"
@@ -319,6 +320,7 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     UpdatePhysicalInteractions(frame,haveTracking&&gEnabled.load());
     UpdateInteractionLane(frame,haveTracking&&gEnabled.load());
     UpdateCarryLane(frame,haveTracking&&gEnabled.load());
+    UpdateArmsLane(frame,haveTracking&&gEnabled.load());
     DebugOverlayGameFrame(frame,haveTracking);
     if (!haveTracking) { gRejNoPose.fetch_add(1); return; }
     // A frame whose play-space yaw is unknown cannot aim, and must not silently

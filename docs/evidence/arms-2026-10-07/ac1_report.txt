@@ -1,0 +1,17 @@
+=== 2026-10-07T12:45:29 ArmsCases
+[PASS] A wrench drawn (weapon rig owns the arms)  rig=1 lastWeapon=64619 freeBound=0
+[PASS] A palms on the controllers (armed)  palmToGripR=0,000 L=0,000 m
+[PASS] B right grip held: holstered, the free arms drive the rig  rig=0 holstered=1 freeBound=1 freeFrames=370 freeGateZero=0
+[PASS] B palms on the controllers (holstered)  palmToGripR=0,000 L=0,000 m
+[PASS] B palms follow the controllers raised and rolled  palmToGripR=0,000 L=0,000 m
+[PASS] B both hands written every frame  ikWritten 2361,2361 -> 2481,2481
+[PASS] C arms.free 0: no free owner (the game lowers the arms)  free=0 freeBound=0
+[PASS] D right grip press: the last weapon drawn (native equip)  rig=1 holstered=0 draws=1 drawRefused=0 lastDraw=0 native=1
+[PASS] D palms on the controllers (drawn again)  palmToGripR=0,000 L=0,000 m
+[PASS] D a press with the weapon drawn reloads, never draws or holsters  rig=1 draws=1
+[PASS] E carrying: free arms, the left hand closed  rig=0 freeBound=1 fistMilli=0,999 kind=light grabPoint=1 centreErrorM=0.000
+[PASS] E palms on the controllers (carrying)  palmToGripR=0,000 L=0,000 m
+[PASS] E the towel held by the pointed side  grabPoint=1 grabLocal=0.214,0.113,0.159 centreErrorM=0.000 gripDistM=0.249 rotErrDeg=0.0
+[PASS] E right grip while carrying: no draw  holstered=0 draws=1
+[PASS] E dropped: the game draws the weapon again, the fist opens  rig=1 freeBound=0 fistMilli=0,0
+=== 15 passed, 0 failed

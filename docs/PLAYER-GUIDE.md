@@ -17,8 +17,8 @@ The launcher starts Prey, loads the mod, waits for the requested render size, an
 | Right A / B | Jump / crouch | Select / back |
 | Left X | Open inventory | X action shown by Prey |
 | Left Y | — | Y action shown by Prey |
-| Right grip | Reload (never uses what the left hand points at) | Next tab, on release |
-| Left grip | Use what the left hand points at (tap or hold, as Prey's prompt says); drop what you carry; hold a long weapon's support grip | Previous tab, on release |
+| Right grip | Tap: reload (never uses what the left hand points at). Hold: holster the weapon. With the weapon holstered: draw it again | Next tab, on release |
+| Left grip | Use what the left hand points at (tap or hold, as Prey's prompt says); keep it closed to hold what you picked up, open it to drop or throw; hold a long weapon's support grip | Previous tab, on release |
 | Triggers | Right: fire (hold for automatic fire and to charge the Disruptor) | Previous / next page (LT / RT) |
 | Left menu button | Tap: pause. Hold: VR options | Tap: pause / resume. Hold: VR options |
 | Both grips + left Y | Reset VR view | Reset and bring the panel in front of you |
@@ -37,8 +37,15 @@ To recenter, hold both grips, then press left Y; F12 also works.
 To use something, point at it with the left hand: the cyan ray ends on what Prey selected (it bends to it when
 Prey picked it from near the line) and Prey shows its usual prompt. Squeeze the left grip briefly for the
 prompt's tap action (take, carry, search, take the highlighted item of a locker) or keep it squeezed for the
-hold action (drag a body, carry a heavy object). Squeeze again to drop what you carry; the right trigger
-throws it. A squeeze on the foregrip, at the left-hip medkit slot or in the recenter chord never uses
+hold action (drag a body, carry a heavy object). What you pick up stays in the left hand for as long as the grip
+is closed: a light object flies to the hand and is held by the side you pointed at, a heavy one floats ahead and
+follows the hand, a body is dragged from it. Open the hand to drop it, or open it during a throwing motion to
+throw it with the hand's speed; the right trigger still throws it the game's way. `carry.hold 0` restores
+"squeeze again to drop".
+
+With no weapon drawn -- holstered, or while carrying something -- both hands stay visible at the controllers
+(open; the left one closes around what it carries). Hold the right grip to holster the weapon, squeeze it again
+to draw it. `arms.free 0` lets the game lower the arms out of view again. A squeeze on the foregrip, at the left-hip medkit slot or in the recenter chord never uses
 anything. `use.hand 0` restores the previous layout (right grip uses and reloads along the weapon's aim).
 `aim.twohand 0` disables support aiming; `aim.twohand 1` enables it (default).
 

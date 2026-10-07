@@ -153,6 +153,25 @@ struct HoldSettings {
 EntityPose LightHold(const Pose& gripWorld, Vec3 palmNormalWorld, Quaternion handToObject, const Box& local,
                      const HoldSettings& settings = {});
 
+// **Held by the point the hand took it at.** The pointing ray met the object on
+// the side facing the player; that point goes in the fist, the hand's rotation
+// to the object at the grab is kept, and the rest of the object stays beyond
+// the hand -- along the direction it was pulled from, which is the hand's own
+// pointing direction -- instead of spreading round the palm in front of the
+// eyes (a 66 cm towel stack centred on the left palm filled the view). How
+// HIGGS and Alyx's gloves hold what they catch.
+EntityPose LightHoldAt(const Pose& gripWorld, Quaternion handToObject, Vec3 grabLocal);
+
+// Where a world ray meets an object's local bounds, in the object's local
+// coordinates: the entry point, or the bounds point nearest the ray when it
+// passes by (the native selector also takes targets inside its cone).
+// `worldTm` is the entity's Matrix34 (row-major 3x4, basis in the columns,
+// scale allowed). The point is then moved `inset` towards the bounds centre
+// (at most half way): the fingers close round the edge instead of touching
+// the surface. False if the matrix is singular or the inputs not finite.
+bool GrabPointLocal(const float worldTm[12], const Box& local, Vec3 rayOrigin, Vec3 rayDirection, Vec3& out,
+                    float inset = 0.03f);
+
 // A heavy object stays where the GAME carries it -- its own carry distance
 // and orientation for that object, which keep a 3 m bench clear of the player
 // and of the walls (measured 2026-10-07: the native target put the bench's

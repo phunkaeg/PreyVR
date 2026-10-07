@@ -197,6 +197,46 @@ void TestLightHold()
     Require(NearV(Rotate(p.rotation, probe), Rotate(expected, probe)), "rotation = hand * relative");
 }
 
+void TestLightHoldAt()
+{
+    // A 60 cm long box pointed at end-on: the ray meets its near face, and that
+    // point -- not the centre -- goes in the fist; the box extends away along
+    // the pointing direction.
+    const Box box{{-0.1f, -0.3f, -0.1f}, {0.1f, 0.3f, 0.1f}};
+    const float tm[12] = {1, 0, 0, 5,  0, 1, 0, 2,  0, 0, 1, 1};   // at (5, 2, 1), unrotated
+    Vec3 local{};
+    Require(GrabPointLocal(tm, box, {5, 0, 1}, {0, 1, 0}, local, 0.0f), "ray meets the box");
+    Require(NearV(local, {0, -0.3f, 0}), "entry point on the near face, local");
+    Vec3 inset{};
+    Require(GrabPointLocal(tm, box, {5, 0, 1}, {0, 1, 0}, inset) && NearV(inset, {0, -0.27f, 0}),
+            "3 cm inside by default: the fingers close round the edge");
+    Pose grip{};
+    grip.position = {0, 1, 1.4f};
+    // The hand pointing along +Y when it grabbed: object rotation = hand rotation.
+    EntityPose p = LightHoldAt(grip, Quaternion{}, local);
+    const Vec3 centre = Add(p.position, Rotate(p.rotation, Centre(box)));
+    Require(NearV(Add(p.position, Rotate(p.rotation, local)), grip.position), "grab point in the fist");
+    Require(NearV(centre, {0, 1.3f, 1.4f}), "the bulk beyond the hand, along its pointing direction");
+    // The hand turns 90 degrees about Z: the object swings with it about the fist.
+    grip.orientation = AxisAngle({0, 0, 1}, 1.5707963f);
+    p = LightHoldAt(grip, Quaternion{}, local);
+    const Vec3 turned = Add(p.position, Rotate(p.rotation, Centre(box)));
+    Require(NearV(turned, {-0.3f, 1, 1.4f}), "turns with the hand about the grab point");
+    // A ray passing beside the box: the nearest bounds point.
+    Require(GrabPointLocal(tm, box, {5.5f, 0, 1}, {0, 1, 0}, local, 0.0f), "near miss still gives a point");
+    Require(Near(local.x, 0.1f) && local.y >= -0.3f - 1e-4f && local.y <= 0.3f + 1e-4f, "nearest point on the box");
+    // A rotated, scaled entity: the local point maps back onto the world ray's entry.
+    const float c = std::cos(0.7f) * 2.0f, s = std::sin(0.7f) * 2.0f;   // scale 2
+    const float rot[12] = {c, -s, 0, 1,  s, c, 0, -1,  0, 0, 2, 0};
+    Require(GrabPointLocal(rot, box, {1, -1, -5}, {0, 0, 1}, local, 0.0f), "vertical ray down the pivot");
+    Require(NearV(local, {0, 0, -0.1f}), "enters the bottom face");
+    const Box tiny{{-0.02f, -0.02f, -0.02f}, {0.02f, 0.02f, 0.02f}};
+    Require(GrabPointLocal(tm, tiny, {5, 0, 1}, {0, 1, 0}, inset, 0.03f) && NearV(inset, {0, -0.01f, 0}),
+            "a small object: at most half way to its centre");
+    const float singular[12] = {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0};
+    Require(!GrabPointLocal(singular, box, {0, 0, 0}, {0, 1, 0}, local), "singular matrix refused");
+}
+
 void TestHeavyShift()
 {
     const Vec3 head{10, 20, 1.6f};
@@ -470,6 +510,7 @@ int main()
     TestMatrix();
     TestClassify();
     TestLightHold();
+    TestLightHoldAt();
     TestHeavyShift();
     TestCorpse();
     TestFollow();

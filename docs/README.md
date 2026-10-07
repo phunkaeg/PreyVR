@@ -12,6 +12,8 @@ The notebook separates evidence from plans so implementation follows demonstrate
 > [`TEST-SAVES.md`](TEST-SAVES.md).
 > World interaction (the left hand points and uses, the right grip reloads):
 > [`INTERACTION-LEFT-HAND-2026-10-06.md`](INTERACTION-LEFT-HAND-2026-10-06.md).
+> The arms with no weapon drawn, holster/draw on the right grip and carried objects held by
+> their near side: [`ARMS-NO-WEAPON-2026-10-07.md`](ARMS-NO-WEAPON-2026-10-07.md).
 >
 > [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) remains
 > the record of binary identity and lifecycle decisions.

@@ -173,6 +173,10 @@ void TickVrMode() {
         // thrown with the hand's motion (CarryLane.h). Not fatal: without the
         // hooks the game's own carry stays, toggled like in phase 1.
         else if(SetCarryHand(1)!=0) Log("carry_hand=native reason=hooks_unavailable");
+        // The arms stay at the controllers with no weapon drawn: holstered (the
+        // right grip held) or carrying (AnimIkTakeover arms.free; arms.free 0 =
+        // the game lowers them out of view, as before).
+        SetAnimIkFreeArms(1);
         // Both hands' rays drawn in gameplay while interaction is being tested
         // (user, 2026-10-06). The VR options' Debug overlay switch turns them off.
         if(DebugOverlayMask()==0) SetDebugOverlay(debugdraw::kRays|debugdraw::kHits);

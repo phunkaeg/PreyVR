@@ -116,6 +116,35 @@ void TestRightReload()
     Require(suppressed == UseButton::kGuardFrames, "guard frames after a reload");
 }
 
+void TestRightDrawsWhenHolstered()
+{
+    UseButton b = Ready();
+    ButtonInput in = Base();
+    in.holstered = true;
+    in.rightGrip = true;
+    ButtonOutput out = b.Update(in);
+    Require(out.drawWeapon && !out.down && out.owner == Owner::Draw, "holstered: the right grip draws");
+    Require(!out.suppressTarget, "a draw leaves the selection alone");
+    in.holstered = false;   // drawn
+    for (int i = 0; i < 40; ++i) {
+        out = b.Update(in);
+        Require(!out.down && !out.drawWeapon, "held on after the draw: no X (it would holster again)");
+    }
+    in.rightGrip = false;
+    Require(b.Update(in).owner == Owner::None, "the grip opened");
+    in.rightGrip = true;
+    out = b.Update(in);
+    Require(out.owner == Owner::Reload && !out.drawWeapon, "drawn: the next press reloads");
+    // Carrying wins: the grip is not a draw while something is held.
+    UseButton c = Ready();
+    ButtonInput carry = Base();
+    carry.holstered = true;
+    carry.carrying = true;
+    carry.rightGrip = true;
+    out = c.Update(carry);
+    Require(!out.drawWeapon, "no draw while carrying");
+}
+
 void TestReloadGiveUp()
 {
     UseButton b = Ready();
@@ -287,6 +316,7 @@ int main()
     TestLeftNoTarget();
     TestLeftBusy();
     TestRightReload();
+    TestRightDrawsWhenHolstered();
     TestReloadGiveUp();
     TestRightBusyAndPairs();
     TestOtherHandIgnored();

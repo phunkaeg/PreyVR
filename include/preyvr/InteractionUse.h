@@ -53,10 +53,16 @@ struct ButtonInput {
     // 4 on tap, 12 on hold). With holdToHold its press is a TAP: the game takes
     // it on the release, at once, instead of waiting out the hold threshold.
     bool tapOnly = false;
+    // No weapon is drawn (holstered: the right grip held, natively) and there
+    // is one to draw, nothing carried. The right grip then draws it again
+    // instead of reloading -- the native draw is the trigger, which a VR
+    // player expects to fire.
+    bool holstered = false;
 };
 
 // Hold: the left grip is holding what it picked up; opening it lets go.
-enum class Owner : std::uint8_t { None, Use, Reload, Legacy, Hold };
+// Draw: the right grip drew the weapon; nothing more until it opens.
+enum class Owner : std::uint8_t { None, Use, Reload, Legacy, Hold, Draw };
 const char* OwnerName(Owner owner);
 
 struct ButtonOutput {
@@ -72,6 +78,8 @@ struct ButtonOutput {
     // the hand's motion). Raised when the grip that picked it up opens, or --
     // for a carry no press of ours started -- when the left grip next closes.
     bool releaseCarry = false;
+    // Draw the last weapon again, now (one frame; the DLL calls the native equip).
+    bool drawWeapon = false;
 };
 
 class UseButton {

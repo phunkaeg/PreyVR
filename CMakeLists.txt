@@ -160,6 +160,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/ShotRay.cpp
         src/dll/InteractionLane.cpp
         src/dll/CarryLane.cpp
+        src/dll/ArmsLane.cpp
         src/dll/SlotFeedback.cpp
         src/dll/NativeWristTexture.cpp
         src/dll/HudLayer.cpp

@@ -1,5 +1,6 @@
 #include "preyvr/HandCarry.h"
 
+#include "preyvr/InteractionUse.h"
 #include "preyvr/StereoCamera.h"
 
 #include <algorithm>
@@ -252,6 +253,40 @@ EntityPose LightHold(const Pose& grip, Vec3 palm, Quaternion handToObject, const
     const Vec3 centre = Add(grip.position, Scale(n, push));
     out.position = Sub(centre, Rotate(out.rotation, Centre(local)));
     return out;
+}
+
+EntityPose LightHoldAt(const Pose& grip, Quaternion handToObject, Vec3 grabLocal)
+{
+    EntityPose out{};
+    out.rotation = Multiply(grip.orientation, handToObject);
+    out.position = Sub(grip.position, Rotate(out.rotation, grabLocal));
+    return out;
+}
+
+bool GrabPointLocal(const float m[12], const Box& local, Vec3 origin, Vec3 direction, Vec3& out, float inset)
+{
+    // local = A^-1 (world - t), A the 3x3 in the matrix's first three columns.
+    const float a = m[0], b = m[1], c = m[2], d = m[4], e = m[5], f = m[6], g = m[8], h = m[9], i = m[10];
+    const float det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+    if (!std::isfinite(det) || std::fabs(det) < 1e-9f || !Finite(origin) || !Finite(direction)) { return false; }
+    const float k = 1.0f / det;
+    const float inv[9] = {(e * i - f * h) * k, (c * h - b * i) * k, (b * f - c * e) * k,
+                          (f * g - d * i) * k, (a * i - c * g) * k, (c * d - a * f) * k,
+                          (d * h - e * g) * k, (b * g - a * h) * k, (a * e - b * d) * k};
+    const auto apply = [&](Vec3 v) {
+        return Vec3{inv[0] * v.x + inv[1] * v.y + inv[2] * v.z, inv[3] * v.x + inv[4] * v.y + inv[5] * v.z,
+                    inv[6] * v.x + inv[7] * v.y + inv[8] * v.z};
+    };
+    const Vec3 o = apply(Sub(origin, Vec3{m[3], m[7], m[11]}));
+    Vec3 dir = apply(direction);
+    const float l = Length(dir);
+    if (!(l > 1e-6f)) { return false; }
+    dir = Scale(dir, 1.0f / l);
+    out = use::PointerEnd(o, dir, local.min, local.max);
+    const Vec3 in = Sub(Centre(local), out);
+    const float depth = Length(in);
+    if (depth > 1e-6f && inset > 0) { out = Add(out, Scale(in, std::min(inset, depth * 0.5f) / depth)); }
+    return Finite(out);
 }
 
 Vec3 HeavyShift(Vec3 hand, Vec3 head, float yaw, const HeavyGrab& grab, const HoldSettings& s)
