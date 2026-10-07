@@ -37,4 +37,8 @@ bool HudLayerReticle(float tanX, float tanY, float& x, float& y);
 void RequestNativeWristCapture(bool active);
 ID3D11Texture2D* NativeWristLayerTexture();
 void ResetNativeWristCapture(); // render-thread session teardown
+// hud.var / hud.setvar (diagnostics): queued, run in the next gameplay HUD
+// display callback. The report lists each path's value after the operation.
+DWORD QueueHudVariable(const std::string& path,bool set,double value);
+std::string HudVariableReport();
 }

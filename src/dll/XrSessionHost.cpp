@@ -20,6 +20,7 @@
 #include "BodyEquipment.h"
 #include "SlotFeedback.h"
 #include "NativeWristTexture.h"
+#include "WristLane.h"
 #include "AimTakeover.h"
 #include "DebugOverlay.h"
 #include "preyvr/UiPanel.h"
@@ -107,6 +108,7 @@ struct Host {
     std::unique_ptr<InventorySwapchain> wristSwapchain;
     std::unique_ptr<NativeWristTexture> wristFitter;
     bool wristVisible=false;
+    std::uint64_t wristCapturedNs=0;
     DXGI_FORMAT optionsFormat=DXGI_FORMAT_UNKNOWN;
     std::optional<ui::Panel> optionsPanel;
     std::uint64_t optionsReference=0;
@@ -677,6 +679,7 @@ void Teardown()
     gHost.wristSwapchain.reset();
     gHost.wristFitter.reset();
     ResetNativeWristCapture();
+    ResetWristLane();
     ClearHolsters();
     ResetVrOptionsSession();
     DestroyXrInput();
@@ -1962,21 +1965,41 @@ void ServiceXrFrame(void* renderer)
     XrCompositionLayerQuad wristLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
     bool wristActive=false;
     TrackingFrame wristFrame{};
-    const bool wristInput=WristDisplayEnabled()&&haveViews&&rendered&&!panelActive&&!optionsActive&&
-        HudGameplayInputAllowed()&&!TwoHandedAimHeld()&&!(reference&1)&&
-        TryGetTrackingFrame(wristFrame)&&wristFrame.displayTime==frameState.predictedDisplayTime&&
+    // Each condition as a bit (wrist.report shows which one closed the gate).
+    const bool wristTracking=TryGetTrackingFrame(wristFrame)&&wristFrame.displayTime==frameState.predictedDisplayTime&&
         FreshSample(MonotonicNanoseconds(),wristFrame.publishedNs)&&
         IsPoseUsable(wristFrame.head,wristFrame.headValidity,200000000)&&
         IsPoseUsable(wristFrame.hands[0].gripPose,wristFrame.hands[0].gripValidity,200000000);
-    const auto wristPose=equipment::WristPose(wristFrame.hands[0].gripPose);
-    gHost.wristVisible=wristInput&&equipment::WristVisible(wristFrame.head,wristPose,gHost.wristVisible);
+    const unsigned wristGate=(WristDisplayEnabled()?1u:0u)|(haveViews?2u:0u)|(rendered?4u:0u)|(!panelActive?8u:0u)|
+        (!optionsActive?16u:0u)|(HudGameplayInputAllowed()?32u:0u)|(!TwoHandedAimHeld()?64u:0u)|
+        (!(reference&1)?128u:0u)|(wristTracking?256u:0u);
+    const bool wristInput=wristGate==511u;
+    NoteWristGate(wristGate);
+    // The hologram on the drawn forearm (WristLane), or Funk's grip-anchored
+    // card (wrist.anchor 0). Both composite the same native status texture.
+    const bool hologram=!WristLegacyAnchor();
+    WristDecision hologramDecision{};
+    auto wristPose=equipment::WristPose(wristFrame.hands[0].gripPose);
+    if(hologram){
+        hologramDecision=DecideWrist(wristInput,wristFrame,gHost.eyeDisplayTime[0],frameState.predictedDisplayTime,
+            static_cast<float>(NativeWristWidth)/NativeWristHeight);
+        gHost.wristVisible=hologramDecision.active;
+        wristPose=hologramDecision.pose;
+    } else gHost.wristVisible=wristInput&&equipment::WristVisible(wristFrame.head,wristPose,gHost.wristVisible);
     DebugOverlayWristDecision(wristInput,gHost.wristVisible);
-    RequestNativeWristCapture(gHost.wristVisible);
+    RequestNativeWristCapture(hologram?hologramDecision.capture:gHost.wristVisible);
+    if(nativeWristTexture)gHost.wristCapturedNs=MonotonicNanoseconds();
+    // A frame without a new capture reuses the last one for a moment rather
+    // than blinking the card out (the HUD's draw and ours are not lock-stepped).
+    const bool reuseWrist=hologram&&!nativeWristTexture&&gHost.wristFitter&&
+        FreshSample(MonotonicNanoseconds(),gHost.wristCapturedNs,250000000ull);
     if(gHost.wristVisible){
-        if(nativeWristTexture){
+        if(nativeWristTexture||reuseWrist){
             if(!gHost.wristFitter)gHost.wristFitter=std::make_unique<NativeWristTexture>();
             ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
-            if(auto fitted=gHost.wristFitter->Fit(context,nativeWristTexture)){
+            const float wristAlpha=hologram?hologramDecision.alpha:1.f;
+            if(auto fitted=nativeWristTexture?gHost.wristFitter->Fit(context,nativeWristTexture,wristAlpha,hologram):
+                                              gHost.wristFitter->Refit(context,wristAlpha,hologram)){
                 if(!gHost.wristSwapchain)gHost.wristSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
                     xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
                     xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
@@ -2002,7 +2025,8 @@ void ServiceXrFrame(void* renderer)
             wristLayer.pose={{p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w},
                 {p.position.x,p.position.y,p.position.z}};
             const float width=.18f*WristSizePercent()*.01f;
-            wristLayer.size={width,width*NativeWristHeight/NativeWristWidth};
+            wristLayer.size=hologram?XrExtent2Df{hologramDecision.width,hologramDecision.height}:
+                XrExtent2Df{width,width*NativeWristHeight/NativeWristWidth};
             wristLayer.subImage.swapchain=gHost.wristSwapchain->Handle();
             wristLayer.subImage.imageRect={{0,0},{NativeWristWidth,NativeWristHeight}};
         }

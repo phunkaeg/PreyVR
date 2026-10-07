@@ -8,6 +8,7 @@
 #include "CarryLane.h"
 #include "GrenadeLane.h"
 #include "PhysicalInteractions.h"
+#include "WristLane.h"
 #include <mutex>
 #include "HeadTrackingHook.h"
 #include "Logger.h"
@@ -1624,6 +1625,26 @@ void CaptureMarks(const GameplayPoseFrame& frame, std::uint8_t* absolute, unsign
     marks.support = fingers.support;
     marks.stamp = frame.tracking.sequence;
     marks.valid = true;
+    {
+        // The arms as skinned for this frame, for the wrist hologram (s: 0 right, 1 left).
+        WristArmFrame arm{};
+        arm.displayTime = frame.tracking.displayTime;
+        arm.publishedNs = preyvr::timing::MonotonicNanoseconds();
+        if (rig.valid[1] && marks.arm[1]) {
+            arm.left = true;
+            arm.wrist = marks.wrist[1];
+            arm.elbow = marks.elbow[1];
+            arm.palm = marks.palm[1];
+        }
+        if (rig.valid[0]) {
+            arm.right = true;
+            arm.rightWrist = marks.wrist[0];
+            arm.rightGrip = marks.gripPoint[0];
+            arm.rightAim = Rotate(marks.aim[0].orientation, Vec3{0.0f, 0.0f, -1.0f});
+            arm.weapon = !AnimIkFreeArmsBound();
+        }
+        PublishWristArm(arm);
+    }
     {
         std::unique_lock lock(gMarksMutex, std::try_to_lock);
         if (lock.owns_lock()) { gMarks = marks; }

@@ -5,6 +5,7 @@
 #include "HudBridge.h"
 #include "XrSessionHost.h"
 #include "InventorySwapchain.h"
+#include "WristLane.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/LatestSnapshot.h"
 #include "preyvr/UiPanel.h"
@@ -19,6 +20,8 @@
 #include <cmath>
 #include <mutex>
 #include <string>
+#include <vector>
+#include <cstdio>
 
 namespace preyvr::dll {
 namespace {
@@ -85,8 +88,11 @@ using SpriteDisplay=void(__fastcall*)(void*,void*);
 SpriteDisplay originalSpriteDisplay=nullptr;
 bool spriteInstalled=false;
 thread_local hud::Isolation<NativeHudApi>* wristFilter=nullptr;
+bool FaceExcludes(const void* sprite);
+bool DrawStatusGuarded(void* root);
 void __fastcall FilterStatusSprite(void* sprite,void* context){
     if(wristFilter&&wristFilter->Excludes(sprite))return;
+    if(!wristFilter&&FaceExcludes(sprite))return;
     if(wristFilter)wristFilter->Observe(sprite);
     originalSpriteDisplay(sprite,context);
 }
@@ -116,6 +122,146 @@ thread_local ID3D11RenderTargetView* activeTarget=nullptr;
 thread_local ID3D11DepthStencilView* activeDepthView=nullptr;
 
 bool WantWrist(){return !wristFault.load()&&FreshSample(MonotonicNanoseconds(),wristRequest.load());}
+
+// hud.var / hud.setvar: read or write ActionScript properties of the gameplay
+// HUD, run inside its display callback (the native locks Resolve also runs in).
+// SetVariable is the movie root's slot +0x80 (0x18ABCC0): path, value, type;
+// its value converter is 0x183F4F0, the pair of GetVariable's 0x183F680.
+struct VarOp {std::string path;bool set=false;double value=0;};
+std::mutex varMutex;
+std::vector<VarOp> varPending;
+std::string varLast="none";
+std::atomic<bool> varWanted{false};
+thread_local void* hudRoot=nullptr;
+using SetVar=bool(__fastcall*)(void*,const char*,const NativeHudValue*,int);
+bool SetNumberGuarded(void* root,std::uintptr_t base,const char* path,double value){
+    __try {
+        NativeHudValue v{};v.type=3;std::memcpy(&v.payload,&value,sizeof(value));
+        return reinterpret_cast<SetVar>(base+0x18ABCC0)(root,path,&v,0);
+    } __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+}
+bool GetValueGuarded(void* root,std::uintptr_t base,const char* path,NativeHudValue& v){
+    __try {return reinterpret_cast<NativeHudApi::Get>(base+0x18ABE10)(root,&v,path);}
+    __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+}
+std::string DescribeValue(const NativeHudValue& v){
+    char b[96];const unsigned t=v.type&0x3F;
+    double d=0;std::memcpy(&d,&v.payload,sizeof(d));
+    if(t==3)std::snprintf(b,sizeof(b),"number %.4f",d);
+    else if(t==2)std::snprintf(b,sizeof(b),"bool %u",static_cast<unsigned>(v.payload&0xFF));
+    else if(t==8)std::snprintf(b,sizeof(b),"object 0x%llX",static_cast<unsigned long long>(v.payload));
+    else std::snprintf(b,sizeof(b),"type 0x%X",v.type);
+    return b;
+}
+bool SetValueGuarded(void* root,std::uintptr_t base,const char* path,const NativeHudValue& v){
+    __try {return reinterpret_cast<SetVar>(base+0x18ABCC0)(root,path,&v,0);}
+    __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+}
+
+// **The wrist's own presentation of the native status, for its replay only.**
+// The quadrant is authored tilted (-15/-15 deg, Health's init) at half scale,
+// and the game closes the meters (_visible false) a few seconds after a change
+// when "player state" is dynamic -- the profile default here. For the one
+// filtered replay the wrist draws, the quadrant is flattened, enlarged and the
+// meters shown; every value is read first and written back right after, so the
+// gameplay HUD and the movie's own logic never see the difference.
+constexpr const char* kStatusOverride[]={
+    "_root.safe.quadrant_SW._xrotation","_root.safe.quadrant_SW._yrotation",
+    "_root.safe.quadrant_SW._xscale","_root.safe.quadrant_SW._yscale",
+    "_root.safe.quadrant_SW.health_mc._visible","_root.safe.quadrant_SW.psi_mc._visible",
+    "_root.safe.quadrant_SW.armor_mc._visible","_root.safe.quadrant_SW.bg_mc._visible",
+    "_root.safe.quadrant_SW.bg2_mc._visible","_root.safe.quadrant_SW.line_mc._visible"};
+constexpr std::size_t kStatusOverrides=sizeof(kStatusOverride)/sizeof(kStatusOverride[0]);
+std::atomic<unsigned long long> overrideApplied{0},overrideRefused{0};
+struct StatusOverride {
+    std::array<NativeHudValue,kStatusOverrides> original{};
+    std::size_t written=0;
+    // `background`: keep the meters' own backdrop and top line (bg_mc, bg2_mc,
+    // line_mc); off, the hologram's glass stands in for them and the framing
+    // closes on the meters.
+    bool Apply(void* root,std::uintptr_t base,float scale,bool background){
+        for(std::size_t i=0;i<kStatusOverrides;++i){
+            NativeHudValue v{};
+            if(!GetValueGuarded(root,base,kStatusOverride[i],v))return false;
+            // Plain numbers and booleans only: nothing to release, safe to replay.
+            if(v.type!=(i<4?3u:2u))return false;
+            original[i]=v;
+        }
+        for(std::size_t i=0;i<kStatusOverrides;++i){
+            NativeHudValue v{};
+            if(i<2){v.type=3;const double zero=0;std::memcpy(&v.payload,&zero,sizeof(zero));}
+            else if(i<4){v.type=3;double s=0;std::memcpy(&s,&original[i].payload,sizeof(s));s*=scale;std::memcpy(&v.payload,&s,sizeof(s));}
+            else {v.type=2;v.payload=i<7||background?1:0;}
+            if(!SetValueGuarded(root,base,kStatusOverride[i],v))return false;
+            written=i+1;
+        }
+        return true;
+    }
+    void Restore(void* root,std::uintptr_t base){
+        for(std::size_t i=written;i-->0;)SetValueGuarded(root,base,kStatusOverride[i],original[i]);
+        written=0;
+    }
+};
+
+// **The status meters leave the face** when the wrist shows them (wrist.face):
+// excluded from the gameplay HUD's normal draw, the rest of it unchanged.
+constexpr const char* kFaceExcluded[]={
+    "_root.safe.quadrant_SW.health_mc","_root.safe.quadrant_SW.psi_mc","_root.safe.quadrant_SW.armor_mc",
+    "_root.safe.quadrant_SW.bg_mc","_root.safe.quadrant_SW.bg2_mc","_root.safe.quadrant_SW.line_mc",
+    "_root.safe.quadrant_SW.status_effects"};
+constexpr std::size_t kFaceExclusions=sizeof(kFaceExcluded)/sizeof(kFaceExcluded[0]);
+struct FaceFilter {
+    std::array<NativeHudValue,kFaceExclusions> values{};
+    std::array<void*,kFaceExclusions> objects{};
+    std::size_t count=0;
+    bool Excludes(const void* sprite)const{
+        for(std::size_t i=0;i<count;++i)if(objects[i]==sprite)return true;
+        return false;
+    }
+};
+thread_local FaceFilter* faceFilter=nullptr;
+std::atomic<unsigned long long> faceFrames{0},faceRefused{0};
+bool FaceExcludes(const void* sprite){return faceFilter&&faceFilter->Excludes(sprite);}
+// The normal draw with the status meters left out. Resolved for this one draw
+// (handles never outlive it) and released whatever happens; if any path does
+// not resolve, the HUD draws unchanged.
+bool DrawWithoutStatus(void* root){
+    NativeHudApi api{root,reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"))};
+    FaceFilter filter{};
+    bool resolved=api.Valid();
+    for(std::size_t i=0;resolved&&i<kFaceExclusions;++i){
+        void* object=nullptr;
+        resolved=api.Resolve(kFaceExcluded[i],filter.values[i],object)&&object;
+        filter.objects[i]=object;filter.count=i+1;
+    }
+    bool drawn=false;
+    if(resolved){
+        faceFilter=&filter;
+        drawn=DrawStatusGuarded(root);
+        faceFilter=nullptr;
+        faceFrames.fetch_add(1,std::memory_order_relaxed);
+    } else faceRefused.fetch_add(1,std::memory_order_relaxed);
+    for(std::size_t i=0;i<filter.count;++i)api.Release(filter.values[i]);
+    (void)drawn;
+    return resolved; // drawn, or faulted inside the draw: either way not to be redrawn
+}
+
+void RunVarOps(void* root){
+    std::vector<VarOp> ops;
+    {std::lock_guard lock(varMutex);ops.swap(varPending);varWanted=false;}
+    NativeHudApi api{root,reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"))};
+    std::string out;
+    if(!api.Valid())out="root_invalid";
+    else for(const auto& op:ops){
+        out+=op.path+"=";
+        if(op.set){out+=SetNumberGuarded(root,api.base,op.path.c_str(),op.value)?"set ":"set_failed ";}
+        NativeHudValue v{};
+        if(GetValueGuarded(root,api.base,op.path.c_str(),v)){out+=DescribeValue(v);api.Release(v);}
+        else out+="unresolved";
+        out+="; ";
+    }
+    std::lock_guard lock(varMutex);varLast=out;
+}
 bool DrawStatusGuarded(void* root){
     __try {originalDisplay(root);return true;}
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
@@ -131,9 +277,13 @@ void CaptureNativeStatus(void* root){
         activeTarget=nativeWrist.target.Get();activeDepthView=nativeWrist.depthView.Get();
         const float clear[4]{};activeContext->ClearRenderTargetView(activeTarget,clear);
         originalTargets(activeContext,1,&activeTarget,activeDepthView);
+        StatusOverride layout;
+        if(layout.Apply(root,api.base,WristNativeScalePercent()*.01f,WristNativeBackground()))overrideApplied.fetch_add(1,std::memory_order_relaxed);
+        else {layout.Restore(root,api.base);overrideRefused.fetch_add(1,std::memory_order_relaxed);}
         wristFilter=&isolation;
         produced=DrawStatusGuarded(root);
         wristFilter=nullptr;
+        layout.Restore(root,api.base);
         // Require traversal below the common SW ancestor; cached ancestors
         // could otherwise contribute pixels without passing the sprite filter.
         coverage=isolation.Complete();
@@ -174,11 +324,15 @@ void __fastcall StereoMatrix(void* renderer,const void* source,float* output) {
     } else stereoRefused.fetch_add(1,std::memory_order_relaxed);
 }
 void __fastcall StereoDisplay(void* root) {
+    if(root==hudRoot && varWanted.load())RunVarOps(root);
+    const bool face=root==hudRoot && activeContext && spriteInstalled && WristMovesStatusOffFace();
     if(root==wristRoot && activeContext){
         // First preserve the normal draw. Replay stays inside the ONE native
         // proxy callback and its locks; no extra Advance or player release.
-        originalDisplay(root);CaptureNativeStatus(root);return;
+        if(!(face&&DrawWithoutStatus(root)))originalDisplay(root);
+        CaptureNativeStatus(root);return;
     }
+    if(face){if(!DrawWithoutStatus(root))originalDisplay(root);return;}
     if(root!=stereoRoot || !activeContext || stereoEye>=0) {originalDisplay(root);return;}
     // Entered from the ONE native Flash callback, inside both native locks.
     // Each Display builds/destroys its own draw context. No Advance, input,
@@ -274,7 +428,8 @@ bool EnsureTexture(ID3D11Device* device,ID3D11RenderTargetView* original,
 // while it is not. Sharing one gate is what kept the inventory uncapturable.
 bool WantMovie(Movie movie) {
     switch(movie) {
-        case Movie::hud: return (enabled.load()||WantWrist()) && HudGameplayInputAllowed();
+        case Movie::hud: return (enabled.load()||WantWrist()||(spriteInstalled&&WristMovesStatusOffFace())) &&
+                                HudGameplayInputAllowed();
         case Movie::pda: return inventoryCapture.load(std::memory_order_acquire) &&
                                 HudInventoryIsOpen();
     }
@@ -290,7 +445,8 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
     const auto address=reinterpret_cast<std::uintptr_t>(proxy);
     const auto now=MonotonicNanoseconds();
     unsigned which=kMovies;
-    if((enabled.load() || inventoryCapture.load() || WantWrist()) && XrSessionStatusValue()==1 && !activeContext) {
+    if((enabled.load() || inventoryCapture.load() || WantWrist() || (spriteInstalled&&WristMovesStatusOffFace())) &&
+       XrSessionStatusValue()==1 && !activeContext) {
         for(unsigned i=0;i<kMovies;++i) {
             Identity id{};
             if(seen[i].TryRead(id) && id.proxy==address && FreshSample(now,id.stamp)) {
@@ -325,6 +481,7 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
         }
         if(!wristRoot)++wristRefused;
     }
+    if(ready&&which==0)hudRoot=InventoryRoot(proxy,base);
     if(ready && which==static_cast<unsigned>(Movie::pda)) {
         D3D11_TEXTURE2D_DESC d{};capture.texture->GetDesc(&d);
         ready=InventoryTextureCompatible(consumer.description,d);
@@ -348,7 +505,7 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
     } else refused.fetch_add(1);
     // Exactly one outer call. The opt-in Display hook draws inside its locks.
     originalFlash(proxy,release);
-    stereoRoot=nullptr;wristRoot=nullptr;
+    stereoRoot=nullptr;wristRoot=nullptr;hudRoot=nullptr;
     if(ready) {
         activeContext=nullptr;originalDestination=nullptr;originalDepth=nullptr;
         activeTarget=nullptr;activeDepthView=nullptr;
@@ -461,7 +618,9 @@ std::string HudLayerReport(){
         " inventoryLayerFrames="+std::to_string(InventoryLayerFrameCount())+
         " refused="+std::to_string(refused.load());
     out+=" nativeWrist={captured="+std::to_string(wristCaptured.load())+" refused="+
-        std::to_string(wristRefused.load())+" fault="+std::to_string(wristFault.load())+"}";
+        std::to_string(wristRefused.load())+" fault="+std::to_string(wristFault.load())+
+        " layout="+std::to_string(overrideApplied.load())+"/"+std::to_string(overrideRefused.load())+
+        " faceFrames="+std::to_string(faceFrames.load())+" faceRefused="+std::to_string(faceRefused.load())+"}";
     for(unsigned i=0;i<kMovies;++i) {
         out+=std::string(" ")+kMovieNames[i]+"={identified="+std::to_string(identified[i].load())+
              " captured="+std::to_string(captured[i].load());
@@ -478,11 +637,17 @@ ID3D11Texture2D* HudLayerTexture(){
     return texture;
 }
 void RequestNativeWristCapture(bool active){
-    if(!active){wristRequest=0;return;}
+    // The face filter rides the same sprite hook, so it is installed as soon as
+    // the wrist owns the status in gameplay, not only once the card is first
+    // looked at. Not before gameplay: a refused install latches the fault for
+    // the whole XR session, and the module gates may still be settling.
+    const bool install=active||(WristMovesStatusOffFace()&&HudGameplayInputAllowed());
+    if(!active&&(wristInstallAttempted||!install)){wristRequest=0;return;}
     if(!wristInstallAttempted){
         std::lock_guard lock(installMutex);wristInstallAttempted=true;
         if(!InstallStatus()){wristFault=true;lifecycle::Log("preyvr_native_wrist install=refused");}
     }
+    if(!active){wristRequest=0;return;}
     if(!wristFault.load())wristRequest=MonotonicNanoseconds();
 }
 ID3D11Texture2D* NativeWristLayerTexture(){
@@ -490,6 +655,14 @@ ID3D11Texture2D* NativeWristLayerTexture(){
     nativeWrist.stamp=0;
     return fresh&&!wristFault.load()?nativeWrist.texture.Get():nullptr;
 }
+DWORD QueueHudVariable(const std::string& path,bool set,double value){
+    if(path.empty()||path.size()>200||(set&&!std::isfinite(value)))return 1;
+    {std::lock_guard lock(installMutex);if(!InstallDisplay())return 2;}
+    std::lock_guard lock(varMutex);
+    if(varPending.size()>=16)return 3;
+    varPending.push_back({path,set,value});varWanted=true;return 0;
+}
+std::string HudVariableReport(){std::lock_guard lock(varMutex);return varLast;}
 void ResetNativeWristCapture(){
     wristRequest=0;nativeWrist={};wristFault=false;wristInstallAttempted=false;
 }

@@ -2,7 +2,8 @@
 #include "preyvr/LatestSnapshot.h"
 #include <algorithm>
 namespace preyvr::haptics {
-enum class Event { MenuChange, ForegripAttached, WeaponContact, ObjectGrabbed, ObjectThrown };
+// WristOpened: the status hologram unfolding, a smartwatch's faint tick.
+enum class Event { MenuChange, ForegripAttached, WeaponContact, ObjectGrabbed, ObjectThrown, WristOpened };
 struct Request {
     Event event=Event::MenuChange;
     std::uint64_t serial=0,epoch=0,reference=0,stamp=0,generation=0;
@@ -19,9 +20,10 @@ public:
            (last_&&now>=last_&&now-last_<40000000))return {};
         last_=now;
         const float amplitude=r.event==Event::WeaponContact?.55f:r.event==Event::ObjectThrown?.5f:
-            r.event==Event::ForegripAttached||r.event==Event::ObjectGrabbed?.45f:.25f;
+            r.event==Event::ForegripAttached||r.event==Event::ObjectGrabbed?.45f:
+            r.event==Event::WristOpened?.16f:.25f;
         return {amplitude*std::min(strength,100u)*.01f,r.event==Event::MenuChange?18000000:
-            r.event==Event::ObjectThrown?25000000:35000000};
+            r.event==Event::ObjectThrown?25000000:r.event==Event::WristOpened?14000000:35000000};
     }
     void Reset(){*this={};}
 private:

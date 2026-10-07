@@ -16,6 +16,8 @@ The notebook separates evidence from plans so implementation follows demonstrate
 > their near side: [`ARMS-NO-WEAPON-2026-10-07.md`](ARMS-NO-WEAPON-2026-10-07.md).
 > Grenades in the right hand, thrown with it (leave at the trigger's release, land where a real ball would):
 > [`GRENADES-HAND-2026-10-07.md`](GRENADES-HAND-2026-10-07.md).
+> Health, suit and psi as a hologram on the left forearm, checked like a watch (and off the
+> screen): [`WRIST-HOLOGRAM-2026-10-07.md`](WRIST-HOLOGRAM-2026-10-07.md).
 >
 > [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) remains
 > the record of binary identity and lifecycle decisions.

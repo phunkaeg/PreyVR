@@ -58,7 +58,7 @@ void SettingsChecks(){
  Check(Valid(Turn,75)&&Adjust(Turn,75,1)==90&&Adjust(Turn,75,-1)==60,"custom command angle displays and adjusts correctly");
  Check(Adjust(UiScale,200,1)==200&&Adjust(UiScale,20,-1)==20,"scale limits");
  Check(Defaults()[Psychoscope]==0,"gesture opt in");
- Check(Defaults()[Holsters]==0&&Defaults()[Wrist]==0,"equipment features opt in");
+ Check(Defaults()[Holsters]==0&&Defaults()[Wrist]==1,"holsters opt in; the wrist hologram is on (2026-10-07)");
  Check(Parse("version=1\nturn=45\n",parsed)&&parsed[Holsters]==0&&parsed[WristSize]==100,"old settings upgrade safely");
  Check(Item(3,0)==Holsters&&Item(3,1)==Wrist&&Item(3,3)==-3,"equipment page layout");
  Check(Defaults()[PsiTarget]==0&&Defaults()[Medkit]==0,"abilities preserve original behavior by default");

@@ -76,8 +76,8 @@ native menu is already open; `vr.options 1` is the diagnostic equivalent.
 - **Hands:** two-hand aim on/off, hold/toggle foregrip, snapped/free support hand,
   and the optional psychoscope gesture.
 - **Interface:** size, visible-area limit, panel curvature and controls guide.
-- **Equipment:** optional body holsters, wrist status, wrist-card size and clear
-  holster assignments. Both new features default off.
+- **Equipment:** optional body holsters, wrist status, wrist-hologram size and clear
+  holster assignments. Holsters default off; the wrist status defaults on.
 - **Abilities:** psychic targeting (Original / Head / Left Controller) and the
   optional left-hip medkit slot. Original targeting and slot off are the defaults.
 - **Setup:** calibrate posture, reset VR view, and **Debug Overlay (Testing)**,
@@ -120,14 +120,21 @@ to bind different weapons; weapons remain in your inventory. Assignments are
 session-local, not saved. This first version uses inferred hip/chest positions,
 not tracked torso/hip hardware, and has no visible holstered weapon props.
 
-**Wrist status (native HUD candidate):** turn the left palm up and look at the wrist.
-The September 28 candidate captures the game's health, psi and suit widgets onto
-a transparent panel, preserving their native artwork and visibility. Size adjusts
-from 80% to 140%. It hides in menus, during two-handed aiming, on tracking loss
-and when looking away. It supplements the forward HUD; reticles, prompts and
-native status widgets remain unchanged. Off by default; implemented and tested
-offline, awaiting in-game and headset verification.
-See [implementation and test details](NATIVE-WRIST-IMPLEMENTATION-2026-09-28.md).
+**Wrist status (hologram on the left forearm):** check it like a watch. Raise the left
+forearm and turn its back towards you, then look at it. After a moment a small
+glass panel unfolds just above the sleeve, behind the wrist. It shows the game's own
+health, suit and psi meters and any status effects such as bleeding or radiation,
+and the left controller gives a faint tick. The panel stays on the arm you see. It
+turns towards your eyes by up to 40°, and its text stays level even with the arm held
+out in front. It fades when you look away or turn the wrist back. It stays hidden
+while you hold a weapon with both hands, in menus and the inventory, and when the arm
+is inside a wall or your right hand or weapon is in front of it. A hand sweeping past
+your view does not open it. Size adjusts from 80% to 140%.
+With the wrist status on, health, suit and psi are **no longer on the screen in front
+of you**: they live on the wrist. The rest of the gameplay HUD (reticle, prompts,
+ammo, objectives) is unchanged, and the game still warns of low health with its red
+screen edges and heartbeat. Turn WRIST STATUS off to get the meters back in front.
+On by default. See [the hologram note](WRIST-HOLOGRAM-2026-10-07.md).
 
 **Toggle foregrip:** squeeze near the foregrip to attach; release the grip button
 and squeeze again to detach. **Free support hand** keeps its visual position on

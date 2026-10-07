@@ -65,6 +65,9 @@ std::atomic<int> gNoticeKind[3]{0, 0, 0};
 std::atomic<std::uint64_t> gNoticeNs[3]{0, 0, 0};
 std::atomic<bool> gWristGate{false}, gWristVisible{false};
 std::atomic<std::uint64_t> gWristNs{0};
+// The hologram's own card (WristLane), when it is the one in use.
+struct WristCardRecord { dd::Wrist card{}; std::uint64_t ns = 0; };
+LatestSnapshot<WristCardRecord> gWristCard;
 
 std::atomic<unsigned long long> gDrawn{0}, gVertices{0}, gTruncated{0}, gFailures{0}, gQueries{0};
 std::atomic<DWORD> gLastError{0};
@@ -172,7 +175,11 @@ dd::OverlayFrame Gather(unsigned mask)
     // The wrist card is recomputed here from the same pure functions the
     // layer uses; whether the layer decided to show it comes from the layer.
     f.wrist.enabled = WristDisplayEnabled();
-    if (f.wrist.enabled && f.headValid && f.hands[0].valid) {
+    WristCardRecord hologram{};
+    if (f.wrist.enabled && gWristCard.TryRead(hologram) && FreshSample(now, hologram.ns, kPoseAgeNs)) {
+        f.wrist = hologram.card;
+        f.wrist.enabled = true;
+    } else if (f.wrist.enabled && f.headValid && f.hands[0].valid) {
         const bool fresh = FreshSample(now, gWristNs.load(), kPoseAgeNs);
         f.wrist.gate = fresh && gWristGate.load();
         f.wrist.visible = fresh && gWristVisible.load();
@@ -780,6 +787,25 @@ void DebugOverlayNotice(equipment::SlotNotice notice)
     if (slot < 0) { return; }
     gNoticeKind[slot].store(static_cast<int>(kind));
     gNoticeNs[slot].store(MonotonicNanoseconds());
+}
+
+void DebugOverlayWristCard(bool gate, bool visible, const Pose& card, float width, float height, float distance,
+                           float facing, float viewing, float facingNeeded, float viewingNeeded)
+{
+    if (!gMask.load(std::memory_order_relaxed)) { return; }
+    WristCardRecord r{};
+    r.card.gate = gate;
+    r.card.visible = visible;
+    r.card.card = card;
+    r.card.width = width;
+    r.card.height = height;
+    r.card.distance = distance;
+    r.card.facing = facing;
+    r.card.viewing = viewing;
+    r.card.facingNeeded = facingNeeded;
+    r.card.viewingNeeded = viewingNeeded;
+    r.ns = MonotonicNanoseconds();
+    gWristCard.Publish(r);
 }
 
 void DebugOverlayWristDecision(bool gate, bool visible)

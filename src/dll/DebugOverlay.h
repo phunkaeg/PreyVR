@@ -56,6 +56,10 @@ void DebugOverlayMedkit(bool live, Vec3 centre, Vec3 hand, bool gripPressed, boo
 void DebugOverlayNotice(equipment::SlotNotice notice);
 // XR frame thread: the wrist layer's own decision this frame.
 void DebugOverlayWristDecision(bool gate, bool visible);
+// XR frame thread: the forearm hologram's card and its look test (WristLane);
+// drawn instead of the grip card while it is fresh.
+void DebugOverlayWristCard(bool gate, bool visible, const Pose& card, float width, float height, float distance,
+                           float facing, float viewing, float facingNeeded, float viewingNeeded);
 
 // Render thread, inside the XR frame: draws into `eyeImage` (which must be a
 // render target) using the contract that produced it. `shownTangents` (left,

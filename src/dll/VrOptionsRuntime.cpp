@@ -29,7 +29,7 @@ namespace {
 options::Menu menu; // XR thread only
 std::array<std::atomic<int>,options::Count> values{};
 std::atomic<bool> ready{false},open{false},owned{false},saveFailed{false},scope{false};
-std::atomic<bool> holsters{false},wrist{false};
+std::atomic<bool> holsters{false},wrist{true}; // wrist: options::Defaults()
 std::atomic<bool> beltHints{true};
 std::atomic<unsigned> wristSize{100};
 std::atomic<unsigned> dirty{0},page{0},row{0};

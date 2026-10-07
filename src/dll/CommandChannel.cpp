@@ -31,6 +31,7 @@
 #include "Haptics.h"
 #include "HudBridge.h"
 #include "HudLayer.h"
+#include "WristLane.h"
 #include "UiPointer.h"
 #include "FrameCaptureWin32.h"
 #include "InputPost.h"
@@ -506,7 +507,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         return value;
     };
 
-    if (ExecutePose(args, out) || ExecuteCarryCommand(args, out) || ExecuteGrenadeCommand(args, out) || ExecuteArmsCommand(args, out)) {
+    if (ExecutePose(args, out) || ExecuteCarryCommand(args, out) || ExecuteGrenadeCommand(args, out) || ExecuteArmsCommand(args, out) ||
+        ExecuteWristCommand(args, out)) {
         return;
     }
     if (verb == "vr.options") {
@@ -520,6 +522,14 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << VrModeReport();
     } else if (verb == "vr.recenter") {
         out << "vr.recenter result=" << RecenterHeadTracking();
+    } else if (verb == "hud.var") {
+        // hud.var [path ...]       -- queue reads; with no path, the last result
+        // hud.setvar <path> <num>  -- queue a write (SV_Normal), then a read
+        DWORD result = 0;
+        for (std::size_t i = 1; i < args.size() && result == 0; ++i) { result = QueueHudVariable(args[i], false, 0); }
+        out << "hud.var result=" << result << ' ' << HudVariableReport();
+    } else if (verb == "hud.setvar" && args.size() >= 3) {
+        out << "hud.setvar result=" << QueueHudVariable(args[1], true, std::atof(args[2].c_str()));
     } else if (verb == "hud.layer") {
         const auto result=args.size()>1?SetHudLayerEnabled(arg(1,0)):0;
         out << "hud.layer result=" << result << ' ' << HudLayerReport();

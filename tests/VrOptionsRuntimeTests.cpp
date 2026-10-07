@@ -94,7 +94,7 @@ int main(){
  Check(HolstersEnabled(),"holster opt-in reaches input consumer");
  r.thumbstickY=-1;tick();r.thumbstickY=0;tick();
  r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
- Check(WristDisplayEnabled()&&WristSizePercent()==100,"wrist opt-in reaches layer consumer");
+ Check(!WristDisplayEnabled()&&WristSizePercent()==100,"wrist toggle (on by default) reaches layer consumer");
  for(int n=0;n<2;++n){r.thumbstickY=-1;tick();r.thumbstickY=0;tick();}
  const auto clearBefore=holsterClears;
  r.menuAccept=true;tick();r.menuAccept=false;tick();

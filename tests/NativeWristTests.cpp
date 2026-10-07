@@ -111,6 +111,35 @@ struct Graphics {
         }
     }
 };
+// The hologram's presentation: the fade scales all four (premultiplied)
+// channels; the panel is glass under the meters, clear outside its corners.
+void PanelAndFade(){
+    Graphics g;dll::NativeWristTexture fitter;
+    auto input=g.Source(640,480,DXGI_FORMAT_R8G8B8A8_UNORM);
+    auto read=[&](ID3D11Texture2D* texture,unsigned x,unsigned y){
+        CHECK(texture);D3D11_TEXTURE2D_DESC d{};texture->GetDesc(&d);
+        d.Usage=D3D11_USAGE_STAGING;d.BindFlags=0;d.CPUAccessFlags=D3D11_CPU_ACCESS_READ;
+        ComPtr<ID3D11Texture2D> staging;CHECK(SUCCEEDED(g.device->CreateTexture2D(&d,nullptr,&staging)));
+        g.context->CopyResource(staging.Get(),texture);D3D11_MAPPED_SUBRESOURCE m{};
+        CHECK(SUCCEEDED(g.context->Map(staging.Get(),0,D3D11_MAP_READ,0,&m)));
+        const auto v=reinterpret_cast<const std::uint32_t*>(static_cast<const char*>(m.pData)+y*m.RowPitch)[x];
+        g.context->Unmap(staging.Get(),0);return v;
+    };
+    const unsigned cx=dll::NativeWristWidth/2,cy=dll::NativeWristHeight/2;
+    const auto half=read(fitter.Fit(g.context.Get(),input.Get(),.5f,false),cx,cy);
+    for(int k=0;k<4;++k){
+        const int full=(0x80193264u>>(8*k))&0xFF,got=(half>>(8*k))&0xFF;
+        CHECK(std::abs(got-full/2)<=1);
+    }
+    auto panel=fitter.Fit(g.context.Get(),input.Get(),1.f,true);
+    CHECK((read(panel,0,0)>>24)==0);                      // outside the rounded corner
+    const auto glass=read(panel,40,cy)>>24;                // inside, beside the meters
+    CHECK(glass>90&&glass<200);
+    CHECK((read(panel,cx,cy)>>24)>=0x80);                  // the meters over the glass
+    const auto dimmed=read(fitter.Refit(g.context.Get(),.25f,true),40,cy)>>24;
+    CHECK(std::abs(static_cast<int>(dimmed)-static_cast<int>(glass)/4)<=1); // refit: same pixels, new fade
+    g.NoErrors();
+}
 void Pixels(){
     Graphics g;dll::NativeWristTexture fitter;
     auto sentinel=g.Source(640,480,DXGI_FORMAT_R8G8B8A8_UNORM);
@@ -153,5 +182,5 @@ void Pixels(){
     g.NoErrors();
 }
 }
-int main(){try{Transactions();Pixels();std::cout<<"native wrist isolation and GPU pixels PASS\n";return 0;}
+int main(){try{Transactions();Pixels();PanelAndFade();std::cout<<"native wrist isolation and GPU pixels PASS\n";return 0;}
 catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
