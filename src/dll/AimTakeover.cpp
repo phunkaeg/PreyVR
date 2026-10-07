@@ -9,6 +9,7 @@
 #include "WeaponAttachment.h"
 #include "DebugOverlay.h"
 #include "InteractionLane.h"
+#include "CarryLane.h"
 #include "preyvr/AnimIk.h"
 #include "MinHookInit.h"
 #include "preyvr/LatestSnapshot.h"
@@ -317,6 +318,7 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     UpdateBodyEquipment(frame,haveTracking&&gEnabled.load());
     UpdatePhysicalInteractions(frame,haveTracking&&gEnabled.load());
     UpdateInteractionLane(frame,haveTracking&&gEnabled.load());
+    UpdateCarryLane(frame,haveTracking&&gEnabled.load());
     DebugOverlayGameFrame(frame,haveTracking);
     if (!haveTracking) { gRejNoPose.fetch_add(1); return; }
     // A frame whose play-space yaw is unknown cannot aim, and must not silently

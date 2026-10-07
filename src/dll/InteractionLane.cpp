@@ -1,6 +1,7 @@
 #include "InteractionLane.h"
 
 #include "AimTakeover.h"
+#include "CarryLane.h"
 #include "HeadTrackingHook.h"
 #include "HudBridge.h"
 #include "Logger.h"
@@ -110,6 +111,7 @@ std::atomic<unsigned long long> gSelectorCalls{0}, gSteered{0}, gSuppressed{0}, 
 std::atomic<unsigned long long> gInteracts{0}, gPerforms{0}, gTargetChanges{0};
 std::atomic<unsigned long long> gPresses{0}, gReleases{0}, gNoTarget{0}, gGaveUp{0}, gBusy{0};
 std::atomic<std::uint32_t> gUsable{0}, gCarry{0};
+std::atomic<bool> gTapOnly{false};
 std::atomic<bool> gButtonDown{false};
 std::atomic<unsigned> gButtonOwner{0};
 LatestSnapshot<UsePointer> gPointer;
@@ -665,6 +667,8 @@ void UpdateInteractionLane(const GameplayPoseFrame& frame, bool tracking)
     if (frame.player) { ReadSelection(frame.player, s); }
     gUsable.store(s.usable);
     gCarry.store(s.carry);
+    // EArkInteractionType (the game's name table at 0x1E582F0): 4 Pickup, 12 Hoover.
+    gTapOnly.store(s.usable && s.info[0].type == 4 && s.info[1].type == 12);
     if (s.usable && s.target.bounds && pointer.valid) {
         const Vec3 centre = Scale(Add(s.target.min, s.target.max), .5f);
         s.measured = true;
@@ -705,6 +709,8 @@ void UpdateInteractionLane(const GameplayPoseFrame& frame, bool tracking)
     }
 
     // --- the pointer ----------------------------------------------------------------
+    // A hand holding what it carries points at nothing: no ray out of it.
+    if (s.carry && CarryHoldingInHand()) { pointer.valid = false; }
     if (pointer.valid) {
         pointer.suppressed = gSuppress.load();
         pointer.held = gButtonDown.load();
@@ -733,7 +739,20 @@ void UpdateInteractionLane(const GameplayPoseFrame& frame, bool tracking)
 }
 
 bool UseTargetPresent() { return gUsable.load(std::memory_order_relaxed) != 0; }
+std::uint32_t UseTargetId() { return gUsable.load(std::memory_order_relaxed); }
+bool UseTargetTapOnly() { return gTapOnly.load(std::memory_order_relaxed); }
 bool UseCarrying() { return gCarry.load(std::memory_order_relaxed) != 0; }
+
+float UseCarryHoldSeconds(std::uint32_t entity)
+{
+    // gLast is the game thread's; so is the caller (StartCarrying).
+    if (!entity || gLast.usable != entity) { return -1.0f; }
+    float hold = -1.0f;
+    for (const auto& r : gLast.info) {
+        if (r.type == 6) { hold = std::max(hold, r.hold); }
+    }
+    return hold;
+}
 
 void RequestUseTargetSuppression(bool suppress) { gSuppress.store(suppress, std::memory_order_release); }
 
@@ -748,8 +767,8 @@ void NoteUseButton(bool down, unsigned owner, bool pressed, bool released, unsig
     if (events & 2) { gGaveUp.fetch_add(1); }
     if (events & 4) { gBusy.fetch_add(1); }
     if (pressed || released || events) {
-        const char* names[] = {"none", "use", "reload", "legacy"};
-        const std::string ownerName = owner < 4 ? names[owner] : "?";
+        const char* names[] = {"none", "use", "reload", "legacy", "hold"};
+        const std::string ownerName = owner < 5 ? names[owner] : "?";
         std::string line = std::string("button ") + (pressed ? "press" : released ? "release" : "event") + " owner=" +
                            ownerName + " usable=" + std::to_string(gUsable.load());
         if (events & 1) { line += " noTarget=1"; }

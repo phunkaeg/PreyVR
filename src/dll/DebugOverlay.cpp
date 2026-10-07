@@ -6,6 +6,7 @@
 #include "HeadTrackingHook.h"
 #include "HudBridge.h"
 #include "InteractionLane.h"
+#include "CarryLane.h"
 #include "Logger.h"
 #include "NativeWristTexture.h"
 #include "PsiMedkit.h"
@@ -641,7 +642,9 @@ void DebugOverlayGameFrame(const GameplayPoseFrame& frame, bool tracking)
         gShot.Publish(record);
     }
     const auto& left = frame.tracking.hands[static_cast<unsigned>(Hand::left)];
-    if (!tracking || frame.twoHand.held || !IsPoseUsable(left.aimPose, left.aimValidity, kPoseAgeNs)) {
+    // A hand holding what it carries points at nothing (CarryLane.h).
+    if (!tracking || frame.twoHand.held || !IsPoseUsable(left.aimPose, left.aimValidity, kPoseAgeNs) ||
+        CarryHoldingInHand()) {
         gLeft.Clear();
         return;
     }

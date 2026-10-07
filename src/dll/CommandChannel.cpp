@@ -23,6 +23,7 @@
 #include "SceneQuery.h"
 #include "ShotRay.h"
 #include "InteractionLane.h"
+#include "CarryLane.h"
 #include "PhysicalInteractions.h"
 #include "PsiMedkit.h"
 #include "Haptics.h"
@@ -503,7 +504,7 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         return value;
     };
 
-    if (ExecutePose(args, out)) {
+    if (ExecutePose(args, out) || ExecuteCarryCommand(args, out)) {
         return;
     }
     if (verb == "vr.options") {

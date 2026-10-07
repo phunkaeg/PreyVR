@@ -2,6 +2,7 @@
 #include "AimTakeover.h"
 #include "BodyEquipment.h"
 #include "InteractionLane.h"
+#include "CarryLane.h"
 #include "PsiMedkit.h"
 #include "Psychoscope.h"
 
@@ -550,7 +551,13 @@ void UpdateTurnAndFireLanes()
                           (haveLeftHand && leftHand.squeezeValue >= .45f && !useIn.leftHand) ||
                           (carrying && useIn.leftHand);
         useIn.target = UseTargetPresent() || carrying;
+        // Phase 2: held in the hand for as long as the grip is (carry.hold).
+        useIn.carrying = carrying;
+        useIn.holdToHold = CarryHoldToHold() != 0;
+        useIn.targetId = UseTargetId();
+        useIn.tapOnly = UseTargetTapOnly();
         const use::ButtonOutput useOut = gUseButton.Update(useIn);
+        if (useOut.releaseCarry) { RequestCarryRelease(); }
         RequestUseTargetSuppression(useOut.suppressTarget);
         NoteUseButton(useOut.down, static_cast<unsigned>(useOut.owner), useOut.pressed, useOut.released,
                       (useOut.noTarget ? 1u : 0u) | (useOut.gaveUp ? 2u : 0u) | (useOut.busy ? 4u : 0u));

@@ -38,9 +38,25 @@ struct ButtonInput {
     bool leftBusy = false, rightBusy = false;
     // The game has a usable entity right now (the selector's committed pick).
     bool target = false;
+    // Phase 2 (HandCarry.h): something is carried right now, and whether it is
+    // held like in VR -- for as long as the grip is closed -- or toggled like
+    // the game does it (press to pick up, press again to drop).
+    bool carrying = false;
+    bool holdToHold = true;
+    // The selected entity's id (0 = none). With holdToHold, a press whose
+    // target leaves the selection without a carry starting -- an item taken
+    // into the inventory -- lets the button go at once: a VR hand stays closed
+    // after a grab, and the game's "hold" on a pickup is the hoover, which
+    // would sweep up every item around it one after another.
+    std::uint32_t targetId = 0;
+    // The selection is a pickup whose "hold" is the hoover (EArkInteractionType
+    // 4 on tap, 12 on hold). With holdToHold its press is a TAP: the game takes
+    // it on the release, at once, instead of waiting out the hold threshold.
+    bool tapOnly = false;
 };
 
-enum class Owner : std::uint8_t { None, Use, Reload, Legacy };
+// Hold: the left grip is holding what it picked up; opening it lets go.
+enum class Owner : std::uint8_t { None, Use, Reload, Legacy, Hold };
 const char* OwnerName(Owner owner);
 
 struct ButtonOutput {
@@ -52,6 +68,10 @@ struct ButtonOutput {
     bool noTarget = false;        // left grip pressed with nothing selected: nothing sent
     bool gaveUp = false;          // reload: the selection never cleared, nothing sent
     bool busy = false;            // a press another lane owned
+    // Let go of what is carried, now (the carry lane chooses drop or throw from
+    // the hand's motion). Raised when the grip that picked it up opens, or --
+    // for a carry no press of ours started -- when the left grip next closes.
+    bool releaseCarry = false;
 };
 
 class UseButton {
@@ -64,6 +84,8 @@ public:
     // After a reload's X is released the selector stays empty this long, so the
     // release cannot land on a target (a native "tap" can act on release).
     static constexpr int kGuardFrames = 3;
+    // A tap's length (tapOnly): down this many frames, the press included.
+    static constexpr int kTapFrames = 2;
 
     ButtonOutput Update(const ButtonInput& in);
     void Reset();
@@ -72,6 +94,8 @@ public:
 private:
     Owner owner_ = Owner::None;
     bool down_ = false;
+    std::uint32_t pressedTarget_ = 0;   // what the press acted on (holdToHold)
+    int tap_ = 0;                       // frames left of a tap (tapOnly)
     bool leftArmed_ = false, rightArmed_ = false;   // released since the last press
     int clear_ = 0, waited_ = 0, guard_ = 0;
 };

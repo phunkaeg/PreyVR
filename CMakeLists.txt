@@ -90,6 +90,7 @@ add_library(preyvr_core STATIC
     src/common/InputQueue.cpp
     src/common/InteractionQuery.cpp
     src/common/InteractionUse.cpp
+    src/common/HandCarry.cpp
     src/common/Locomotion.cpp
     src/common/MenuNavigator.cpp
     src/common/InventoryDepth.cpp
@@ -158,6 +159,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/DebugOverlay.cpp
         src/dll/ShotRay.cpp
         src/dll/InteractionLane.cpp
+        src/dll/CarryLane.cpp
         src/dll/SlotFeedback.cpp
         src/dll/NativeWristTexture.cpp
         src/dll/HudLayer.cpp
@@ -411,6 +413,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_near_particles_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_near_particles_tests)
     add_test(NAME near_particles COMMAND preyvr_near_particles_tests)
+
+    add_executable(preyvr_hand_carry_tests tests/HandCarryTests.cpp)
+    target_link_libraries(preyvr_hand_carry_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_hand_carry_tests)
+    add_test(NAME hand_carry COMMAND preyvr_hand_carry_tests)
 
     add_executable(preyvr_interaction_use_tests tests/InteractionUseTests.cpp)
     target_link_libraries(preyvr_interaction_use_tests PRIVATE preyvr_core)

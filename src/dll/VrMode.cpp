@@ -19,6 +19,7 @@
 #include "UiPointer.h"
 #include "AnimIkTakeover.h"
 #include "InteractionLane.h"
+#include "CarryLane.h"
 #include "DebugOverlay.h"
 #include "preyvr/DebugOverlayScene.h"
 #include "preyvr/LatestSnapshot.h"
@@ -168,6 +169,10 @@ void TickVrMode() {
         // right grip only reloads (InteractionLane.h). Not fatal: without the
         // selector hook the right grip stays the native use/reload button.
         if(SetUseHand(1)!=0) Log("use_hand=right reason=selector_unavailable");
+        // Phase 2: what the left hand carries is IN it, held while the grip is,
+        // thrown with the hand's motion (CarryLane.h). Not fatal: without the
+        // hooks the game's own carry stays, toggled like in phase 1.
+        else if(SetCarryHand(1)!=0) Log("carry_hand=native reason=hooks_unavailable");
         // Both hands' rays drawn in gameplay while interaction is being tested
         // (user, 2026-10-06). The VR options' Debug overlay switch turns them off.
         if(DebugOverlayMask()==0) SetDebugOverlay(debugdraw::kRays|debugdraw::kHits);

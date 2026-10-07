@@ -46,7 +46,13 @@ void UpdateInteractionLane(const GameplayPoseFrame& frame, bool tracking);
 
 // For the use button (MoveLane, same thread).
 bool UseTargetPresent();              // the game has a usable entity right now
+std::uint32_t UseTargetId();          // its id (0 = none)
+bool UseTargetTapOnly();              // a pickup whose hold is the hoover
 bool UseCarrying();                   // the game is carrying something (the button drops it)
+// Game thread: the seconds the native button must be held to CARRY `entity`
+// (its carry-type interaction record), if it is the current selection; -1 if
+// that is unknown. Leverage props need ~0.75 s, the generic hold mode ~0.33 s.
+float UseCarryHoldSeconds(std::uint32_t entity);
 void RequestUseTargetSuppression(bool suppress);
 void NoteUseButton(bool down, unsigned owner, bool pressed, bool released, unsigned events);
 
