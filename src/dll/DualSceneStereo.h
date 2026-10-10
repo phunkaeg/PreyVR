@@ -44,17 +44,26 @@
 //             runs RT_SetCameraInfo) and CRenderView::SetCamera. Each submission
 //             gets the frame's SThreadInfo with that camera block. The frame's
 //             camera is restored after the second submission. Culling is still
-//             the frame's single camera.
+//             the frame's single camera. A flat experiment at its own IPD.
+//   mode 3    the headset path. As mode 2, but only while the camera hook is
+//             publishing both-eyes contracts (SetDualStereoContract), with the
+//             eyes built by the camera hook itself (BuildDualEyeCamera: the same
+//             construction and IPD as the alternate-eye path, publishing each eye
+//             record for the near pass). Between the submissions the first eye is
+//             handed to the XR host (HoldDualFirstEye); RT_EndFrame pairs it with
+//             the backbuffer under the frame's one contract. Unbudgeted. A
+//             refusal also returns the camera hook to alternate-eye contracts.
 //
-// Off by default. Nothing here changes the frame until a mode is armed. Not yet
-// wired into OpenXR submission: the headset still receives alternate-eye frames.
+// Off by default. VrMode arms mode 3 with the both-eyes contract when VR starts,
+// unless PREYVR_DUAL_STEREO=0; `dual.vr 0|1` switches live.
 namespace preyvr::dll {
 
 // Returns 0 when the hooks are installed (or already were), otherwise a nonzero
 // reason: 1 landmark missing or disagrees, 2 prologue mismatch, 3 MinHook failed.
 DWORD SetDualSceneObserve(unsigned int enabled);
 
-// 0 off, 1 same-camera double submission (the control), 2 per-eye cameras.
+// 0 off, 1 same-camera double submission (the control), 2 per-eye cameras,
+// 3 the headset path (see above; arm SetDualStereoContract after this).
 // `frameBudget` bounds how many frames are doubled before the mode disarms
 // itself; 0 keeps the previous budget. Returns 0 armed, 4 unknown mode,
 // otherwise as above.

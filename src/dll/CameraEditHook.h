@@ -90,6 +90,26 @@ struct BuiltEye {
 bool FindBuiltEyeByPosition(const float position[3], BuiltEye& out);
 unsigned long long BuiltEyeLookupMissCount();
 
+// **Rung 1b: both eyes in one frame.** With this set and stereo armed, the
+// camera hook stops alternating eyes: the frame keeps the head camera (so the
+// engine culls and prepares it once, from the head) and its render contract is
+// a both-eyes record (kRenderContractBothEyes) carrying the two eye poses for
+// one display time. The render thread then submits the frame twice
+// (DualSceneStereo mode 3), building each eye with BuildDualEyeCamera.
+DWORD SetDualStereoContract(unsigned int enabled);
+bool DualStereoContractEnabled();
+
+// The eye separation the stereo path is armed with; 0 when stereo is off.
+float SyntheticStereoIpdMetres();
+
+// Render-thread half of rung 1b. Turns `camera` (a CCamera, 0x240 bytes, the
+// frame's head camera) into eye `eye` by the same construction as the
+// alternate-eye path, rebuilds its frustum, and publishes the eye record before
+// returning, so the record holds the exact bits the render view will be given.
+// False when stereo is not armed or the result is unsafe; `camera` is then
+// unchanged.
+bool BuildDualEyeCamera(std::uint8_t* camera, int eye);
+
 // **Render the frustum the headset asked for, instead of Prey's.** Measured on
 // this machine: 41.25% of the submitted pixel rectangle lands inside the
 // runtime's requested frustum, and the request is fully covered -- so the other

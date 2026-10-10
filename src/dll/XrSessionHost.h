@@ -119,6 +119,17 @@ DWORD SetXrStereoSubmission(unsigned int enabled);
 // to the frustum. One call settles it rather than a rebuild.
 DWORD SetXrSwapEyes(unsigned int enabled);
 
+// **Rung 1b.** Called on the render thread between the two scene submissions of
+// a both-eyes frame (DualSceneStereo mode 3): copies the backbuffer -- the first
+// eye, post-processed, before the HUD -- into that eye's held image. The next
+// ServiceXrFrame pairs it with the backbuffer (the second eye) under the frame's
+// both-eyes contract. False when no XR session is submitting stereo, the lock is
+// busy or the size differs; that frame's both-eyes contract is then refused.
+bool HoldDualFirstEye(void* renderer);
+
+// Holds made and refused, and both-eyes pairs submitted and refused.
+std::string DualPairReport();
+
 // Asks for the sRGB swapchain format rather than the exact match -- the
 // FAIL-STR-033 double-encoded-gamma fix.
 //

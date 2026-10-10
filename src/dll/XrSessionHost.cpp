@@ -227,6 +227,14 @@ std::atomic<bool> gStereoSubmission{false};
 // If that is what a session reports, this settles it in one call instead of
 // costing a rebuild -- and a rebuild is not always available.
 std::atomic<bool> gSwapEyes{false};
+// Rung 1b. Set by HoldDualFirstEye when the first of this frame's two scene
+// submissions has been copied into its held eye image; taken and cleared at the
+// top of the next ServiceXrFrame, so a hold can only ever pair with the frame it
+// was made in. Written and taken on the render thread; atomic so reports can
+// read it from the command thread.
+std::atomic<bool> gDualFirstHeld{false};
+std::atomic<unsigned long long> gDualHolds{0}, gDualHoldRefused{0};
+std::atomic<unsigned long long> gDualPairsSubmitted{0}, gDualPairsRefused{0};
 
 // Ask for the sRGB swapchain format instead of the exact match -- FAIL-STR-033.
 // Read once when the swapchain is created, so it must be set before StartXrSession.
@@ -937,16 +945,11 @@ std::optional<XrFovf> DeclaredFovFromLiveCamera()
 // Returns false until both eyes have been seen at least once. Submitting a pair
 // with one empty half would show a black eye, which reads as a broken headset
 // rather than as a warming-up mod.
-bool SubmitStereoPair(
-    ID3D11DeviceContext* context,
-    ID3D11Texture2D* backBuffer,
-    std::uint32_t imageIndex,
-    const XrView* views,
-    const RenderContract& contract, bool hudCaptured)
+// The two held eye images, created on first use at the backbuffer's size and
+// format. Shared by the per-frame submission and the rung-1b mid-frame hold, so
+// both see the same textures.
+bool EnsureEyeImages(const D3D11_TEXTURE2D_DESC& desc)
 {
-    D3D11_TEXTURE2D_DESC desc{};
-    backBuffer->GetDesc(&desc);
-
     for (int eye = 0; eye < 2; ++eye) {
         if (gHost.eyeImage[eye] != nullptr) {
             continue;
@@ -972,6 +975,22 @@ bool SubmitStereoPair(
             LogOnce("result=failed step=create_eye_image");
             return false;
         }
+    }
+    return true;
+}
+
+bool SubmitStereoPair(
+    ID3D11DeviceContext* context,
+    ID3D11Texture2D* backBuffer,
+    std::uint32_t imageIndex,
+    const XrView* views,
+    const RenderContract& contract, bool hudCaptured, bool dualFirstHeld)
+{
+    D3D11_TEXTURE2D_DESC desc{};
+    backBuffer->GetDesc(&desc);
+
+    if (!EnsureEyeImages(desc)) {
+        return false;
     }
 
     // **The eye arrives with the frame.** No dwell, no lock, no waiting: the
@@ -1004,7 +1023,53 @@ bool SubmitStereoPair(
         Log(receipt.str());
     }
     const int eye = contract.eye;
-    if (eye == 0 || eye == 1) {
+    if (eye == kRenderContractBothEyes) {
+        // **Rung 1b: both eyes come from this one frame.** The first scene
+        // submission was copied mid-frame into its held image (HoldDualFirstEye)
+        // and the backbuffer holds the second. Both images and both poses are
+        // published together from this one record. A frame whose first half was
+        // not held is refused outright: pairing a fresh right eye with an older
+        // left one is exactly the cross-time pair this route exists to remove.
+        if (!dualFirstHeld) {
+            const auto refused = gDualPairsRefused.fetch_add(1, std::memory_order_relaxed) + 1;
+            if (refused <= 4 || refused % 300 == 0) {
+                Log("result=refused detail=dual_first_eye_not_held refused=" + std::to_string(refused));
+            }
+            gHost.eyeImageValid[0] = gHost.eyeImageValid[1] = false;
+            return false;
+        }
+        const int first = gSwapEyes.load(std::memory_order_acquire) ? 1 : 0;
+        const int second = 1 - first;
+        context->CopyResource(gHost.eyeImage[second], backBuffer);
+        // The first image was taken before the HUD is drawn; RecordEye for it
+        // happened at the hold. The second carries the native HUD unless the HUD
+        // layer redirected it.
+        gHost.hudCapturePair.RecordEye(second, hudCaptured);
+        for (int rendered = 0; rendered < 2; ++rendered) {
+            const int target = rendered == 0 ? first : second;
+            const Pose& source = contract.eyePoses[rendered];
+            RenderContract eyeContract = contract;
+            eyeContract.eye = rendered;
+            eyeContract.pose = source;
+            const float shown[4] = {std::tan(views[target].fov.angleLeft), std::tan(views[target].fov.angleRight),
+                                    std::tan(views[target].fov.angleUp), std::tan(views[target].fov.angleDown)};
+            DrawDebugOverlay(gHost.device, context, gHost.eyeImage[target], eyeContract, shown);
+            gHost.eyePose[target] = {{source.orientation.x, source.orientation.y,
+                source.orientation.z, source.orientation.w},
+                {source.position.x, source.position.y, source.position.z}};
+            gHost.eyeFov[target] = {std::atan(contract.tangents[0]), std::atan(contract.tangents[1]),
+                std::atan(contract.tangents[2]), std::atan(contract.tangents[3])};
+            gHost.requestedFov[target] = views[target].fov;
+            gHost.requestedFovValid[target] = true;
+            gFovAgree.fetch_add(1, std::memory_order_relaxed);
+            gHost.eyeDisplayTime[target] = contract.displayTime;
+            gHost.eyeImageValid[target] = true;
+        }
+        const auto pairs = gDualPairsSubmitted.fetch_add(1, std::memory_order_relaxed) + 1;
+        if (pairs == 1) {
+            Log("result=0 detail=first_dual_pair displayTime=" + std::to_string(contract.displayTime));
+        }
+    } else if (eye == 0 || eye == 1) {
         const int target = gSwapEyes.load(std::memory_order_acquire) ? (1 - eye) : eye;
         context->CopyResource(gHost.eyeImage[target], backBuffer);
         // Drawn into this eye with the contract that rendered it, so the
@@ -1254,6 +1319,9 @@ void ServiceXrFrame(void* renderer)
     // alternating-eye parity when the backlog was eventually discarded.
     RenderContract renderContract{};
     dll::ConsumeRenderedContract(renderContract);
+    // Taken with the contract, before any early return, for the same reason: a
+    // mid-frame hold belongs to this frame or to none.
+    const bool dualFirstHeld = gDualFirstHeld.exchange(false, std::memory_order_acq_rel);
     // Take each capture once, even on skipped submissions; never reuse a PDA
     // image after a dialog or another menu has replaced it.
     ID3D11Texture2D* inventoryRightTexture=nullptr;
@@ -1654,7 +1722,7 @@ void ServiceXrFrame(void* renderer)
                     if (gStereoSubmission.load(std::memory_order_acquire) && !panelActive) {
                         stereoPair = SubmitStereoPair(
                             context, backBuffer, imageIndex,
-                            views, renderContract, hudTexture!=nullptr);
+                            views, renderContract, hudTexture!=nullptr, dualFirstHeld);
                     } else {
                         // First light is a **flat mirror**: the same backbuffer
                         // into both eyes. It proves the whole path -- device,
@@ -2412,6 +2480,66 @@ DWORD XrResolutionChain(unsigned int field)
 unsigned long long DeclaredFovAgreeCount() { return gFovAgree.load(std::memory_order_relaxed); }
 unsigned long long DeclaredFovDivergeCount() { return gFovDiverge.load(std::memory_order_relaxed); }
 DWORD DeclaredFovWorstMilliTan() { return gWorstDivergenceMilliTan.load(std::memory_order_relaxed); }
+
+bool HoldDualFirstEye(void* renderer)
+{
+    const auto refuse = [] {
+        gDualHoldRefused.fetch_add(1, std::memory_order_relaxed);
+        return false;
+    };
+    if (renderer == nullptr ||
+        gStatus.load(std::memory_order_acquire) != static_cast<DWORD>(XrSessionStatus::running) ||
+        !gStereoSubmission.load(std::memory_order_acquire)) {
+        return refuse();
+    }
+    // Never wait: this runs inside the engine's scene submission.
+    std::unique_lock lock(gMutex, std::try_to_lock);
+    if (!lock.owns_lock() || !gHost.started || !gHost.sessionBegun || gHost.device == nullptr) {
+        return refuse();
+    }
+    IDXGISwapChain* swapChain = *reinterpret_cast<IDXGISwapChain**>(
+        reinterpret_cast<std::uintptr_t>(renderer) + engine::RendererLayout::swapchain);
+    ID3D11Texture2D* backBuffer = nullptr;
+    if (swapChain == nullptr ||
+        FAILED(swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer))) ||
+        backBuffer == nullptr) {
+        return refuse();
+    }
+    D3D11_TEXTURE2D_DESC desc{};
+    backBuffer->GetDesc(&desc);
+    // Same size gate as submission: an image of another size cannot be paired.
+    bool held = desc.Width == gHost.width && desc.Height == gHost.height && EnsureEyeImages(desc);
+    if (held) {
+        ID3D11DeviceContext* context = nullptr;
+        gHost.device->GetImmediateContext(&context);
+        if (context != nullptr) {
+            const int first = gSwapEyes.load(std::memory_order_acquire) ? 1 : 0;
+            context->CopyResource(gHost.eyeImage[first], backBuffer);
+            // Taken before the HUD is drawn, so the native HUD is not in it.
+            gHost.hudCapturePair.RecordEye(first, true);
+            context->Release();
+        } else {
+            held = false;
+        }
+    }
+    backBuffer->Release();
+    if (!held) {
+        return refuse();
+    }
+    gDualFirstHeld.store(true, std::memory_order_release);
+    gDualHolds.fetch_add(1, std::memory_order_relaxed);
+    return true;
+}
+
+std::string DualPairReport()
+{
+    std::ostringstream out;
+    out << " pairHolds=" << gDualHolds.load(std::memory_order_relaxed)
+        << " pairHoldRefused=" << gDualHoldRefused.load(std::memory_order_relaxed)
+        << " pairsSubmitted=" << gDualPairsSubmitted.load(std::memory_order_relaxed)
+        << " pairsRefused=" << gDualPairsRefused.load(std::memory_order_relaxed);
+    return out.str();
+}
 
 DWORD SetXrSwapEyes(unsigned int enabled)
 {

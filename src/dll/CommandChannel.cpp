@@ -516,6 +516,18 @@ bool ExecuteDualCommand(const std::vector<std::string>& args, std::ostringstream
         out << "dual.mode result=" << SetDualSceneMode(arg(1, 0), arg(2, 0)) << DualSceneReport();
     } else if (verb == "dual.ipd") {
         out << "dual.ipd result=" << SetDualSceneIpdMillimetres(arg(1, 64)) << DualSceneReport();
+    } else if (verb == "dual.vr") {
+        // Headset A/B: 1 both eyes per frame, 0 the alternate-eye path. Ordered so
+        // no both-eyes contract is ever published without its second submission.
+        DWORD result = 0;
+        if (arg(1, 1) != 0) {
+            result = SetDualSceneMode(3, 0);
+            if (result == 0) SetDualStereoContract(1);
+        } else {
+            SetDualStereoContract(0);
+            result = SetDualSceneMode(0, 0);
+        }
+        out << "dual.vr result=" << result << DualSceneReport();
     } else if (verb == "dual.capture") {
         out << "dual.capture result=" << RequestDualSceneCapture(arg(1, 0));
     } else if (verb == "dual.report") {

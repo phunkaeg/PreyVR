@@ -9,6 +9,7 @@
 #include "HeadTrackingHook.h"
 #include "NearViewStereo.h"
 #include "NearParticleStereo.h"
+#include "DualSceneStereo.h"
 #include "NearFovOverride.h"
 #include "InputPost.h"
 #include "InputPathProbe.h"
@@ -45,6 +46,8 @@ const char* settings[]={"r_MotionBlur 0","r_AntialiasingMode 1"};
 void Log(const std::string& s) { lifecycle::Log("preyvr_vr " + s); }
 void StopFeatures() {
     SetHudLayerEnabled(0);
+    // Contract first, so no both-eyes record is published after its submissions stop.
+    SetDualStereoContract(0); SetDualSceneMode(0,0);
     SetSyntheticStereo(0,50);
     SetViewHookApplying(0); SetViewPositionApplying(0);
     SetNearViewStereo(0); SetNearFovDeciDegrees(0);
@@ -155,6 +158,18 @@ void TickVrMode() {
             SetSyntheticStereo(ipd,50)!=2 || SetXrStereoSubmission(1)!=1 ||
             SetNearViewStereo(1)!=0 || SetNearViewIpdMetres(ipd)!=0 || SetNearFovDeciDegrees(nearFov)!=0) {
             Fail("stereo_and_tracking"); return;
+        }
+        // Both eyes in every frame (rung 1b, DualSceneStereo.h) unless
+        // PREYVR_DUAL_STEREO=0 asks for the alternate-eye path. The render-thread
+        // mode is armed before the game thread starts publishing both-eyes
+        // contracts, so no such contract can arrive without a submission to fill
+        // it. Not fatal: without the hooks the alternate-eye path continues.
+        {
+            wchar_t dualSetting[8]{};
+            GetEnvironmentVariableW(L"PREYVR_DUAL_STEREO",dualSetting,8);
+            if(dualSetting[0]==L'0') Log("dual_stereo=off reason=PREYVR_DUAL_STEREO");
+            else if(SetDualSceneMode(3,0)==0) {SetDualStereoContract(1);Log("dual_stereo=on");}
+            else Log("dual_stereo=unavailable fallback=alternate_eye");
         }
         // DrawNear particles in the weapon's camera space (preyvr/NearParticles.h).
         // Not fatal: without the hook they keep the native double parallax.

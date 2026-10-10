@@ -1,6 +1,8 @@
 #include "DualSceneStereo.h"
 
+#include "CameraEditHook.h"
 #include "FrameCaptureWin32.h"
+#include "XrSessionHost.h"
 #include "FrameObserverHook.h"
 #include "Logger.h"
 #include "MinHookInit.h"
@@ -127,6 +129,7 @@ std::atomic<int> gLastFlags{0};
 std::atomic<const char*> gLastRefusal{"none"};
 std::atomic<unsigned int> gLogged{0};
 std::atomic<unsigned int> gSlotsLogged{0};
+std::atomic<unsigned long long> gHeadsetBuildMisses{0};
 
 // Per-thread, so the deferral can never apply to another thread's calls.
 thread_local int tDepth = 0;
@@ -264,6 +267,28 @@ bool BuildEyes(const void* threadInfo, std::uint8_t (&centre)[kCameraSize],
     return true;
 }
 
+// Mode 3: the eyes the headset will be told about. Built by the camera hook
+// (BuildDualEyeCamera) -- the same construction as the alternate-eye path, at the
+// stereo path's own IPD -- which also publishes each eye record, so the near pass
+// can identify the eye from the camera the render view is given.
+bool BuildHeadsetEyes(const void* threadInfo, std::uint8_t (&centre)[kCameraSize],
+                      std::uint8_t (&eyes)[2][kCameraSize])
+{
+    const auto* info = static_cast<const std::uint8_t*>(threadInfo);
+    __try {
+        std::memcpy(centre, info + kThreadInfoCamera, kCameraSize);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+    for (int eye = 0; eye < 2; ++eye) {
+        std::memcpy(eyes[eye], centre, kCameraSize);
+        if (!BuildDualEyeCamera(eyes[eye], eye)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // Installs one eye through the engine's own setters, then builds the
 // SThreadInfo for that submission: the frame's own, with the camera block
 // SetCamera just wrote. Returns false if the render thread's slot is not one of
@@ -331,8 +356,14 @@ void Refuse(const char* reason)
     gLastRefusal.store(reason, std::memory_order_release);
     // Disarm rather than retry: a teardown that did not go through the gates means
     // the model of this function is wrong, and the next frame would be the same.
-    gMode.store(0, std::memory_order_release);
-    Log(std::string("result=refused detail=") + reason + " mode=0");
+    const unsigned int was = gMode.exchange(0, std::memory_order_acq_rel);
+    if (was == 3) {
+        // The headset path must not go dark: return the game thread to
+        // alternate-eye contracts, which need no second submission.
+        SetDualStereoContract(0);
+    }
+    Log(std::string("result=refused detail=") + reason + " mode=0 was=" + std::to_string(was) +
+        (was == 3 ? " fallback=alternate_eye" : ""));
 }
 
 void __fastcall SwitchUsageModeDetour(void* view, int mode)
@@ -388,8 +419,11 @@ void __fastcall RenderSceneDetour(void* renderer, void* view, int flags, void* t
     const bool topLevel = tDepth == 0 && type != kViewTypeRecursive && view != nullptr &&
                           threadInfo != nullptr;
     const unsigned int mode = gMode.load(std::memory_order_acquire);
-    const bool doubleIt = topLevel && (mode == 1 || mode == 2) &&
-                          gBudget.load(std::memory_order_acquire) > 0;
+    // Mode 3 doubles exactly while the game thread is publishing both-eyes
+    // contracts with stereo armed, and is not budgeted: it is the headset path.
+    const bool doubleIt = topLevel &&
+        (((mode == 1 || mode == 2) && gBudget.load(std::memory_order_acquire) > 0) ||
+         (mode == 3 && DualStereoContractEnabled() && SyntheticStereoIpdMetres() > 0.0f));
     ++tDepth;
     if (!doubleIt) {
         const auto start = topLevel ? QpcMicros() : 0;
@@ -417,7 +451,7 @@ void __fastcall RenderSceneDetour(void* renderer, void* view, int flags, void* t
     alignas(16) std::uint8_t centre[kCameraSize];
     alignas(16) std::uint8_t eyes[2][kCameraSize];
     alignas(16) std::uint8_t infos[2][kThreadInfoSize];
-    const bool perEye = mode == 2;
+    const bool perEye = mode >= 2;
     const auto restoreCentre = [&] {
         gRendererSetCamera.load(std::memory_order_acquire)(renderer, centre);
         gViewSetCamera.load(std::memory_order_acquire)(view, centre);
@@ -425,7 +459,19 @@ void __fastcall RenderSceneDetour(void* renderer, void* view, int flags, void* t
     void* firstInfo = threadInfo;
     void* secondInfo = threadInfo;
     if (perEye) {
-        const bool built = BuildEyes(threadInfo, centre, eyes);
+        const bool built = mode == 3 ? BuildHeadsetEyes(threadInfo, centre, eyes)
+                                     : BuildEyes(threadInfo, centre, eyes);
+        if (!built && mode == 3) {
+            // Transient (stereo disarmed between the game thread's contract and
+            // this submission, or an unsafe eye): draw this frame once. Its
+            // both-eyes contract finds no held first eye and is refused, which
+            // costs one frame rather than the mode.
+            gHeadsetBuildMisses.fetch_add(1, std::memory_order_relaxed);
+            original(renderer, view, flags, threadInfo, renderFunc);
+            gStep.store(static_cast<int>(Step::idle), std::memory_order_release);
+            --tDepth;
+            return;
+        }
         if (!built || !PrepareEye(renderer, view, threadInfo, eyes[0], infos[0])) {
             if (built) {
                 restoreCentre();
@@ -452,6 +498,10 @@ void __fastcall RenderSceneDetour(void* renderer, void* view, int flags, void* t
     gDeferredShadow.fetch_add(tDeferredShadow, std::memory_order_relaxed);
     gDeferredClear.fetch_add(tDeferredClear, std::memory_order_relaxed);
     gStep.store(static_cast<int>(Step::between), std::memory_order_release);
+    if (mode == 3) {
+        // The backbuffer is the first eye, post-processed and before the HUD.
+        HoldDualFirstEye(renderer);
+    }
     if (capture) {
         Capture(renderer, "dual-eye0");
     }
@@ -512,7 +562,7 @@ void __fastcall RenderSceneDetour(void* renderer, void* view, int flags, void* t
              << " firstUs=" << (t1 - t0) << " secondUs=" << (t2 - t1);
         Log(line.str());
     }
-    if (gBudget.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+    if (mode != 3 && gBudget.fetch_sub(1, std::memory_order_acq_rel) == 1) {
         gMode.store(0, std::memory_order_release);
         Log("result=0 detail=budget_exhausted mode=0 doubled=" + std::to_string(doubled));
     }
@@ -682,7 +732,7 @@ DWORD SetDualSceneIpdMillimetres(unsigned int millimetres)
 
 DWORD SetDualSceneMode(unsigned int mode, unsigned int frameBudget)
 {
-    if (mode > 2) {
+    if (mode > 3) {
         return 4;
     }
     if (mode != 0) {
@@ -742,7 +792,10 @@ std::string DualSceneReport()
         << gLastFlags.load() << std::dec << " captures=" << gCaptures.load();
     out << " singleUs=" << (singles ? gSingleMicros.load() / singles : 0)
         << " firstUs=" << (doubled ? gFirstMicros.load() / doubled : 0)
-        << " secondUs=" << (doubled ? gSecondMicros.load() / doubled : 0);
+        << " secondUs=" << (doubled ? gSecondMicros.load() / doubled : 0)
+        << " dualContract=" << (DualStereoContractEnabled() ? 1 : 0)
+        << " stereoIpd=" << SyntheticStereoIpdMetres()
+        << " headsetBuildMisses=" << gHeadsetBuildMisses.load() << DualPairReport();
     return out.str();
 }
 
