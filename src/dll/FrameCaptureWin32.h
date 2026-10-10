@@ -37,6 +37,13 @@ DWORD RequestInventoryPairCapture(std::uint32_t tag);
 // Called from the frame observer. Returns immediately when nothing is armed.
 void ServiceFrameCapture(void* renderer, unsigned long long frameIndex);
 
+// Dumps the backbuffer immediately, from wherever the caller is on the render
+// thread, as `<stem>-<frame>-tag<tag>.pvrframe`. For captures that must land
+// mid-frame (between two scene submissions), which the one-shot request above
+// cannot express because it is serviced only at RT_EndFrame. Same GPU stall.
+DWORD CaptureBackBufferNow(void* renderer, std::uint32_t tag, unsigned long long frameIndex,
+                           const char* stem);
+
 // Overrides the tag written into the dump header, so a producer that knows more
 // than the requester can label the capture correctly. Pass -1 to clear.
 //

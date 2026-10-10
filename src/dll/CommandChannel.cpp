@@ -17,6 +17,7 @@
 #include "HeadTrackingHook.h"
 #include "Logger.h"
 #include "NearViewStereo.h"
+#include "DualSceneStereo.h"
 #include "NearParticleStereo.h"
 #include "RenderFrame.h"
 #include "ReticleFollow.h"
@@ -494,6 +495,37 @@ bool ExecutePose(const std::vector<std::string>& args, std::ostringstream& out)
     return true;
 }
 
+// Rung 1b, the RT_RenderScene double submission (DualSceneStereo.h). Kept out
+// of Execute's chain for the same C1061 reason as ExecutePose.
+bool ExecuteDualCommand(const std::vector<std::string>& args, std::ostringstream& out)
+{
+    const std::string& verb = args[0];
+    const auto arg = [&](std::size_t i, int fallback) {
+        int value = fallback;
+        if (i < args.size()) {
+            ParseInt(args[i], value);
+        }
+        return static_cast<unsigned int>(value);
+    };
+    if (verb == "dual.observe") {
+        // Pass-through logging of RT_RenderScene submissions.
+        out << "dual.observe result=" << SetDualSceneObserve(arg(1, 1)) << DualSceneReport();
+    } else if (verb == "dual.mode") {
+        // 0 off, 1 the same-camera control, 2 per-eye cameras. Second argument:
+        // frame budget.
+        out << "dual.mode result=" << SetDualSceneMode(arg(1, 0), arg(2, 0)) << DualSceneReport();
+    } else if (verb == "dual.ipd") {
+        out << "dual.ipd result=" << SetDualSceneIpdMillimetres(arg(1, 64)) << DualSceneReport();
+    } else if (verb == "dual.capture") {
+        out << "dual.capture result=" << RequestDualSceneCapture(arg(1, 0));
+    } else if (verb == "dual.report") {
+        out << "dual.report result=0" << DualSceneReport();
+    } else {
+        return false;
+    }
+    return true;
+}
+
 // One verb, one operation. Deliberately not a name-to-export lookup: that would
 // be a call-anything primitive whose argument is a text file.
 void Execute(const std::vector<std::string>& args, std::ostringstream& out)
@@ -508,7 +540,7 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     };
 
     if (ExecutePose(args, out) || ExecuteCarryCommand(args, out) || ExecuteGrenadeCommand(args, out) || ExecuteArmsCommand(args, out) ||
-        ExecuteWristCommand(args, out)) {
+        ExecuteWristCommand(args, out) || ExecuteDualCommand(args, out)) {
         return;
     }
     if (verb == "vr.options") {
