@@ -2,11 +2,12 @@
 
 The artifact `BN-STE-001` names as its exit proof.
 
-> **2026-10-10 (fork, branch `stereoscopy`): rung 1b is unblocked and runs.**
+> **2026-10-10 (fork, branch `stereoscopy`): rung 1b is the headset path.**
 > `RT_RenderScene` is `0xF41CA0`; submitting the frame's view twice works with
 > its teardown deferred, the same-camera control matches, and per-eye cameras
-> through the `SThreadInfo` produce depth-dependent parallax in one frame. Not
-> yet wired into OpenXR or seen in a headset. See
+> through the `SThreadInfo` produce depth-dependent parallax in one frame. VR mode
+> now submits both eyes from one frame by default; a Steam Frame wearer reported
+> no noticeable doubling. Open: right-eye-only transition fades. See
 > [`STEREO-DUAL-SUBMISSION-2026-10-10.md`](STEREO-DUAL-SUBMISSION-2026-10-10.md).
 
 **Rung 1b has been opened by the CryEngine source and is not yet priced.** See
