@@ -89,7 +89,11 @@ HFOV, 1440 px, 64 mm is about 27/Z px, i.e. ~7 px at 4 m.
 
 VR mode arms it after stereo is up (`VrMode.cpp`), unless `PREYVR_DUAL_STEREO=0`;
 `dual.vr 0|1` switches live, in the order that never publishes a both-eyes
-contract without its second submission.
+contract without its second submission. The player launcher sets the variable
+from `DualStereo` in `PreyVR.json` (or `-DualStereo 0|1`) and prints the mode
+VrMode logged once VR is active; `Invoke-PreyVRLaunch.ps1 -DualStereo 0|1` sets
+it for developer runs (omitted, the shell's value is inherited).
+`tests/LauncherStereo.Tests.ps1` covers the setting.
 
 - **Game thread** (`CameraEditHook.cpp`, `SetDualStereoContract`): the stereo
   branch stops alternating. The frame keeps the head camera, so the engine culls

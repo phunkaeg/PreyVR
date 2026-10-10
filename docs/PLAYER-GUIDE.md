@@ -151,7 +151,7 @@ Gesture feel and native acceptance still need headset testing.
 Menu choices save automatically to **`%LOCALAPPDATA%\PreyVR\vr-options.ini`**.
 They take precedence over launcher defaults for the settings listed above.
 To return those settings to launcher defaults, rename that file with Prey closed.
-Resolution, runtime and reference-space selection remain launcher settings.
+Resolution, runtime, reference-space and stereo-mode selection remain launcher settings.
 
 This batch has offline tests and a production-rendered menu preview, but **has
 not been run in Prey or accepted in a headset**. See
@@ -187,6 +187,8 @@ The native gameplay HUD is captured once into a transparent target and displayed
 The default render size is **2016 × 2160 per eye**, independent of monitor DPI. This restores the tall aspect used in earlier headset testing; **2688 × 2880** offers more detail at the same aspect and higher GPU cost. Edit `Width` and `Height` in `PreyVR.json`, then restart Prey. Menus can have unused space within their floating panel; do not switch the world render to 16:9 just to fill that panel. This is a starting preset, not automatic headset-resolution detection or a guarantee of complete FOV coverage on every headset.
 
 The launcher migrates the old, unversioned **2560 × 1440** default once, backing up `PreyVR.json` first. Custom sizes remain unchanged. To intentionally retain that old size, add `"ResolutionDefaultsVersion": 1` to the JSON, or launch with both `-Width 2560 -Height 1440`. A single command-line dimension is rejected. `HudLayer` remains `1` for floating HUD or `0` for the native scene HUD.
+
+Both eyes are rendered from the same game frame by default (`DualStereo: 1`). `DualStereo: 0` (or launching with `-DualStereo 0`, which is also saved) returns to the earlier method that renders one eye per frame; it shows doubled edges when you or the scene move. Use it only to check whether a problem belongs to the both-eyes method, and report what you find. Known issue with both eyes: fades to black during scene transitions appear in the right eye only. Once VR is ready, the launcher prints which method is running. If the both-eyes method is unavailable, it says so and Prey continues with alternate eyes.
 
 ## Recovery and support
 

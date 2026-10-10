@@ -100,6 +100,10 @@ param(
     # Without this the launcher pins XR_RUNTIME_JSON to xr-sim, which is right
     # for unattended capture and wrong when someone is wearing a Quest.
     [switch]$Headset,
+    # Both eyes from one frame (1) or alternate eyes (0), passed as
+    # PREYVR_DUAL_STEREO for A/B runs. Omitted, the game inherits this shell's
+    # value, and with none the mod renders both eyes per frame.
+    [ValidateRange(0,1)][int]$DualStereo = 1,
     [switch]$DryRun
 )
 
@@ -156,8 +160,8 @@ $tapeDir = Join-Path $runDir 'tape'
 $logDir = Join-Path $runDir 'log'
 
 # The child environment, entire. Anything not listed here the game inherits from
-# this process, which is correct: only the XR selection and the mod's log
-# location are ours to decide.
+# this process, which is correct: only the XR selection, the mod's log location
+# and an explicitly requested stereo mode are ours to decide.
 $childEnv = [ordered]@{
     # F-004: without this, Steam relaunches through its own path and the direct
     # child dies immediately, which reads as "the game refused to start".
@@ -186,6 +190,7 @@ if ($useTape) {
     # the disk and the trace becomes unreadable anyway.
     $childEnv['XRTAPE_MAX_FRAMES'] = "$TapeMaxFrames"
 }
+if ($PSBoundParameters.ContainsKey('DualStereo')) { $childEnv['PREYVR_DUAL_STEREO'] = "$DualStereo" }
 
 Write-Host ''
 Write-Host "run: $runId"

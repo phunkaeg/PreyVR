@@ -22,6 +22,12 @@ param(
     [int]$HeadRelativeMovement=1,
     # auto prefers LOCAL_FLOOR, then STAGE, with LOCAL fallback.
     [string]$ReferenceSpace='auto',
+    # **Both eyes from one game frame (1) or alternate eyes (0).** 1 is the
+    # route that removed the doubling a wearer saw in motion; 0 is the earlier
+    # path that renders one eye per frame. Kept as an escape hatch for problems
+    # specific to the both-eyes path (STEREO-DUAL-SUBMISSION-2026-10-10.md).
+    # Read once when VR starts, as PREYVR_DUAL_STEREO.
+    [int]$DualStereo=1,
     # Testing aid, not persisted: 0 off, 255 every layer of the in-game debug
     # overlay (rays, body slots, wrist test, foregrip; see dbg.draw).
     [ValidateRange(0,255)][int]$DebugOverlay=0,
@@ -67,6 +73,23 @@ function Resolve-PreyVRComfortSettings {
     if ($HeadRelativeMovement -notin @(0,1)) {throw 'HeadRelativeMovement must be 0 or 1.'}
     if ($ReferenceSpace -notin @('auto','local')) {throw 'ReferenceSpace must be auto (prefer floor) or local.'}
     [pscustomobject]@{SnapTurnDegrees=$SnapTurnDegrees;HeadRelativeMovement=$HeadRelativeMovement;ReferenceSpace=$ReferenceSpace.ToLowerInvariant()}
+}
+
+function Resolve-PreyVRStereoSettings {
+    param($Saved, $Overrides, [int]$DualStereo)
+    if ($Saved -and !$Overrides.ContainsKey('DualStereo') -and $Saved.PSObject.Properties['DualStereo']) {$DualStereo=[int]$Saved.DualStereo}
+    if ($DualStereo -notin @(0,1)) {throw 'DualStereo must be 1 (both eyes per frame) or 0 (alternate eyes).'}
+    $DualStereo
+}
+
+function Get-PreyVRStereoStatus {
+    param([string]$LogText)
+    # VrMode logs one dual_stereo line per VR start, before state=active: on,
+    # off (PREYVR_DUAL_STEREO=0) or unavailable (hooks refused; alternate eyes).
+    # A fallback is otherwise silent, so the launcher reports what came up.
+    $found=[regex]::Matches($LogText,'preyvr_vr dual_stereo=([a-z]+)')
+    if (!$found.Count) {return 'unknown'}
+    $found[$found.Count-1].Groups[1].Value
 }
 
 function Get-PreyVRStartupCommands {
@@ -126,6 +149,7 @@ try {
         -WidthExplicit $PSBoundParameters.ContainsKey('Width') -HeightExplicit $PSBoundParameters.ContainsKey('Height')
     $Width=$renderSize.Width;$Height=$renderSize.Height
     $comfort=Resolve-PreyVRComfortSettings $saved $PSBoundParameters $SnapTurnDegrees $HeadRelativeMovement $ReferenceSpace
+    $DualStereo=Resolve-PreyVRStereoSettings $saved $PSBoundParameters $DualStereo
     if ($HudLayer -notin @(0,1)) {throw 'HudLayer must be 0 or 1.'}
     if ($UiCurveDegrees -lt 0 -or $UiCurveDegrees -gt 60) {throw 'UiCurveDegrees must be 0..60 (0 is flat).'}
     if ($PointerHand -notin @(0,1,2)) {throw 'PointerHand must be 0 (left), 1 (right), or 2 (buttons only).'}
@@ -183,7 +207,7 @@ try {
         'SystemShock2','SystemShock2Remastered','Swat4','Swat4X','SoF','TS4_x64','moh','moh_s','Il-2','Launcher64','carrier_command_2')
     $running=@(Get-Process -Name $fleetNames -ErrorAction SilentlyContinue)
     if ($running.Count) {throw ('Close the running game first: '+(($running | Select-Object -ExpandProperty ProcessName) -join ', '))}
-    Write-Host "Prey VR: $Width x $Height per eye; UI scale $UiScalePercent%; guide $(if($UiGuide){'on'}else{'off'}); runtime: $(if($Runtime){$Runtime}else{'system OpenXR runtime'})"
+    Write-Host "Prey VR: $Width x $Height per eye; UI scale $UiScalePercent%; guide $(if($UiGuide){'on'}else{'off'}); stereo $(if($DualStereo){'both eyes per frame'}else{'alternate eyes'}); runtime: $(if($Runtime){$Runtime}else{'system OpenXR runtime'})"
     if ($renderSize.MigrateLegacy) {Write-Host 'Replacing the v0.5.0 widescreen default with 2016 x 2160 for greater vertical view coverage.'}
     Write-Host "Mod binaries: $BinDir"
     Write-Host "Comfort: snap $($comfort.SnapTurnDegrees) degrees (0 = smooth); head-relative $($comfort.HeadRelativeMovement); reference $($comfort.ReferenceSpace)"
@@ -193,7 +217,7 @@ try {
     Write-Host 'Tilde (the key below Esc) opens Prey''s own console, when focused.'
     if ($DryRun) {Write-Host 'Preflight passed. Nothing launched.';exit 0}
     Save-PreyVRConfiguration -Path $config -Saved $saved -MigrateLegacy $renderSize.MigrateLegacy -Settings `
-        @{GameExe=$GameExe;Width=$Width;Height=$Height;HudLayer=$HudLayer;UiCurveDegrees=$UiCurveDegrees;PointerHand=$PointerHand;UiScalePercent=$UiScalePercent;UiGuide=$UiGuide;SnapTurnDegrees=$comfort.SnapTurnDegrees;HeadRelativeMovement=$comfort.HeadRelativeMovement;ReferenceSpace=$comfort.ReferenceSpace}
+        @{GameExe=$GameExe;Width=$Width;Height=$Height;HudLayer=$HudLayer;UiCurveDegrees=$UiCurveDegrees;PointerHand=$PointerHand;UiScalePercent=$UiScalePercent;UiGuide=$UiGuide;SnapTurnDegrees=$comfort.SnapTurnDegrees;HeadRelativeMovement=$comfort.HeadRelativeMovement;ReferenceSpace=$comfort.ReferenceSpace;DualStereo=$DualStereo}
     $run=Join-Path $RunRoot ('player-{0:yyyyMMdd-HHmmss}' -f (Get-Date))
     [void](New-Item -ItemType Directory -Path $run -Force)
     $info=New-Object System.Diagnostics.ProcessStartInfo
@@ -209,6 +233,7 @@ try {
     $info.EnvironmentVariables['PREYVR_UI_CURVE_DEGREES']="$UiCurveDegrees"
     $info.EnvironmentVariables['PREYVR_POINTER_HAND']="$PointerHand"
     $info.EnvironmentVariables['PREYVR_REFERENCE_SPACE']=$comfort.ReferenceSpace
+    $info.EnvironmentVariables['PREYVR_DUAL_STEREO']="$DualStereo"
     # Runtime overrides and simulator state remain process-scoped. The normal
     # double-click path uses the player's selected runtime (VDXR/SteamVR/etc.).
     if ($Runtime) {$info.EnvironmentVariables['XR_RUNTIME_JSON']=(Resolve-Path -LiteralPath $Runtime).Path}
@@ -252,6 +277,12 @@ try {
         Start-Sleep -Milliseconds 250
     } while ($true)
     Write-Host "VR is ready. Diagnostics: $run"
+    switch (Get-PreyVRStereoStatus $text) {
+        'on' {Write-Host 'Stereo: both eyes from each frame.'}
+        'off' {Write-Host 'Stereo: alternate eyes (DualStereo 0).'}
+        'unavailable' {Write-Host 'Stereo: both-eyes rendering was unavailable; using alternate eyes. See the log.' -ForegroundColor Yellow}
+        default {Write-Host 'Stereo: the log did not report a mode.' -ForegroundColor Yellow}
+    }
     Write-Host ''
     Write-Host 'To adjust while playing, run "Tune Prey VR.cmd" beside this launcher'
     Write-Host 'and type e.g.  ui.scale 130   (20..200, current session only).'
