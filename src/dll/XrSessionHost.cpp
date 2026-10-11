@@ -781,6 +781,12 @@ std::atomic<unsigned long long> gEyeSkewSamples{0};
 // constant. Applied to the menu panel and the HUD alike, because they are the
 // same presentation and one dial is easier to reason about than two.
 std::atomic<unsigned int> gUiScalePercent{100};
+// **The text panel sits nearer than the HUD, at the HUD panel's physical size.**
+// Its texture is the whole frame squeezed onto a panel about 38x40 degrees, so
+// book text and subtitles came out small and heavily minified (no mips) -- soft,
+// "out of focus". Nearer at the same size is larger in angle, so less minified.
+// Centimetres, 100..200; 200 is the HUD panel's own fit.
+std::atomic<unsigned int> gTextPanelCm{140};
 // Command threads only publish settings. Cached panels belong to the XR frame
 // thread under gMutex; touching their optionals from a setter is a data race.
 std::atomic<unsigned long long> gPanelSettingsGeneration{0};
@@ -2089,9 +2095,13 @@ void ServiceXrFrame(void* renderer)
                 {p.position.x,p.position.y,p.position.z}},views[eye].fov.angleLeft,views[eye].fov.angleRight,
                 views[eye].fov.angleUp,views[eye].fov.angleDown};
         }
+        // The HUD panel's physical size, brought nearer: FitPanel's size is an
+        // angle, so the scale carries the 2 m width to the nearer distance. The
+        // fit's corner test still shrinks it back inside the margin if needed.
+        const float textDistance=static_cast<float>(gTextPanelCm.load(std::memory_order_relaxed))*.01f;
         const auto panel=ui::FitPanel(inputHead,optical,
-            static_cast<float>(desc.Width)/desc.Height,2.0f,
-            static_cast<float>(gUiScalePercent.load(std::memory_order_relaxed))*.01f,
+            static_cast<float>(desc.Width)/desc.Height,textDistance,
+            static_cast<float>(gUiScalePercent.load(std::memory_order_relaxed))*.01f*(2.0f/textDistance),
             UiFitMargin());
         textActive=textActive && panel.has_value();
         if(textActive) {
@@ -2387,6 +2397,19 @@ DWORD SetUiScalePercent(unsigned int percent)
 }
 
 DWORD UiScalePercent() { return gUiScalePercent.load(std::memory_order_acquire); }
+
+DWORD SetTextPanelDistanceCm(unsigned int centimetres)
+{
+    if (centimetres < 100 || centimetres > 200) {
+        Log("result=refused detail=text_panel_distance_out_of_range");
+        return 1;
+    }
+    gTextPanelCm.store(centimetres, std::memory_order_release);
+    Log("result=0 detail=text_panel_distance cm=" + std::to_string(centimetres));
+    return 0;
+}
+
+DWORD TextPanelDistanceCm() { return gTextPanelCm.load(std::memory_order_acquire); }
 
 // **Why this exists.** `ui.scale` stopped having any effect above about 130 at
 // 2688x2880, which reads as a hard maximum but is not one: the fit loops were

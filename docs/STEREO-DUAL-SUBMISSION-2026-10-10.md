@@ -173,7 +173,12 @@ after the second submission reached the second (right) eye only.
 - **Text panel.** `DanielleTranscribeNote`, `DanielleSubtitles` and
   `DanielleTutorialCard` are captured (with the HUD layer on and gameplay input
   allowed) into one shared texture -- the first movie of a frame clears it -- and
-  shown as a quad on the HUD panel's fit, above the HUD. Log: `text_swapchain`.
+  shown as a quad above the HUD. Log: `text_swapchain`. At the HUD's own fit (2 m,
+  about 38x40 deg for the whole frame) the text was small and heavily minified
+  with no mips, and looked out of focus; the text panel now sits at 1.4 m with the
+  HUD panel's physical size, about 1.43x larger in angle (`ui.text 100..200` cm).
+  The wearer: "much better, especially the subtitles". Mips, or cropping the
+  capture to its content, would sharpen it further.
 - **Per-eye overlay redraw (`DualOverlay`).** DualSceneStereo opens a window after
   the second submission of a frame whose first eye was held; the top of
   `ServiceXrFrame` closes it. While it is open, a draw into the frame's backbuffer

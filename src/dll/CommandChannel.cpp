@@ -622,6 +622,11 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << " percent=" << UiScalePercent()
             << " margin=" << UiFitMarginPercent()
             << " guide=" << UiGuideEnabled();
+    } else if (verb == "ui.text") {
+        // Text panel distance in cm (100..200, default 140), at the HUD panel's
+        // physical size. No argument: report.
+        out << "ui.text result=" << (args.size() > 1 ? SetTextPanelDistanceCm(arg(1, 140)) : 0)
+            << " cm=" << TextPanelDistanceCm();
     } else if (verb == "ui.margin") {
         // The real size ceiling. ui.scale above ~130 was being absorbed by the
         // fit loops shrinking the panel back inside 72% of the reported frustum.

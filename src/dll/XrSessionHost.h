@@ -198,6 +198,11 @@ void ServiceXrFrame(void* renderer);
 DWORD SetUiScalePercent(unsigned int percent);
 unsigned UiCurveDegrees();
 DWORD UiScalePercent();
+// The text panel's distance (books/notes, subtitles, tutorial cards), 100..200 cm,
+// default 140. It keeps the HUD panel's physical size, so nearer is larger in
+// angle and its small text less minified. 200 matches the HUD panel exactly.
+DWORD SetTextPanelDistanceCm(unsigned int centimetres);
+DWORD TextPanelDistanceCm();
 // The fraction of the RUNTIME-REPORTED frustum a panel must stay inside, 30..100.
 // This, not ui.scale, is what caps panel size: the fit loops shrink the panel
 // until it satisfies this, so past the point where it binds, raising the scale
