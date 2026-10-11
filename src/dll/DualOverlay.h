@@ -6,7 +6,6 @@
 
 namespace preyvr::dll {
 
-// **Step 2 of the both-eyes route (STEREO-DUAL-SUBMISSION-2026-10-10.md).**
 // In a both-eyes frame the first eye is held right after its scene submission,
 // so everything the game draws after the world reached only the second eye:
 // Flash movies left in the scene (objective markers, the death screen, the HUD

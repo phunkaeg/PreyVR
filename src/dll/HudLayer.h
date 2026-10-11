@@ -20,9 +20,9 @@ ID3D11Texture2D* HudLayerTexture();
 // RefuseTextLayer returns them to the scene until the HUD layer is re-enabled.
 ID3D11Texture2D* TextLayerTexture();
 void RefuseTextLayer(const char* reason);
-// Step 2 (DualOverlay.h): the render-target substitution and movie display hooks
-// the per-eye redraw needs, installed together. Then a draw made between the
-// two targeted binds runs with `from` rebound to `to` wherever it asks for it.
+// The render-target substitution and movie display hooks the per-eye
+// redraw needs, installed together. Then a draw made between the two
+// targeted binds runs with `from` rebound to `to` wherever it asks for it.
 // False when the hooks are missing or a capture is already in flight.
 bool EnsureOverlayHooks();
 bool DrawRedirected(ID3D11DeviceContext* context, ID3D11RenderTargetView* from, ID3D11DepthStencilView* fromDepth,

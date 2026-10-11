@@ -193,11 +193,6 @@ after the second submission reached the second (right) eye only.
     (HudLayer's `OMSetRenderTargets` substitution).
   - `dual.overlay 0|1` switches it live; `PREYVR_DUAL_OVERLAY=0` at launch. The log
     names the first redraw or refusal per movie and the first 12 2D images.
-- **VR reticle: tried, then removed.** `_root.safe.reticle_mc` left the HUD panel
-  through the wrist's sprite filter, and a ring-and-dot reticle was drawn in each
-  eye where the right hand's aim ray ended (`aim.vrreticle`, `PREYVR_VR_RETICLE`).
-  Removed later on 2026-10-11, before a proper fix for UI in VR space; Prey's own
-  crosshair is back on the HUD panel.
 
 ### Headset results, 2026-10-11 (Steam Frame, SteamVR, player packages at 2688x2880)
 
@@ -207,8 +202,7 @@ the once-a-minute status lines of the ~10-minute reticle run: 41,855 doubled fra
 and 41,404 pairs, 0 refused; 3,635 2D images and 41,605 `DanielleMarkers` draws
 redrawn, 0 refused; the panel left the crosshair out on 37,643 frames, 0 refused;
 41,614 reticle samples, 35,045 (84%) with a scene hit, drawn into 74,894 eye images;
-the native crosshair never read as hidden. No movie was refused in any run. The
-reticle counts are from the VR reticle, since removed (above).
+the native crosshair never read as hidden. No movie was refused in any run.
 
 ### Limits and what is not established
 

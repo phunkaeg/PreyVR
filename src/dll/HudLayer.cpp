@@ -92,7 +92,7 @@ Capture textCapture;
 std::atomic<bool> textFault{false};
 std::atomic<unsigned long long> textCaptured{0},textRefused{0};
 
-// Every Flash element's render proxy and name, kept for step 2's census so it
+// Every Flash element's render proxy and name, kept for reference so it
 // can say which movie it drew into the held eye (DualOverlayReport).
 struct Named {std::uintptr_t proxy=0;char name[40]{};};
 std::mutex namedMutex;
@@ -113,8 +113,8 @@ std::string NameOf(std::uintptr_t proxy) {
     return "unnamed";
 }
 
-// Step 2 (DualOverlay.h): a movie left in the scene, drawn once more into the
-// held first eye inside its one native callback. Set by RedrawIntoHeldEye for
+// A movie left in the scene, drawn once more into the held first eye
+// inside its one native callback. Set by RedrawIntoHeldEye for
 // the duration of that callback and consumed by StereoDisplay.
 thread_local void* redrawRoot=nullptr;
 thread_local ID3D11DeviceContext* redrawContext=nullptr;
@@ -370,7 +370,7 @@ void __fastcall StereoMatrix(void* renderer,const void* source,float* output) {
         stereoMatrices.fetch_add(1,std::memory_order_relaxed);
     } else stereoRefused.fetch_add(1,std::memory_order_relaxed);
 }
-// Step 2: the native draw, into the frame being finished (the second eye), then
+// The native draw, into the frame being finished (the second eye), then
 // the same movie, same frame, into the held first eye -- starting from the
 // stencil the native draw started from, which Flash clips its viewport with.
 void RedrawDisplay(void* root) {
@@ -578,10 +578,10 @@ bool CaptureText(void* proxy,bool release,std::uintptr_t address,std::uint64_t n
     textCaptured.fetch_add(1,std::memory_order_relaxed);
     return true;
 }
-// **Step 2 for Flash.** A movie still drawing into the frame's backbuffer while
-// a both-eyes frame holds its first eye: its one native callback runs with the
-// movie marked, and StereoDisplay draws it twice -- natively, then into the held
-// eye. The stereo inventory's pattern: no extra outer callback, no extra Advance.
+// A movie still drawing into the frame's backbuffer while a both-eyes frame
+// holds its first eye: its one native callback runs with the movie marked,
+// and StereoDisplay draws it twice -- natively, then into the held eye.
+// The stereo inventory's pattern: no extra outer callback, no extra Advance.
 // False leaves the movie to draw natively (and says why in the census).
 bool RedrawIntoHeldEye(void* proxy,bool release,std::uintptr_t address) {
     if(!DualOverlayRedrawEnabled() || !DualOverlayWindowOpen() || activeContext || !displayInstalled)return false;

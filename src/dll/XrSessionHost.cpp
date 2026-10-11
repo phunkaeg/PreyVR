@@ -106,8 +106,8 @@ struct Host {
     // scene like the HUD and shown on the same panel above it.
     std::unique_ptr<InventorySwapchain> textSwapchain;
     bool textSwapchainLogged=false;
-    // Step 2: a render target view on the held first eye, matching the view
-    // format the game draws its overlays with, and the backbuffer it held from.
+    // A render target view on the held first eye, matching the view format
+    // the game draws its overlays with, and the backbuffer it held from.
     ID3D11RenderTargetView* heldTargetView=nullptr;
     ID3D11Texture2D* heldTargetImage=nullptr;
     DXGI_FORMAT heldTargetFormat=DXGI_FORMAT_UNKNOWN;
@@ -242,7 +242,7 @@ std::atomic<bool> gSwapEyes{false};
 // was made in. Written and taken on the render thread; atomic so reports can
 // read it from the command thread.
 std::atomic<bool> gDualFirstHeld{false};
-// Step 2. Open from the end of the second submission of a held frame to the top
+// Open from the end of the second submission of a held frame to the top
 // of the next ServiceXrFrame: the stretch in which the game draws its overlays.
 std::atomic<bool> gDualOverlayOpen{false};
 std::atomic<unsigned long long> gDualHolds{0}, gDualHoldRefused{0};
@@ -1992,14 +1992,6 @@ void ServiceXrFrame(void* renderer)
         auto captured=hudTexture;
         if(captured) {
             D3D11_TEXTURE2D_DESC desc{};captured->GetDesc(&desc);
-            // **Created like every other layer: in the main swapchain's format.**
-            // The capture is spelled with the format of the render target Flash
-            // drew into, and asking the runtime for that spelling unchecked was
-            // refused on SteamVR in every session (swapchain_format_or_allocation),
-            // which left the HUD in the scene -- and, with both eyes from one
-            // frame, in the right eye only. The main format is one the runtime
-            // has already accepted, and it gives the HUD the same reading of its
-            // bytes as the scene it was lifted out of (InventorySwapchain::Prepare).
             if(!gHost.hudSwapchain)gHost.hudSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
                 xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
                 xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
@@ -2085,7 +2077,7 @@ void ServiceXrFrame(void* renderer)
                 <<" captureFormat="<<desc.Format<<" size="<<desc.Width<<"x"<<desc.Height;
             Log(line.str());
             gHost.textSwapchain.reset();
-            // The movies go back into the scene, where step 2 draws them per eye.
+            // The movies go back into the scene, where they are drawn per eye.
             RefuseTextLayer(InventorySwapchain::RefusalName(refusal));
         }
         std::array<ui::Eye,2> optical{};
