@@ -3667,3 +3667,9 @@ frames, 0 refused; 3,635 2D images and 41,605 marker draws redrawn, 0 refused;
 84% of reticle samples on a scene hit; the wearer confirmed every element in both
 eyes. Markers have no depth yet and the reticle is generic rather than Prey's own
 art. See [after-world overlays](STEREO-DUAL-SUBMISSION-2026-10-10.md#after-world-overlays-in-both-eyes-2026-10-11).
+
+## 2026-10-11 — VR reticle removed
+
+The VR reticle above (`aim.vrreticle`, `PREYVR_VR_RETICLE`) is removed entirely,
+before a proper fix for UI in VR space. Prey's own crosshair is back on the HUD
+panel. The per-eye overlay redraw, the text panel and the HUD swapchain fix stay.

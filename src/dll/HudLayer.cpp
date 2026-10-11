@@ -257,17 +257,9 @@ constexpr const char* kFaceExcluded[]={
     "_root.safe.quadrant_SW.bg_mc","_root.safe.quadrant_SW.bg2_mc","_root.safe.quadrant_SW.line_mc",
     "_root.safe.quadrant_SW.status_effects"};
 constexpr std::size_t kFaceExclusions=sizeof(kFaceExcluded)/sizeof(kFaceExcluded[0]);
-// **The crosshair leaves the panel too** when the VR reticle draws it at the
-// aim's depth in each eye instead (DebugOverlay.h). Only the crosshair: the rest
-// of the safe area, interaction prompts included, stays on the panel.
-constexpr const char* kReticlePath="_root.safe.reticle_mc";
-std::atomic<bool> reticleOffPanel{false};
-struct ReticleState {bool visible=false;std::uint64_t stamp=0;DWORD thread=0;};
-LatestSnapshot<ReticleState> reticleState;
-std::atomic<unsigned long long> reticleFrames{0},reticleRefused{0};
 struct FaceFilter {
-    std::array<NativeHudValue,kFaceExclusions+1> values{};
-    std::array<void*,kFaceExclusions+1> objects{};
+    std::array<NativeHudValue,kFaceExclusions> values{};
+    std::array<void*,kFaceExclusions> objects{};
     std::size_t count=0;
     bool Excludes(const void* sprite)const{
         for(std::size_t i=0;i<count;++i)if(objects[i]==sprite)return true;
@@ -277,37 +269,17 @@ struct FaceFilter {
 thread_local FaceFilter* faceFilter=nullptr;
 std::atomic<unsigned long long> faceFrames{0},faceRefused{0};
 bool FaceExcludes(const void* sprite){return faceFilter&&faceFilter->Excludes(sprite);}
-bool FaceWanted(){return WristMovesStatusOffFace()||reticleOffPanel.load(std::memory_order_acquire);}
-bool NativeFlag(NativeHudApi& api,void* root,const char* path,bool& out){
-    NativeHudValue v{};
-    if(!GetValueGuarded(root,api.base,path,v))return false;
-    const bool flag=(v.type&0x3F)==2;
-    if(flag)out=(v.payload&0xFF)!=0;
-    api.Release(v);
-    return flag;
-}
-// The normal draw with the status meters and/or the crosshair left out.
-// Resolved for this one draw (handles never outlive it) and released whatever
-// happens; if any path does not resolve, the HUD draws unchanged.
+// The normal draw with the status meters left out. Resolved for this one draw
+// (handles never outlive it) and released whatever happens; if any path does
+// not resolve, the HUD draws unchanged.
 bool DrawWithoutStatus(void* root){
     NativeHudApi api{root,reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"))};
     FaceFilter filter{};
-    const bool status=WristMovesStatusOffFace(),reticle=reticleOffPanel.load(std::memory_order_acquire);
     bool resolved=api.Valid();
-    const auto exclude=[&](const char* path){
+    for(std::size_t i=0;resolved&&i<kFaceExclusions;++i){
         void* object=nullptr;
-        resolved=api.Resolve(path,filter.values[filter.count],object)&&object;
-        filter.objects[filter.count++]=object;
-    };
-    for(std::size_t i=0;status&&resolved&&i<kFaceExclusions;++i)exclude(kFaceExcluded[i]);
-    if(reticle&&resolved)exclude(kReticlePath);
-    // Whether Prey is showing its crosshair, read in this same callback, so the
-    // VR reticle shows exactly when the native one would have.
-    bool shown=false;
-    if(reticle&&resolved){
-        bool own=false,area=false;
-        shown=NativeFlag(api,root,"_root.safe.reticle_mc._visible",own) &&
-              NativeFlag(api,root,"_root.safe._visible",area) && own && area;
+        resolved=api.Resolve(kFaceExcluded[i],filter.values[i],object)&&object;
+        filter.objects[i]=object;filter.count=i+1;
     }
     bool drawn=false;
     if(resolved){
@@ -315,14 +287,7 @@ bool DrawWithoutStatus(void* root){
         drawn=DrawStatusGuarded(root);
         faceFilter=nullptr;
         faceFrames.fetch_add(1,std::memory_order_relaxed);
-        if(reticle){
-            reticleState.Publish({shown,MonotonicNanoseconds(),GetCurrentThreadId()});
-            reticleFrames.fetch_add(1,std::memory_order_relaxed);
-        }
-    } else {
-        faceRefused.fetch_add(1,std::memory_order_relaxed);
-        if(reticle)reticleRefused.fetch_add(1,std::memory_order_relaxed);
-    }
+    } else faceRefused.fetch_add(1,std::memory_order_relaxed);
     for(std::size_t i=0;i<filter.count;++i)api.Release(filter.values[i]);
     (void)drawn;
     return resolved; // drawn, or faulted inside the draw: either way not to be redrawn
@@ -426,7 +391,7 @@ void RedrawDisplay(void* root) {
 void __fastcall StereoDisplay(void* root) {
     if(root==hudRoot && varWanted.load())RunVarOps(root);
     if(redrawRoot && root==redrawRoot){RedrawDisplay(root);return;}
-    const bool face=root==hudRoot && activeContext && spriteInstalled && FaceWanted();
+    const bool face=root==hudRoot && activeContext && spriteInstalled && WristMovesStatusOffFace();
     if(root==wristRoot && activeContext){
         // First preserve the normal draw. Replay stays inside the ONE native
         // proxy callback and its locks; no extra Advance or player release.
@@ -831,8 +796,6 @@ std::string HudLayerReport(){
             static_cast<unsigned long long>(mismatch));return std::string(b);}();
         out+="}";
     }
-    out+=" reticleOffPanel={on="+std::to_string(reticleOffPanel.load())+" frames="+std::to_string(reticleFrames.load())+
-         " refused="+std::to_string(reticleRefused.load())+"}";
     out+=" text={captured="+std::to_string(textCaptured.load())+" refused="+std::to_string(textRefused.load())+
          " fault="+std::to_string(textFault.load());
     for(unsigned i=0;i<kTextMovies;++i)out+=std::string(" ")+kTextMovieNames[i]+"="+std::to_string(textIdentified[i].load());
@@ -855,21 +818,6 @@ void RefuseTextLayer(const char* reason){
 bool EnsureOverlayHooks(){
     std::lock_guard lock(installMutex);
     return InstallDisplay();
-}
-bool SetNativeReticleOffPanel(bool off){
-    if(off){
-        std::lock_guard lock(installMutex);
-        if(!InstallStatus())return false; // the sprite filter it rides on
-    }
-    reticleOffPanel.store(off,std::memory_order_release);
-    return true;
-}
-bool NativeReticleOffPanel(bool& visible){
-    ReticleState state{};
-    if(!reticleOffPanel.load(std::memory_order_acquire) || !reticleState.TryRead(state) ||
-       state.thread!=GetCurrentThreadId() || !FreshSample(MonotonicNanoseconds(),state.stamp,100000000ull))return false;
-    visible=state.visible;
-    return true;
 }
 bool DrawRedirected(ID3D11DeviceContext* context,ID3D11RenderTargetView* from,ID3D11DepthStencilView* fromDepth,
                     ID3D11RenderTargetView* to,ID3D11DepthStencilView* toDepth,void(*draw)(void*),void* argument){

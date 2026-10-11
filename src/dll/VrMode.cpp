@@ -50,7 +50,6 @@ unsigned long long nextInputProbe=0;
 const char* settings[]={"r_MotionBlur 0","r_AntialiasingMode 1"};
 void Log(const std::string& s) { lifecycle::Log("preyvr_vr " + s); }
 void StopFeatures() {
-    SetVrReticle(0);
     SetHudLayerEnabled(0);
     // Contract first, so no both-eyes record is published after its submissions stop.
     SetDualStereoContract(0); SetDualSceneMode(0,0); SetDualOverlayRedraw(0);
@@ -218,16 +217,6 @@ void TickVrMode() {
         wchar_t hudSetting[8]{};
         GetEnvironmentVariableW(L"PREYVR_HUD_LAYER",hudSetting,8);
         if(hudSetting[0]!=L'0' && SetHudLayerEnabled(1)!=0)Log("hud_layer=unavailable native_hud=retained");
-        // The crosshair at the aim's depth in each eye rather than on the HUD
-        // panel (DebugOverlay.h). It only replaces the panel's own, so it needs
-        // the HUD layer; PREYVR_VR_RETICLE=0 keeps the crosshair on the panel.
-        else if(hudSetting[0]!=L'0') {
-            wchar_t reticleSetting[8]{};
-            GetEnvironmentVariableW(L"PREYVR_VR_RETICLE",reticleSetting,8);
-            if(reticleSetting[0]==L'0') Log("vr_reticle=off reason=PREYVR_VR_RETICLE");
-            else if(SetVrReticle(1)==0) Log("vr_reticle=on");
-            else Log("vr_reticle=unavailable crosshair=hud_panel");
-        }
         phase=Phase::rendering;deadline=GetTickCount64()+15000;
     }
     if(phase==Phase::rendering) {
@@ -242,7 +231,7 @@ void TickVrMode() {
         if(GetTickCount64()>=nextStatusReport) {
             nextStatusReport=GetTickCount64()+kStatusReportMs;
             // The same text dual.report and hud.layer answer with.
-            Log("status dual={"+DualSceneReport()+DualOverlayReport()+" } hud={"+HudLayerReport()+VrReticleReport()+" }");
+            Log("status dual={"+DualSceneReport()+DualOverlayReport()+" } hud={"+HudLayerReport()+" }");
         }
         const auto owner=AnimIkOwnerGeneration();
         const auto reference=HeadTrackingReferenceGeneration();

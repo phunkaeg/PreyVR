@@ -825,10 +825,6 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     } else if (verb == "aim.scene") {
         if(args.size()>1)SetSceneReticle(arg(1,0));
         out<<"aim.scene"<<SceneQueryReport();
-    } else if (verb == "aim.vrreticle") {
-        // Step 3 A/B: 1 draws the crosshair at the aim's depth in each eye, 0
-        // puts Prey's own back on the HUD panel. No argument: report.
-        out<<"aim.vrreticle result="<<(args.size()>1?SetVrReticle(arg(1,1)):0)<<VrReticleReport();
     } else if (verb == "haptics") {
         if(args.size()>1)SetHapticsEnabled(arg(1,1));
         if(args.size()>2)SetHapticStrength(arg(2,70));

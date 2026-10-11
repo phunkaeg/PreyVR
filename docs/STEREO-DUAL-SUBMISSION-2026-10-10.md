@@ -4,7 +4,7 @@ Branch `stereoscopy`, 2026-10-10. Code: `src/dll/DualSceneStereo.{h,cpp}`, comma
 `dual.observe`, `dual.mode`, `dual.ipd`, `dual.vr`, `dual.capture`, `dual.report`.
 Measured in the real game on this machine (Steam `PreyDll.dll` `7D6E322F...`).
 2026-10-11 (branch `stereo-both-eyes`): `src/dll/DualOverlay.{h,cpp}`, the text panel
-and VR reticle in `HudLayer`/`DebugOverlay`, commands `dual.overlay`, `aim.vrreticle`.
+in `HudLayer`, command `dual.overlay`.
 
 **Status: in the headset path and confirmed by a wearer.** VR mode submits both
 eyes from one frame by default (mode 3, below). Steam Frame session on 2026-10-10:
@@ -193,13 +193,11 @@ after the second submission reached the second (right) eye only.
     (HudLayer's `OMSetRenderTargets` substitution).
   - `dual.overlay 0|1` switches it live; `PREYVR_DUAL_OVERLAY=0` at launch. The log
     names the first redraw or refusal per movie and the first 12 2D images.
-- **VR reticle.** `_root.safe.reticle_mc` leaves the HUD panel through the wrist's
-  sprite filter, and a ring-and-dot reticle (1.1 deg across at any distance) is
-  drawn in each eye, with that eye's submitted pose, where the right hand's aim ray
-  ends: the aim's own scene hit (`aim.scene`), else a scene query of the same ray,
-  else the 10 m convergence (never nearer than 0.25 m). It is drawn only on frames
-  whose panel left the native crosshair out, and while `reticle_mc._visible` and
-  `safe._visible` are true. `aim.vrreticle 0|1`; `PREYVR_VR_RETICLE=0` at launch.
+- **VR reticle: tried, then removed.** `_root.safe.reticle_mc` left the HUD panel
+  through the wrist's sprite filter, and a ring-and-dot reticle was drawn in each
+  eye where the right hand's aim ray ended (`aim.vrreticle`, `PREYVR_VR_RETICLE`).
+  Removed later on 2026-10-11, before a proper fix for UI in VR space; Prey's own
+  crosshair is back on the HUD panel.
 
 ### Headset results, 2026-10-11 (Steam Frame, SteamVR, player packages at 2688x2880)
 
@@ -209,7 +207,8 @@ the once-a-minute status lines of the ~10-minute reticle run: 41,855 doubled fra
 and 41,404 pairs, 0 refused; 3,635 2D images and 41,605 `DanielleMarkers` draws
 redrawn, 0 refused; the panel left the crosshair out on 37,643 frames, 0 refused;
 41,614 reticle samples, 35,045 (84%) with a scene hit, drawn into 74,894 eye images;
-the native crosshair never read as hidden. No movie was refused in any run.
+the native crosshair never read as hidden. No movie was refused in any run. The
+reticle counts are from the VR reticle, since removed (above).
 
 ### Limits and what is not established
 
@@ -217,11 +216,6 @@ the native crosshair never read as hidden. No movie was refused in any run.
   infinitely far: close to right for distant objectives (about 0.2 deg per eye at
   10 m), wrong for nearby points of interest. Per-marker depth needs the objective
   positions, which nothing reads yet.
-- **The reticle is generic.** Prey's weapon-specific crosshairs, spread and hit
-  feedback are not shown. Keeping the native art at depth (a crosshair-only replay
-  into each eye with a per-eye offset) is possible and not attempted.
-- **Reticle visibility mirrors `_visible` only.** A crosshair Prey hides some other
-  way (alpha, an empty frame) would not hide ours; none was seen.
 - **Cost is unmeasured on the GPU.** Each redrawn Flash movie also copies the full
   depth-stencil once per frame, and the subtitles movie renders every gameplay frame,
   so the text panel uploads every frame even with no subtitle on screen.
@@ -276,7 +270,7 @@ the body mesh in VR.
   manifest>` after injection and before `vr.enable`.
 - **Counters without the tuner (2026-10-11).** While VR is active, VR mode logs
   `preyvr_vr status dual={ ... } hud={ ... }` once a minute: the text of
-  `dual.report` and `hud.layer` plus the reticle counters. Running totals, so the
+  `dual.report` and `hud.layer`. Running totals, so the
   last line of a session is the one to read.
 - **Recenter refusals are rate-limited (2026-10-11).** After a tracking-space change
   the session host retries the recenter every frame until the head is tracked; with
@@ -296,5 +290,6 @@ the body mesh in VR.
    whether shadow maps and other per-frame work can be shared between submissions.
 2. Body yaw following the headset, or hiding the body.
 3. Marker depth, if markers look wrong in play (see the limits above).
-4. Prey's own crosshair art at the aim's depth, if the generic reticle is missed.
+4. A proper fix for UI in VR space, the crosshair included (the VR reticle was
+   removed ahead of it).
 5. Per-eye history for SSR/SSDO, then re-enable TAA per eye.

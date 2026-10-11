@@ -131,8 +131,8 @@ while you hold a weapon with both hands, in menus and the inventory, and when th
 is inside a wall or your right hand or weapon is in front of it. A hand sweeping past
 your view does not open it. Size adjusts from 80% to 140%.
 With the wrist status on, health, suit and psi are **no longer on the screen in front
-of you**: they live on the wrist. The rest of the gameplay HUD (prompts, ammo,
-objectives) is unchanged, and the game still warns of low health with its red
+of you**: they live on the wrist. The rest of the gameplay HUD (reticle, prompts,
+ammo, objectives) is unchanged, and the game still warns of low health with its red
 screen edges and heartbeat. Turn WRIST STATUS off to get the meters back in front.
 On by default. See [the hologram note](WRIST-HOLOGRAM-2026-10-07.md).
 
@@ -182,9 +182,7 @@ does not yet implement physical crouch, avatar-height matching or a vignette.
 
 Menus and inventory open on a panel about **2 metres** away, anchored where you opened them. Reset view to bring a panel back in front of you. An optional card shows the menu controls (`UiGuide: 1`; hidden by default). The combined layout stays within conservative limits of **60° horizontally and 40° vertically**, shrinking further for narrower runtime frusta.
 
-The native gameplay HUD is captured once into a transparent target and displayed on a floating panel about 2 metres in front of you. Its graphics and interaction prompts stay Prey's own. Book and note popups, subtitles and tutorial cards appear on a panel of their own, 1.4 metres away and in front of the HUD, while the world stays visible around them; being nearer, their text is larger and sharper. For this session only, `ui.text 120` in **Tune Prey VR.cmd** moves it (100 to 200 cm; nearer is larger, 200 matches the HUD panel).
-
-The reticle is not on the panel: a small white ring and dot is drawn in the world where your weapon points, on the surface you aim at (10 metres away when nothing is in the way), so it stays sharp when you focus on the target. It shows whenever Prey would show its own crosshair, but it is the same ring for every weapon: Prey's weapon-specific crosshair shapes and spread are not shown. For this session only, `aim.vrreticle 0` in **Tune Prey VR.cmd** puts Prey's own crosshair back on the panel, and `aim.vrreticle 1` restores the ring.
+The native gameplay HUD is captured once into a transparent target and displayed on a floating panel about 2 metres in front of you. Its graphics and interaction prompts stay Prey's own. The reticle is remapped to the smaller HUD canvas; when aiming beyond the panel it clips out instead of marking its edge. This is a HUD reticle at a fixed depth, not a world-surface hit marker. Book and note popups, subtitles and tutorial cards appear on a panel of their own, 1.4 metres away and in front of the HUD, while the world stays visible around them; being nearer, their text is larger and sharper. For this session only, `ui.text 120` in **Tune Prey VR.cmd** moves it (100 to 200 cm; nearer is larger, 200 matches the HUD panel).
 
 Objective markers stay in the world view, in both eyes, at no particular depth: they read as far away, which suits distant objectives better than nearby ones.
 

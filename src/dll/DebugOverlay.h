@@ -61,20 +61,6 @@ void DebugOverlayWristDecision(bool gate, bool visible);
 void DebugOverlayWristCard(bool gate, bool visible, const Pose& card, float width, float height, float distance,
                            float facing, float viewing, float facingNeeded, float viewingNeeded);
 
-// **The VR reticle (step 3 of the both-eyes route).** Prey's crosshair is
-// screen-space: on the HUD panel it sits at the panel's 2 m whatever the weapon
-// points at, so the eyes converge on the panel while the target is elsewhere.
-// With this on, the crosshair leaves the panel (HudLayer SetNativeReticleOffPanel)
-// and a reticle is drawn in each eye at the point the right hand's aim ray
-// reaches -- its scene hit, else the reticle convergence distance. Drawn only
-// while Prey shows its own crosshair and only on frames whose panel left it out,
-// so there is never none where there was one, nor two. Independent of the mask.
-DWORD SetVrReticle(unsigned enabled);
-unsigned VrReticleEnabled();
-std::string VrReticleReport();
-// Game/input-drain thread, from the aim takeover, beside DebugOverlayAim.
-void VrReticleAim(const GameplayPoseFrame& frame, const aim::Sample& sample);
-
 // Render thread, inside the XR frame: draws into `eyeImage` (which must be a
 // render target) using the contract that produced it. `shownTangents` (left,
 // right, up, down; may be null) is the frustum the runtime displays, which
