@@ -131,8 +131,8 @@ while you hold a weapon with both hands, in menus and the inventory, and when th
 is inside a wall or your right hand or weapon is in front of it. A hand sweeping past
 your view does not open it. Size adjusts from 80% to 140%.
 With the wrist status on, health, suit and psi are **no longer on the screen in front
-of you**: they live on the wrist. The rest of the gameplay HUD (reticle, prompts,
-ammo, objectives) is unchanged, and the game still warns of low health with its red
+of you**: they live on the wrist. The rest of the gameplay HUD (prompts, ammo,
+objectives) is unchanged, and the game still warns of low health with its red
 screen edges and heartbeat. Turn WRIST STATUS off to get the meters back in front.
 On by default. See [the hologram note](WRIST-HOLOGRAM-2026-10-07.md).
 
@@ -182,18 +182,22 @@ does not yet implement physical crouch, avatar-height matching or a vignette.
 
 Menus and inventory open on a panel about **2 metres** away, anchored where you opened them. Reset view to bring a panel back in front of you. An optional card shows the menu controls (`UiGuide: 1`; hidden by default). The combined layout stays within conservative limits of **60° horizontally and 40° vertically**, shrinking further for narrower runtime frusta.
 
-The native gameplay HUD is captured once into a transparent target and displayed at its own depth. Its graphics and interaction prompts stay Prey's own. The reticle is remapped to the smaller HUD canvas; when aiming beyond the panel it clips out instead of marking its edge. This is a HUD reticle at a fixed depth, not a world-surface hit marker. World markers and subtitles remain in the scene.
+The native gameplay HUD is captured once into a transparent target and displayed on a floating panel about 2 metres in front of you. Its graphics and interaction prompts stay Prey's own. Book and note popups, subtitles and tutorial cards appear on the same panel, above the HUD, while the world stays visible around them.
+
+The reticle is not on the panel: a small white ring and dot is drawn in the world where your weapon points, on the surface you aim at (10 metres away when nothing is in the way), so it stays sharp when you focus on the target. It shows whenever Prey would show its own crosshair, but it is the same ring for every weapon: Prey's weapon-specific crosshair shapes and spread are not shown. For this session only, `aim.vrreticle 0` in **Tune Prey VR.cmd** puts Prey's own crosshair back on the panel, and `aim.vrreticle 1` restores the ring.
+
+Objective markers stay in the world view, in both eyes, at no particular depth: they read as far away, which suits distant objectives better than nearby ones.
 
 The default render size is **2016 × 2160 per eye**, independent of monitor DPI. This restores the tall aspect used in earlier headset testing; **2688 × 2880** offers more detail at the same aspect and higher GPU cost. Edit `Width` and `Height` in `PreyVR.json`, then restart Prey. Menus can have unused space within their floating panel; do not switch the world render to 16:9 just to fill that panel. This is a starting preset, not automatic headset-resolution detection or a guarantee of complete FOV coverage on every headset.
 
 The launcher migrates the old, unversioned **2560 × 1440** default once, backing up `PreyVR.json` first. Custom sizes remain unchanged. To intentionally retain that old size, add `"ResolutionDefaultsVersion": 1` to the JSON, or launch with both `-Width 2560 -Height 1440`. A single command-line dimension is rejected. `HudLayer` remains `1` for floating HUD or `0` for the native scene HUD.
 
-Both eyes are rendered from the same game frame by default (`DualStereo: 1`). `DualStereo: 0` (or launching with `-DualStereo 0`, which is also saved) returns to the earlier method that renders one eye per frame; it shows doubled edges when you or the scene move. Use it only to check whether a problem belongs to the both-eyes method, and report what you find. Known issue with both eyes: fades to black during scene transitions appear in the right eye only. Once VR is ready, the launcher prints which method is running. If the both-eyes method is unavailable, it says so and Prey continues with alternate eyes.
+Both eyes are rendered from the same game frame by default (`DualStereo: 1`). `DualStereo: 0` (or launching with `-DualStereo 0`, which is also saved) returns to the earlier method that renders one eye per frame; it shows doubled edges when you or the scene move. Use it only to check whether a problem belongs to the both-eyes method, and report what you find. Fades, markers and anything else Prey draws over the world are drawn into both eyes; `dual.overlay 0` in **Tune Prey VR.cmd** leaves them in the right eye only, for comparison, and `dual.overlay 1` restores them. Once VR is ready, the launcher prints which method is running. If the both-eyes method is unavailable, it says so and Prey continues with alternate eyes.
 
 ## Recovery and support
 
-If startup fails, the launcher names the failed stage and the diagnostic folder under `%LOCALAPPDATA%\PreyVR\runs`. Resolve the headset/runtime issue, return focus to Prey, and press F11 to retry. Reconnect the runtime before retrying a lost XR session. F12 and the grip chord need a fresh tracked headset pose.
+If startup fails, the launcher names the failed stage and the diagnostic folder under `%LOCALAPPDATA%\PreyVR\runs`. While VR is running, that folder's `PreyVR.log` also records the rendering and HUD counters once a minute (lines starting `preyvr_vr status`); include it when reporting a problem. Resolve the headset/runtime issue, return focus to Prey, and press F11 to retry. Reconnect the runtime before retrying a lost XR session. F12 and the grip chord need a fresh tracked headset pose.
 
 This package supports the verified **Steam Prey 2017 x64 build** only. The launcher checks `PreyDll.dll` before loading anything; it does not patch game files. Keep the package files together. It also refuses to launch over another detected fleet game.
 
-This is a preview. The new interface has simulator and in-game checks; headset comfort, every weapon, and every in-world terminal still need player acceptance. Existing alternate-eye rendering and its performance limits remain.
+This is a preview. The new interface has simulator and in-game checks; headset comfort, every weapon, and every in-world terminal still need player acceptance. Rendering both eyes every frame costs frame rate, and that cost has not yet been measured properly at headset resolution.

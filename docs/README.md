@@ -18,6 +18,9 @@ The notebook separates evidence from plans so implementation follows demonstrate
 > [`GRENADES-HAND-2026-10-07.md`](GRENADES-HAND-2026-10-07.md).
 > Health, suit and psi as a hologram on the left forearm, checked like a watch (and off the
 > screen): [`WRIST-HOLOGRAM-2026-10-07.md`](WRIST-HOLOGRAM-2026-10-07.md).
+> Both eyes rendered in one frame (the render view submitted twice), with the HUD, text
+> popups, markers, fades and the reticle in both eyes:
+> [`STEREO-DUAL-SUBMISSION-2026-10-10.md`](STEREO-DUAL-SUBMISSION-2026-10-10.md).
 >
 > [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) remains
 > the record of binary identity and lifecycle decisions.

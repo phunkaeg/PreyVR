@@ -3,10 +3,15 @@
 Branch `stereoscopy`, 2026-10-10. Code: `src/dll/DualSceneStereo.{h,cpp}`, commands
 `dual.observe`, `dual.mode`, `dual.ipd`, `dual.vr`, `dual.capture`, `dual.report`.
 Measured in the real game on this machine (Steam `PreyDll.dll` `7D6E322F...`).
+2026-10-11 (branch `stereo-both-eyes`): `src/dll/DualOverlay.{h,cpp}`, the text panel
+and VR reticle in `HudLayer`/`DebugOverlay`, commands `dual.overlay`, `aim.vrreticle`.
 
 **Status: in the headset path and confirmed by a wearer.** VR mode submits both
 eyes from one frame by default (mode 3, below). Steam Frame session on 2026-10-10:
-"no noticeable doubling". Two open issues are listed at the end.
+"no noticeable doubling". Since 2026-10-11 everything Prey draws after the world --
+HUD, reticle, text popups, objective markers, fades -- reaches both eyes
+([below](#after-world-overlays-in-both-eyes-2026-10-11)). Open issues are listed at
+the end.
 
 ## Why this seam
 
@@ -134,22 +139,91 @@ not measure render-time skew.
 Then a wearer session from a player package at 2688x2880: **no noticeable
 doubling**, the defect this route exists to remove.
 
+## After-world overlays in both eyes (2026-10-11)
+
+The 2026-10-10 wearer reported scene-transition fades in the right eye only; a
+re-test found the reticle, objective markers and book/note popups the same. One
+cause: the first eye is held right after its `RT_RenderScene`, so anything drawn
+after the second submission reached the second (right) eye only.
+
+### What draws after the world (static, Steam build)
+
+- **Screen fades are 2D images.** The flow-graph fader (`Image:ScreenFader` ->
+  `CMasterFader`, singleton `0x2C216B0`, a framework listener named
+  `HUD_Master_Fader` at priority 2; `CHUDFader::Draw` `0x17AC1D0`) and the TrackView
+  `ScreenFader` node (draw loop `0xA45540`) both call `SetState(0x265)` then
+  `Draw2dImage(0, 0, 800, 600, ...)` (renderer vtable `+0x1D0`, `0xF78A00`). That
+  queues render command `0x3B`, run as `RT_Draw2dImage` (`+0x990`, `0xF34B80`); it
+  and the batched `RT_Draw2dImageList` (`+0x9A8`, `0xF353A0`) both draw through
+  `RT_Draw2dImageInternal` `0xF34C70` (R-135). The load fade seen in the headset is
+  an untextured, opaque black 800x600 image on every frame of the fade.
+- **Flash movies other than the gameplay HUD:** `DanielleMarkers`,
+  `DanielleTranscribeNote` (books and notes), `DanielleSubtitles`,
+  `DanielleTutorialCard`, `DanielleDeadScreen` and others. `DanielleHUD.HUDFadeOn`
+  (called by `ArkLevelTransitionDoor`) is not a screen fade: in `code.HUD.Visibility`
+  it tweens the `safe` container's `autoAlpha`.
+- **The gameplay HUD itself.** The floating HUD layer had never come up on SteamVR
+  (F-017), so the HUD -- reticle and status popups included -- stayed in the scene.
+
+### What was changed
+
+- **HUD panel on SteamVR (F-017).** The HUD quad's swapchain is created by
+  `InventorySwapchain` in the main swapchain's format, like every other layer, with
+  a bounded image wait. Log: `hud_swapchain format=29 captureFormat=28`.
+- **Text panel.** `DanielleTranscribeNote`, `DanielleSubtitles` and
+  `DanielleTutorialCard` are captured (with the HUD layer on and gameplay input
+  allowed) into one shared texture -- the first movie of a frame clears it -- and
+  shown as a quad on the HUD panel's fit, above the HUD. Log: `text_swapchain`.
+- **Per-eye overlay redraw (`DualOverlay`).** DualSceneStereo opens a window after
+  the second submission of a frame whose first eye was held; the top of
+  `ServiceXrFrame` closes it. While it is open, a draw into the frame's backbuffer
+  (identity checked against the held backbuffer) is repeated into the held first eye
+  through a view with the game's own format (`HeldFirstEyeTarget`):
+  - Flash: inside the movie's one native callback, the root's Display (`0x18AB710`)
+    runs twice -- natively, then into the held eye -- the second starting from a
+    copy of the native depth-stencil, which Flash clips with. The stereo
+    inventory's pattern: no extra outer callback, no extra Advance.
+  - 2D images: `RT_Draw2dImageInternal` (landmark `renderer.draw2d_images`, 40 in
+    all) is called a second time with the backbuffer redirected to the held eye
+    (HudLayer's `OMSetRenderTargets` substitution).
+  - `dual.overlay 0|1` switches it live; `PREYVR_DUAL_OVERLAY=0` at launch. The log
+    names the first redraw or refusal per movie and the first 12 2D images.
+- **VR reticle.** `_root.safe.reticle_mc` leaves the HUD panel through the wrist's
+  sprite filter, and a ring-and-dot reticle (1.1 deg across at any distance) is
+  drawn in each eye, with that eye's submitted pose, where the right hand's aim ray
+  ends: the aim's own scene hit (`aim.scene`), else a scene query of the same ray,
+  else the 10 m convergence (never nearer than 0.25 m). It is drawn only on frames
+  whose panel left the native crosshair out, and while `reticle_mc._visible` and
+  `safe._visible` are true. `aim.vrreticle 0|1`; `PREYVR_VR_RETICLE=0` at launch.
+
+### Headset results, 2026-10-11 (Steam Frame, SteamVR, player packages at 2688x2880)
+
+Wearer: the reticle sits on the aimed surface in both eyes; the book popup is on
+its panel in both eyes; objective markers and the load fade are in both eyes. From
+the once-a-minute status lines of the ~10-minute reticle run: 41,855 doubled frames
+and 41,404 pairs, 0 refused; 3,635 2D images and 41,605 `DanielleMarkers` draws
+redrawn, 0 refused; the panel left the crosshair out on 37,643 frames, 0 refused;
+41,614 reticle samples, 35,045 (84%) with a scene hit, drawn into 74,894 eye images;
+the native crosshair never read as hidden. No movie was refused in any run.
+
+### Limits and what is not established
+
+- **Markers have no depth.** Both eyes get them at the same pixels, so they read as
+  infinitely far: close to right for distant objectives (about 0.2 deg per eye at
+  10 m), wrong for nearby points of interest. Per-marker depth needs the objective
+  positions, which nothing reads yet.
+- **The reticle is generic.** Prey's weapon-specific crosshairs, spread and hit
+  feedback are not shown. Keeping the native art at depth (a crosshair-only replay
+  into each eye with a per-eye offset) is possible and not attempted.
+- **Reticle visibility mirrors `_visible` only.** A crosshair Prey hides some other
+  way (alpha, an empty frame) would not hide ours; none was seen.
+- **Cost is unmeasured on the GPU.** Each redrawn Flash movie also copies the full
+  depth-stencil once per frame, and the subtitles movie renders every gameplay frame,
+  so the text panel uploads every frame even with no subtitle on screen.
+- **Menus waste work:** the second submission and the overlay redraws still run
+  while the menu panel shows only the backbuffer.
+
 ## Open issues
-
-### Scene-transition fades are drawn in the right eye only
-
-Reported by the wearer: during scene transitions the screen fades to black in the
-right eye only. **Almost certainly specific to mode 3.** The first eye is copied
-from the backbuffer right after its `RT_RenderScene`; the fade is drawn on top of
-the finished frame later in the frame (after the scene, like the HUD), so only the
-second eye -- the final backbuffer -- receives it. The alternate-eye path never
-showed this because every eye image was a whole frame's backbuffer. The same
-mechanism keeps the native HUD out of the first eye (HudCapturePair records it).
-To find: which pass draws the fade (a 2D/Flash or post-effect overlay after the
-scene) and its fade amount. Fix candidates: apply the fade to both eyes in the
-compositor (a black quad or the HUD layer with the fade's alpha), redirect that
-draw into each eye, or move the first-eye copy to after the overlay with the
-second eye's overlay removed.
 
 ### The player body does not turn with the headset
 
@@ -175,7 +249,10 @@ the body mesh in VR.
 
 ## Not established
 
-- Frame rate and GPU time at 2688x2880 with both eyes per frame.
+- Frame rate and GPU time at 2688x2880 with both eyes per frame. Rough only: the
+  status lines of one 2026-10-11 run average 3.0 ms and 9.1 ms of render-thread time
+  in the two submissions, and frames counted against wall time suggest about
+  50 fps rather than 90 (menus and loading included). Not a GPU measurement.
 - The weapon and hands per eye (`NearViewStereo` identifies the eye from the
   render view's camera, which mode 3 sets per submission). The wearer reported no
   problem but they were not checked specifically.
@@ -192,11 +269,27 @@ the body mesh in VR.
   process named SteamVR's manifest (`runtimeSource=environment`). Probably Steam's
   in-game overlay; not proven. Untested workaround: send `xr.runtime <xr-sim
   manifest>` after injection and before `vr.enable`.
+- **Counters without the tuner (2026-10-11).** While VR is active, VR mode logs
+  `preyvr_vr status dual={ ... } hud={ ... }` once a minute: the text of
+  `dual.report` and `hud.layer` plus the reticle counters. Running totals, so the
+  last line of a session is the one to read.
+- **Recenter refusals are rate-limited (2026-10-11).** After a tracking-space change
+  the session host retries the recenter every frame until the head is tracked; with
+  the headset off that logged one line per frame (998 in 86 s). Now one line per
+  reason per 5 s, with `heldBack=N` on the next line written.
+- **A level-load crash (2026-10-11)**, loading a save after quitting to the main
+  menu: an access violation in a job worker inside PreyDll's `OctreeNodeRender` job
+  (`PreyDll+0x278EAE`, a per-object record whose owner pointer was garbage). The
+  whole faulting stack is PreyDll, the C runtime and Windows -- no PreyVR frame --
+  and nothing changed that day touches scene objects. Not attributed to the mod; if
+  it recurs on the same path, retry with `dual.vr 0`.
 
 ## Next
 
-1. The right-eye-only fade (above).
-2. Measure frame time at headset resolution with both eyes; decide whether shadow
-   maps and other per-frame work can be shared between the two submissions.
-3. Body yaw following the headset, or hiding the body.
-4. Per-eye history for SSR/SSDO, then re-enable TAA per eye.
+1. Measure frame time and GPU time at headset resolution with both eyes; skip the
+   second submission and the overlay redraws while the menu panel is up; decide
+   whether shadow maps and other per-frame work can be shared between submissions.
+2. Body yaw following the headset, or hiding the body.
+3. Marker depth, if markers look wrong in play (see the limits above).
+4. Prey's own crosshair art at the aim's depth, if the generic reticle is missed.
+5. Per-eye history for SSR/SSDO, then re-enable TAA per eye.

@@ -849,6 +849,26 @@ holds while it does. If native runs prepare once for its second render, our mode
 remaining work is finding the release. If native re-runs it, a whole-frame reset is mandatory and A7
 is the shape to perfect rather than abandon.
 
+## F-017 - The HUD quad swapchain was created in the capture's format, which SteamVR refuses
+
+- **Date:** found 2026-10-11, present since the HUD layer was written.
+- **Target:** SteamVR/OpenXR on a Steam Frame; Steam `PreyDll.dll` `7D6E322F...`.
+- **Intent:** Show the captured gameplay HUD (`HudLayer`) as a floating quad layer (`HudLayer: 1`, the player default).
+- **Mechanism:** The HUD swapchain was the only one created without `xrEnumerateSwapchainFormats`: it asked
+  for the capture texture's own format, which is the format of the view Flash draws through
+  (`R8G8B8A8_UNORM`, 28).
+- **Result:** Refused in every SteamVR session (`preyvr_hud_layer disabled reason=swapchain_format_or_allocation`,
+  without the XrResult), so the layer disabled itself and the HUD stayed in the scene. xr-sim accepts any
+  format, so nothing showed until both eyes came from one frame, when the HUD -- reticle included -- reached
+  the right eye only. The same session's main swapchain (`R8G8B8A8_UNORM_SRGB`, 29) and every enumerated layer
+  worked.
+- **Rule:** Create every swapchain through `InventorySwapchain::Prepare` (or another path that checks the
+  runtime's list), in the main swapchain's format so the copied bytes read as the scene's do -- never in a
+  capture's own spelling. Log the refusing step and the XrResult; `Prepare` now records both
+  (`LastRefusal`, `LastResult`).
+- **Recovery:** Fixed 2026-10-11; first SteamVR session: `hud_swapchain format=29 captureFormat=28`, no
+  refusals. That 28 itself was refused is the strong inference (the old path never logged the XrResult).
+
 ---
 
 # F-009 -- the viewmodel character pointer is EPHEMERAL, and pinning it is a trap
