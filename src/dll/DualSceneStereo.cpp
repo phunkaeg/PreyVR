@@ -498,10 +498,8 @@ void __fastcall RenderSceneDetour(void* renderer, void* view, int flags, void* t
     gDeferredShadow.fetch_add(tDeferredShadow, std::memory_order_relaxed);
     gDeferredClear.fetch_add(tDeferredClear, std::memory_order_relaxed);
     gStep.store(static_cast<int>(Step::between), std::memory_order_release);
-    if (mode == 3) {
-        // The backbuffer is the first eye, post-processed and before the HUD.
-        HoldDualFirstEye(renderer);
-    }
+    // The backbuffer is the first eye, post-processed and before the HUD.
+    const bool held = mode == 3 && HoldDualFirstEye(renderer);
     if (capture) {
         Capture(renderer, "dual-eye0");
     }
@@ -546,6 +544,11 @@ void __fastcall RenderSceneDetour(void* renderer, void* view, int flags, void* t
         // Anything the renderer draws after the scene this frame -- the HUD,
         // auxiliary geometry -- gets the frame's own camera back.
         restoreCentre();
+    }
+    if (held) {
+        // From here to RT_EndFrame the game draws its overlays; each draw into
+        // the backbuffer can now be repeated into the held first eye (DualOverlay.h).
+        OpenDualOverlayWindow();
     }
     gStep.store(static_cast<int>(Step::idle), std::memory_order_release);
     if (capture) {

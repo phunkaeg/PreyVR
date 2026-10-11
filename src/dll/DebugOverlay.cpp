@@ -5,6 +5,7 @@
 #include "AimTakeover.h"
 #include "HeadTrackingHook.h"
 #include "HudBridge.h"
+#include "HudLayer.h"
 #include "InteractionLane.h"
 #include "CarryLane.h"
 #include "Logger.h"
@@ -68,6 +69,16 @@ std::atomic<std::uint64_t> gWristNs{0};
 // The hologram's own card (WristLane), when it is the one in use.
 struct WristCardRecord { dd::Wrist card{}; std::uint64_t ns = 0; };
 LatestSnapshot<WristCardRecord> gWristCard;
+
+// The VR reticle: where the right hand's aim ray ends, in OpenXR space.
+struct ReticleRecord { Vec3 target{}; float distance = 0; bool hit = false; std::uint64_t ns = 0, reference = 0; };
+LatestSnapshot<ReticleRecord> gReticle;
+std::atomic<bool> gReticleEnabled{false};
+std::atomic<unsigned long long> gReticleSamples{0}, gReticleHits{0}, gReticleEyes{0}, gReticleNoPanel{0},
+    gReticleHidden{0}, gReticleStale{0};
+constexpr float kReticleNearest = .25f;          // metres: never inside the weapon
+constexpr float kReticleRingDegrees = .55f;      // ring radius, constant angular size
+constexpr float kReticleDotDegrees = .12f;
 
 std::atomic<unsigned long long> gDrawn{0}, gVertices{0}, gTruncated{0}, gFailures{0}, gQueries{0};
 std::atomic<DWORD> gLastError{0};
@@ -816,11 +827,107 @@ void DebugOverlayWristDecision(bool gate, bool visible)
     gWristNs.store(MonotonicNanoseconds());
 }
 
+DWORD SetVrReticle(unsigned enabled)
+{
+    if (enabled > 1) { return 1; }
+    // The crosshair leaves the panel only if this reticle can stand in for it.
+    if (!SetNativeReticleOffPanel(enabled != 0)) {
+        lifecycle::Log("preyvr_vr_reticle result=unavailable detail=sprite_filter");
+        return 2;
+    }
+    gReticleEnabled.store(enabled != 0);
+    if (!enabled) { gReticle.Clear(); }
+    lifecycle::Log(std::string("preyvr_vr_reticle result=0 enabled=") + (enabled ? "1" : "0"));
+    return 0;
+}
+unsigned VrReticleEnabled() { return gReticleEnabled.load() ? 1u : 0u; }
+std::string VrReticleReport()
+{
+    std::ostringstream out;
+    out << " vrReticle={enabled=" << VrReticleEnabled() << " samples=" << gReticleSamples.load()
+        << " hits=" << gReticleHits.load() << " eyesDrawn=" << gReticleEyes.load()
+        << " notOffPanel=" << gReticleNoPanel.load() << " nativeHidden=" << gReticleHidden.load()
+        << " stale=" << gReticleStale.load() << '}';
+    return out.str();
+}
+
+void VrReticleAim(const GameplayPoseFrame& frame, const aim::Sample& sample)
+{
+    if (!gReticleEnabled.load(std::memory_order_relaxed)) { return; }
+    const auto& right = frame.tracking.hands[static_cast<unsigned>(Hand::right)];
+    if (!HudGameplayInputAllowed() || !IsPoseUsable(right.aimPose, right.aimValidity, kPoseAgeNs) ||
+        !Finite(sample.origin) || !Finite(sample.direction)) {
+        gReticle.Clear();
+        return;
+    }
+    // Where the shot goes: the aim's own scene hit (aim.scene), else this ray's,
+    // else the distance the native crosshair has always been converged at.
+    float distance = sample.sceneDistance;
+    bool hit = distance >= 0;
+    if (!hit) {
+        scene::Hit query{};
+        ++gQueries;
+        hit = QueryDebugRay(frame, sample.origin, sample.direction, query) && query.distance >= 0;
+        if (hit) { distance = query.distance; }
+    }
+    if (!hit) { distance = static_cast<float>(ReticleConvergenceMillimetres()) * .001f; }
+    distance = std::max(distance, kReticleNearest);
+    // Converted with the anchor the sample was built from, as the debug ray is.
+    const Vec3 anchor = sample.muzzleOrigin && frame.cameraCentreValid ? frame.cameraCentre : frame.nativeEye;
+    ReticleRecord record{};
+    record.target = EngineToXr(frame, anchor, dd::Add(sample.origin, dd::Scale(sample.direction, distance)));
+    record.distance = distance;
+    record.hit = hit;
+    record.ns = MonotonicNanoseconds();
+    record.reference = frame.referenceGeneration;
+    if (!Finite(record.target)) { gReticle.Clear(); return; }
+    gReticle.Publish(record);
+    ++gReticleSamples;
+    if (hit) { ++gReticleHits; }
+}
+
+namespace {
+// The reticle for this eye, when every condition holds: on, a fresh aim, the
+// gameplay HUD's panel left Prey's crosshair out this frame, and Prey was
+// showing it. Each refusal is counted once per eye.
+bool ReticleForEye(ReticleRecord& reticle)
+{
+    if (!gReticleEnabled.load(std::memory_order_relaxed)) { return false; }
+    bool nativeShown = false;
+    if (!NativeReticleOffPanel(nativeShown)) { ++gReticleNoPanel; return false; }
+    if (!nativeShown) { ++gReticleHidden; return false; }
+    if (!HudGameplayInputAllowed() || !gReticle.TryRead(reticle) ||
+        !FreshSample(MonotonicNanoseconds(), reticle.ns, kRayAgeNs) ||
+        reticle.reference != HeadTrackingReferenceGeneration()) {
+        ++gReticleStale;
+        return false;
+    }
+    return true;
+}
+
+// A ring and a centre dot, each white with a dark edge so it reads on any
+// surface. Sized by angle, not metres, so it looks the same at any distance.
+void AppendReticle(dd::Scene& scene, const ReticleRecord& reticle, const dd::EyeView& eye)
+{
+    const float focal = dd::FocalPixels(eye);
+    const float ring = focal * std::tan(kReticleRingDegrees * .0174532925f);
+    const float dot = std::max(1.5f, focal * std::tan(kReticleDotDegrees * .0174532925f));
+    const dd::Color edge{0, 0, 0, 150}, white{240, 240, 240, 235};
+    scene.markers.push_back({reticle.target, 0.f, edge, false, ring + 1.5f, 5.0f});
+    scene.markers.push_back({reticle.target, 0.f, white, false, ring, 2.0f});
+    scene.markers.push_back({reticle.target, 0.f, edge, true, dot + 1.2f, 0.f});
+    scene.markers.push_back({reticle.target, 0.f, white, true, dot, 0.f});
+}
+} // namespace
+
 void DrawDebugOverlay(ID3D11Device* device, ID3D11DeviceContext* context, ID3D11Texture2D* eyeImage,
                       const RenderContract& contract, const float* shownTangents)
 {
     const unsigned mask = gMask.load(std::memory_order_relaxed);
-    if (!mask || !device || !context || !eyeImage) { return; }
+    if (!device || !context || !eyeImage) { return; }
+    ReticleRecord reticle{};
+    const bool drawReticle = ReticleForEye(reticle);
+    if (!mask && !drawReticle) { return; }
     if (!gRenderer.Ready(device)) { ++gFailures; return; }
     D3D11_TEXTURE2D_DESC desc{};
     eyeImage->GetDesc(&desc);
@@ -833,8 +940,17 @@ void DrawDebugOverlay(ID3D11Device* device, ID3D11DeviceContext* context, ID3D11
     eye.width = static_cast<float>(desc.Width);
     eye.height = static_cast<float>(desc.Height);
     if (shownTangents) { dd::SetShownFrustum(eye, shownTangents[0], shownTangents[1], shownTangents[2], shownTangents[3]); }
-    dd::OverlayFrame frame = Gather(mask);
-    dd::BuildOverlayScene(frame, mask, gScene);
+    dd::OverlayFrame frame{};
+    if (mask) {
+        frame = Gather(mask);
+        dd::BuildOverlayScene(frame, mask, gScene);
+    } else {
+        gScene.Clear();
+    }
+    if (drawReticle) {
+        AppendReticle(gScene, reticle, eye);
+        ++gReticleEyes;
+    }
     gVerticesScratch.clear();
     const auto stats = dd::Tessellate(gScene, eye, gVerticesScratch, kMaxVertices);
     if (!gRenderer.Draw(context, eyeImage, gVerticesScratch, eye.width, eye.height)) {

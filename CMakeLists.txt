@@ -191,6 +191,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/NearViewStereo.cpp
         src/dll/NearParticleStereo.cpp
         src/dll/DualSceneStereo.cpp
+        src/dll/DualOverlay.cpp
         src/dll/RenderFrame.cpp
         src/dll/WeaponAttachment.cpp
         src/dll/PassCameraProbe.cpp

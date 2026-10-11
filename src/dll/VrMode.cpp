@@ -10,6 +10,7 @@
 #include "NearViewStereo.h"
 #include "NearParticleStereo.h"
 #include "DualSceneStereo.h"
+#include "DualOverlay.h"
 #include "NearFovOverride.h"
 #include "InputPost.h"
 #include "InputPathProbe.h"
@@ -36,6 +37,10 @@ Phase phase=Phase::off;
 std::string failure;
 unsigned setting=0;
 unsigned long long deadline=0, consoleCount=0, calibratedOwner=0, calibratedReference=0;
+// The both-eyes and HUD-panel counters, logged once a minute while VR is active
+// so a headset session records them without a tuner command.
+unsigned long long nextStatusReport=0;
+constexpr unsigned long long kStatusReportMs=60000;
 bool consolePending=false;
 unsigned desiredWidth=0,desiredHeight=0;
 unsigned long long firstFrame=0;
@@ -45,9 +50,10 @@ unsigned long long nextInputProbe=0;
 const char* settings[]={"r_MotionBlur 0","r_AntialiasingMode 1"};
 void Log(const std::string& s) { lifecycle::Log("preyvr_vr " + s); }
 void StopFeatures() {
+    SetVrReticle(0);
     SetHudLayerEnabled(0);
     // Contract first, so no both-eyes record is published after its submissions stop.
-    SetDualStereoContract(0); SetDualSceneMode(0,0);
+    SetDualStereoContract(0); SetDualSceneMode(0,0); SetDualOverlayRedraw(0);
     SetSyntheticStereo(0,50);
     SetViewHookApplying(0); SetViewPositionApplying(0);
     SetNearViewStereo(0); SetNearFovDeciDegrees(0);
@@ -168,7 +174,16 @@ void TickVrMode() {
             wchar_t dualSetting[8]{};
             GetEnvironmentVariableW(L"PREYVR_DUAL_STEREO",dualSetting,8);
             if(dualSetting[0]==L'0') Log("dual_stereo=off reason=PREYVR_DUAL_STEREO");
-            else if(SetDualSceneMode(3,0)==0) {SetDualStereoContract(1);Log("dual_stereo=on");}
+            else if(SetDualSceneMode(3,0)==0) {
+                SetDualStereoContract(1);Log("dual_stereo=on");
+                // What the game draws after the world, into the held eye too
+                // (DualOverlay.h). PREYVR_DUAL_OVERLAY=0 leaves it in one eye.
+                wchar_t overlaySetting[8]{};
+                GetEnvironmentVariableW(L"PREYVR_DUAL_OVERLAY",overlaySetting,8);
+                if(overlaySetting[0]==L'0') Log("dual_overlay=off reason=PREYVR_DUAL_OVERLAY");
+                else if(SetDualOverlayRedraw(1)==0) Log("dual_overlay=on");
+                else Log("dual_overlay=unavailable overlays=second_eye_only");
+            }
             else Log("dual_stereo=unavailable fallback=alternate_eye");
         }
         // DrawNear particles in the weapon's camera space (preyvr/NearParticles.h).
@@ -203,16 +218,32 @@ void TickVrMode() {
         wchar_t hudSetting[8]{};
         GetEnvironmentVariableW(L"PREYVR_HUD_LAYER",hudSetting,8);
         if(hudSetting[0]!=L'0' && SetHudLayerEnabled(1)!=0)Log("hud_layer=unavailable native_hud=retained");
+        // The crosshair at the aim's depth in each eye rather than on the HUD
+        // panel (DebugOverlay.h). It only replaces the panel's own, so it needs
+        // the HUD layer; PREYVR_VR_RETICLE=0 keeps the crosshair on the panel.
+        else if(hudSetting[0]!=L'0') {
+            wchar_t reticleSetting[8]{};
+            GetEnvironmentVariableW(L"PREYVR_VR_RETICLE",reticleSetting,8);
+            if(reticleSetting[0]==L'0') Log("vr_reticle=off reason=PREYVR_VR_RETICLE");
+            else if(SetVrReticle(1)==0) Log("vr_reticle=on");
+            else Log("vr_reticle=unavailable crosshair=hud_panel");
+        }
         phase=Phase::rendering;deadline=GetTickCount64()+15000;
     }
     if(phase==Phase::rendering) {
         if(GetTickCount64()>deadline) { Fail("no_rendered_frames"); return; }
         if(XrSubmittedFrameCount()<firstFrame+3 || XrResolutionChain(14)!=0)return;
         phase=Phase::active;
+        nextStatusReport=GetTickCount64()+kStatusReportMs;
         Log("state=active panel=automatic recenter=F12_or_grips_and_left_Y");
     }
     if(phase==Phase::active) {
         if(XrSessionStatusValue()!=1) {Fail("openxr_session_ended");return;}
+        if(GetTickCount64()>=nextStatusReport) {
+            nextStatusReport=GetTickCount64()+kStatusReportMs;
+            // The same text dual.report and hud.layer answer with.
+            Log("status dual={"+DualSceneReport()+DualOverlayReport()+" } hud={"+HudLayerReport()+VrReticleReport()+" }");
+        }
         const auto owner=AnimIkOwnerGeneration();
         const auto reference=HeadTrackingReferenceGeneration();
         if(AnimIkOwnerCharacter()!=0 && reference%2==0 &&

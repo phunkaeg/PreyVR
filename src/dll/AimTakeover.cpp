@@ -440,6 +440,7 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     gAimSample.Publish(sample);
     gAimSamplePublished.fetch_add(1, std::memory_order_relaxed);
     DebugOverlayAim(frame, sample);
+    VrReticleAim(frame, sample);
 
     // Screen projection is deferred until CSystem::Render has installed the
     // actual eye camera. Here the global camera still has gameplay projection;

@@ -18,6 +18,7 @@
 #include "Logger.h"
 #include "NearViewStereo.h"
 #include "DualSceneStereo.h"
+#include "DualOverlay.h"
 #include "NearParticleStereo.h"
 #include "RenderFrame.h"
 #include "ReticleFollow.h"
@@ -530,8 +531,13 @@ bool ExecuteDualCommand(const std::vector<std::string>& args, std::ostringstream
         out << "dual.vr result=" << result << DualSceneReport();
     } else if (verb == "dual.capture") {
         out << "dual.capture result=" << RequestDualSceneCapture(arg(1, 0));
+    } else if (verb == "dual.overlay") {
+        // Step 2 A/B: 1 repeats the after-world overlays into the held eye, 0
+        // leaves them in the second eye only. No argument: report.
+        out << "dual.overlay result=" << (args.size() > 1 ? SetDualOverlayRedraw(arg(1, 1)) : 0)
+            << DualOverlayReport();
     } else if (verb == "dual.report") {
-        out << "dual.report result=0" << DualSceneReport();
+        out << "dual.report result=0" << DualSceneReport() << DualOverlayReport();
     } else {
         return false;
     }
@@ -814,6 +820,10 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     } else if (verb == "aim.scene") {
         if(args.size()>1)SetSceneReticle(arg(1,0));
         out<<"aim.scene"<<SceneQueryReport();
+    } else if (verb == "aim.vrreticle") {
+        // Step 3 A/B: 1 draws the crosshair at the aim's depth in each eye, 0
+        // puts Prey's own back on the HUD panel. No argument: report.
+        out<<"aim.vrreticle result="<<(args.size()>1?SetVrReticle(arg(1,1)):0)<<VrReticleReport();
     } else if (verb == "haptics") {
         if(args.size()>1)SetHapticsEnabled(arg(1,1));
         if(args.size()>2)SetHapticStrength(arg(2,70));

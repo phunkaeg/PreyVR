@@ -100,7 +100,18 @@ struct Host {
     XrSwapchain guideSwapchain = XR_NULL_HANDLE;
     XrSwapchain pointerSwapchain = XR_NULL_HANDLE;
     bool pointerReady=false,pointerAttempted=false,cylinderSupported=false;
-    XrSwapchain hudSwapchain = XR_NULL_HANDLE;
+    std::unique_ptr<InventorySwapchain> hudSwapchain;
+    bool hudSwapchainLogged=false;
+    // The text panel: note, subtitle and tutorial movies, lifted out of the
+    // scene like the HUD and shown on the same panel above it.
+    std::unique_ptr<InventorySwapchain> textSwapchain;
+    bool textSwapchainLogged=false;
+    // Step 2: a render target view on the held first eye, matching the view
+    // format the game draws its overlays with, and the backbuffer it held from.
+    ID3D11RenderTargetView* heldTargetView=nullptr;
+    ID3D11Texture2D* heldTargetImage=nullptr;
+    DXGI_FORMAT heldTargetFormat=DXGI_FORMAT_UNKNOWN;
+    std::uintptr_t heldBackBuffer=0;
     std::unique_ptr<InventorySwapchain> inventorySwapchain;
     std::unique_ptr<InventorySwapchain> inventoryRightSwapchain;
     std::unique_ptr<InventorySwapchain> optionsSwapchain;
@@ -121,8 +132,6 @@ struct Host {
     DXGI_FORMAT slotFormat=DXGI_FORMAT_UNKNOWN;
     bool slotAttempted=false,slotReady=false;
     equipment::SlotNotice slotPainted=equipment::SlotNotice::None;
-    std::vector<XrSwapchainImageD3D11KHR> hudImages;
-    D3D11_TEXTURE2D_DESC hudDesc{};
     bool guideReady = false, guideAttempted = false;
     std::vector<ID3D11Texture2D*> images;
 
@@ -233,6 +242,9 @@ std::atomic<bool> gSwapEyes{false};
 // was made in. Written and taken on the render thread; atomic so reports can
 // read it from the command thread.
 std::atomic<bool> gDualFirstHeld{false};
+// Step 2. Open from the end of the second submission of a held frame to the top
+// of the next ServiceXrFrame: the stretch in which the game draws its overlays.
+std::atomic<bool> gDualOverlayOpen{false};
 std::atomic<unsigned long long> gDualHolds{0}, gDualHoldRefused{0};
 std::atomic<unsigned long long> gDualPairsSubmitted{0}, gDualPairsRefused{0};
 
@@ -679,6 +691,8 @@ void Teardown()
     SetInventoryConsumerReady(nullptr);
     gHost.inventorySwapchain.reset(); // XR images die before their session.
     gHost.inventoryRightSwapchain.reset();
+    gHost.hudSwapchain.reset();
+    gHost.textSwapchain.reset();
     gHost.optionsSwapchain.reset();
     if(gHost.optionsTexture)gHost.optionsTexture->Release();
     gHost.slotSwapchain.reset();
@@ -694,6 +708,8 @@ void Teardown()
     ResetHeadTrackingReference();
     gTrackingSpaceType=XR_REFERENCE_SPACE_TYPE_MAX_ENUM;
     ReleaseDebugOverlay();   // its render target views hold the eye images
+    gDualOverlayOpen.store(false, std::memory_order_release);
+    if (gHost.heldTargetView != nullptr) gHost.heldTargetView->Release();
     for (auto*& image : gHost.eyeImage) {
         if (image != nullptr) {
             image->Release();
@@ -703,7 +719,6 @@ void Teardown()
     if (gHost.guideSwapchain) xrDestroySwapchain(gHost.guideSwapchain);
     if (gHost.pointerSwapchain) xrDestroySwapchain(gHost.pointerSwapchain);
     ClearUiPointer();
-    if (gHost.hudSwapchain) xrDestroySwapchain(gHost.hudSwapchain);
     if (gHost.swapchain) xrDestroySwapchain(gHost.swapchain);
     if (gHost.space) xrDestroySpace(gHost.space);
     if (gHost.localFallback) xrDestroySpace(gHost.localFallback);
@@ -1320,13 +1335,16 @@ void ServiceXrFrame(void* renderer)
     RenderContract renderContract{};
     dll::ConsumeRenderedContract(renderContract);
     // Taken with the contract, before any early return, for the same reason: a
-    // mid-frame hold belongs to this frame or to none.
+    // mid-frame hold belongs to this frame or to none. The overlay window closes
+    // first: nothing may draw into the held eye once it is being paired.
+    gDualOverlayOpen.store(false, std::memory_order_release);
     const bool dualFirstHeld = gDualFirstHeld.exchange(false, std::memory_order_acq_rel);
     // Take each capture once, even on skipped submissions; never reuse a PDA
     // image after a dialog or another menu has replaced it.
     ID3D11Texture2D* inventoryRightTexture=nullptr;
     ID3D11Texture2D* inventoryTexture = InventoryLayerTexture(&inventoryRightTexture);
     ID3D11Texture2D* hudTexture = HudLayerTexture();
+    ID3D11Texture2D* textTexture = TextLayerTexture();
     ID3D11Texture2D* nativeWristTexture = NativeWristLayerTexture();
     RequestNativeWristCapture(false);
     SetInventoryConsumerReady(nullptr);
@@ -1968,42 +1986,41 @@ void ServiceXrFrame(void* renderer)
         auto captured=hudTexture;
         if(captured) {
             D3D11_TEXTURE2D_DESC desc{};captured->GetDesc(&desc);
-            if(gHost.hudSwapchain && (desc.Width!=gHost.hudDesc.Width || desc.Height!=gHost.hudDesc.Height || desc.Format!=gHost.hudDesc.Format)) {
-                xrDestroySwapchain(gHost.hudSwapchain);gHost.hudSwapchain=XR_NULL_HANDLE;gHost.hudImages.clear();
-            }
-            if(!gHost.hudSwapchain) {
-                XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};
-                create.usageFlags=XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT|XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                create.format=desc.Format;create.sampleCount=1;create.width=desc.Width;create.height=desc.Height;
-                create.faceCount=1;create.arraySize=1;create.mipCount=1;
-                if(XR_SUCCEEDED(xrCreateSwapchain(gHost.session,&create,&gHost.hudSwapchain))) {
-                    gHost.hudDesc=desc;
-                    std::uint32_t count=0;
-                    xrEnumerateSwapchainImages(gHost.hudSwapchain,0,&count,nullptr);
-                    gHost.hudImages.assign(count,{XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
-                    if(XR_FAILED(xrEnumerateSwapchainImages(gHost.hudSwapchain,count,&count,
-                        reinterpret_cast<XrSwapchainImageBaseHeader*>(gHost.hudImages.data())))) {
-                            gHost.hudImages.clear();RefuseHudLayer("swapchain_images");
-                        }
-                } else {
-                    RefuseHudLayer("swapchain_format_or_allocation");
+            // **Created like every other layer: in the main swapchain's format.**
+            // The capture is spelled with the format of the render target Flash
+            // drew into, and asking the runtime for that spelling unchecked was
+            // refused on SteamVR in every session (swapchain_format_or_allocation),
+            // which left the HUD in the scene -- and, with both eyes from one
+            // frame, in the right eye only. The main format is one the runtime
+            // has already accepted, and it gives the HUD the same reading of its
+            // bytes as the scene it was lifted out of (InventorySwapchain::Prepare).
+            if(!gHost.hudSwapchain)gHost.hudSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
+                xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
+                xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
+            if(gHost.hudSwapchain->Prepare(gHost.session,desc,gHost.colorFormat)) {
+                if(!gHost.hudSwapchainLogged) {
+                    gHost.hudSwapchainLogged=true;
+                    std::ostringstream line;
+                    line<<"result=0 detail=hud_swapchain format="<<gHost.colorFormat<<" captureFormat="<<desc.Format
+                        <<" size="<<desc.Width<<"x"<<desc.Height;
+                    Log(line.str());
                 }
-            }
-            if(!gHost.hudImages.empty()) {
-                XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
-                XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};wait.timeout=XR_INFINITE_DURATION;
-                std::uint32_t index=0;
-                const bool acquired=XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.hudSwapchain,&acquire,&index));
-                const bool waited=acquired && XR_SUCCEEDED(xrWaitSwapchainImage(gHost.hudSwapchain,&wait));
-                if(acquired && !waited) {gStopRequested.store(true);RefuseHudLayer("image_wait");}
-                if(waited) {
-                    if(index<gHost.hudImages.size()) {
-                        ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
-                        if(context) {context->CopyResource(gHost.hudImages[index].texture,captured);context->Release();hudActive=true;}
-                    }
-                    XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-                    if(XR_FAILED(xrReleaseSwapchainImage(gHost.hudSwapchain,&release))) {hudActive=false;RefuseHudLayer("image_release");}
-                }
+                ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+                const auto upload=gHost.hudSwapchain->Copy(context,captured);
+                if(context)context->Release();
+                hudActive=upload==InventorySwapchain::Upload::ready;
+                if(upload==InventorySwapchain::Upload::sessionFault){gStopRequested.store(true);RefuseHudLayer("image_wait_or_release");}
+            } else {
+                // Which step, the runtime's answer and both formats: the refusal
+                // this replaces named none of them.
+                const auto refusal=gHost.hudSwapchain->LastRefusal();
+                std::ostringstream line;
+                line<<"result=refused detail=hud_swapchain reason="<<InventorySwapchain::RefusalName(refusal)
+                    <<" xrResult="<<gHost.hudSwapchain->LastResult()<<" format="<<gHost.colorFormat
+                    <<" captureFormat="<<desc.Format<<" size="<<desc.Width<<"x"<<desc.Height;
+                Log(line.str());
+                gHost.hudSwapchain.reset(); // a later hud.layer 1 tries afresh
+                RefuseHudLayer(InventorySwapchain::RefusalName(refusal));
             }
             std::array<ui::Eye,2> optical{};
             for(int eye=0;eye<2;++eye) {
@@ -2023,13 +2040,70 @@ void ServiceXrFrame(void* renderer)
                 hudLayer.layerFlags=XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
                 hudLayer.pose={{p.pose.orientation.x,p.pose.orientation.y,p.pose.orientation.z,p.pose.orientation.w},
                                {p.pose.position.x,p.pose.position.y,p.pose.position.z}};
-                hudLayer.size={p.width,p.height};hudLayer.subImage.swapchain=gHost.hudSwapchain;
+                hudLayer.size={p.width,p.height};hudLayer.subImage.swapchain=gHost.hudSwapchain->Handle();
                 hudLayer.subImage.imageRect={{0,0},{static_cast<int>(desc.Width),static_cast<int>(desc.Height)}};
                 SetHudLayerPresentation(true,p.width,p.height,2);
             }
         }
     }
     if(!hudActive)SetHudLayerPresentation(false);
+    // **The text panel.** Notes and books, subtitles and tutorial cards, lifted
+    // out of the scene like the HUD (HudLayer TextLayerTexture) and shown on the
+    // same panel fit, above it, so each keeps the place it has on screen. Not
+    // tied to the HUD layer's own capture: a frame may have text and no HUD.
+    XrCompositionLayerQuad textLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    bool textActive=false;
+    if(rendered && haveViews && !panelActive && textTexture) {
+        D3D11_TEXTURE2D_DESC desc{};textTexture->GetDesc(&desc);
+        if(!gHost.textSwapchain)gHost.textSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
+            xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
+            xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
+        if(gHost.textSwapchain->Prepare(gHost.session,desc,gHost.colorFormat)) {
+            if(!gHost.textSwapchainLogged) {
+                gHost.textSwapchainLogged=true;
+                std::ostringstream line;
+                line<<"result=0 detail=text_swapchain format="<<gHost.colorFormat<<" captureFormat="<<desc.Format
+                    <<" size="<<desc.Width<<"x"<<desc.Height;
+                Log(line.str());
+            }
+            ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+            const auto upload=gHost.textSwapchain->Copy(context,textTexture);
+            if(context)context->Release();
+            textActive=upload==InventorySwapchain::Upload::ready;
+            if(upload==InventorySwapchain::Upload::sessionFault){gStopRequested.store(true);RefuseTextLayer("image_wait_or_release");}
+        } else {
+            const auto refusal=gHost.textSwapchain->LastRefusal();
+            std::ostringstream line;
+            line<<"result=refused detail=text_swapchain reason="<<InventorySwapchain::RefusalName(refusal)
+                <<" xrResult="<<gHost.textSwapchain->LastResult()<<" format="<<gHost.colorFormat
+                <<" captureFormat="<<desc.Format<<" size="<<desc.Width<<"x"<<desc.Height;
+            Log(line.str());
+            gHost.textSwapchain.reset();
+            // The movies go back into the scene, where step 2 draws them per eye.
+            RefuseTextLayer(InventorySwapchain::RefusalName(refusal));
+        }
+        std::array<ui::Eye,2> optical{};
+        for(int eye=0;eye<2;++eye) {
+            const auto& p=views[eye].pose;
+            optical[eye]={Pose{{p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w},
+                {p.position.x,p.position.y,p.position.z}},views[eye].fov.angleLeft,views[eye].fov.angleRight,
+                views[eye].fov.angleUp,views[eye].fov.angleDown};
+        }
+        const auto panel=ui::FitPanel(inputHead,optical,
+            static_cast<float>(desc.Width)/desc.Height,2.0f,
+            static_cast<float>(gUiScalePercent.load(std::memory_order_relaxed))*.01f,
+            UiFitMargin());
+        textActive=textActive && panel.has_value();
+        if(textActive) {
+            const auto& p=*panel;
+            textLayer.space=gHost.space;textLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+            textLayer.layerFlags=XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+            textLayer.pose={{p.pose.orientation.x,p.pose.orientation.y,p.pose.orientation.z,p.pose.orientation.w},
+                            {p.pose.position.x,p.pose.position.y,p.pose.position.z}};
+            textLayer.size={p.width,p.height};textLayer.subImage.swapchain=gHost.textSwapchain->Handle();
+            textLayer.subImage.imageRect={{0,0},{static_cast<int>(desc.Width),static_cast<int>(desc.Height)}};
+        }
+    }
     XrCompositionLayerQuad wristLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
     bool wristActive=false;
     TrackingFrame wristFrame{};
@@ -2163,6 +2237,7 @@ void ServiceXrFrame(void* renderer)
     if(!optionsActive&&inventoryStereoSubmitted)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&rightPanelLayer));
     if(!optionsActive&&guideActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&guideLayer));
     else if(!optionsActive&&hudActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hudLayer));
+    if(!optionsActive&&!guideActive&&textActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&textLayer));
     if(beamActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&beamLayer));
     if(cursorActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cursorLayer));
     if(wristActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&wristLayer));
@@ -2517,6 +2592,9 @@ bool HoldDualFirstEye(void* renderer)
             context->CopyResource(gHost.eyeImage[first], backBuffer);
             // Taken before the HUD is drawn, so the native HUD is not in it.
             gHost.hudCapturePair.RecordEye(first, true);
+            // Identity only, never dereferenced: what an overlay must be drawing
+            // into for HeldFirstEyeTarget to repeat it into this eye.
+            gHost.heldBackBuffer = reinterpret_cast<std::uintptr_t>(backBuffer);
             context->Release();
         } else {
             held = false;
@@ -2529,6 +2607,61 @@ bool HoldDualFirstEye(void* renderer)
     gDualFirstHeld.store(true, std::memory_order_release);
     gDualHolds.fetch_add(1, std::memory_order_relaxed);
     return true;
+}
+
+void OpenDualOverlayWindow()
+{
+    // Only over a held first eye: without one there is nothing to draw into, and
+    // the frame's both-eyes pair is refused anyway.
+    if (gDualFirstHeld.load(std::memory_order_acquire)) {
+        gDualOverlayOpen.store(true, std::memory_order_release);
+    }
+}
+
+bool DualOverlayWindowOpen()
+{
+    return gDualOverlayOpen.load(std::memory_order_acquire);
+}
+
+ID3D11RenderTargetView* HeldFirstEyeTarget(ID3D11RenderTargetView* destination, const char** refusal)
+{
+    const auto refuse = [&](const char* why) -> ID3D11RenderTargetView* {
+        if (refusal != nullptr) *refusal = why;
+        return nullptr;
+    };
+    if (!gDualOverlayOpen.load(std::memory_order_acquire) || !gDualFirstHeld.load(std::memory_order_acquire)) {
+        return refuse("window_closed");
+    }
+    if (destination == nullptr) return refuse("no_destination");
+    // Never wait: this runs inside the engine's overlay draws.
+    std::unique_lock lock(gMutex, std::try_to_lock);
+    if (!lock.owns_lock() || gHost.device == nullptr) return refuse("busy");
+    // Only what is drawn into the frame's own backbuffer belongs to the eye;
+    // Flash filters and other offscreen targets stay as they are.
+    ID3D11Resource* drawn = nullptr;
+    destination->GetResource(&drawn);
+    const bool intoBackBuffer = drawn != nullptr && reinterpret_cast<std::uintptr_t>(drawn) == gHost.heldBackBuffer;
+    if (drawn != nullptr) drawn->Release();
+    if (!intoBackBuffer) return refuse("not_backbuffer");
+    ID3D11Texture2D* eye = gHost.eyeImage[gSwapEyes.load(std::memory_order_acquire) ? 1 : 0];
+    if (eye == nullptr) return refuse("no_eye_image");
+    // The game's own view of the backbuffer, so the second draw encodes its
+    // colours exactly as the first did. The held image has the backbuffer's format.
+    D3D11_RENDER_TARGET_VIEW_DESC view{};
+    destination->GetDesc(&view);
+    if (gHost.heldTargetView != nullptr && (gHost.heldTargetImage != eye || gHost.heldTargetFormat != view.Format)) {
+        gHost.heldTargetView->Release();
+        gHost.heldTargetView = nullptr;
+    }
+    if (gHost.heldTargetView == nullptr) {
+        if (FAILED(gHost.device->CreateRenderTargetView(eye, &view, &gHost.heldTargetView))) {
+            gHost.heldTargetView = nullptr;
+            return refuse("view_create");
+        }
+        gHost.heldTargetImage = eye;
+        gHost.heldTargetFormat = view.Format;
+    }
+    return gHost.heldTargetView;
 }
 
 std::string DualPairReport()

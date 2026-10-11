@@ -306,7 +306,18 @@ constexpr std::array<std::uint8_t, 20> kCameraUpdateFrustum = {
     0xF3, 0x0F, 0x10, 0x59,
 };
 
-const std::array<Landmark, 39> kLandmarks = {{
+// CD3D9Renderer::RT_Draw2dImageInternal(S2DImage*, uint32 count): the one draw
+// behind RT_Draw2dImage (renderer vtable +0x990, render command 0x3B) and
+// RT_Draw2dImageList (+0x9A8), so every 2D image -- the flow-graph CHUDFader
+// and TrackView screen faders among them -- goes through it, after the scene.
+// 21 bytes; the 19-byte register-save prologue alone occurs twice.
+constexpr std::array<std::uint8_t, 21> kDraw2dImages = {
+    0x40, 0x55, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55,
+    0x41, 0x56, 0x41, 0x57, 0x48, 0x81, 0xEC, 0x10,
+    0x01, 0x00, 0x00, 0x48, 0x8D,
+};
+
+const std::array<Landmark, 40> kLandmarks = {{
     {"renderer.begin", "CD3D9Renderer::RT_BeginFrame", 0xF7D710, kBeginRendererScene},
     {"renderer.end", "CD3D9Renderer::RT_EndFrame", 0xF7E210, kEndRendererScene},
     {"renderer.present", "RT_EndFrame Present dispatch", 0xF7E48A, kPresentDispatch},
@@ -347,6 +358,7 @@ const std::array<Landmark, 39> kLandmarks = {{
     {"renderer.set_camera", "CD3D9Renderer::SetCamera", 0xF7FE70, kRendererSetCamera},
     {"camera.update_frustum", "CCamera::UpdateFrustum", 0x121D70, kCameraUpdateFrustum},
     {"view.clear", "CRenderView::Clear", 0xEE4030, kRenderViewClear},
+    {"renderer.draw2d_images", "CD3D9Renderer::RT_Draw2dImageInternal", 0xF34C70, kDraw2dImages},
 }};
 
 } // namespace
