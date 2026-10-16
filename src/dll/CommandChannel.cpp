@@ -32,6 +32,7 @@
 #include "HudBridge.h"
 #include "HudLayer.h"
 #include "WristLane.h"
+#include "BodyFollow.h"
 #include "UiPointer.h"
 #include "FrameCaptureWin32.h"
 #include "InputPost.h"
@@ -508,7 +509,7 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     };
 
     if (ExecutePose(args, out) || ExecuteCarryCommand(args, out) || ExecuteGrenadeCommand(args, out) || ExecuteArmsCommand(args, out) ||
-        ExecuteWristCommand(args, out)) {
+        ExecuteWristCommand(args, out) || ExecuteBodyCommand(args, out)) {
         return;
     }
     if (verb == "vr.options") {

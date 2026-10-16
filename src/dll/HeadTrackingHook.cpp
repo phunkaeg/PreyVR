@@ -1,5 +1,6 @@
 #include "preyvr/LatestSnapshot.h"
 #include "HeadTrackingHook.h"
+#include "BodyFollow.h"
 #include "XrInput.h"
 #include "MinHookInit.h"
 
@@ -372,6 +373,13 @@ void __fastcall UpdateViewObserved(void* camera, std::uint8_t* viewParams)
     gLastFov.store(ReadFloat(viewParams, kViewFov), std::memory_order_relaxed);
     gLastNearPlane.store(ReadFloat(viewParams, kViewNearPlane), std::memory_order_relaxed);
     gObserved.fetch_add(1, std::memory_order_relaxed);
+    {
+        Vec3 gameEye{};
+        Quaternion gameRotation{};
+        std::memcpy(&gameEye, viewParams + kViewPosition, sizeof(gameEye));
+        std::memcpy(&gameRotation, viewParams + kViewRotation, sizeof(gameRotation));
+        NoteGameView(gameEye, gameRotation);
+    }
 
     if (!gApplying.load(std::memory_order_acquire) ||
         !gHaveReference.load(std::memory_order_acquire)) {
@@ -460,6 +468,7 @@ void __fastcall UpdateViewObserved(void* camera, std::uint8_t* viewParams)
         return;
     }
     std::memcpy(viewParams + kViewPosition, &world.position, sizeof(world.position));
+    NoteComposedView(world.position, out, playSpaceYaw, reference.worldPosition, room.origin, headPose);
     // Publish only after BOTH rotation and position were accepted. Partial,
     // rotation-only and non-unit-scale research modes have no world contract.
     if (gPositionScale.load()==1.f && renderReference%2==0 &&
@@ -681,6 +690,25 @@ bool RebaseHeadTrackingSpace(const Pose& previousFromNew,bool valid) {
     // A concurrent recenter must not combine new reference + previous-space head.
     InvalidateTrackingSamples();
     gPoseSlot.Clear();gHeadSpaceEpoch.fetch_add(1);gReferenceGeneration.fetch_add(1);
+    return true;
+}
+bool ReadHeadTrackingRoom(float& yaw, Vec3& origin, unsigned long long& generation) {
+    generation=gReferenceGeneration.load();
+    if(generation%2 || !gHaveReference.load()) return false;
+    RoomReference room{};
+    if(!gRoomReference.TryRead(room) || generation!=gReferenceGeneration.load()) return false;
+    yaw=room.yaw;origin=room.origin;return true;
+}
+bool AdjustHeadTrackingRoom(float yawDelta,const Vec3& originDelta,unsigned long long generation) {
+    std::unique_lock lock(gRecenterMutex,std::try_to_lock);
+    if(!lock.owns_lock() || generation%2 || generation!=gReferenceGeneration.load() || !gHaveReference.load() ||
+       !std::isfinite(yawDelta) || !std::isfinite(originDelta.x) || !std::isfinite(originDelta.y) ||
+       !std::isfinite(originDelta.z)) return false;
+    RoomReference room{};
+    if(!gRoomReference.TryRead(room)) return false;
+    room.yaw=std::remainder(room.yaw+yawDelta,6.28318530718f);
+    room.origin={room.origin.x+originDelta.x,room.origin.y+originDelta.y,room.origin.z+originDelta.z};
+    gRoomReference.Publish(room);gReferenceYaw.store(room.yaw);
     return true;
 }
 std::string HeadHeightReport() {

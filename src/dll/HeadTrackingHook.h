@@ -166,6 +166,13 @@ void ResetHeadTrackingReference();
 bool RebaseHeadTrackingSpace(const Pose& previousFromNew, bool valid);
 std::string HeadHeightReport();
 
+// The room reference (yaw, tracking-space eye anchor) for BodyFollow, and moving
+// it WITHOUT a new generation: the body following the player changes neither the
+// view nor anything calibrated against the reference, so consumers must not see
+// a recenter. Refused mid-recenter or if `generation` is no longer current.
+bool ReadHeadTrackingRoom(float& yaw, Vec3& origin, unsigned long long& generation);
+bool AdjustHeadTrackingRoom(float yawDelta, const Vec3& originDelta, unsigned long long generation);
+
 // Frames the detour ran with the edit armed and applied.
 unsigned long long HeadTrackingAppliedCount();
 

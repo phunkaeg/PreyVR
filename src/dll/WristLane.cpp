@@ -137,6 +137,8 @@ Last gLast;
 
 }  // namespace
 
+bool NewestWristArm(WristArmFrame& out) { return NewestArm(out); }
+
 void PublishWristArm(const WristArmFrame& frame)
 {
     std::lock_guard lock(gRingMutex);

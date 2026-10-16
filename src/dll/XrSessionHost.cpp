@@ -23,6 +23,7 @@
 #include "WristLane.h"
 #include "AimTakeover.h"
 #include "DebugOverlay.h"
+#include "BodyFollow.h"
 #include "preyvr/UiPanel.h"
 #include "preyvr/LatestSnapshot.h"
 #include "preyvr/HudCapturePair.h"
@@ -121,6 +122,12 @@ struct Host {
     DXGI_FORMAT slotFormat=DXGI_FORMAT_UNKNOWN;
     bool slotAttempted=false,slotReady=false;
     equipment::SlotNotice slotPainted=equipment::SlotNotice::None;
+    // The head-in-a-wall fade (BodyFollow): a black quad just in front of the eyes.
+    std::unique_ptr<InventorySwapchain> fadeSwapchain;
+    ID3D11Texture2D* fadeTexture=nullptr;
+    bool fadeAttempted=false;
+    float fadeAlpha=0,fadePainted=-1;
+    std::uint64_t fadeNs=0;
     std::vector<XrSwapchainImageD3D11KHR> hudImages;
     D3D11_TEXTURE2D_DESC hudDesc{};
     bool guideReady = false, guideAttempted = false;
@@ -678,6 +685,9 @@ void Teardown()
     ClearSlotFeedback();
     gHost.wristSwapchain.reset();
     gHost.wristFitter.reset();
+    gHost.fadeSwapchain.reset();
+    if(gHost.fadeTexture){gHost.fadeTexture->Release();gHost.fadeTexture=nullptr;}
+    gHost.fadeAttempted=false;gHost.fadeAlpha=0;gHost.fadePainted=-1;gHost.fadeNs=0;
     ResetNativeWristCapture();
     ResetWristLane();
     ClearHolsters();
@@ -2087,11 +2097,70 @@ void ServiceXrFrame(void* renderer)
             }
         }
     }
+    // The head-in-a-wall fade (BodyFollow): eased toward the game thread's target
+    // (in ~0.1 s, out ~0.2 s), drawn over the scene and under every panel.
+    XrCompositionLayerQuad fadeLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    bool fadeActive=false;
+    {
+        const auto now=MonotonicNanoseconds();
+        const float dt=gHost.fadeNs?std::min(.1f,static_cast<float>(now-gHost.fadeNs)*1e-9f):0.f;
+        gHost.fadeNs=now;
+        const float target=haveViews&&rendered?BodyFadeAlpha():0.f;
+        const float rate=target>gHost.fadeAlpha?10.f:5.f;
+        gHost.fadeAlpha=target>gHost.fadeAlpha?std::min(target,gHost.fadeAlpha+rate*dt):std::max(target,gHost.fadeAlpha-rate*dt);
+        if(gHost.fadeAlpha>.004f&&!panelActive&&!optionsActive){
+            // InventorySwapchain takes nothing under 640x480 (a smaller quad never shows).
+            constexpr UINT fadeWidth=640,fadeHeight=480;
+            if(!gHost.fadeAttempted){
+                gHost.fadeAttempted=true;
+                D3D11_TEXTURE2D_DESC d{};d.Width=fadeWidth;d.Height=fadeHeight;
+                d.Format=gHost.colorFormat==DXGI_FORMAT_R8G8B8A8_UNORM_SRGB||gHost.colorFormat==DXGI_FORMAT_B8G8R8A8_UNORM_SRGB?
+                    DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:DXGI_FORMAT_R8G8B8A8_UNORM;
+                d.SampleDesc.Count=d.ArraySize=d.MipLevels=1;d.BindFlags=D3D11_BIND_SHADER_RESOURCE;
+                if(SUCCEEDED(gHost.device->CreateTexture2D(&d,nullptr,&gHost.fadeTexture))){
+                    gHost.fadeSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
+                        xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
+                        xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
+                    if(!gHost.fadeSwapchain->Prepare(gHost.session,d,d.Format))gHost.fadeSwapchain.reset();
+                }
+                Log(std::string("fade_layer ready=")+(gHost.fadeSwapchain?"1":"0"));
+            }
+            if(gHost.fadeTexture&&gHost.fadeSwapchain){
+                ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+                if(context){
+                    // Premultiplied black: colour 0, alpha the fade. Rewritten every
+                    // frame, since each acquire may hand back another image.
+                    const auto a=static_cast<std::uint8_t>(std::lround(std::clamp(gHost.fadeAlpha,0.f,1.f)*255.f));
+                    if(static_cast<int>(gHost.fadePainted)!=a){
+                        std::vector<std::uint32_t> pixels(fadeWidth*fadeHeight,static_cast<std::uint32_t>(a)<<24);
+                        context->UpdateSubresource(gHost.fadeTexture,0,nullptr,pixels.data(),fadeWidth*4,0);
+                        gHost.fadePainted=static_cast<float>(a);
+                    }
+                    const auto upload=gHost.fadeSwapchain->Copy(context,gHost.fadeTexture);
+                    fadeActive=upload==InventorySwapchain::Upload::ready;
+                    if(upload==InventorySwapchain::Upload::sessionFault)gStopRequested.store(true);
+                    context->Release();
+                }
+            }
+            if(fadeActive){
+                const auto& q=inputHead.orientation;
+                const Vec3 ahead=Rotate(q,Vec3{0,0,-.2f});
+                fadeLayer.space=gHost.space;fadeLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+                fadeLayer.layerFlags=XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+                fadeLayer.pose={{q.x,q.y,q.z,q.w},{inputHead.position.x+ahead.x,inputHead.position.y+ahead.y,
+                    inputHead.position.z+ahead.z}};
+                fadeLayer.size={2.5f,2.5f};   // 81 degrees each side of the gaze at 0.2 m
+                fadeLayer.subImage.swapchain=gHost.fadeSwapchain->Handle();
+                fadeLayer.subImage.imageRect={{0,0},{static_cast<int32_t>(fadeWidth),static_cast<int32_t>(fadeHeight)}};
+            }
+        }
+    }
     std::vector<const XrCompositionLayerBaseHeader*> layers;
     if(optionsActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&optionsLayer));
     else if(panelActive)layers.push_back(surface.angle>0?reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cylinderLayer):
         reinterpret_cast<const XrCompositionLayerBaseHeader*>(&panelLayer));
     else layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&layer));
+    if(fadeActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&fadeLayer));
     if(!optionsActive&&inventoryStereoSubmitted)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&rightPanelLayer));
     if(!optionsActive&&guideActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&guideLayer));
     else if(!optionsActive&&hudActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hudLayer));

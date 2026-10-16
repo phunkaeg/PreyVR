@@ -22,6 +22,7 @@
 #include "CarryLane.h"
 #include "GrenadeLane.h"
 #include "DebugOverlay.h"
+#include "BodyFollow.h"
 #include "preyvr/DebugOverlayScene.h"
 #include "preyvr/LatestSnapshot.h"
 #include <algorithm>
@@ -182,6 +183,10 @@ void TickVrMode() {
         // right grip held) or carrying (AnimIkTakeover arms.free; arms.free 0 =
         // the game lowers them out of view, as before).
         SetAnimIkFreeArms(1);
+        // The character turns with the head and walks under it (BodyFollow.h; the
+        // VR option chooses how much). Not fatal: without the hook the body keeps
+        // the game's own facing and place, as before.
+        if(EnsureBodyFollowHook()!=0) Log("body_follow=unavailable");
         // Both hands' rays drawn in gameplay while interaction is being tested
         // (user, 2026-10-06). The VR options' Debug overlay switch turns them off.
         if(DebugOverlayMask()==0) SetDebugOverlay(debugdraw::kRays|debugdraw::kHits);

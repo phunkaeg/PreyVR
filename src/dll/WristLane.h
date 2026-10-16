@@ -37,6 +37,8 @@ struct WristArmFrame {
 };
 // Animation thread (AnimIkTakeover), once per owned frame.
 void PublishWristArm(const WristArmFrame& frame);
+// The newest published arm (any thread); BodyFollow's trace measures the drawn hands with it.
+bool NewestWristArm(WristArmFrame& out);
 
 // Game thread, once per gameplay frame.
 void UpdateWristLane(const GameplayPoseFrame& frame, bool tracking);

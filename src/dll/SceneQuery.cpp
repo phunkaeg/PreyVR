@@ -114,6 +114,19 @@ bool QuerySegment(const GameplayPoseFrame& frame,Vec3 a,Vec3 b,scene::Hit& hit){
     }
     return result==ERROR_SUCCESS;
 }
+bool QueryBodySegment(std::uintptr_t player,Vec3 a,Vec3 b,scene::Hit& hit){
+    hit={};hit.distance=-1;
+    const Vec3 d{b.x-a.x,b.y-a.y,b.z-a.z};
+    const float length=std::sqrt(d.x*d.x+d.y*d.y+d.z*d.z);
+    if(fault.load()||!player||!std::isfinite(length)||length<.001f||length>3.f)return false;
+    GameplayPoseFrame frame{};frame.player=player;
+    const auto result=Query(frame,a,{d.x/length,d.y/length,d.z/length},length,hit);
+    if(result){lastError=result;++refused;
+        if(result!=ERROR_NOT_READY&&result!=ERROR_INVALID_THREAD_ID)fault=true;
+        hit={};hit.distance=-1;
+    }
+    return result==ERROR_SUCCESS;
+}
 bool SceneQueryFaulted(){return fault.load();}
 void SetSceneReticle(unsigned on){enabled=on!=0;}
 unsigned SceneReticleEnabled(){return enabled.load()?1u:0u;}

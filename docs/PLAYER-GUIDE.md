@@ -72,7 +72,10 @@ before they can operate the screen behind it. F10 is a desktop shortcut while a
 native menu is already open; `vr.options 1` is the diagnostic equivalent.
 
 - **Comfort:** snap angle / smooth turning, head-relative movement, smooth-turn
-  speed, and reset VR view.
+  speed, and **body follows you**: TURN AND WALK (default) turns your character with
+  your head and walks it with you around the room; TURN ONLY keeps it in place; OFF
+  leaves it to the sticks. A wall stops the body, and the view dims if your head goes
+  into it. Reset VR view is on the Setup tab.
 - **Hands:** two-hand aim on/off, hold/toggle foregrip, snapped/free support hand,
   and the optional psychoscope gesture.
 - **Interface:** size, visible-area limit, panel curvature and controls guide.

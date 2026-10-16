@@ -31,6 +31,11 @@ void ClearHolsters(){++holsterClears;}
 DWORD SetDebugOverlay(unsigned v){applied[options::DebugOverlay]=v?1:0;return 0;}
 DWORD SetShotRay(unsigned v){applied[options::MuzzleAim]=v;return 0;}
 unsigned ShotRayEnabled(){return applied[options::MuzzleAim];}
+unsigned bodyYaw=1,bodyRoom=1;
+DWORD SetBodyYawFollow(unsigned v){bodyYaw=v;applied[options::BodyFollow]=bodyYaw+bodyRoom*bodyYaw;return 0;}
+DWORD SetBodyRoomScale(unsigned v){bodyRoom=v;applied[options::BodyFollow]=bodyYaw+bodyRoom*bodyYaw;return 0;}
+unsigned BodyYawFollowEnabled(){return bodyYaw;}
+unsigned BodyRoomScaleEnabled(){return bodyRoom;}
 unsigned DebugOverlayMask(){return applied[options::DebugOverlay];}
 DWORD SetSnapTurnDegrees(unsigned v){applied[options::Turn]=v;return 0;}
 unsigned SnapTurnDegrees(){return applied[options::Turn];}

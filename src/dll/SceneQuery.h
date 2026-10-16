@@ -1,6 +1,7 @@
 #pragma once
 #include "preyvr/WeaponAim.h"
 #include "preyvr/SceneQuery.h"
+#include <cstdint>
 #include <string>
 namespace preyvr::dll {
 struct GameplayPoseFrame;
@@ -16,5 +17,8 @@ bool QueryDebugRay(const GameplayPoseFrame&,Vec3 origin,Vec3 direction,scene::Hi
 // Input-drain thread only: is the segment a->b clear? True when the query ran;
 // then hit.distance<0 means clear. Shares the query's gates and fault latch.
 bool QuerySegment(const GameplayPoseFrame&,Vec3 a,Vec3 b,scene::Hit&);
+// Input-drain (game) thread only: segment a->b (<= 3 m) for BodyFollow's capsule
+// test, skipping the player's own physics. Shares the fault latch.
+bool QueryBodySegment(std::uintptr_t player,Vec3 a,Vec3 b,scene::Hit&);
 bool SceneQueryFaulted();
 }

@@ -32,7 +32,8 @@ constexpr Spec specs[]={
  {"medkit_slot",L"LEFT-HIP MEDKIT SLOT",L"Squeeze left grip at left hip, then press left trigger while holding grip. One medkit per grab; native use rules apply.",0,0,1,1},
  {"belt_hints",L"BODY SLOT FEEDBACK",L"Brief feedback for holster requests and medkit selection/use. Requires the corresponding body slot feature.",1,0,1,1},
  {"debug_overlay",L"DEBUG OVERLAY (TESTING)",L"Draws each hand's ray and target, body slots, the wrist test and the foregrip region in the world.",0,0,1,1},
- {"muzzle_aim",L"SHOTS FROM THE MUZZLE (EXPERIMENTAL)",L"Shots leave the weapon's muzzle along your controller's aim, so they land where the barrel points at any distance.",0,0,1,1}
+ {"muzzle_aim",L"SHOTS FROM THE MUZZLE (EXPERIMENTAL)",L"Shots leave the weapon's muzzle along your controller's aim, so they land where the barrel points at any distance.",0,0,1,1},
+ {"body_follow",L"BODY FOLLOWS YOU",L"Your character turns with your head and walks with you around the room. Walls stop it and dim the view.",2,0,2,1}
 };
 }
 const Spec& Describe(unsigned id){return specs[id<Count?id:0];}
@@ -66,7 +67,7 @@ bool Parse(std::string_view text,Values& result){
  result=parsed;return true;
 }
 int Item(unsigned page,unsigned row){
- constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,-1},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim}};
+ constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim}};
  return page<Pages&&row<Rows?items[page][row]:-2;
 }
 const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP"};return names[p%Pages];}
@@ -76,6 +77,7 @@ std::wstring Display(unsigned id,int v){
  if(id==ContactStrength)return std::to_wstring(v)+L"%";
  if(id==Turn)return v?std::to_wstring(v)+L" DEGREES":L"SMOOTH";
  if(id==HeadRelative)return v?L"HEAD RELATIVE":L"BODY RELATIVE";
+ if(id==BodyFollow)return v==2?L"TURN AND WALK":v==1?L"TURN ONLY":L"OFF";
  if(id==GripToggle)return v?L"TOGGLE":L"HOLD";
  if(id==SupportSnap)return v?L"SNAPPED":L"FREE";
  if(id==UiCurve)return v?std::to_wstring(v)+L" DEGREES":L"FLAT";

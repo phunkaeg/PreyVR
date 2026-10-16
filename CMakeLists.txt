@@ -93,6 +93,7 @@ add_library(preyvr_core STATIC
     src/common/HandCarry.cpp
     src/common/GrenadeThrow.cpp
     src/common/WristHolo.cpp
+    src/common/BodyFollow.cpp
     src/common/Locomotion.cpp
     src/common/MenuNavigator.cpp
     src/common/InventoryDepth.cpp
@@ -185,6 +186,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/InputPost.cpp
         src/dll/MinHookInit.cpp
         src/dll/MoveLane.cpp
+        src/dll/BodyFollow.cpp
         src/dll/CommandChannel.cpp
         src/dll/HandRigTakeover.cpp
         src/dll/NearFovOverride.cpp
@@ -433,6 +435,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_wrist_holo_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_wrist_holo_tests)
     add_test(NAME wrist_holo COMMAND preyvr_wrist_holo_tests)
+
+    add_executable(preyvr_body_follow_tests tests/BodyFollowTests.cpp)
+    target_link_libraries(preyvr_body_follow_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_body_follow_tests)
+    add_test(NAME body_follow COMMAND preyvr_body_follow_tests)
 
     add_executable(preyvr_interaction_use_tests tests/InteractionUseTests.cpp)
     target_link_libraries(preyvr_interaction_use_tests PRIVATE preyvr_core)

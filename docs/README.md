@@ -18,6 +18,8 @@ The notebook separates evidence from plans so implementation follows demonstrate
 > [`GRENADES-HAND-2026-10-07.md`](GRENADES-HAND-2026-10-07.md).
 > Health, suit and psi as a hologram on the left forearm, checked like a watch (and off the
 > screen): [`WRIST-HOLOGRAM-2026-10-07.md`](WRIST-HOLOGRAM-2026-10-07.md).
+> The body turns with the head and walks with the player, the view fading if the head goes into a wall:
+> [`BODY-FOLLOW-2026-10-16.md`](BODY-FOLLOW-2026-10-16.md).
 >
 > [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) remains
 > the record of binary identity and lifecycle decisions.
