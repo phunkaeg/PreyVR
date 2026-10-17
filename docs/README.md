@@ -23,6 +23,9 @@ The notebook separates evidence from plans so implementation follows demonstrate
 > Both eyes rendered in one frame (the render view submitted twice), with the HUD, text
 > popups, markers, fades and the reticle in both eyes:
 > [`STEREO-DUAL-SUBMISSION-2026-10-10.md`](STEREO-DUAL-SUBMISSION-2026-10-10.md).
+> Each eye declared with its native field and Prey's picture placed inside it (Meta's runtime ignores any other
+> field: the "always double" image on the Quest 3), and the 3D VIEW option (full stereo, alternate eyes, mono):
+> [`STEREO-NATIVE-FOV-2026-10-17.md`](STEREO-NATIVE-FOV-2026-10-17.md).
 >
 > [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) remains
 > the record of binary identity and lifecycle decisions.
