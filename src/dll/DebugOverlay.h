@@ -68,6 +68,11 @@ void DebugOverlayWristCard(bool gate, bool visible, const Pose& card, float widt
 // state it touches.
 void DrawDebugOverlay(ID3D11Device* device, ID3D11DeviceContext* context, ID3D11Texture2D* eyeImage,
                       const RenderContract& contract, const float* shownTangents);
+// Render thread: replaces `eyeImage` with the stereo test pattern (xr.pattern), drawn through the contract that eye
+// is declared with. The pattern is anchored in tracking space at the head on the first call after a reanchor.
+bool DrawStereoPattern(ID3D11Device* device, ID3D11DeviceContext* context, ID3D11Texture2D* eyeImage,
+                       const RenderContract& contract);
+void ReanchorStereoPattern();
 // Render thread, at XR teardown.
 void ReleaseDebugOverlay();
 }  // namespace preyvr::dll

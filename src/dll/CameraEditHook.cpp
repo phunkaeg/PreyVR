@@ -1149,7 +1149,8 @@ void __fastcall RenderWithCameraEdit(void* system)
         const int eye = (locked == 0 || locked == 1)
             ? locked
             : static_cast<int>(gEyeCounter.fetch_add(1, std::memory_order_relaxed) & 1ull);
-        const float renderIpd = gStereoIpd.load(std::memory_order_acquire);
+        // Mono renders every frame from the centre of the head; submission gives that picture to both eyes.
+        const float renderIpd = XrMonoView() ? 0.0f : gStereoIpd.load(std::memory_order_acquire);
         const stereo::Matrix34 centre = stereo::ReadMatrix(edited);
         built = BuildSyntheticEye(edited, eye,
                                   renderIpd,

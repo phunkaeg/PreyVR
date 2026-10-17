@@ -3,6 +3,7 @@
 #include "preyvr/DepthSubmission.h"
 #include "preyvr/FrameTiming.h"
 #include "preyvr/FrustumCoverage.h"
+#include "preyvr/NativeFovPlacement.h"
 
 #include "Logger.h"
 #include "preyvr/EngineMap.h"
@@ -144,6 +145,7 @@ struct Host {
     std::uint32_t recommendedSamples = 0, maxSamples = 0;
     std::uint32_t viewCount = 0;
     bool viewsDiffer = false;          // per-eye sizes are allowed to differ
+    bool fovMutable = true;            // XrViewConfigurationProperties: false = the runtime ignores a declared fov
     std::uint32_t heldWidth = 0, heldHeight = 0, heldFormat = 0;
     // Depth submission (XR_KHR_composition_layer_depth). The swapchain is built
     // only when the runtime offers the game's own depth format, because the copy
@@ -204,6 +206,11 @@ struct Host {
     XrFovf requestedFov[2]{};
     bool requestedFovValid[2]{};
     XrTime eyeDisplayTime[2]{};
+    // What each swapchain slice was given this frame: the field to declare and the rect it fills (PlaceEye).
+    XrFovf placedFov[2]{};
+    XrRect2Di placedRect[2]{};
+    // A render target view per (swapchain image, slice), to clear what the render does not reach.
+    std::vector<ID3D11RenderTargetView*> sliceViews;
     xrframe::FrameContract contract;
 };
 
@@ -223,6 +230,18 @@ void PublishResolution() {
 // declaration, but it is a *known* one that proved the plumbing, and it stays
 // reachable so a regression here can be bisected against it.
 std::atomic<bool> gStereoSubmission{false};
+// xr.pattern: each held eye gets the stereo test pattern instead of Prey's image (DebugOverlay.cpp).
+std::atomic<bool> gStereoPattern{false};
+// xr.mono: one image from the centre of the head, the same picture and pose in both eyes (the always-fusing mode).
+std::atomic<bool> gMonoView{false};
+
+// **Each eye is declared with the runtime's own field, and Prey's pixels are placed inside it** (xr.nativefov, on by
+// default). The OpenXR spec lets a projection view declare any field, but a runtime whose view configuration reports
+// fovMutable = false lays the image across the eye's native field whatever is declared. Meta's PC runtime is one
+// (Quest 3, 2026-10-16: "always double, near and far"; reproduced headless with the mock in fovMutable=0 mode: 76%
+// of patches divergent). Declaring the native field is right on every runtime; NativeFovPlacement says where the
+// render sits inside it, as a copy at the render's own density. Off = the previous behaviour, declaring Prey's frustum.
+std::atomic<bool> gNativeFovPlacement{true};
 
 // Sends each eye's image to the other eye's socket.
 //
@@ -611,8 +630,16 @@ bool CreateSessionAndSwapchain()
                         gHost.viewsDiffer = true;
                     }
                 }
+                // Whether the runtime honours a declared field at all. Meta's PC runtime does not; see
+                // gNativeFovPlacement for what that costs and how the submission answers it.
+                XrViewConfigurationProperties properties{XR_TYPE_VIEW_CONFIGURATION_PROPERTIES};
+                if (XR_SUCCEEDED(xrGetViewConfigurationProperties(gHost.instance, gHost.systemId, viewConfig,
+                                                                  &properties))) {
+                    gHost.fovMutable = properties.fovMutable != XR_FALSE;
+                }
                 std::ostringstream line;
                 line << "result=0 detail=view_configuration views=" << viewCount
+                     << " fovMutable=" << (gHost.fovMutable ? 1 : 0)
                      << " recommended=" << gHost.recommendedWidth << "x" << gHost.recommendedHeight
                      << " max=" << gHost.maxWidth << "x" << gHost.maxHeight
                      << " recommendedSamples=" << gHost.recommendedSamples
@@ -696,6 +723,8 @@ void Teardown()
     ResetHeadTrackingReference();
     gTrackingSpaceType=XR_REFERENCE_SPACE_TYPE_MAX_ENUM;
     ReleaseDebugOverlay();   // its render target views hold the eye images
+    for (auto*& view : gHost.sliceViews) { if (view) { view->Release(); view = nullptr; } }
+    gHost.sliceViews.clear();
     for (auto*& image : gHost.eyeImage) {
         if (image != nullptr) {
             image->Release();
@@ -937,6 +966,81 @@ std::optional<XrFovf> DeclaredFovFromLiveCamera()
     return fov;
 }
 
+ID3D11RenderTargetView* SliceView(std::uint32_t image, std::uint32_t slice)
+{
+    const std::size_t index = static_cast<std::size_t>(image) * 2u + slice;
+    if (gHost.sliceViews.size() < gHost.images.size() * 2u) gHost.sliceViews.resize(gHost.images.size() * 2u, nullptr);
+    if (index >= gHost.sliceViews.size() || image >= gHost.images.size()) return nullptr;
+    if (!gHost.sliceViews[index]) {
+        D3D11_RENDER_TARGET_VIEW_DESC desc{};
+        desc.Format = gHost.colorFormat;
+        desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+        desc.Texture2DArray.FirstArraySlice = slice;
+        desc.Texture2DArray.ArraySize = 1;
+        if (FAILED(gHost.device->CreateRenderTargetView(gHost.images[image], &desc, &gHost.sliceViews[index]))) {
+            gHost.sliceViews[index] = nullptr;
+        }
+    }
+    return gHost.sliceViews[index];
+}
+
+// Copies `source` (rendered through `rendered`) into one slice of the swapchain image and records what that slice
+// must declare (gHost.placedFov/placedRect). With xr.nativefov on and the runtime's field known, the slice declares
+// the native field and the render is placed inside it (NativeFovPlacement); what the render does not reach is
+// cleared to black. Otherwise, or if the native field does not fit, the whole image is copied and declared as
+// rendered -- the previous behaviour, logged once because on an immutable-fov runtime it is the double image.
+void PlaceEye(ID3D11DeviceContext* context, std::uint32_t imageIndex, std::uint32_t slice, ID3D11Texture2D* source,
+              const XrFovf& rendered, const XrFovf& native, bool nativeKnown)
+{
+    D3D11_TEXTURE2D_DESC desc{};
+    source->GetDesc(&desc);
+    ID3D11Texture2D* target = gHost.images[imageIndex];
+    const UINT subresource = D3D11CalcSubresource(0, slice, 1);
+    if (gNativeFovPlacement.load(std::memory_order_acquire) && nativeKnown) {
+        const auto tangents = [](const XrFovf& f) {
+            return preyvr::xr::Tangents{std::tan(f.angleLeft), std::tan(f.angleRight), std::tan(f.angleUp),
+                                        std::tan(f.angleDown)};
+        };
+        const auto p = preyvr::xr::PlaceInNativeFov(tangents(rendered), static_cast<int>(desc.Width),
+            static_cast<int>(desc.Height), tangents(native), static_cast<int>(gHost.width),
+            static_cast<int>(gHost.height));
+        if (p) {
+            if (!p->complete) {
+                if (ID3D11RenderTargetView* view = SliceView(imageIndex, slice)) {
+                    const float black[4] = {0, 0, 0, 1};
+                    context->ClearRenderTargetView(view, black);
+                }
+            }
+            const D3D11_BOX box{static_cast<UINT>(p->srcX), static_cast<UINT>(p->srcY), 0,
+                                static_cast<UINT>(p->srcX + p->copyW), static_cast<UINT>(p->srcY + p->copyH), 1};
+            context->CopySubresourceRegion(target, subresource, static_cast<UINT>(p->dstX),
+                                           static_cast<UINT>(p->dstY), 0, source, 0, &box);
+            gHost.placedFov[slice] = native;
+            gHost.placedRect[slice] = {{0, 0}, {p->rectW, p->rectH}};
+            static bool logged = false;
+            if (!logged) {
+                logged = true;
+                std::ostringstream line;
+                line << "result=0 detail=native_fov_placement eye=" << slice << " rect=" << p->rectW << "x" << p->rectH
+                     << " src=" << p->srcX << "," << p->srcY << " dst=" << p->dstX << "," << p->dstY
+                     << " copy=" << p->copyW << "x" << p->copyH << " complete=" << (p->complete ? 1 : 0)
+                     << " fovMutable=" << (gHost.fovMutable ? 1 : 0);
+                Log(line.str());
+            }
+            return;
+        }
+        static bool refusedLogged = false;
+        if (!refusedLogged) {
+            refusedLogged = true;
+            Log(std::string("result=refused detail=native_fov_placement reason=does_not_fit_or_degenerate"
+                            " fallback=declare_rendered fovMutable=") + (gHost.fovMutable ? "1" : "0"));
+        }
+    }
+    context->CopySubresourceRegion(target, subresource, 0, 0, 0, source, 0, nullptr);
+    gHost.placedFov[slice] = rendered;
+    gHost.placedRect[slice] = {{0, 0}, {static_cast<std::int32_t>(gHost.width), static_cast<std::int32_t>(gHost.height)}};
+}
+
 // Holds one image per eye and submits a complete pair every frame.
 //
 // Prey renders one eye at a time, so the backbuffer is only ever half of a
@@ -1021,7 +1125,11 @@ bool SubmitStereoPair(
         // overlay and the pixels beneath it can never belong to different poses.
         const float shown[4] = {std::tan(views[target].fov.angleLeft), std::tan(views[target].fov.angleRight),
                                 std::tan(views[target].fov.angleUp), std::tan(views[target].fov.angleDown)};
-        DrawDebugOverlay(gHost.device, context, gHost.eyeImage[target], contract, shown);
+        // xr.pattern: the same eye, pose and frustum, with Prey's pixels replaced by a known scene.
+        if (!gStereoPattern.load(std::memory_order_relaxed) ||
+            !DrawStereoPattern(gHost.device, context, gHost.eyeImage[target], contract)) {
+            DrawDebugOverlay(gHost.device, context, gHost.eyeImage[target], contract, shown);
+        }
         gHost.hudCapturePair.RecordEye(target,hudCaptured);
         // Publish the pixels and the contract that produced them together. The
         // copy and these three writes are the one publication unit; nothing
@@ -1041,6 +1149,20 @@ bool SubmitStereoPair(
         gFovAgree.fetch_add(1, std::memory_order_relaxed); // same immutable camera record
         gHost.eyeDisplayTime[target] = contract.displayTime;
         gHost.eyeImageValid[target] = true;
+        // xr.mono: the frame was rendered from the centre of the head (CameraEditHook builds the eye with no
+        // offset), so it is BOTH eyes' picture, under the same pose -- the Dishonored mod's mono: no disparity
+        // anywhere, so it fuses at any frame rate, and each eye refreshes every frame instead of every other one.
+        if (gMonoView.load(std::memory_order_acquire)) {
+            const int other = 1 - target;
+            context->CopyResource(gHost.eyeImage[other], gHost.eyeImage[target]);
+            gHost.hudCapturePair.RecordEye(other, hudCaptured);
+            gHost.eyePose[other] = gHost.eyePose[target];
+            gHost.eyeFov[other] = gHost.eyeFov[target];
+            gHost.requestedFov[other] = views[other].fov;
+            gHost.requestedFovValid[other] = true;
+            gHost.eyeDisplayTime[other] = contract.displayTime;
+            gHost.eyeImageValid[other] = true;
+        }
     }
 
     if (!gHost.eyeImageValid[0] || !gHost.eyeImageValid[1]) {
@@ -1060,9 +1182,8 @@ bool SubmitStereoPair(
         gStaleEye.store(a < b ? 0 : 1, std::memory_order_relaxed);
     }
     for (std::uint32_t slice = 0; slice < 2; ++slice) {
-        context->CopySubresourceRegion(
-            gHost.images[imageIndex], D3D11CalcSubresource(0, slice, 1),
-            0, 0, 0, gHost.eyeImage[slice], 0, nullptr);
+        PlaceEye(context, imageIndex, slice, gHost.eyeImage[slice], gHost.eyeFov[slice], gHost.requestedFov[slice],
+                 gHost.requestedFovValid[slice]);
     }
     return true;
 }
@@ -1671,11 +1792,23 @@ void ServiceXrFrame(void* renderer)
                         // session, swapchain, submission -- without depending on
                         // the per-eye camera work, which is a separate experiment
                         // with its own failure modes.
+                        // Its field is Prey's live frustum; each eye still declares its own native field
+                        // with the picture placed inside it, or the flat image doubles on an immutable-fov
+                        // runtime exactly as the stereo one did.
+                        const auto preyFov = DeclaredFovFromLiveCamera();
                         for (std::uint32_t slice = 0; slice < 2; ++slice) {
-                            context->CopySubresourceRegion(
-                                gHost.images[imageIndex],
-                                D3D11CalcSubresource(0, slice, 1),
-                                0, 0, 0, panelSource, 0, nullptr);
+                            if (preyFov) {
+                                PlaceEye(context, imageIndex, slice, panelSource, ScaleDeclaredFov(*preyFov),
+                                         views[slice].fov, haveViews);
+                            } else {
+                                context->CopySubresourceRegion(
+                                    gHost.images[imageIndex],
+                                    D3D11CalcSubresource(0, slice, 1),
+                                    0, 0, 0, panelSource, 0, nullptr);
+                                gHost.placedFov[slice] = views[slice].fov;
+                                gHost.placedRect[slice] = {{0, 0}, {static_cast<std::int32_t>(gHost.width),
+                                                                    static_cast<std::int32_t>(gHost.height)}};
+                            }
                         }
                     }
                     rendered=panelActive || !gStereoSubmission.load() || stereoPair;
@@ -1718,20 +1851,25 @@ void ServiceXrFrame(void* renderer)
                     }
                 }
                 if(!stereoPair && !panelActive && !haveDeclared) rendered=false;
+                // The flat picture is one camera's, so both eyes are declared at the same pose -- the midpoint of
+                // the eyes, as the Dishonored mod's mono does. Two eye poses under one picture would claim a
+                // disparity the pixels do not have.
+                XrPosef centre = views[0].pose;
+                centre.position = {(views[0].pose.position.x + views[1].pose.position.x) * 0.5f,
+                                   (views[0].pose.position.y + views[1].pose.position.y) * 0.5f,
+                                   (views[0].pose.position.z + views[1].pose.position.z) * 0.5f};
                 for (int eye = 0; eye < 2; ++eye) {
                     projViews[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
-                    projViews[eye].pose = stereoPair ? gHost.eyePose[eye] : views[eye].pose;
-                    projViews[eye].fov = stereoPair
-                        ? gHost.eyeFov[eye]
-                        : (haveDeclared ? liveDeclared : views[eye].fov);
+                    projViews[eye].pose = stereoPair ? gHost.eyePose[eye] : (haveDeclared ? centre : views[eye].pose);
+                    projViews[eye].fov = (stereoPair || haveDeclared) ? gHost.placedFov[eye] : views[eye].fov;
                     projViews[eye].subImage.swapchain = gHost.swapchain;
                     projViews[eye].subImage.imageArrayIndex = static_cast<std::uint32_t>(eye);
-                    projViews[eye].subImage.imageRect.offset = {0, 0};
-                    gHost.submittedWidth = gHost.width;
-                    gHost.submittedHeight = gHost.height;
-                    projViews[eye].subImage.imageRect.extent = {
-                        static_cast<std::int32_t>(gHost.width),
-                        static_cast<std::int32_t>(gHost.height)};
+                    projViews[eye].subImage.imageRect = (stereoPair || haveDeclared)
+                        ? gHost.placedRect[eye]
+                        : XrRect2Di{{0, 0}, {static_cast<std::int32_t>(gHost.width),
+                                             static_cast<std::int32_t>(gHost.height)}};
+                    gHost.submittedWidth = static_cast<std::uint32_t>(projViews[eye].subImage.imageRect.extent.width);
+                    gHost.submittedHeight = static_cast<std::uint32_t>(projViews[eye].subImage.imageRect.extent.height);
                 }
             } else if(imageWaited) {
                 XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
@@ -2477,6 +2615,37 @@ DWORD XrResolutionChain(unsigned int field)
     std::array<DWORD,15> state{};
     return field<state.size() && gResolution.TryRead(state)?state[field]:0;
 }
+
+bool XrSwapEyes() { return gSwapEyes.load(std::memory_order_acquire); }
+
+DWORD SetXrStereoPattern(unsigned int enabled)
+{
+    const bool on = enabled != 0u;
+    if (on) { ReanchorStereoPattern(); }
+    gStereoPattern.store(on, std::memory_order_release);
+    Log(std::string("result=0 detail=stereo_pattern enabled=") + (on ? "1" : "0"));
+    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+bool XrStereoPattern() { return gStereoPattern.load(std::memory_order_acquire); }
+
+DWORD SetXrNativeFov(unsigned int enabled)
+{
+    gNativeFovPlacement.store(enabled != 0u, std::memory_order_release);
+    Log(std::string("result=0 detail=native_fov_placement enabled=") + (enabled ? "1" : "0") +
+        " fovMutable=" + (gHost.fovMutable ? "1" : "0"));
+    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+bool XrNativeFov() { return gNativeFovPlacement.load(std::memory_order_acquire); }
+bool XrFovMutable() { return gHost.fovMutable; }
+
+DWORD SetXrMonoView(unsigned int enabled)
+{
+    const bool on = enabled != 0u;
+    gMonoView.store(on, std::memory_order_release);
+    Log(std::string("result=0 detail=mono_view enabled=") + (on ? "1" : "0"));
+    return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
+}
+bool XrMonoView() { return gMonoView.load(std::memory_order_acquire); }
 
 unsigned long long DeclaredFovAgreeCount() { return gFovAgree.load(std::memory_order_relaxed); }
 unsigned long long DeclaredFovDivergeCount() { return gFovDiverge.load(std::memory_order_relaxed); }

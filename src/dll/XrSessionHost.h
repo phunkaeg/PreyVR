@@ -118,6 +118,24 @@ DWORD SetXrStereoSubmission(unsigned int enabled);
 // subtly wrong -- depth that will not settle, easily misattributed to judder or
 // to the frustum. One call settles it rather than a rebuild.
 DWORD SetXrSwapEyes(unsigned int enabled);
+bool XrSwapEyes();
+
+// Replaces each held eye's image with the stereo test pattern, drawn through that eye's declared pose and frustum
+// (DebugOverlay.cpp, DrawStereoPattern). Turning it on re-anchors the pattern at the head. Safe to toggle live.
+DWORD SetXrStereoPattern(unsigned int enabled);
+bool XrStereoPattern();
+
+// Declare each eye's NATIVE field and place Prey's pixels inside it (on by default). Required on runtimes that report
+// fovMutable = false (Meta's PC runtime), which ignore a declared field and otherwise show a double image at every
+// distance; correct on every other runtime. 0 = the previous behaviour, declaring Prey's frustum.
+DWORD SetXrNativeFov(unsigned int enabled);
+bool XrNativeFov();
+bool XrFovMutable();
+
+// Mono: one picture from the centre of the head in both eyes under one pose -- no depth, fuses at any frame rate,
+// both eyes refreshed every frame. The camera hook renders the eye with no offset while this is on.
+DWORD SetXrMonoView(unsigned int enabled);
+bool XrMonoView();
 
 // Asks for the sRGB swapchain format rather than the exact match -- the
 // FAIL-STR-033 double-encoded-gamma fix.

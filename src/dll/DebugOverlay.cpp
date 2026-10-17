@@ -436,6 +436,13 @@ public:
         context->Draw(count, 0);
         return true;
     }
+    bool Clear(ID3D11DeviceContext* context, ID3D11Texture2D* target, const float rgba[4])
+    {
+        ID3D11RenderTargetView* rtv = View(target);
+        if (!rtv) { return false; }
+        context->ClearRenderTargetView(rtv, rgba);
+        return true;
+    }
     void Reset()
     {
         views_.clear();
@@ -851,6 +858,94 @@ void DrawDebugOverlay(ID3D11Device* device, ID3D11DeviceContext* context, ID3D11
     gLastEye = eye;
     gLastEyeIndex = contract.eye;
     gLastStats = stats;
+}
+
+// ---- Stereo test pattern (xr.pattern) ----
+// Replaces Prey's pixels in each eye with a synthetic scene drawn through the SAME pose and frustum that eye is
+// declared with. It isolates the submission half of the stereo chain -- held images, eye labels, declared poses and
+// fields, the runtime's compositor -- from the rendering half. If this pattern fuses in the headset and the game does
+// not, the fault is in how Prey's eye images are made; if the pattern doubles too, it is in what we tell the runtime.
+// Anchored in tracking space at the head when it is switched on (yaw only), so it stays put in the room.
+namespace pattern {
+std::atomic<bool> gReanchor{true};
+Pose gAnchor{};  // render thread only
+dd::Scene gScene;
+
+Vec3 At(const Pose& a, float x, float y, float z) { return dd::Add(a.position, Rotate(a.orientation, Vec3{x, y, z})); }
+
+void Cross(dd::Scene& s, const Pose& a, float z, float x, float y, float arm, dd::Color c, float width, const char* text)
+{
+    s.lines.push_back({At(a, x - arm, y, -z), At(a, x + arm, y, -z), c, width, 2.5f});
+    s.lines.push_back({At(a, x, y - arm, -z), At(a, x, y + arm, -z), c, width, 2.5f});
+    dd::AppendCircle(s, At(a, x, y, -z), Rotate(a.orientation, Vec3{1, 0, 0}), Rotate(a.orientation, Vec3{0, 1, 0}),
+                     arm * .6f, c, width, 64);
+    dd::Label l{};
+    l.anchor = At(a, x + arm * .65f, y + arm * .65f, -z);
+    l.text = text;
+    l.color = c;
+    l.height = arm * .3f;
+    l.minPixels = 26; l.maxPixels = 70;
+    l.panel = false;
+    s.labels.push_back(l);
+}
+
+void Build(const Pose& a)
+{
+    auto& s = gScene;
+    s.Clear();
+    const dd::Color white{235, 235, 235, 255}, green{80, 255, 120, 255}, orange{255, 150, 40, 255},
+        cyan{60, 200, 255, 255}, grey{120, 120, 120, 255};
+    // texture for a matcher: dots scattered irregularly on a wall 10 m away (a regular grid would let a matcher lock
+    // onto the wrong period, which is exactly what a 20-degree divergence makes it do)
+    unsigned seed = 0x9E3779B9u;
+    const auto next = [&seed]() { seed = seed * 1664525u + 1013904223u; return static_cast<float>(seed >> 8) / 16777216.f; };
+    for (int k = 0; k < 220; ++k) {
+        dd::Marker m{};
+        m.centre = At(a, -9.f + 18.f * next(), -5.5f + 11.f * next(), -10.f);
+        m.radius = .05f + .12f * next();
+        m.color = grey; m.filled = next() < .5f;
+        s.markers.push_back(m);
+    }
+    Cross(s, a, 30.f, -5.f, 3.5f, 2.5f, white, .05f, "INF");
+    // horizontal rulers at 3 m: a vertical misalignment between the eyes doubles these into pairs of lines
+    for (int k = -2; k <= 2; ++k) {
+        s.lines.push_back({At(a, -3.f, k * .35f, -3.f), At(a, 3.f, k * .35f, -3.f), cyan, .006f, 2.f});
+    }
+    Cross(s, a, 2.f, 0.f, -.05f, .22f, green, .01f, "2 m");
+    Cross(s, a, .6f, .05f, -.15f, .06f, orange, .004f, "0.6 m");
+}
+}  // namespace pattern
+
+void ReanchorStereoPattern() { pattern::gReanchor.store(true); }
+
+bool DrawStereoPattern(ID3D11Device* device, ID3D11DeviceContext* context, ID3D11Texture2D* eyeImage,
+                       const RenderContract& contract)
+{
+    if (!device || !context || !eyeImage || !gRenderer.Ready(device)) { return false; }
+    if (pattern::gReanchor.exchange(false)) {
+        // level the anchor: keep the head's heading, drop its pitch and roll
+        const Vec3 f = Rotate(contract.pose.orientation, Vec3{0, 0, -1});
+        const float yaw = std::atan2(-f.x, -f.z);
+        pattern::gAnchor.position = contract.pose.position;
+        pattern::gAnchor.orientation = Quaternion{0, std::sin(yaw * .5f), 0, std::cos(yaw * .5f)};
+        pattern::Build(pattern::gAnchor);
+        lifecycle::Log("preyvr_stereo_pattern anchored yawDeg=" + std::to_string(yaw * 57.29578f));
+    }
+    D3D11_TEXTURE2D_DESC desc{};
+    eyeImage->GetDesc(&desc);
+    dd::EyeView eye{};
+    eye.pose = contract.pose;
+    eye.left = contract.tangents[0];
+    eye.right = contract.tangents[1];
+    eye.up = contract.tangents[2];
+    eye.down = contract.tangents[3];
+    eye.width = static_cast<float>(desc.Width);
+    eye.height = static_cast<float>(desc.Height);
+    const float background[4] = {.03f, .03f, .045f, 1.f};
+    if (!gRenderer.Clear(context, eyeImage, background)) { return false; }
+    gVerticesScratch.clear();
+    dd::Tessellate(pattern::gScene, eye, gVerticesScratch, kMaxVertices);
+    return gRenderer.Draw(context, eyeImage, gVerticesScratch, eye.width, eye.height);
 }
 
 void ReleaseDebugOverlay()

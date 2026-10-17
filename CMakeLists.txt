@@ -93,6 +93,7 @@ add_library(preyvr_core STATIC
     src/common/HandCarry.cpp
     src/common/GrenadeThrow.cpp
     src/common/WristHolo.cpp
+    src/common/NativeFovPlacement.cpp
     src/common/BodyFollow.cpp
     src/common/Locomotion.cpp
     src/common/MenuNavigator.cpp
@@ -430,6 +431,11 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_grenade_throw_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_grenade_throw_tests)
     add_test(NAME grenade_throw COMMAND preyvr_grenade_throw_tests)
+
+    add_executable(preyvr_native_fov_placement_tests tests/NativeFovPlacementTests.cpp)
+    target_link_libraries(preyvr_native_fov_placement_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_native_fov_placement_tests)
+    add_test(NAME native_fov_placement COMMAND preyvr_native_fov_placement_tests)
 
     add_executable(preyvr_wrist_holo_tests tests/WristHoloTests.cpp)
     target_link_libraries(preyvr_wrist_holo_tests PRIVATE preyvr_core)

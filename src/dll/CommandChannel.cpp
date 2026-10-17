@@ -869,6 +869,23 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         const bool fitInside = arg(1, 1) != 0;
         out << "hud.fit result=" << QueueHudFit(!fitInside) << " queued=1"
             << " fitInside=" << (fitInside ? 1 : 0);
+    } else if (verb == "xr.swap") {
+        // xr.swap 0|1 -- each eye's image into the other eye's socket (the inverted-stereo A/B)
+        if (args.size() >= 2) { SetXrSwapEyes(static_cast<unsigned int>(arg(1, 0))); }
+        out << "xr.swap result=0 enabled=" << (XrSwapEyes() ? 1 : 0);
+    } else if (verb == "xr.pattern") {
+        // xr.pattern 0|1 -- the stereo test pattern in place of Prey's image (1 re-anchors it at the head)
+        if (args.size() >= 2) { SetXrStereoPattern(static_cast<unsigned int>(arg(1, 0))); }
+        out << "xr.pattern result=0 enabled=" << (XrStereoPattern() ? 1 : 0);
+    } else if (verb == "xr.nativefov") {
+        // xr.nativefov 0|1 -- declare each eye's native field with the picture placed inside it (1, default) or
+        // Prey's own frustum (0, the double image on an immutable-fov runtime such as Meta's)
+        if (args.size() >= 2) { SetXrNativeFov(static_cast<unsigned int>(arg(1, 1))); }
+        out << "xr.nativefov result=0 enabled=" << (XrNativeFov() ? 1 : 0) << " fovMutable=" << (XrFovMutable() ? 1 : 0);
+    } else if (verb == "xr.mono") {
+        // xr.mono 0|1 -- one picture from the centre of the head in both eyes (no depth, always fuses)
+        if (args.size() >= 2) { SetXrMonoView(static_cast<unsigned int>(arg(1, 0))); }
+        out << "xr.mono result=0 enabled=" << (XrMonoView() ? 1 : 0);
     } else if (verb == "xr.frustum") {
         out << "xr.frustum result=" << SetRuntimeFrustum(arg(1, 1))
             << " used=" << RuntimeFrustumUsedCount()
