@@ -62,7 +62,7 @@ namespace {
 // None reaches outside the game, all are reversible by setting them back, and
 // unlike the resolution entries none of them touches the swapchain, so there is
 // no latched-size hazard to guard.
-constexpr std::array<std::string_view, 42> kAllowlist{
+constexpr std::array<std::string_view, 44> kAllowlist{
     "g_reticleYPercentage",
     "hud_bobHud",
     "hud_canvas_width_adjustment",
@@ -80,6 +80,10 @@ constexpr std::array<std::string_view, 42> kAllowlist{
     "e_Recursion",
     "e_TimeOfDaySpeed",
     "g_detachCamera",
+    // The mock harness runs while the desktop is locked: the window never has
+    // focus, so the game pauses itself and drops input. Both only gate pausing.
+    "g_hasWindowFocus",
+    "g_pauseOnLoseFocus",
     "i_offset_front",
     "i_offset_right",
     "i_offset_up",

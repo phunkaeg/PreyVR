@@ -132,6 +132,38 @@ int main()
         Require(Near(world.position, Vec3{10 + w.x, 20 + w.y, 30 + w.z}), "tracking -> world matches the view");
         Require(Near(WorldToTracking(w, play), d), "world -> tracking inverts it");
     }
+    // The lean radius: inside it a lean holds the body, a step is followed at the
+    // head's speed; past it the body walks back to the radius at once.
+    {
+        const LeanPolicy policy{};
+        bool moving = false;
+        const Vec2 held = LeanStep({0.0f, -0.15f}, 0.0f, 1.0f / 72.0f, true, policy, moving);
+        Require(held.x == 0.0f && held.y == 0.0f && !moving, "a lean inside the radius holds the body");
+        const Vec2 follow = LeanStep({0.0f, -0.15f}, 1.0f, 1.0f / 72.0f, false, policy, moving);
+        Require(moving && Near(follow.y, -1.2f / 72.0f, 1e-4f), "a step is followed at the head's speed");
+        moving = false;
+        const Vec2 slow = LeanStep({0.0f, -0.15f}, 0.0f, 1.0f / 72.0f, false, policy, moving);
+        Require(Near(slow.y, -0.5f / 72.0f, 1e-4f), "and at least at the recentre speed");
+        moving = false;
+        const Vec2 out = LeanStep({0.0f, -0.28f}, 0.0f, 1.0f / 72.0f, true, policy, moving);
+        Require(Near(out.y, -0.03f, 1e-4f), "past the radius the body walks back to it, leaning or not");
+        moving = false;
+        const Vec2 edge = LeanStep({0.0f, -0.2501f}, 0.0f, 1.0f / 72.0f, false, policy, moving);
+        Require(Near(edge.y, -0.5f / 72.0f, 1e-4f), "at the radius, not leaning: it recentres, not only the excess");
+        moving = false;
+        const Vec2 tiny = LeanStep({0.005f, 0.0f}, 0.0f, 1.0f / 72.0f, false, policy, moving);
+        Require(tiny.x == 0.0f && !moving, "millimetres do not move the body");
+    }
+    // Leaning: the neck lower than standing and the crown tilted the way it goes.
+    {
+        const Quaternion pitchedDown = Head(0.0f, Deg(-40));
+        Require(Leaning(pitchedDown, {0.0f, -0.1f}, 0.04f), "a forward lean: neck down, crown forward");
+        Require(!Leaning(pitchedDown, {0.0f, -0.1f}, 0.0f), "looking down while stepping is not a lean");
+        Require(!Leaning(pitchedDown, {0.0f, -0.1f}, 0.25f), "a squat looking down is not a lean");
+        Require(!Leaning(pitchedDown, {0.0f, 0.1f}, 0.04f), "crown forward, going back: not a lean");
+        Require(!Leaning(Head(0.0f, 0.0f), {0.0f, -0.1f}, 0.04f), "an upright head is not leaning");
+        Require(Leaning(Head(0.0f, 0.0f, Deg(20)), {0.1f, 0.0f}, 0.03f), "a side lean: the crown rolls with it");
+    }
     std::cout << "body follow tests passed\n";
     return 0;
 }

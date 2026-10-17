@@ -20,6 +20,8 @@ The notebook separates evidence from plans so implementation follows demonstrate
 > screen): [`WRIST-HOLOGRAM-2026-10-07.md`](WRIST-HOLOGRAM-2026-10-07.md).
 > The body turns with the head and walks with the player, the view fading if the head goes into a wall:
 > [`BODY-FOLLOW-2026-10-16.md`](BODY-FOLLOW-2026-10-16.md).
+> A full body under the player, after VRIK, Quake VR and FinalIK: the torso from the head and hands, leans
+> bent at the hips, a physical crouch, planted feet: [`BODY-POSE-2026-10-17.md`](BODY-POSE-2026-10-17.md).
 > Both eyes rendered in one frame (the render view submitted twice), with the HUD, text
 > popups, markers, fades and the reticle in both eyes:
 > [`STEREO-DUAL-SUBMISSION-2026-10-10.md`](STEREO-DUAL-SUBMISSION-2026-10-10.md).

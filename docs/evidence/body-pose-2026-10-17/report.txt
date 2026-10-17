@@ -1,0 +1,34 @@
+The visible body (body.pose), mock battery, 2026-10-17, jordi/body-torso on jordi/stereo-dual-test (FULL STEREO).
+Mock: FunkMockXR, the Simulation Labs save, desktop locked (PREYVR_FAKE_FOCUS=1, BootLocked.ps1).
+
+Camera invariants (BodyCases.ps1 via Battery.ps1; anchor = camera minus the head's own placement, mm; play = play-yaw drift, deg):
+  spin 0.22 / 0.000   sweep 0.22 / 0.000   shake 0.22 / 0.000   nod 0.22 / 0.000 (floor 0.0)
+  stepFwd 0.22 / 0.000 (body 0.598 of 0.6 m)   stepRight 0.22 / 0.001 (0.499 of 0.5)   stepBack 0.22 / 0.000 (0.5 of 0.5)
+  rock 0.22 / 0.000   circle 0.22 / 0.000 (0.354 of 0.357 m, neck gap at end 4 mm)
+  wallFwd 0.22 / 0.000 (fade 1.0)   wallLeft 0.22 / 0.000 (fade 1.0)   menu 0.14 / 0.001
+  (stick, snap, smooth, recenter move the view on purpose: not judged by the anchor)
+  Before the camera joints were kept: nod moved the camera 39.7 mm and the play yaw drifted 0.05-0.08 deg in
+  every case -- the game's camera hangs from the first-person skeleton's camera_jnt.
+
+Drawn hand vs its controller (controller frame, mm), body pose on / off:
+  spin 18.3 / 18.3   sweep 31.8 / 39.8   shake 73.0 / 84.4   stepFwd 23.7 / 26.5   -- the pose adds no error.
+
+Physical crouch (CrouchProbe.ps1, head down 45 cm then up, hands with it):
+  crouches the game (stance 1, one tap), view eye lift 699 mm, hips 24.8 cm up from the crouch animation;
+  stands back up (stance 0, one tap), lift released when the eye is back at 1.70 m.
+  Camera vertical change through all of it: floorMm 0.0 (a first version that released the lift as the stance
+  flipped showed 700 mm for one frame).
+
+Poses (BodyViews.ps1 -Prefix v7; eye / side / front sheets in this folder, on disk only):
+  rest: bend 0.7 deg, hips 0.2 cm          down 65 deg: bend 3.5, hips -2.2 cm
+  over the shoulder 80 deg, hands forward: torso 54 deg behind the head (capped 70)
+  turn 60 with the hands carried: torso -10 deg      lean forward 22 cm (neck 6 cm down): bend 36.7 deg, held
+  lean sideways 20 cm: followed (no roll in the mock pose)   step back 30 cm: followed
+  squat 20 cm: hips -21.3 cm, bend 12.1 deg, knees forward, feet planted
+  crouch 45 cm: game crouched, hips +24.2 cm from its crouch animation, bend 2.6 deg
+
+Planted feet: a few steps per pose change (19 over the nine poses); a 12 cm sway does not step (unit test).
+Body relative movement, head turned 60 deg with the hands forward: torso 20.6 deg, travel 15.9 deg (BodyRel.ps1).
+
+Open: the snap turn once found a 10.8 cm "step" for one frame near furniture (BodyFollow's tread rule, unchanged);
+the floor probe refuses to walk the body onto the mat edge / a lying body (noGround), as in the 2026-10-16 recenter case.

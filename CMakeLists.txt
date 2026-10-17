@@ -95,6 +95,7 @@ add_library(preyvr_core STATIC
     src/common/WristHolo.cpp
     src/common/NativeFovPlacement.cpp
     src/common/BodyFollow.cpp
+    src/common/BodyPose.cpp
     src/common/Locomotion.cpp
     src/common/MenuNavigator.cpp
     src/common/InventoryDepth.cpp
@@ -451,6 +452,10 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_body_follow_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_body_follow_tests)
     add_test(NAME body_follow COMMAND preyvr_body_follow_tests)
+    add_executable(preyvr_body_pose_tests tests/BodyPoseTests.cpp)
+    target_link_libraries(preyvr_body_pose_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_body_pose_tests)
+    add_test(NAME body_pose COMMAND preyvr_body_pose_tests)
 
     add_executable(preyvr_interaction_use_tests tests/InteractionUseTests.cpp)
     target_link_libraries(preyvr_interaction_use_tests PRIVATE preyvr_core)

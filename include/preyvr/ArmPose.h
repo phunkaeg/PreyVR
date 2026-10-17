@@ -61,13 +61,48 @@ TorsoFrame TorsoFromYaw(float yaw);
 // stands in for its forward as the pitch approaches +-90 degrees.
 float HeadYaw(const Quaternion& head);
 
-// The torso follows the head's yaw: never further than `deadzone` from it,
-// and relaxing towards it at `relax` (fraction per second) while within.
-struct TorsoYaw {
-    bool valid = false;
-    float yaw = 0.0f;
-    float Update(float headYaw, float dtSeconds, float deadzone, float relax);
-    void Reset() { valid = false; }
+// **The player's torso yaw**, estimated the way Quake VR 1.0.1 does
+// (vr_torso.cpp, after Lone Echo's GDC 2017 chest estimate): a weighted vote
+// of where the torso could be facing --
+//   the head now (1) and the head's recent history (1, eased over 0.3 s, so a
+//   glance does not turn the body); both hands' midpoint while both are held
+//   in front of the shoulders, from 5 cm out to 60 cm (2.5; Quake stops at
+//   25 cm, Lone Echo counts reaching hands, and a pistol held at the chest is
+//   ~40 cm out); one hand alone there (0.3); and
+//   hands hanging at the sides (2), square to the line between them.
+// The torso turns only once the vote is more than 8 degrees off, then eases
+// onto it at 12/s, and is never more than 70 degrees from the head. Inside the
+// deadzone it settles onto the vote slowly (1/s), so a body at rest ends up
+// square to it instead of up to 8 degrees off. While the
+// stick walks the player the body faces the view, as the walk does.
+struct TorsoInput {
+    Pose head{};
+    Vec3 hand[2]{};              // grip positions: 0 right, 1 left
+    bool handValid[2]{};
+    bool steering = false;       // the stick is moving the player
+    // Where the body stands (horizontally), if known: the hands are measured from
+    // it, so a lean that carries the head over them does not read as a turn.
+    Vec3 body{};
+    bool haveBody = false;
+};
+struct TorsoSettings {
+    float deadzone = 8.0f * 3.14159265f / 180.0f;
+    float rate = 12.0f;          // 1/s once turning
+    float settle = 1.0f;         // 1/s inside the deadzone
+    float maxFromHead = 70.0f * 3.14159265f / 180.0f;
+    float historyTau = 0.3f;     // s
+    float frontMin = 0.05f, frontMax = 0.60f;
+};
+class TorsoEstimator {
+public:
+    float Update(const TorsoInput& in, float dtSeconds, const TorsoSettings& s, const Body& body = Body{});
+    bool Valid() const { return valid_; }
+    float Yaw() const { return yaw_; }
+    float Vote() const { return vote_; }
+    void Reset() { valid_ = catching_ = false; }
+private:
+    bool valid_ = false, catching_ = false;
+    float yaw_ = 0.0f, history_ = 0.0f, vote_ = 0.0f;
 };
 
 // Where the player's shoulder joint is.

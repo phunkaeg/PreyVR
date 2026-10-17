@@ -38,6 +38,10 @@ unsigned BodyYawFollowEnabled(){return bodyYaw;}
 unsigned BodyRoomScaleEnabled(){return bodyRoom;}
 DWORD SetVrStereoMode(unsigned v){applied[options::Stereo]=static_cast<int>(v);return 0;}
 unsigned VrStereoModeChosen(){return static_cast<unsigned>(applied[options::Stereo]);}
+DWORD SetPhysicalCrouch(unsigned v){applied[options::PhysicalCrouch]=static_cast<int>(v);return 0;}
+unsigned PhysicalCrouchEnabled(){return static_cast<unsigned>(applied[options::PhysicalCrouch]);}
+DWORD SetHeadInWallsFade(unsigned v){applied[options::WallFade]=static_cast<int>(v);return 0;}
+unsigned HeadInWallsFadeEnabled(){return static_cast<unsigned>(applied[options::WallFade]);}
 unsigned DebugOverlayMask(){return applied[options::DebugOverlay];}
 DWORD SetSnapTurnDegrees(unsigned v){applied[options::Turn]=v;return 0;}
 unsigned SnapTurnDegrees(){return applied[options::Turn];}

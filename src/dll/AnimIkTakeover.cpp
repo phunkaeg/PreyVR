@@ -14,8 +14,11 @@
 #include "Logger.h"
 #include "MinHookInit.h"
 #include "XrInput.h"
+#include "MoveLane.h"
+#include "BodyFollow.h"
 #include "preyvr/AnimIk.h"
 #include "preyvr/ArmPose.h"
+#include "preyvr/BodyPose.h"
 #include "preyvr/HandPose.h"
 #include "preyvr/TwoHandedAim.h"
 #include "preyvr/WeaponRigAlignment.h"
@@ -470,8 +473,7 @@ struct PoseSettings {
     // The arm (arm.*, docs/ARM-POSE-2026-10-06.md): from the player's shoulder.
     unsigned armMode = 1;       // 0: the native arm, hung from the animated shoulder
     armpose::Body body{};
-    float torsoDeadzone = 35.0f * 3.14159265f / 180.0f;
-    float torsoRelax = 0.6f;    // fraction per second towards the head's yaw
+    armpose::TorsoSettings torso{};
     float armKnee = 0.92f;      // exact reach up to this fraction of the stretched arm
     float poleTau = 0.06f;      // elbow pole smoothing, seconds
     armpose::WristLimits wrist{};
@@ -689,7 +691,9 @@ struct ArmStats {
     float torsoYawDeg = 0.0f, headYawDeg = 0.0f;
 };
 std::mutex gArmMutex;           // the torso filter, pole smoothing and stats
-armpose::TorsoYaw gTorsoYaw;
+armpose::TorsoEstimator gTorso;
+std::atomic<float> gTorsoNow{0.0f};            // the torso's yaw (OpenXR), for MoveLane
+std::atomic<std::uint64_t> gTorsoNowNs{0};
 std::uint64_t gTorsoNs = 0, gPoleNs[2]{};
 Vec3 gPole[2]{};
 ArmStats gArmStats;
@@ -732,32 +736,269 @@ float Dist3(Vec3 a, Vec3 b)
     return std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
 }
 
-// Before the native pass, under gIkMutex: the torso and each shoulder.
+// --- The visible body (body.pose; docs/BODY-POSE-2026-10-17.md) -------------
+//
+// **The body's neck is always where the player's is.** Every joint of the rig
+// belongs to a group -- the hips, each spine segment, the neck and head, each
+// thigh, shin and foot -- by its nearest named ancestor, and bodypose::Solve
+// gives each group one rigid move: the torso turned to the player's torso
+// estimate, the spine bent and the hips dropped so the head's pivot lands on
+// the player's, the legs folded onto the feet the animation planted. It is
+// planned before the native pass (the arm solve starts from the shoulders the
+// body moved) and written after it, into the absolute pose the engine skins;
+// the arms are then solved from there as before, and each driven hand turned
+// back to the rotation the pass gave it.
+enum BodyGroup : std::uint8_t {
+    kKeep = 0, kHipGroup = 1, kSpineGroup = 2, kNeckGroup = 6, kThighGroup = 7, kShinGroup = 9, kFootGroup = 11,
+    kGroupCount = 13
+};
+struct BodyRig {
+    std::uintptr_t skeleton = 0;
+    bool valid = false;
+    int hip = -1, spine[4]{-1, -1, -1, -1}, neck = -1, head = -1;
+    int thigh[2]{-1, -1}, knee[2]{-1, -1}, foot[2]{-1, -1};
+    unsigned count = 0;
+    std::array<std::uint8_t, kMaxJoints> group{};
+};
+BodyRig gBodyRig;                       // under gIkMutex
+std::atomic<bool> gBodyPoseOn{true};
+float gBodyWeight = 0.0f;               // under gIkMutex: eases in and out
+std::uint64_t gBodyNs = 0;
+bodypose::Limits gBodyLimits;           // under gIkMutex
+// The feet stay planted while the body sways over them and step when they must
+// (bodypose::FootPlanter); free while the game animates a walk or a fall.
+std::atomic<bool> gFeetOn{true};
+bodypose::FootPlanter gFeet;            // under gIkMutex
+Vec3 gLastLocation{};
+bool gHaveLastLocation = false;
+// The eye from the head's pivot, in the head's frame (OpenXR): the rig's
+// head_jnt sits 7.3 cm behind and 5.1 cm below its camera_jnt.
+constexpr Vec3 kEyeFromPivot{0.0f, 0.0512f, -0.0732f};
+struct BodyStats {
+    unsigned long long planned = 0, refused = 0, steps = 0;
+    float weight = 0.0f, yawDeg = 0.0f, bendDeg = 0.0f, missCm = 0.0f;
+    Vec3 hipShift{}, goal{}, animated{};
+};
+std::mutex gBodyStatsMutex;
+BodyStats gBodyStats;
+
+void BuildBodyRig(const std::uint8_t* skeleton, unsigned jointCount, unsigned poseCount)
+{
+    BodyRig rig{};
+    rig.skeleton = reinterpret_cast<std::uintptr_t>(skeleton);
+    rig.count = std::min({jointCount, poseCount, kMaxJoints});
+    const auto find = [&](const char* name) {
+        const int j = JointIndexByName(skeleton, jointCount, name);
+        return j >= 0 && static_cast<unsigned>(j) < rig.count ? j : -1;
+    };
+    rig.hip = find("hip_jnt");
+    const char* spines[4] = {"spine1_jnt", "spine2_jnt", "spine3_jnt", "spine4_jnt"};
+    for (int k = 0; k < 4; ++k) { rig.spine[k] = find(spines[k]); }
+    rig.neck = find("neck_jnt");
+    rig.head = find("head_jnt");
+    const char* legs[2][3] = {{"r_upperLeg_jnt", "r_lowerLeg_jnt", "r_foot_jnt"},
+                              {"l_upperLeg_jnt", "l_lowerLeg_jnt", "l_foot_jnt"}};
+    for (int s = 0; s < 2; ++s) {
+        rig.thigh[s] = find(legs[s][0]);
+        rig.knee[s] = find(legs[s][1]);
+        rig.foot[s] = find(legs[s][2]);
+    }
+    std::array<std::uint8_t, kMaxJoints> key{};
+    bool ok = rig.hip >= 0 && rig.neck >= 0 && rig.head >= 0;
+    const auto mark = [&](int j, int group) {
+        if (j >= 0) { key[j] = static_cast<std::uint8_t>(group); } else { ok = false; }
+    };
+    mark(rig.hip, kHipGroup);
+    for (int k = 0; k < 4; ++k) { mark(rig.spine[k], kSpineGroup + k); }
+    mark(rig.neck, kNeckGroup);
+    for (int s = 0; s < 2; ++s) {
+        mark(rig.thigh[s], kThighGroup + s);
+        mark(rig.knee[s], kShinGroup + s);
+        mark(rig.foot[s], kFootGroup + s);
+    }
+    // **The game's camera hangs from this skeleton**: ArkPlayerCamera reads the
+    // animated camera joint, so moving it moves the view (measured: a nod moved
+    // the camera 40 mm and the play yaw 0.05 degrees with them moved). They are
+    // not drawn; they stay exactly where the animation put them.
+    constexpr std::uint8_t kStay = 0xFF;
+    for (const char* name : {"camera_jnt", "look_jnt", "hud_jnt"}) {
+        const int j = find(name);
+        if (j >= 0) { key[j] = kStay; }
+    }
+    // Each joint by its nearest named ancestor; what hangs from the root but not
+    // from the hips (the anchor, the runtime IK helpers) is left alone.
+    int grouped = 0;
+    for (unsigned j = 0; j < rig.count; ++j) {
+        int k = static_cast<int>(j);
+        for (int steps = 0; steps < 64 && k >= 0; ++steps) {
+            if (static_cast<unsigned>(k) < rig.count && key[k] != kKeep) {
+                if (key[k] != kStay) {
+                    rig.group[j] = key[k];
+                    ++grouped;
+                }
+                break;
+            }
+            k = ParentOf(skeleton, k);
+        }
+    }
+    rig.valid = ok;
+    gBodyRig = rig;
+    Log("result=0 detail=body_rig valid=" + std::to_string(ok ? 1 : 0) + " joints=" + std::to_string(rig.count) +
+        " grouped=" + std::to_string(grouped));
+}
+
+bodypose::Rigid RigidOf(const bodypose::Plan& p, std::uint8_t group)
+{
+    if (group == kHipGroup) { return p.hip; }
+    if (group >= kSpineGroup && group < kNeckGroup) { return p.spine[group - kSpineGroup]; }
+    if (group == kNeckGroup) { return p.neck; }
+    if (group >= kThighGroup && group < kShinGroup) { return p.thigh[group - kThighGroup]; }
+    if (group >= kShinGroup && group < kFootGroup) { return p.shin[group - kShinGroup]; }
+    if (group >= kFootGroup && group < kGroupCount) { return p.foot[group - kFootGroup]; }
+    return bodypose::Rigid{};
+}
+
+// Where the body plan puts a joint's animated position (unchanged without one).
+Vec3 BodyMoved(const bodypose::Plan* plan, int joint, Vec3 p)
+{
+    if (plan == nullptr || !plan->valid || joint < 0 || static_cast<unsigned>(joint) >= gBodyRig.count) { return p; }
+    return bodypose::Apply(RigidOf(*plan, gBodyRig.group[joint]), p);
+}
+
+// Before the native pass, under gIkMutex.
+bodypose::Plan PlanBody(const GameplayPoseFrame& frame, const animik::Location& location, std::uint8_t* absolute,
+                        unsigned count, const PoseSettings& pose, float torsoYaw)
+{
+    const BodyRig& rig = gBodyRig;
+    const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
+    const float dt = gBodyNs != 0 ? std::min(static_cast<float>(now - gBodyNs) * 1e-9f, 0.1f) : 0.0f;
+    gBodyNs = now;
+    const bool want = gBodyPoseOn.load(std::memory_order_relaxed) && pose.mode == 1 && pose.armMode == 1;
+    gBodyWeight += ((want ? 1.0f : 0.0f) - gBodyWeight) * (1.0f - std::exp(-6.0f * dt));
+    if (!want && gBodyWeight < 0.002f) { gBodyWeight = 0.0f; }
+    if (!rig.valid || rig.skeleton != gRigSkeleton.load() || gBodyWeight <= 0.0f) { return {}; }
+    XrMap map{&frame, {}, location};
+    if (!ArmAnchor(frame, map.anchor) || !(location.s > 1e-4f)) { return {}; }
+    bodypose::Skeleton s{};
+    const auto at = [&](int j, Vec3& v) {
+        QuatT a{};
+        if (!ReadQuatT(absolute, count, j, a)) { return false; }
+        v = {a.t[0], a.t[1], a.t[2]};
+        return true;
+    };
+    bool ok = at(rig.hip, s.hip) && at(rig.neck, s.neck) && at(rig.head, s.head);
+    for (int k = 0; k < 4 && ok; ++k) { ok = at(rig.spine[k], s.spine[k]); }
+    if (!ok) { return {}; }
+    s.legs = true;
+    for (int k = 0; k < 2; ++k) {
+        s.legs = s.legs && at(rig.thigh[k], s.thigh[k]) && at(rig.knee[k], s.knee[k]) && at(rig.foot[k], s.foot[k]);
+    }
+    // The player's head pivot moved from where it stands when the head is at the
+    // calibrated point, level: that displacement, not an absolute position, is
+    // what the body's own head pivot takes -- Prey hangs its first-person model
+    // lower and further back than the eye on purpose, and that stays.
+    float roomYaw = 0.0f;
+    Vec3 origin{};
+    unsigned long long generation = 0;
+    if (!ReadHeadTrackingRoom(roomYaw, origin, generation) || generation != frame.referenceGeneration) { return {}; }
+    const Pose& head = frame.tracking.head;
+    const float heading = armpose::HeadYaw(head.orientation);
+    const Quaternion level{0.0f, std::sin(heading * 0.5f), 0.0f, std::cos(heading * 0.5f)};
+    const Vec3 pivot = Sub3(head.position, Rotate(head.orientation, kEyeFromPivot));
+    // The rest point maps to the view's eye, which a crouch made for real lifts
+    // above the game's: the body's head stays at the game's, so take it back out.
+    const Vec3 restEye{origin.x, origin.y - CrouchEyeLift(), origin.z};
+    const Vec3 restPivot = Sub3(restEye, Rotate(level, kEyeFromPivot));
+    bodypose::Goal goal{};
+    goal.head = Add3(s.head, Sub3(map.ToModel(pivot), map.ToModel(restPivot)));
+    const armpose::TorsoFrame torso = armpose::TorsoFromYaw(torsoYaw);
+    const Vec3 d = Sub3(map.ToModel(Add3(head.position, torso.forward)), map.ToModel(head.position));
+    goal.yaw = std::atan2(-d.x, d.y);
+    goal.weight = gBodyWeight;
+    if (s.legs) {
+        const bodypose::Rigid turn = bodypose::TorsoTurn(s, goal);
+        Vec3 natural[2], thigh[2], placed[2];
+        float leg[2];
+        for (int k = 0; k < 2; ++k) {
+            natural[k] = animik::ModelToWorld(location, bodypose::Apply(turn, s.foot[k]));
+            thigh[k] = animik::ModelToWorld(location, bodypose::Apply(turn, s.thigh[k]));
+            leg[k] = (Dist3(s.knee[k], s.thigh[k]) + Dist3(s.foot[k], s.knee[k])) * location.s;
+        }
+        Vec3 velocity{};
+        if (gHaveLastLocation && dt > 1e-4f) { velocity = Scale3(Sub3(location.t, gLastLocation), 1.0f / dt); }
+        gLastLocation = location.t;
+        gHaveLastLocation = true;
+        const float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+        const bool free = !gFeetOn.load(std::memory_order_relaxed) || gBodyWeight < 0.999f ||
+                          MoveLaneAxisMilli(0) != 0 || MoveLaneAxisMilli(1) != 0 || std::fabs(velocity.z) > 1.0f;
+        gFeet.Update(natural, thigh, leg, speed, dt, free, bodypose::FootSettings{}, placed);
+        for (int k = 0; k < 2; ++k) {
+            goal.footSet[k] = true;
+            goal.foot[k] = animik::WorldToModel(location, placed[k]);
+        }
+    }
+    const bodypose::Plan plan = bodypose::Solve(s, goal, gBodyLimits);
+    std::lock_guard lock(gBodyStatsMutex);
+    BodyStats& st = gBodyStats;
+    (plan.valid ? st.planned : st.refused) += 1;
+    st.weight = gBodyWeight;
+    st.yawDeg = goal.yaw * 57.29578f;
+    st.bendDeg = plan.bend * 57.29578f;
+    st.missCm = plan.miss * 100.0f;
+    st.hipShift = plan.hipShift;
+    st.goal = goal.head;
+    st.animated = s.head;
+    st.steps = gFeet.Steps();
+    return plan;
+}
+
+// Once per owned callback, before the body and the arms: the player's torso
+// (armpose::TorsoEstimator), yaw in the app's OpenXR space.
+float UpdateTorso(const GameplayPoseFrame& frame, const PoseSettings& pose)
+{
+    armpose::TorsoInput in;
+    in.head = frame.tracking.head;
+    for (int s = 0; s < 2; ++s) {
+        const auto& hand = frame.tracking.hands[s == 0 ? static_cast<unsigned>(Hand::right)
+                                                        : static_cast<unsigned>(Hand::left)];
+        in.hand[s] = hand.gripPose.position;
+        in.handValid[s] = hand.gripValidity.positionValid;
+    }
+    // Walking where the head looks, the body faces the view as the walk does; body
+    // relative, the walk follows the torso instead (MoveLane), so it holds its own.
+    in.steering = (MoveLaneAxisMilli(0) != 0 || MoveLaneAxisMilli(1) != 0) && HeadRelativeMovementEnabled();
+    float roomYaw = 0.0f;
+    unsigned long long generation = 0;
+    in.haveBody = ReadHeadTrackingRoom(roomYaw, in.body, generation);   // the body's eye in the room
+    std::lock_guard lock(gArmMutex);
+    const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
+    const float dt = gTorsoNs != 0 ? static_cast<float>(now - gTorsoNs) * 1e-9f : 0.0f;
+    gTorsoNs = now;
+    const float yaw = gTorso.Update(in, dt, pose.torso, pose.body);
+    // Two hands on a long weapon: the shooter's bladed stance, left shoulder
+    // forward (the torso turns right), so the drawn support arm reaches the
+    // foregrip. Eased by the hold's own blend.
+    const std::uint64_t longOwner = gLongGeneration.load(std::memory_order_relaxed);
+    const float twist = longOwner != 0 && frame.weaponGeneration == longOwner && frame.twoHand.blend > 0.0f
+        ? gLongTwistDeg.load(std::memory_order_relaxed) * 0.01745329f * frame.twoHand.blend : 0.0f;
+    gArmStats.torsoYawDeg = (yaw - twist) * 57.29578f;
+    gTorsoNow.store(yaw, std::memory_order_relaxed);
+    gTorsoNowNs.store(now, std::memory_order_relaxed);
+    gArmStats.headYawDeg = armpose::HeadYaw(frame.tracking.head.orientation) * 57.29578f;
+    return yaw - twist;
+}
+
+// Before the native pass, under gIkMutex: each shoulder, from the torso and the
+// rig's clavicle where the body plan (if any) puts it.
 void PrepareArms(const GameplayPoseFrame& frame, const animik::Location& location, std::uint8_t* absolute,
-                 unsigned count, const PoseSettings& pose, ArmPlan plan[2])
+                 unsigned count, const PoseSettings& pose, float torsoYaw, const bodypose::Plan* bodyPlan,
+                 ArmPlan plan[2])
 {
     if (pose.mode != 1 || pose.armMode == 0 || gHandRig.skeleton != gRigSkeleton.load()) { return; }
     XrMap map{&frame, {}, location};
     if (!ArmAnchor(frame, map.anchor) || !(location.s > 1e-4f)) { return; }
     const Pose& head = frame.tracking.head;
-    const float headYaw = armpose::HeadYaw(head.orientation);
-    armpose::TorsoFrame torso;
-    {
-        std::lock_guard lock(gArmMutex);
-        const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
-        const float dt = gTorsoNs != 0 ? static_cast<float>(now - gTorsoNs) * 1e-9f : 0.0f;
-        gTorsoNs = now;
-        const float yaw = gTorsoYaw.Update(headYaw, dt, pose.torsoDeadzone, pose.torsoRelax);
-        // Two hands on a long weapon: the shooter's bladed stance, left
-        // shoulder forward (the torso turns right), so the drawn support arm
-        // reaches the foregrip. Eased by the hold's own blend.
-        const std::uint64_t longOwner = gLongGeneration.load(std::memory_order_relaxed);
-        const float twist = longOwner != 0 && frame.weaponGeneration == longOwner && frame.twoHand.blend > 0.0f
-            ? gLongTwistDeg.load(std::memory_order_relaxed) * 0.01745329f * frame.twoHand.blend : 0.0f;
-        torso = armpose::TorsoFromYaw(yaw - twist);
-        gArmStats.torsoYawDeg = (yaw - twist) * 57.29578f;
-        gArmStats.headYawDeg = headYaw * 57.29578f;
-    }
+    const armpose::TorsoFrame torso = armpose::TorsoFromYaw(torsoYaw);
     const armpose::Body& body = pose.body;
     for (int s = 0; s < 2; ++s) {
         QuatT clavicle{}, upper{};
@@ -765,8 +1006,8 @@ void PrepareArms(const GameplayPoseFrame& frame, const animik::Location& locatio
             !ReadQuatT(absolute, count, gHandRig.upperArm[s], upper)) { continue; }
         ArmPlan& p = plan[s];
         p.torso = torso;
-        p.clavicleXr = map.ToXr(Vec3{clavicle.t[0], clavicle.t[1], clavicle.t[2]});
-        const Vec3 animated = map.ToXr(Vec3{upper.t[0], upper.t[1], upper.t[2]});
+        p.clavicleXr = map.ToXr(BodyMoved(bodyPlan, gHandRig.clavicle[s], Vec3{clavicle.t[0], clavicle.t[1], clavicle.t[2]}));
+        const Vec3 animated = map.ToXr(BodyMoved(bodyPlan, gHandRig.upperArm[s], Vec3{upper.t[0], upper.t[1], upper.t[2]}));
         p.targetXr = armpose::ShoulderTarget(head.position, torso, s == 0 ? 1 : -1, body);
         p.shoulderXr = armpose::PlaceShoulder(p.clavicleXr, Dist3(animated, p.clavicleXr), p.targetXr,
                                               body.clavicleStretch);
@@ -1417,9 +1658,26 @@ void CarryChild(std::uint8_t* absolute, unsigned count, int child, const QuatT& 
     WriteQuatT(absolute, count, child, Multiply(parentNew, localQ), Add3(parentNewT, Rotate(parentNew, local)));
 }
 
+// After the native pass: every grouped joint moved by its group's rigid move.
+void ApplyBody(std::uint8_t* absolute, unsigned count, const bodypose::Plan& plan, const BodyRig& rig)
+{
+    bodypose::Rigid table[kGroupCount];
+    for (std::uint8_t g = 0; g < kGroupCount; ++g) { table[g] = RigidOf(plan, g); }
+    const unsigned n = std::min(count, rig.count);
+    for (unsigned j = 0; j < n; ++j) {
+        const std::uint8_t g = rig.group[j];
+        if (g == kKeep || g >= kGroupCount) { continue; }
+        QuatT a{};
+        if (!ReadQuatT(absolute, count, static_cast<int>(j), a)) { continue; }
+        const bodypose::Rigid& r = table[g];
+        WriteQuatT(absolute, count, static_cast<int>(j), Multiply(r.q, Quaternion{a.q[0], a.q[1], a.q[2], a.q[3]}),
+                   bodypose::Apply(r, Vec3{a.t[0], a.t[1], a.t[2]}));
+    }
+}
+
 void SolveArms(const GameplayPoseFrame& frame, std::uint8_t* absolute, unsigned count,
                const animik::Location& location, const HandRig& rig, const ArmPlan plan[2],
-               const PoseSettings& pose)
+               const PoseSettings& pose, const Quaternion handUndo[2])
 {
     XrMap map{&frame, {}, location};
     if (!ArmAnchor(frame, map.anchor)) { return; }
@@ -1509,9 +1767,8 @@ void SolveArms(const GameplayPoseFrame& frame, std::uint8_t* absolute, unsigned 
                 for (int j = 0; j < handpose::kJointCount; ++j) { shift(rig.joint[s][j]); }
             }
         }
-        if (p.forceRotation && p.rotationSet) {
-            // Turn the hand and all it carries about the wrist onto the drive's rotation.
-            const Quaternion turn = Normalize(Multiply(p.rotation, Conj(handQ)));
+        // Turn the hand and all it carries about the wrist.
+        const auto spinHand = [&](const Quaternion& turn) {
             const auto spin = [&](int j) {
                 QuatT a{};
                 if (ReadQuatT(absolute, count, j, a)) {
@@ -1524,6 +1781,14 @@ void SolveArms(const GameplayPoseFrame& frame, std::uint8_t* absolute, unsigned 
             if (rig.valid[s]) {
                 for (int j = 0; j < handpose::kJointCount; ++j) { spin(rig.joint[s][j]); }
             }
+        };
+        if (p.forceRotation && p.rotationSet) {
+            // Onto the drive's rotation.
+            spinHand(Normalize(Multiply(p.rotation, Conj(handQ))));
+        } else if (std::fabs(handUndo[s].w) < 0.999999f) {
+            // The body's move turned the hand with the arm: back to the rotation
+            // the native pass gave it (on the controller).
+            spinHand(handUndo[s]);
         }
         stats.solved[s] = true;
         stats.target[s] = p.targetXr;
@@ -1722,6 +1987,9 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
     FingerPlan fingerPlan{};
     FingerPlan rightFingers{};
     ArmPlan armPlan[2]{};
+    bodypose::Plan bodyPlan{};
+    BodyRig ownedBodyRig{};
+    Quaternion handUndo[2]{};
     PoseSettings ownedSettings{};
     std::uint8_t* ownedRelative = nullptr;
     std::uint8_t* ownedAbsolute = nullptr;
@@ -1783,8 +2051,25 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
                         BuildHandRig(reinterpret_cast<std::uint8_t*>(skeleton), gRigJoints.load(),
                                      static_cast<std::uint8_t*>(relative), static_cast<unsigned>(poseCount));
                     }
+                    if (skeleton != 0 && gBodyRig.skeleton != skeleton) {
+                        BuildBodyRig(reinterpret_cast<std::uint8_t*>(skeleton), gRigJoints.load(),
+                                     static_cast<unsigned>(poseCount));
+                    }
+                    const float torsoYaw = UpdateTorso(frame, poseSettings);
+                    bodyPlan = PlanBody(frame, location, static_cast<std::uint8_t*>(absolute),
+                                        static_cast<unsigned>(poseCount), poseSettings, torsoYaw);
+                    if (bodyPlan.valid) {
+                        ownedBodyRig = gBodyRig;
+                        for (int s = 0; s < 2; ++s) {
+                            const int w = gHandRig.wrist[s];
+                            if (w >= 0 && static_cast<unsigned>(w) < ownedBodyRig.count) {
+                                handUndo[s] = Conj(RigidOf(bodyPlan, ownedBodyRig.group[w]).q);
+                            }
+                        }
+                    }
                     PrepareArms(frame, location, static_cast<std::uint8_t*>(absolute),
-                                static_cast<unsigned>(poseCount), poseSettings, armPlan);
+                                static_cast<unsigned>(poseCount), poseSettings, torsoYaw,
+                                bodyPlan.valid ? &bodyPlan : nullptr, armPlan);
                     armPlan[0].forceRotation = armPlan[1].forceRotation = free;
                     // The hand that holds a carried object closes around it.
                     {
@@ -1869,9 +2154,10 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
         original(character, params);
     }
     if (ownedAbsolute != nullptr) {
+        if (bodyPlan.valid) { ApplyBody(ownedAbsolute, ownedCount, bodyPlan, ownedBodyRig); }
         if (fingerPlan.apply) { PropagateFingers(ownedRelative, ownedAbsolute, ownedCount, ownedHandRig); }
         if (rightFingers.apply) { PropagateFingers(ownedRelative, ownedAbsolute, ownedCount, ownedHandRig, 0); }
-        SolveArms(frame, ownedAbsolute, ownedCount, ownedLocation, ownedHandRig, armPlan, ownedSettings);
+        SolveArms(frame, ownedAbsolute, ownedCount, ownedLocation, ownedHandRig, armPlan, ownedSettings, handUndo);
         CaptureMarks(frame, ownedAbsolute, ownedCount, ownedLocation, ownedHandRig, fingerPlan);
     }
     int expected = 1;
@@ -2215,14 +2501,64 @@ DWORD SetArmSetting(const std::string& what, const int* v, unsigned n)
         p.wrist.radialMaxDeg = static_cast<float>(v[2]); p.wrist.ulnarMaxDeg = static_cast<float>(v[3]);
     } else if (what == "hold" && n >= 2 && v[0] >= 0 && v[0] <= 360 && v[1] >= 0 && v[1] <= 1000) {
         p.wrist.holdSigmaDeg = static_cast<float>(v[0]); p.poleTau = v[1] / 1000.0f;
-    } else if (what == "torso" && n >= 2 && v[0] >= 0 && v[0] <= 180 && v[1] >= 0 && v[1] <= 10000) {
-        p.torsoDeadzone = v[0] * 3.14159265f / 180.0f; p.torsoRelax = v[1] / 1000.0f;
+    } else if (what == "torso" && n >= 3 && v[0] >= 0 && v[0] <= 90 && v[1] >= 0 && v[1] <= 60000 &&
+               v[2] >= 0 && v[2] <= 180) {
+        p.torso.deadzone = v[0] * 3.14159265f / 180.0f; p.torso.rate = v[1] / 1000.0f;
+        p.torso.maxFromHead = v[2] * 3.14159265f / 180.0f;
     } else if (what == "knee" && n >= 1 && v[0] >= 500 && v[0] <= 1000) {
         p.armKnee = v[0] / 1000.0f;
     } else {
         return 1;
     }
     return 0;
+}
+
+DWORD SetBodyFeet(unsigned enabled)
+{
+    if (enabled > 1) { return 1; }
+    gFeetOn.store(enabled != 0, std::memory_order_relaxed);
+    return 0;
+}
+
+DWORD SetBodyPose(unsigned enabled)
+{
+    if (enabled > 1) { return 1; }
+    gBodyPoseOn.store(enabled != 0, std::memory_order_relaxed);
+    Log(std::string("result=0 detail=body_pose value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+unsigned BodyPoseEnabled() { return gBodyPoseOn.load() ? 1u : 0u; }
+
+bool TorsoYawNow(float& yaw)
+{
+    const std::uint64_t at = gTorsoNowNs.load(std::memory_order_relaxed);
+    if (at == 0 || preyvr::timing::MonotonicNanoseconds() - at > 200000000ull) { return false; }
+    yaw = gTorsoNow.load(std::memory_order_relaxed);
+    return true;
+}
+
+std::string BodyPoseReport()
+{
+    BodyStats st;
+    {
+        std::lock_guard lock(gBodyStatsMutex);
+        st = gBodyStats;
+    }
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    out << std::fixed;
+    out.precision(1);
+    out << " pose=" << BodyPoseEnabled() << " feet=" << (gFeetOn.load() ? 1 : 0) << " steps=" << st.steps
+        << " planned=" << st.planned << " refused=" << st.refused;
+    out.precision(3);
+    out << " weight=" << st.weight;
+    out.precision(1);
+    out << " yawDeg=" << st.yawDeg << " bendDeg=" << st.bendDeg << " missCm=" << st.missCm
+        << " hipShiftCm=" << st.hipShift.x * 100 << ',' << st.hipShift.y * 100 << ',' << st.hipShift.z * 100;
+    out.precision(3);
+    out << " goal=" << st.goal.x << ',' << st.goal.y << ',' << st.goal.z
+        << " animatedHead=" << st.animated.x << ',' << st.animated.y << ',' << st.animated.z;
+    return out.str();
 }
 
 std::string ArmReport()
@@ -2246,7 +2582,8 @@ std::string ArmReport()
         << " romDeg=" << p.wrist.flexionMaxDeg << ',' << p.wrist.extensionMaxDeg << ','
         << p.wrist.radialMaxDeg << ',' << p.wrist.ulnarMaxDeg
         << " holdDeg=" << p.wrist.holdSigmaDeg << " poleTauMs=" << p.poleTau * 1000
-        << " torsoDeadzoneDeg=" << p.torsoDeadzone * 57.29578f << " torsoRelax=" << p.torsoRelax
+        << " torsoDeadzoneDeg=" << p.torso.deadzone * 57.29578f << " torsoRate=" << p.torso.rate
+        << " torsoMaxDeg=" << p.torso.maxFromHead * 57.29578f
         << " headYawDeg=" << st.headYawDeg << " torsoYawDeg=" << st.torsoYawDeg;
     for (int s = 0; s < 2; ++s) {
         const char* t = s == 0 ? "R" : "L";

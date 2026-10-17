@@ -185,7 +185,7 @@ float GameCameraYaw()
         reinterpret_cast<std::uintptr_t>(systemPtr) + engine::SystemLayout::viewCamera);
     const stereo::Matrix34 matrix =
         stereo::ReadMatrix(std::span<const std::uint8_t>(camera, engine::CameraLayout::size));
-    return stereo::CameraYawOf(matrix);
+    return stereo::CameraYawOf(matrix) - ViewSpectateYaw();   // view.spectate: the player's own view
 }
 
 void __fastcall UpdateCachedRayWithTakeover(void* player)
@@ -227,7 +227,8 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
             const auto* const camera = reinterpret_cast<const float*>(
                 reinterpret_cast<std::uintptr_t>(systemPtr) + engine::SystemLayout::viewCamera +
                 engine::CameraLayout::matrix);
-            const Vec3 centre{camera[3], camera[7], camera[11]};
+            const Vec3 spectate = ViewSpectateOffset();   // view.spectate: the camera stands off the player
+            const Vec3 centre{camera[3] - spectate.x, camera[7] - spectate.y, camera[11] - spectate.z};
             if (std::isfinite(centre.x) && std::isfinite(centre.y) && std::isfinite(centre.z)) {
                 frame.cameraCentre = centre;
                 frame.cameraCentreValid = true;

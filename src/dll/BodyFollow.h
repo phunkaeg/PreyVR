@@ -51,6 +51,15 @@ float BodyFadeAlpha();
 DWORD SetBodyYawFollow(unsigned enabled);
 DWORD SetBodyRoomScale(unsigned enabled);
 unsigned BodyYawFollowEnabled();
+// Crouching for real crouches the game (the crouch button stays usable).
+DWORD SetPhysicalCrouch(unsigned enabled);
+unsigned PhysicalCrouchEnabled();
+// While the physical crouch owns the stance: how far the view's eye stands above
+// the game's (the game crouched, the camera stays at the real head). Metres, up.
+float CrouchEyeLift();
+// The head in a wall darkens the view (off: the wall's inside is seen).
+DWORD SetHeadInWallsFade(unsigned enabled);
+unsigned HeadInWallsFadeEnabled();
 unsigned BodyRoomScaleEnabled();
 
 // The per-frame composed camera since body.tracestart (the mock tests' measurements).

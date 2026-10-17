@@ -95,6 +95,13 @@ unsigned long long ViewHookAppliedCount();
 // that value was measured from the live camera by a different route.
 float ViewHookLastFov();
 float ViewHookLastNearPlane();
+// view.spectate: a camera `distanceMm` out, `azimuthDeg` round from the view's
+// facing (0 = in front, looking back), `upMm` above the eye, looking at `atMm`
+// (below) it; 0 mm = off. Research and the mock's looks only. The offset in
+// use, for the hands' anchor to take back out (zero when off).
+DWORD SetViewSpectate(int distanceMm, int azimuthDeg, int upMm, int atMm);
+Vec3 ViewSpectateOffset();
+float ViewSpectateYaw();
 
 // Installs the hook in observe-only mode. Nothing is written; the counters and
 // the readings above start moving.

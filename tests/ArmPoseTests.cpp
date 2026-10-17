@@ -48,24 +48,99 @@ void TestHeadYaw()
     }
 }
 
-void TestTorsoYaw()
+float WrapDeg(float r)
 {
-    TorsoYaw t;
-    Require(std::fabs(t.Update(0.3f, 0.01f, 0.5f, 1.0f) - 0.3f) < 1e-6f, "the first sample sets the torso");
-    // A quick head turn inside the deadzone barely moves the torso.
-    const float after = t.Update(0.6f, 0.011f, 0.5f, 1.0f);
-    Require(after > 0.3f && after < 0.31f, "inside the deadzone the torso only relaxes");
-    // Past the deadzone it is dragged along, never further than the deadzone.
-    const float dragged = t.Update(1.5f, 0.011f, 0.5f, 1.0f);
-    Require(1.5f - dragged <= 0.5f + 1e-4f && 1.5f - dragged > 0.48f, "past the deadzone the torso follows");
-    // Held still, it relaxes onto the head.
-    for (int i = 0; i < 1000; ++i) { t.Update(1.5f, 0.011f, 0.5f, 1.0f); }
-    Require(std::fabs(t.yaw - 1.5f) < 1e-3f, "the torso relaxes onto a still head");
+    float d = std::remainder(r / kDeg, 360.0f);
+    return d;
+}
+
+// A standing player: eye 1.6 m up, hands where `hands` puts them in the head-yaw frame.
+TorsoInput Player(float headYawDeg, float pitchDeg = 0.0f)
+{
+    TorsoInput in;
+    in.head.orientation = Multiply(AboutY(headYawDeg * kDeg), AboutX(pitchDeg * kDeg));
+    in.head.position = {0, 1.6f, 0};
+    return in;
+}
+// Hands in the frame of a body facing `bodyYawDeg`: x right, y up from the eye, z forward.
+void Hands(TorsoInput& in, float bodyYawDeg, Vec3 right, Vec3 left)
+{
+    const TorsoFrame t = TorsoFromYaw(bodyYawDeg * kDeg);
+    const auto place = [&](Vec3 v) {
+        return Vec3{in.head.position.x + t.right.x * v.x + t.forward.x * v.z, in.head.position.y + v.y,
+                    in.head.position.z + t.right.z * v.x + t.forward.z * v.z};
+    };
+    in.hand[0] = place(right);
+    in.hand[1] = place(left);
+    in.handValid[0] = in.handValid[1] = true;
+}
+float Run(TorsoEstimator& e, const TorsoInput& in, float seconds)
+{
+    const TorsoSettings s;
+    float y = 0.0f;
+    for (float t = 0.0f; t < seconds; t += 1.0f / 72.0f) { y = e.Update(in, 1.0f / 72.0f, s); }
+    return y;
+}
+
+void TestTorsoEstimator()
+{
+    // The first sample sets the torso to the head.
+    TorsoEstimator e;
+    Require(std::fabs(WrapDeg(e.Update(Player(20), 0.01f, TorsoSettings{})) - 20.0f) < 1e-3f,
+            "the first sample sets the torso");
+    // Looking over the shoulder with the hands still forward (a two-handed hold in front): the
+    // torso stays with the hands, well short of the head.
+    TorsoEstimator over;
+    TorsoInput rest = Player(0);
+    Hands(rest, 0, {0.15f, -0.35f, 0.1f}, {-0.1f, -0.33f, 0.1f});
+    Run(over, rest, 1.0f);
+    TorsoInput look = Player(80);
+    Hands(look, 0, {0.15f, -0.35f, 0.1f}, {-0.1f, -0.33f, 0.1f});
+    const float held = WrapDeg(Run(over, look, 2.0f));
+    Require(held > 5.0f && held < 45.0f, "hands held forward keep the torso while the head looks over the shoulder");
+    // Hands down at the sides, head turned: the hanging hands anchor the torso too.
+    TorsoEstimator sides;
+    TorsoInput hang = Player(0);
+    Hands(hang, 0, {0.22f, -0.75f, 0.0f}, {-0.22f, -0.75f, 0.0f});
+    Run(sides, hang, 1.0f);
+    TorsoInput hangLook = Player(60);
+    Hands(hangLook, 0, {0.22f, -0.75f, 0.0f}, {-0.22f, -0.75f, 0.0f});
+    const float anchored = WrapDeg(Run(sides, hangLook, 2.0f));
+    Require(anchored > 5.0f && anchored < 40.0f, "hands hanging at the sides anchor the torso");
+    // Without hands the head and its history win: a held turn is followed all the way.
+    TorsoEstimator bare;
+    Run(bare, Player(0), 0.5f);
+    Require(std::fabs(WrapDeg(Run(bare, Player(50), 3.0f)) - 50.0f) < 1.5f, "a held head turn is followed");
+    // A glance (the head away and back within a quarter second) turns the torso less than half
+    // way, and it comes back.
+    TorsoEstimator glance;
+    Run(glance, Player(0), 0.5f);
+    const float during = WrapDeg(Run(glance, Player(40), 0.12f));
+    Require(during < 20.0f, "a glance turns the body less than half way");
+    Require(std::fabs(WrapDeg(Run(glance, Player(0), 3.0f))) < 1.5f, "and the body comes back with the head");
+    // Never more than 70 degrees from the head, whatever the hands say.
+    TorsoEstimator cap;
+    TorsoInput capRest = Player(0);
+    Hands(capRest, 0, {0.15f, -0.35f, 0.1f}, {-0.1f, -0.33f, 0.1f});
+    Run(cap, capRest, 1.0f);
+    TorsoInput behind = Player(170);
+    Hands(behind, 0, {0.15f, -0.35f, 0.1f}, {-0.1f, -0.33f, 0.1f});
+    const float capped = WrapDeg(cap.Update(behind, 1.0f / 72.0f, TorsoSettings{}));
+    Require(std::fabs(WrapDeg((capped - 170.0f) * kDeg)) <= 70.0f + 1e-2f, "never more than 70 degrees from the head");
+    // Steering with the stick: the body faces the view.
+    TorsoEstimator steer;
+    TorsoInput walk = Player(0);
+    Hands(walk, 0, {0.15f, -0.35f, 0.1f}, {-0.1f, -0.33f, 0.1f});
+    Run(steer, walk, 1.0f);
+    TorsoInput walkLook = Player(45);
+    Hands(walkLook, 0, {0.15f, -0.35f, 0.1f}, {-0.1f, -0.33f, 0.1f});
+    walkLook.steering = true;
+    Require(std::fabs(WrapDeg(Run(steer, walkLook, 1.0f)) - 45.0f) < 1.0f, "steering faces the view");
     // Wrap-around: a head at -179 degrees from a torso at +179 is 2 degrees away.
-    TorsoYaw w;
-    w.Update(179.0f * kDeg, 0.01f, 0.5f, 0.0f);
-    w.Update(-179.0f * kDeg, 0.01f, 0.5f, 0.0f);
-    Require(std::fabs(w.yaw - 179.0f * kDeg) < 1e-4f, "yaw differences wrap");
+    TorsoEstimator w;
+    Run(w, Player(179), 0.5f);
+    const float wrapped = WrapDeg(Run(w, Player(-179), 0.05f));
+    Require(std::fabs(std::fabs(wrapped) - 179.5f) < 1.5f, "yaw differences wrap");
 }
 
 void TestShoulder()
@@ -182,7 +257,7 @@ int main()
 {
     TestTorsoFrame();
     TestHeadYaw();
-    TestTorsoYaw();
+    TestTorsoEstimator();
     TestShoulder();
     TestElbow();
     TestWristAngles();

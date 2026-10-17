@@ -1,5 +1,6 @@
 #include "BodyFollow.h"
 
+#include "AnimIkTakeover.h"
 #include "HeadTrackingHook.h"
 #include "HudBridge.h"
 #include "InputPost.h"
@@ -56,6 +57,9 @@ constexpr std::size_t kCameraRotation = 0x150;
 constexpr std::size_t kPlayerEntity = 0x38;     // IEntity*
 constexpr std::size_t kPlayerFsm = 0x58;        // ArkPlayerMovementFSM; its state id first
 constexpr std::size_t kEntityPos = 0x38;        // CEntity::m_vPos (no parent: world)
+// ArkPlayer::m_stance (EStance; ArkPlayer::GetStance, Steam 0x157CE70, reads it).
+constexpr std::size_t kPlayerStance = 0x1838;
+constexpr int kStanceStand = 0, kStanceSneak = 1;
 
 // EArkPlayerMovementStateId. The body turns in the states where the player
 // turns freely, and walks only standing on the ground.
@@ -80,7 +84,17 @@ std::atomic<int> gRateDeg{0};             // degrees per second while catching u
 std::atomic<int> gNeckUpMm{75}, gNeckForwardMm{80};
 std::atomic<int> gRadiusMm{250};
 std::atomic<int> gStepMm{220};            // highest step up or down the body takes (a stair)
-std::atomic<int> gRoomStartMm{15}, gRoomStopMm{3};
+std::atomic<int> gRoomStartMm{10}, gRoomStopMm{3};
+// The lean radius: the head may leave the body's neck by this much before the
+// body walks after it (Quake VR's vr_lean_radius; the visible body bends to
+// reach it). Inside it the body comes back under the head at the head's own
+// speed (at least 0.5 m/s) unless the player is leaning.
+std::atomic<int> gLeanRadiusMm{250}, gRecentreMmps{500};
+// The physical crouch: the head this far below standing crouches the game,
+// back above the second stands it (Meta's 0.30 m; hysteresis).
+std::atomic<bool> gCrouchOn{true};
+std::atomic<int> gCrouchDownMm{300}, gCrouchUpMm{200};
+std::atomic<bool> gFadeOn{true};
 std::atomic<int> gFadeMarginMm{100}, gFadeDepthMm{100};  // the head-in-a-wall fade: from 10 cm off the surface, black at it
 std::atomic<float> gFadeTarget{0.0f};
 std::atomic<std::uint64_t> gFadeNs{0};    // when the target was last computed: a stale one fades out
@@ -103,12 +117,28 @@ float gPlayYaw = 0; bool gHavePlayYaw = false;   // the view's play yaw, last up
 Vec3 gEye{};                                     // the game's eye relative to the pivot, last update
 bool gHaveEye = false;
 bool gFollowing = false;                         // this frame's PrePhysicsUpdate had the body following
+Vec3 gNeckBefore{}; bool gHaveNeckBefore = false;  // the player's neck last frame (tracking), for its speed
+float gNeckSpeed = 0;                            // m/s, smoothed
+Vec2 gNeckVelocity{};                            // m/s (tracking x, z), smoothed
+// The physical crouch. Owned: the game is crouched (or standing back up)
+// because of it, so the game's eye height change is ours to take out of the
+// view -- the camera stays at the player's real head.
+bool gCrouchOwned = false, gCrouchSeen = false;
+std::uint64_t gCrouchAskedNs = 0;
+// The view's eye height while the crouch is ours: the game's eye stands in for
+// the head, so a crouch the player made for real must not lower it a second
+// time. Learned standing (the game's eye above the pivot), applied as the
+// difference (CrouchEyeLift).
+float gStandingEye = 0; bool gHaveStandingEye = false;
+std::atomic<float> gEyeLift{0.0f};
+int gEyeStill = 0;                               // frames the game's eye height has held still
 
 // --- report -----------------------------------------------------------------
 std::atomic<unsigned long long> gCalls{0}, gYawWrites{0}, gYawAbsorbed{0}, gYawRejected{0}, gYawTakeover{0};
 std::atomic<unsigned long long> gYawLimited{0}, gMoves{0}, gWalks{0}, gBlocked{0}, gSlid{0}, gNoGround{0}, gAbsorbFailed{0};
-std::atomic<unsigned long long> gPushedBack{0}, gSettled{0};
+std::atomic<unsigned long long> gPushedBack{0}, gSettled{0}, gCrouchTaps{0}, gLeanHolds{0};
 std::atomic<int> gYawErrorMilli{0}, gNeckOffsetMm{0}, gGroundMm{0}, gGates{0}, gState{0};
+std::atomic<int> gStance{0}, gDropMm{0}, gCrouchOwnedFlag{0};
 
 // --- trace (research and the mock tests) --------------------------------------
 std::atomic<std::uint64_t> gFrame{0};
@@ -132,7 +162,11 @@ struct TraceEvent {
     long long armTime = 0;
     Quaternion headRotation{};
     float headYaw = 0;
+    Vec2 offset{}, walk{};             // the neck's offset from the body and the walk asked this frame (tracking)
+    int lean = 0;
 };
+Vec2 gLastOffset{}, gLastWalk{};
+int gLastLean = 0;
 std::mutex gTraceMutex;
 std::array<TraceEvent, 1500> gTrace{};
 unsigned gTraceCount = 0;
@@ -277,6 +311,55 @@ bool KeptWrite(float current, const Written& w)
     return true;
 }
 
+// The physical crouch: crouching for real crouches the game, standing up
+// stands it, through the crouch button (the path the old Chairloader mod
+// verified; ArkPlayerMovementFSM::TrySetStance does nothing), guarded by the
+// stance so the button stays the player's too. While it owns the stance the
+// view keeps the camera at the real head (NoteGameView).
+void UpdateCrouch(const std::uint8_t* player, const Vec3& neck, const Vec3& origin, int state)
+{
+    const int stance = *reinterpret_cast<const int*>(player + kPlayerStance);
+    gStance.store(stance, std::memory_order_relaxed);
+    // How far the neck is below where it stands (the calibrated eye, level):
+    // the neck, so looking down does not count as crouching.
+    const float drop = origin.y - gNeckUpMm.load() / 1000.0f - neck.y;
+    gDropMm.store(static_cast<int>(drop * 1000.0f), std::memory_order_relaxed);
+    const std::uint64_t now = MonotonicNanoseconds();
+    const bool on = gCrouchOn.load(std::memory_order_relaxed);
+    const float down = gCrouchDownMm.load() / 1000.0f, up = gCrouchUpMm.load() / 1000.0f;
+    if (stance == kStanceSneak) { gCrouchSeen = true; }
+    if (!gCrouchOwned) {
+        if (on && stance == kStanceStand && drop > down && state == kStateGround) {
+            RequestCrouchTap();
+            gCrouchTaps.fetch_add(1, std::memory_order_relaxed);
+            gCrouchOwned = true;
+            gCrouchSeen = false;
+            gCrouchAskedNs = now;
+        }
+    } else if (drop < up || !on) {
+        if (stance == kStanceSneak) {
+            // Stand back up -- again every half second while something overhead stops it.
+            if (now - gCrouchAskedNs > 500000000ull && state == kStateGround) {
+                RequestCrouchTap();
+                gCrouchTaps.fetch_add(1, std::memory_order_relaxed);
+                gCrouchAskedNs = now;
+            }
+        } else if (stance == kStanceStand && gHaveEye && gEye.z > gStandingEye - 0.01f && gEyeStill > 10) {
+            // Stood up, and the game's eye is back at standing height: the stance
+            // flips a frame before the eye starts rising, so not before.
+            gCrouchOwned = false;
+        }
+    } else if (stance == kStanceStand && !gCrouchSeen && now - gCrouchAskedNs > 700000000ull &&
+               state == kStateGround) {
+        // Still low and the tap was not taken (input blocked that frame): once more.
+        RequestCrouchTap();
+        gCrouchTaps.fetch_add(1, std::memory_order_relaxed);
+        gCrouchAskedNs = now;
+        gCrouchSeen = true;   // no third try; the player can press the button
+    }
+    gCrouchOwnedFlag.store(gCrouchOwned ? 1 : 0, std::memory_order_relaxed);
+}
+
 void FollowAfterGame(std::uint8_t* camera, std::uint8_t* player, float frameTime)
 {
     auto* const entity = *reinterpret_cast<std::uint8_t**>(player + kPlayerEntity);
@@ -298,6 +381,8 @@ void FollowAfterGame(std::uint8_t* camera, std::uint8_t* player, float frameTime
     gFollowing = gameplay && head && room && turning && gYawOn.load(std::memory_order_acquire);
     if (!gameplay || !head || !room) { gCatching = false; gRoomMoving = false; return; }
     if (gAwaitingGeneration != generation) { gAwaitingYaw = 0; }
+    UpdateCrouch(player, body::NeckPoint(tracking.head, gNeckUpMm.load() / 1000.0f, gNeckForwardMm.load() / 1000.0f),
+                 origin, state);
 
     // Yaw: turn the body to the head, through the game's own rotation limits.
     const float bodyYawBefore = roomYaw + gAwaitingYaw;   // the body's heading in tracking space
@@ -346,9 +431,31 @@ void FollowAfterGame(std::uint8_t* camera, std::uint8_t* player, float frameTime
         return;
     }
     Vec2 step = swing;
+    if (gHaveNeckBefore && frameTime > 0.0f) {
+        const float moved = std::sqrt((neck.x - gNeckBefore.x) * (neck.x - gNeckBefore.x) +
+                                      (neck.z - gNeckBefore.z) * (neck.z - gNeckBefore.z));
+        const float k = 1.0f - std::exp(-frameTime / 0.15f);
+        gNeckSpeed += (std::min(moved / frameTime, 3.0f) - gNeckSpeed) * k;
+        gNeckVelocity.x += ((neck.x - gNeckBefore.x) / frameTime - gNeckVelocity.x) * k;
+        gNeckVelocity.y += ((neck.z - gNeckBefore.z) / frameTime - gNeckVelocity.y) * k;
+    }
+    gNeckBefore = neck;
+    gHaveNeckBefore = true;
     if (gRoomOn.load(std::memory_order_acquire)) {
-        body::RoomPolicy policy{gRoomStartMm.load() / 1000.0f, gRoomStopMm.load() / 1000.0f, 0.05f};
-        Vec2 walk = body::RoomStep(offset, policy, gRoomMoving);
+        body::LeanPolicy policy{};
+        policy.radius = gLeanRadiusMm.load() / 1000.0f;
+        policy.recentre = gRecentreMmps.load() / 1000.0f;
+        policy.start = gRoomStartMm.load() / 1000.0f;
+        policy.stop = gRoomStopMm.load() / 1000.0f;
+        // The neck stands `up` below the calibrated eye (origin, less what a crouch took out).
+        const float neckDrop = origin.y - up - neck.y;
+        const bool leaning = body::Leaning(tracking.head.orientation,
+            Vec2{offset.x + gNeckVelocity.x * 0.1f, offset.y + gNeckVelocity.y * 0.1f}, neckDrop);
+        if (leaning) { gLeanHolds.fetch_add(1, std::memory_order_relaxed); }
+        Vec2 walk = body::LeanStep(offset, gNeckSpeed, frameTime, leaning, policy, gRoomMoving);
+        gLastOffset = offset;
+        gLastWalk = walk;
+        gLastLean = (leaning ? 1 : 0) | (gRoomMoving ? 2 : 0);
         if (gPushBackFrames > 0) {
             // The physics just refused a move this way: do not keep pushing into
             // it (the body would shiver against the obstacle), but a step away
@@ -481,6 +588,18 @@ void NoteGameView(const Vec3& eye, const Quaternion& rotation)
     // are taken out of the reference like the body's own turn and move.
     Vec3 eyeShift{};
     if (gFollowing && gHaveEye) { eyeShift = {eye.x - gEye.x, eye.y - gEye.y, 0.0f}; }
+    // While the physical crouch owns the stance, the view stands on the standing
+    // eye height instead of the game's (crouching, standing back up, its bob):
+    // the camera stays at the player's real head and only the body crouches.
+    const float rise = gHaveEye ? eye.z - gEye.z : 0.0f;
+    gEyeStill = std::fabs(rise) < 0.0005f ? std::min(gEyeStill + 1, 1000) : 0;
+    if (!gCrouchOwned && gStance.load(std::memory_order_relaxed) == kStanceStand && gEyeStill > 10 &&
+        eye.z > 1.0f && eye.z < 2.5f) {
+        gStandingEye = eye.z;
+        gHaveStandingEye = true;
+    }
+    gEyeLift.store(gCrouchOwned && gHaveStandingEye ? std::clamp(gStandingEye - eye.z, 0.0f, 1.5f) : 0.0f,
+                   std::memory_order_relaxed);
     gEye = eye;
     gHaveEye = true;
     std::uint8_t* const player = gInstalled ? CurrentPlayer() : nullptr;
@@ -564,7 +683,8 @@ void NoteGameView(const Vec3& eye, const Quaternion& rotation)
 void UpdateFade(std::uint8_t* player, const Vec3& position, const Vec3& gameEye)
 {
     float target = 0.0f;
-    const bool on = gYawOn.load(std::memory_order_relaxed) || gRoomOn.load(std::memory_order_relaxed);
+    const bool on = gFadeOn.load(std::memory_order_relaxed) &&
+                    (gYawOn.load(std::memory_order_relaxed) || gRoomOn.load(std::memory_order_relaxed));
     auto* const entity = *reinterpret_cast<std::uint8_t* const*>(player + kPlayerEntity);
     Vec3 pivot{};
     if (on && gFollowing && entity != nullptr && ReadVec3(entity + kEntityPos, pivot)) {
@@ -629,6 +749,9 @@ void NoteComposedView(const Vec3& position, const Quaternion& rotation, float pl
     }
     const auto heading = body::HeadHeading(head.orientation);
     e.headYaw = heading ? *heading : 0.0f;
+    e.offset = gLastOffset;
+    e.walk = gLastWalk;
+    e.lean = gLastLean;
     if (gTraceCount < gTrace.size()) { gTrace[gTraceCount++] = e; } else { gTracing.store(false); }
 }
 
@@ -657,6 +780,23 @@ float BodyFadeAlpha()
 }
 
 unsigned BodyYawFollowEnabled() { return gYawOn.load() ? 1u : 0u; }
+DWORD SetPhysicalCrouch(unsigned enabled)
+{
+    if (enabled > 1) { return 1; }
+    gCrouchOn.store(enabled != 0, std::memory_order_release);
+    Log(std::string("result=0 detail=crouch value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+unsigned PhysicalCrouchEnabled() { return gCrouchOn.load() ? 1u : 0u; }
+float CrouchEyeLift() { return gEyeLift.load(std::memory_order_relaxed); }
+DWORD SetHeadInWallsFade(unsigned enabled)
+{
+    if (enabled > 1) { return 1; }
+    gFadeOn.store(enabled != 0, std::memory_order_release);
+    Log(std::string("result=0 detail=fade value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+unsigned HeadInWallsFadeEnabled() { return gFadeOn.load() ? 1u : 0u; }
 unsigned BodyRoomScaleEnabled() { return gRoomOn.load() ? 1u : 0u; }
 
 std::string BodyTrace()
@@ -682,7 +822,9 @@ std::string BodyTrace()
                 << " gripR=" << e.gripR.x << ',' << e.gripR.y << ',' << e.gripR.z
                 << " gripL=" << e.gripL.x << ',' << e.gripL.y << ',' << e.gripL.z
                 << " gripRQ=" << e.gripRQ.x << ',' << e.gripRQ.y << ',' << e.gripRQ.z << ',' << e.gripRQ.w
-                << " gripLQ=" << e.gripLQ.x << ',' << e.gripLQ.y << ',' << e.gripLQ.z << ',' << e.gripLQ.w;
+                << " gripLQ=" << e.gripLQ.x << ',' << e.gripLQ.y << ',' << e.gripLQ.z << ',' << e.gripLQ.w
+                << " off=" << e.offset.x << ',' << e.offset.y << " walk=" << e.walk.x << ',' << e.walk.y
+                << " lean=" << e.lean;
         }
     }
     return out.str();
@@ -704,7 +846,12 @@ std::string BodyFollowReport()
         << " blocked=" << gBlocked.load() << " slid=" << gSlid.load() << " noGround=" << gNoGround.load()
         << " groundMm=" << gGroundMm.load() << " absorbFailed=" << gAbsorbFailed.load()
         << " pushedBack=" << gPushedBack.load() << " settled=" << gSettled.load()
-        << " fadeMilli=" << static_cast<int>(gFadeTarget.load() * 1000.0f)
+        << " fadeMilli=" << static_cast<int>(gFadeTarget.load() * 1000.0f) << " fade=" << (gFadeOn.load() ? 1 : 0)
+        << " leanMm=" << gLeanRadiusMm.load() << " leanHolds=" << gLeanHolds.load()
+        << " crouch=" << (gCrouchOn.load() ? 1 : 0) << " stance=" << gStance.load() << " dropMm=" << gDropMm.load()
+        << " crouchOwned=" << gCrouchOwnedFlag.load() << " crouchTaps=" << gCrouchTaps.load()
+        << " eyeLiftMm=" << static_cast<int>(gEyeLift.load() * 1000.0f)
+        << " standingEyeMm=" << static_cast<int>(gStandingEye * 1000.0f)
         << " nearMm=" << static_cast<int>(ViewHookLastNearPlane() * 1000.0f);
     return out.str();
 }
@@ -743,6 +890,17 @@ bool ExecuteBodyCommand(const std::vector<std::string>& args, std::ostringstream
     } else if (verb == "body.roomband") {
         out << "body.roomband result=" << (set(gRoomStartMm, 1, 1, 200) | set(gRoomStopMm, 2, 0, 200))
             << " startMm=" << gRoomStartMm.load() << " stopMm=" << gRoomStopMm.load();
+    } else if (verb == "body.lean") {
+        out << "body.lean result=" << (set(gLeanRadiusMm, 1, 0, 600) | set(gRecentreMmps, 2, 0, 3000))
+            << " radiusMm=" << gLeanRadiusMm.load() << " recentreMmps=" << gRecentreMmps.load();
+    } else if (verb == "body.crouch") {
+        if (args.size() > 1) { SetPhysicalCrouch(static_cast<unsigned>(arg(1, 1)) != 0 ? 1u : 0u); }
+        out << "body.crouch result=" << (set(gCrouchDownMm, 2, 50, 800) | set(gCrouchUpMm, 3, 0, 800))
+            << " enabled=" << PhysicalCrouchEnabled() << " downMm=" << gCrouchDownMm.load()
+            << " upMm=" << gCrouchUpMm.load();
+    } else if (verb == "body.fadeon") {
+        if (args.size() > 1) { SetHeadInWallsFade(static_cast<unsigned>(arg(1, 1)) != 0 ? 1u : 0u); }
+        out << "body.fadeon result=0 enabled=" << HeadInWallsFadeEnabled();
     } else if (verb == "body.fade") {
         out << "body.fade result=" << (set(gFadeMarginMm, 1, 0, 300) | set(gFadeDepthMm, 2, 10, 500))
             << " marginMm=" << gFadeMarginMm.load() << " depthMm=" << gFadeDepthMm.load()
@@ -765,6 +923,12 @@ bool ExecuteBodyCommand(const std::vector<std::string>& args, std::ostringstream
         out << "body.tracestart result=0";
     } else if (verb == "body.trace") {
         out << "body.trace" << BodyTrace();
+    } else if (verb == "body.pose") {
+        out << "body.pose result=" << (args.size() > 1 ? SetBodyPose(static_cast<unsigned>(arg(1, 1))) : 0)
+            << BodyPoseReport();
+    } else if (verb == "body.feet") {
+        out << "body.feet result=" << (args.size() > 1 ? SetBodyFeet(static_cast<unsigned>(arg(1, 1))) : 0)
+            << BodyPoseReport();
     } else if (verb == "body.report") {
         out << "body.report " << BodyFollowReport();
     } else {

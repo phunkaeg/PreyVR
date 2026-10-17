@@ -734,6 +734,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << "view.recenter result=" << RecenterHeadTracking();
     } else if (verb == "view.apply") {
         out << "view.apply result=" << SetViewHookApplying(arg(1, 1));
+    } else if (verb == "view.spectate") {
+        out << "view.spectate result=" << SetViewSpectate(arg(1, 0), arg(2, 0), arg(3, 300), arg(4, -600));
     } else if (verb == "view.position") {
         out << "view.position result=" << SetViewPositionApplying(arg(1, 1));
     } else if (verb == "near.fov") {

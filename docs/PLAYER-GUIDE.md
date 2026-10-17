@@ -71,17 +71,26 @@ tabs, and **B** returns to the native menu. Releasing the controls is required
 before they can operate the screen behind it. F10 is a desktop shortcut while a
 native menu is already open; `vr.options 1` is the diagnostic equivalent.
 
-- **Comfort:** snap angle / smooth turning, head-relative movement, smooth-turn
+- **Comfort:** snap angle / smooth turning, movement direction, smooth-turn
   speed, and **body follows you**: TURN AND WALK (default) turns your character with
   your head and walks it with you around the room; TURN ONLY keeps it in place; OFF
   leaves it to the sticks. A wall stops the body, and the view dims if your head goes
-  into it. Reset VR view is on the Setup tab.
+  into it. Movement direction BODY RELATIVE walks the way your torso faces, so you
+  can look around while you walk. Reset VR view is on the Setup tab.
+- **Your body** (always on): the body you see stands under your head. Its torso
+  faces where your body does (your head and how you hold your hands), not only
+  where you look; leaning bends it at the waist, squatting bends its knees, and its
+  feet stay planted until you step.
 - **View:** **3D view**. FULL STEREO (default) draws both eyes from every frame:
   true depth with no doubling when you move, at the highest GPU cost. ALTERNATE EYES
   draws one eye per frame: cheaper, but moving things can shimmer or double. MONO
   shows one picture, taken from the centre of your head, to both eyes: no depth
   (everything reads as far away, your hands included), but it fuses at any frame
   rate and every frame updates both eyes. Changes apply at once.
+  **Physical crouch** (on): crouch for real (about 30 cm) and the character
+  crouches; stand up and it stands, when there is room. The crouch button still
+  works. **Head in walls**: DARKEN (default) dims the view when your head goes into
+  a wall or an object; SEE THROUGH leaves it.
 - **Hands:** two-hand aim on/off, hold/toggle foregrip, snapped/free support hand,
   and the optional psychoscope gesture.
 - **Interface:** size, visible-area limit, panel curvature and controls guide.
@@ -184,8 +193,9 @@ commands do not update the JSON. Return the stick to neutral after changing mode
 
 `view.height` reports the chosen reference space and calibrated height.
 `view.calibrate` sets a new standing/seated baseline from the current tracked
-head position. Ordinary recenter preserves that height baseline. Floor tracking
-does not yet implement physical crouch, avatar-height matching or a vignette.
+head position. Ordinary recenter preserves that height baseline: calibrate or
+recenter standing, because the physical crouch measures from it. Floor tracking
+does not implement avatar-height matching or a vignette.
 
 ## Display
 
