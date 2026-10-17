@@ -1522,6 +1522,7 @@ bool XrSessionLossPending() {
 bool XrSessionBegun() { return gStatus.load() == static_cast<DWORD>(XrSessionStatus::running) && gIdleSinceMs.load() == 0 && gSessionState.load() >= XR_SESSION_STATE_SYNCHRONIZED && gSessionState.load() <= XR_SESSION_STATE_FOCUSED; }
 bool XrSessionKickDue() { return gKickDue.exchange(false); }
 bool XrSessionExiting() { return gSessionState.load() == XR_SESSION_STATE_EXITING; }
+unsigned XrRuntimePeriodUs() { return gRuntimePeriodUs.load(std::memory_order_relaxed); }
 
 DWORD XrSessionStatusValue()
 {

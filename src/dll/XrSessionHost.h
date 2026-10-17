@@ -88,6 +88,8 @@ bool XrSessionBegun();
 bool XrSessionKickDue();
 // The runtime asked the app to leave VR (EXITING): the user's choice, not retried.
 bool XrSessionExiting();
+// The runtime's display period from xrWaitFrame (13888 at 72 Hz); 0 before the first frame.
+unsigned XrRuntimePeriodUs();
 
 DWORD XrSessionStatusValue();
 // 0=scene only, 1=automatic modal screen, 2=force screen (diagnostic).

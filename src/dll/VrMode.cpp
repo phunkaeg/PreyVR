@@ -59,6 +59,11 @@ void Log(const std::string& s) { lifecycle::Log("preyvr_vr " + s); }
 // on the RTX 3060 laptop (headset, 2026-10-17); at the headset's rate one eye per
 // frame is the precedent that plays (Luke Ross R.E.A.L., UEVR's AFR).
 unsigned stereoChosen=1, stereoActive=1;
+// Until the player picks a 3D VIEW while playing, alternate eyes may fall back to
+// mono when they cannot hold the headset's rate (see TickVrMode).
+bool stereoAuto=true;
+unsigned long long rateWindowStart=0, rateWindowFrames=0;
+unsigned slowRateWindows=0;
 bool stereoApplied=false;
 // Switches the three paths in the order that never publishes a both-eyes contract without its second submission:
 // the render-thread mode is armed before the game thread's contract, and the contract is dropped before the mode.
@@ -311,6 +316,30 @@ void TickVrMode() {
                 " menuSamples="+std::to_string(HudMenuStateSampleCount())+"} dual={"+DualSceneReport()+
                 DualOverlayReport()+" } hud={"+HudLayerReport()+" }");
         }
+        // **Alternate eyes only work at the headset's rate.** Below it each eye
+        // updates at half of a low rate and Meta's spacewarp mixes the two: the
+        // sister mod measured it much worse than mono at 40 fps. So when they hold
+        // under 85% of the rate through three 5 s windows of play, this launch
+        // falls back to mono, which is comfortable at any rate. Menus and loads
+        // (slow by nature) and a paused session do not count.
+        {
+            const auto now=GetTickCount64();
+            const auto period=XrRuntimePeriodUs();
+            const bool measuring=stereoAuto && stereoActive==1 && !paused && period && HudGameplayInputAllowed();
+            if(!measuring) { rateWindowStart=0; slowRateWindows=0; }
+            else if(!rateWindowStart) { rateWindowStart=now; rateWindowFrames=XrSubmittedFrameCount(); }
+            else if(now-rateWindowStart>=5000) {
+                const double fps=(XrSubmittedFrameCount()-rateWindowFrames)*1000.0/(now-rateWindowStart);
+                const double rate=1e6/period;
+                slowRateWindows=fps<rate*.85?slowRateWindows+1:0;
+                rateWindowStart=now; rateWindowFrames=XrSubmittedFrameCount();
+                if(slowRateWindows>=3) {
+                    Log("stereo_auto=mono reason=alternate_below_rate fps="+std::to_string(static_cast<int>(fps))+
+                        " rate="+std::to_string(static_cast<int>(rate+.5)));
+                    stereoChosen=0; stereoAuto=false; ApplyStereoMode();
+                }
+            }
+        }
         const auto owner=AnimIkOwnerGeneration();
         const auto reference=HeadTrackingReferenceGeneration();
         if(AnimIkOwnerCharacter()!=0 && reference%2==0 &&
@@ -353,8 +382,9 @@ DWORD SetNearFovFollow(unsigned enabled) {
 DWORD SetVrStereoMode(unsigned mode) {
     if(mode>2)return 1;
     stereoChosen=mode;
-    // Before activation the choice waits for it; while VR runs it applies now.
-    if(phase==Phase::active)ApplyStereoMode();
+    // Before activation the choice waits for it; while VR runs it applies now,
+    // and from then on it is the player's: no automatic fallback overrides it.
+    if(phase==Phase::active){stereoAuto=false;ApplyStereoMode();}
     return 0;
 }
 unsigned VrStereoModeChosen() { return stereoChosen; }
