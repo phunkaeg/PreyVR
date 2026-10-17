@@ -33,6 +33,7 @@
 #include "preyvr/XrSwapchainFormat.h"
 
 #include <d3d11.h>
+#include <d3d11_4.h>
 #include <dxgi1_2.h>
 
 #ifndef XR_USE_PLATFORM_WIN32
@@ -589,6 +590,22 @@ bool CreateSessionAndSwapchain()
 {
     XrGraphicsBindingD3D11KHR binding{XR_TYPE_GRAPHICS_BINDING_D3D11_KHR};
     binding.device = gHost.device;
+
+    // **The runtime uses Prey's immediate context from THIS thread** -- inside
+    // xrCreateSession on Meta's (and in xrEndFrame on SteamVR's) -- while Prey's
+    // render thread draws with it, and Prey leaves the device's multithread
+    // protection off. That race hung Meta's xrCreateSession, and once overflowed
+    // the stack, on the headset (2026-10-17) while the mock, which never touches
+    // the context, passed. Protection on, as the sister mod does (measured no
+    // slower there); never switched back off while threads may hold the context.
+    if (ID3D11Multithread* multithread = nullptr;
+        SUCCEEDED(gHost.device->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&multithread)))) {
+        const BOOL was = multithread->SetMultithreadProtected(TRUE);
+        multithread->Release();
+        Log(std::string("d3d11_multithread protected=1 was=") + (was ? "1" : "0"));
+    } else {
+        Log("d3d11_multithread protected=unavailable");
+    }
 
     XrSessionCreateInfo info{XR_TYPE_SESSION_CREATE_INFO};
     info.next = &binding;
