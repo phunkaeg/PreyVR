@@ -1,5 +1,6 @@
 #include "VrOptionsRuntime.h"
 #include "BodyFollow.h"
+#include "VrMode.h"
 #include "SceneQuery.h"
 #include "PhysicalInteractions.h"
 #include "PsiMedkit.h"
@@ -85,6 +86,7 @@ void Apply(unsigned id,int v){
  case options::DebugOverlay:SetDebugOverlay(v?debugdraw::kAllLayers:0u);break;
  case options::MuzzleAim:SetShotRay(v);break;
  case options::BodyFollow:SetBodyYawFollow(v>=1);SetBodyRoomScale(v>=2);break;
+ case options::Stereo:SetVrStereoMode(static_cast<unsigned>(v));break;
  }
 }
 void Save(){
@@ -117,6 +119,7 @@ options::Values VrOptionsValues(){
  v[options::DebugOverlay]=DebugOverlayMask()!=0;
  v[options::MuzzleAim]=ShotRayEnabled();
  v[options::BodyFollow]=BodyYawFollowEnabled()?(BodyRoomScaleEnabled()?2:1):0;
+ v[options::Stereo]=static_cast<int>(VrStereoModeChosen());
  // Read the actual lane settings, including changes made through the command
  // channel. Pending menu edits override only their own row until applied.
  const auto pending=dirty.load();

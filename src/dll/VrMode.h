@@ -10,5 +10,10 @@ std::string VrModeReport();
 // (default on). 0 keeps the value set at activation (120-degree assumption).
 void FollowNearFov();
 unsigned long SetNearFovFollow(unsigned enabled);
+// The 3D VIEW option: 2 both eyes every frame (DualSceneStereo), 1 alternate eyes, 0 mono (one picture from the
+// centre of the head in both eyes). Chosen before VR starts, it is applied at activation; while VR is active, at once.
+unsigned long SetVrStereoMode(unsigned mode);
+unsigned VrStereoModeChosen();   // what was asked for
+unsigned VrStereoModeActive();   // what is running (full stereo falls back to alternate eyes if its hooks fail)
 unsigned NearFovFollowed();
 }

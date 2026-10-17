@@ -30,6 +30,36 @@ void Log(const std::string& line)
     lifecycle::Log("preyvr_head_tracking " + line);
 }
 
+// **Recenter refusals, at most one line per reason per five seconds.** After a
+// tracking-space change the session host retries every frame until the head is
+// tracked (XrSessionHost recalibrateSpace), and with the headset off -- asleep,
+// charging -- that was one line per frame: 998 in 86 s on 2026-10-11. A manual
+// recenter after a quiet spell still logs at once. The number held back is
+// reported on the next line written, refused or recentered.
+std::atomic<const char*> gRecenterRefusal{nullptr};
+std::atomic<std::uint64_t> gRecenterRefusalNs{0};
+std::atomic<unsigned int> gRecenterRefusalsHeld{0};
+constexpr std::uint64_t kRecenterRefusalQuietNs = 5000000000ull;
+
+std::string HeldRecenterRefusals()
+{
+    const unsigned int held = gRecenterRefusalsHeld.exchange(0, std::memory_order_relaxed);
+    return held != 0 ? " heldBack=" + std::to_string(held) : std::string();
+}
+
+void LogRecenterRefusal(const char* detail)
+{
+    const auto now = MonotonicNanoseconds();
+    if (gRecenterRefusal.load(std::memory_order_relaxed) == detail &&
+        now - gRecenterRefusalNs.load(std::memory_order_relaxed) < kRecenterRefusalQuietNs) {
+        gRecenterRefusalsHeld.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+    gRecenterRefusal.store(detail, std::memory_order_relaxed);
+    gRecenterRefusalNs.store(now, std::memory_order_relaxed);
+    Log(std::string("result=refused detail=") + detail + HeldRecenterRefusals());
+}
+
 // R-030 CRenderView::SetCamera(const CCamera&). RCX is the render view, RDX the
 // camera. It copies by value into m_camera at +0x11A0, which is exactly why this
 // seam is safe: what we pass cannot alias the global view camera.
@@ -619,7 +649,7 @@ DWORD RecenterHeadTracking(bool recalibrateHeight)
     if (!TryGetTrackingFrame(frame) ||
         !FreshSample(MonotonicNanoseconds(), frame.publishedNs) ||
         !IsPoseUsable(frame.head, frame.headValidity, 200000000ull)) {
-        Log("result=refused detail=no_fresh_tracked_head");
+        LogRecenterRefusal("no_fresh_tracked_head");
         return 1;
     }
     const Pose headPose = frame.head;
@@ -628,7 +658,7 @@ DWORD RecenterHeadTracking(bool recalibrateHeight)
         // Near-vertical. Rejecting leaves the previous reference in place, which
         // is what a player looking at the ceiling expects; inventing a yaw would
         // face them somewhere arbitrary.
-        Log("result=refused detail=near_vertical_no_usable_yaw");
+        LogRecenterRefusal("near_vertical_no_usable_yaw");
         return 2;
     }
     std::unique_lock referenceLock(gRecenterMutex, std::try_to_lock);
@@ -648,7 +678,8 @@ DWORD RecenterHeadTracking(bool recalibrateHeight)
     std::ostringstream line;
     line << "result=0 detail=recentered yawRadians=" << *yaw
          << " origin=" << origin.x << ',' << origin.y << ',' << origin.z
-         << " heightCalibrated=" << recalibrateHeight;
+         << " heightCalibrated=" << recalibrateHeight << HeldRecenterRefusals();
+    gRecenterRefusal.store(nullptr, std::memory_order_relaxed);
     Log(line.str());
     return 0;
 }

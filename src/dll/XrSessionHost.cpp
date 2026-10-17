@@ -102,7 +102,18 @@ struct Host {
     XrSwapchain guideSwapchain = XR_NULL_HANDLE;
     XrSwapchain pointerSwapchain = XR_NULL_HANDLE;
     bool pointerReady=false,pointerAttempted=false,cylinderSupported=false;
-    XrSwapchain hudSwapchain = XR_NULL_HANDLE;
+    std::unique_ptr<InventorySwapchain> hudSwapchain;
+    bool hudSwapchainLogged=false;
+    // The text panel: note, subtitle and tutorial movies, lifted out of the
+    // scene like the HUD and shown on the same panel above it.
+    std::unique_ptr<InventorySwapchain> textSwapchain;
+    bool textSwapchainLogged=false;
+    // A render target view on the held first eye, matching the view format
+    // the game draws its overlays with, and the backbuffer it held from.
+    ID3D11RenderTargetView* heldTargetView=nullptr;
+    ID3D11Texture2D* heldTargetImage=nullptr;
+    DXGI_FORMAT heldTargetFormat=DXGI_FORMAT_UNKNOWN;
+    std::uintptr_t heldBackBuffer=0;
     std::unique_ptr<InventorySwapchain> inventorySwapchain;
     std::unique_ptr<InventorySwapchain> inventoryRightSwapchain;
     std::unique_ptr<InventorySwapchain> optionsSwapchain;
@@ -129,8 +140,6 @@ struct Host {
     bool fadeAttempted=false;
     float fadeAlpha=0,fadePainted=-1;
     std::uint64_t fadeNs=0;
-    std::vector<XrSwapchainImageD3D11KHR> hudImages;
-    D3D11_TEXTURE2D_DESC hudDesc{};
     bool guideReady = false, guideAttempted = false;
     std::vector<ID3D11Texture2D*> images;
 
@@ -253,6 +262,17 @@ std::atomic<bool> gNativeFovPlacement{true};
 // If that is what a session reports, this settles it in one call instead of
 // costing a rebuild -- and a rebuild is not always available.
 std::atomic<bool> gSwapEyes{false};
+// Rung 1b. Set by HoldDualFirstEye when the first of this frame's two scene
+// submissions has been copied into its held eye image; taken and cleared at the
+// top of the next ServiceXrFrame, so a hold can only ever pair with the frame it
+// was made in. Written and taken on the render thread; atomic so reports can
+// read it from the command thread.
+std::atomic<bool> gDualFirstHeld{false};
+// Open from the end of the second submission of a held frame to the top
+// of the next ServiceXrFrame: the stretch in which the game draws its overlays.
+std::atomic<bool> gDualOverlayOpen{false};
+std::atomic<unsigned long long> gDualHolds{0}, gDualHoldRefused{0};
+std::atomic<unsigned long long> gDualPairsSubmitted{0}, gDualPairsRefused{0};
 
 // Ask for the sRGB swapchain format instead of the exact match -- FAIL-STR-033.
 // Read once when the swapchain is created, so it must be set before StartXrSession.
@@ -705,6 +725,8 @@ void Teardown()
     SetInventoryConsumerReady(nullptr);
     gHost.inventorySwapchain.reset(); // XR images die before their session.
     gHost.inventoryRightSwapchain.reset();
+    gHost.hudSwapchain.reset();
+    gHost.textSwapchain.reset();
     gHost.optionsSwapchain.reset();
     if(gHost.optionsTexture)gHost.optionsTexture->Release();
     gHost.slotSwapchain.reset();
@@ -725,6 +747,8 @@ void Teardown()
     ReleaseDebugOverlay();   // its render target views hold the eye images
     for (auto*& view : gHost.sliceViews) { if (view) { view->Release(); view = nullptr; } }
     gHost.sliceViews.clear();
+    gDualOverlayOpen.store(false, std::memory_order_release);
+    if (gHost.heldTargetView != nullptr) gHost.heldTargetView->Release();
     for (auto*& image : gHost.eyeImage) {
         if (image != nullptr) {
             image->Release();
@@ -734,7 +758,6 @@ void Teardown()
     if (gHost.guideSwapchain) xrDestroySwapchain(gHost.guideSwapchain);
     if (gHost.pointerSwapchain) xrDestroySwapchain(gHost.pointerSwapchain);
     ClearUiPointer();
-    if (gHost.hudSwapchain) xrDestroySwapchain(gHost.hudSwapchain);
     if (gHost.swapchain) xrDestroySwapchain(gHost.swapchain);
     if (gHost.space) xrDestroySpace(gHost.space);
     if (gHost.localFallback) xrDestroySpace(gHost.localFallback);
@@ -797,6 +820,12 @@ std::atomic<unsigned long long> gEyeSkewSamples{0};
 // constant. Applied to the menu panel and the HUD alike, because they are the
 // same presentation and one dial is easier to reason about than two.
 std::atomic<unsigned int> gUiScalePercent{100};
+// **The text panel sits nearer than the HUD, at the HUD panel's physical size.**
+// Its texture is the whole frame squeezed onto a panel about 38x40 degrees, so
+// book text and subtitles came out small and heavily minified (no mips) -- soft,
+// "out of focus". Nearer at the same size is larger in angle, so less minified.
+// Centimetres, 100..200; 200 is the HUD panel's own fit.
+std::atomic<unsigned int> gTextPanelCm{140};
 // Command threads only publish settings. Cached panels belong to the XR frame
 // thread under gMutex; touching their optionals from a setter is a data race.
 std::atomic<unsigned long long> gPanelSettingsGeneration{0};
@@ -1051,16 +1080,11 @@ void PlaceEye(ID3D11DeviceContext* context, std::uint32_t imageIndex, std::uint3
 // Returns false until both eyes have been seen at least once. Submitting a pair
 // with one empty half would show a black eye, which reads as a broken headset
 // rather than as a warming-up mod.
-bool SubmitStereoPair(
-    ID3D11DeviceContext* context,
-    ID3D11Texture2D* backBuffer,
-    std::uint32_t imageIndex,
-    const XrView* views,
-    const RenderContract& contract, bool hudCaptured)
+// The two held eye images, created on first use at the backbuffer's size and
+// format. Shared by the per-frame submission and the rung-1b mid-frame hold, so
+// both see the same textures.
+bool EnsureEyeImages(const D3D11_TEXTURE2D_DESC& desc)
 {
-    D3D11_TEXTURE2D_DESC desc{};
-    backBuffer->GetDesc(&desc);
-
     for (int eye = 0; eye < 2; ++eye) {
         if (gHost.eyeImage[eye] != nullptr) {
             continue;
@@ -1086,6 +1110,22 @@ bool SubmitStereoPair(
             LogOnce("result=failed step=create_eye_image");
             return false;
         }
+    }
+    return true;
+}
+
+bool SubmitStereoPair(
+    ID3D11DeviceContext* context,
+    ID3D11Texture2D* backBuffer,
+    std::uint32_t imageIndex,
+    const XrView* views,
+    const RenderContract& contract, bool hudCaptured, bool dualFirstHeld)
+{
+    D3D11_TEXTURE2D_DESC desc{};
+    backBuffer->GetDesc(&desc);
+
+    if (!EnsureEyeImages(desc)) {
+        return false;
     }
 
     // **The eye arrives with the frame.** No dwell, no lock, no waiting: the
@@ -1118,7 +1158,56 @@ bool SubmitStereoPair(
         Log(receipt.str());
     }
     const int eye = contract.eye;
-    if (eye == 0 || eye == 1) {
+    if (eye == kRenderContractBothEyes) {
+        // **Rung 1b: both eyes come from this one frame.** The first scene
+        // submission was copied mid-frame into its held image (HoldDualFirstEye)
+        // and the backbuffer holds the second. Both images and both poses are
+        // published together from this one record. A frame whose first half was
+        // not held is refused outright: pairing a fresh right eye with an older
+        // left one is exactly the cross-time pair this route exists to remove.
+        if (!dualFirstHeld) {
+            const auto refused = gDualPairsRefused.fetch_add(1, std::memory_order_relaxed) + 1;
+            if (refused <= 4 || refused % 300 == 0) {
+                Log("result=refused detail=dual_first_eye_not_held refused=" + std::to_string(refused));
+            }
+            gHost.eyeImageValid[0] = gHost.eyeImageValid[1] = false;
+            return false;
+        }
+        const int first = gSwapEyes.load(std::memory_order_acquire) ? 1 : 0;
+        const int second = 1 - first;
+        context->CopyResource(gHost.eyeImage[second], backBuffer);
+        // The first image was taken before the HUD is drawn; RecordEye for it
+        // happened at the hold. The second carries the native HUD unless the HUD
+        // layer redirected it.
+        gHost.hudCapturePair.RecordEye(second, hudCaptured);
+        for (int rendered = 0; rendered < 2; ++rendered) {
+            const int target = rendered == 0 ? first : second;
+            const Pose& source = contract.eyePoses[rendered];
+            RenderContract eyeContract = contract;
+            eyeContract.eye = rendered;
+            eyeContract.pose = source;
+            const float shown[4] = {std::tan(views[target].fov.angleLeft), std::tan(views[target].fov.angleRight),
+                                    std::tan(views[target].fov.angleUp), std::tan(views[target].fov.angleDown)};
+            if (!gStereoPattern.load(std::memory_order_relaxed) ||
+                !DrawStereoPattern(gHost.device, context, gHost.eyeImage[target], eyeContract)) {
+                DrawDebugOverlay(gHost.device, context, gHost.eyeImage[target], eyeContract, shown);
+            }
+            gHost.eyePose[target] = {{source.orientation.x, source.orientation.y,
+                source.orientation.z, source.orientation.w},
+                {source.position.x, source.position.y, source.position.z}};
+            gHost.eyeFov[target] = {std::atan(contract.tangents[0]), std::atan(contract.tangents[1]),
+                std::atan(contract.tangents[2]), std::atan(contract.tangents[3])};
+            gHost.requestedFov[target] = views[target].fov;
+            gHost.requestedFovValid[target] = true;
+            gFovAgree.fetch_add(1, std::memory_order_relaxed);
+            gHost.eyeDisplayTime[target] = contract.displayTime;
+            gHost.eyeImageValid[target] = true;
+        }
+        const auto pairs = gDualPairsSubmitted.fetch_add(1, std::memory_order_relaxed) + 1;
+        if (pairs == 1) {
+            Log("result=0 detail=first_dual_pair displayTime=" + std::to_string(contract.displayTime));
+        }
+    } else if (eye == 0 || eye == 1) {
         const int target = gSwapEyes.load(std::memory_order_acquire) ? (1 - eye) : eye;
         context->CopyResource(gHost.eyeImage[target], backBuffer);
         // Drawn into this eye with the contract that rendered it, so the
@@ -1385,11 +1474,17 @@ void ServiceXrFrame(void* renderer)
     // alternating-eye parity when the backlog was eventually discarded.
     RenderContract renderContract{};
     dll::ConsumeRenderedContract(renderContract);
+    // Taken with the contract, before any early return, for the same reason: a
+    // mid-frame hold belongs to this frame or to none. The overlay window closes
+    // first: nothing may draw into the held eye once it is being paired.
+    gDualOverlayOpen.store(false, std::memory_order_release);
+    const bool dualFirstHeld = gDualFirstHeld.exchange(false, std::memory_order_acq_rel);
     // Take each capture once, even on skipped submissions; never reuse a PDA
     // image after a dialog or another menu has replaced it.
     ID3D11Texture2D* inventoryRightTexture=nullptr;
     ID3D11Texture2D* inventoryTexture = InventoryLayerTexture(&inventoryRightTexture);
     ID3D11Texture2D* hudTexture = HudLayerTexture();
+    ID3D11Texture2D* textTexture = TextLayerTexture();
     ID3D11Texture2D* nativeWristTexture = NativeWristLayerTexture();
     RequestNativeWristCapture(false);
     SetInventoryConsumerReady(nullptr);
@@ -1785,7 +1880,7 @@ void ServiceXrFrame(void* renderer)
                     if (gStereoSubmission.load(std::memory_order_acquire) && !panelActive) {
                         stereoPair = SubmitStereoPair(
                             context, backBuffer, imageIndex,
-                            views, renderContract, hudTexture!=nullptr);
+                            views, renderContract, hudTexture!=nullptr, dualFirstHeld);
                     } else {
                         // First light is a **flat mirror**: the same backbuffer
                         // into both eyes. It proves the whole path -- device,
@@ -2048,42 +2143,33 @@ void ServiceXrFrame(void* renderer)
         auto captured=hudTexture;
         if(captured) {
             D3D11_TEXTURE2D_DESC desc{};captured->GetDesc(&desc);
-            if(gHost.hudSwapchain && (desc.Width!=gHost.hudDesc.Width || desc.Height!=gHost.hudDesc.Height || desc.Format!=gHost.hudDesc.Format)) {
-                xrDestroySwapchain(gHost.hudSwapchain);gHost.hudSwapchain=XR_NULL_HANDLE;gHost.hudImages.clear();
-            }
-            if(!gHost.hudSwapchain) {
-                XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};
-                create.usageFlags=XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT|XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-                create.format=desc.Format;create.sampleCount=1;create.width=desc.Width;create.height=desc.Height;
-                create.faceCount=1;create.arraySize=1;create.mipCount=1;
-                if(XR_SUCCEEDED(xrCreateSwapchain(gHost.session,&create,&gHost.hudSwapchain))) {
-                    gHost.hudDesc=desc;
-                    std::uint32_t count=0;
-                    xrEnumerateSwapchainImages(gHost.hudSwapchain,0,&count,nullptr);
-                    gHost.hudImages.assign(count,{XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
-                    if(XR_FAILED(xrEnumerateSwapchainImages(gHost.hudSwapchain,count,&count,
-                        reinterpret_cast<XrSwapchainImageBaseHeader*>(gHost.hudImages.data())))) {
-                            gHost.hudImages.clear();RefuseHudLayer("swapchain_images");
-                        }
-                } else {
-                    RefuseHudLayer("swapchain_format_or_allocation");
+            if(!gHost.hudSwapchain)gHost.hudSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
+                xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
+                xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
+            if(gHost.hudSwapchain->Prepare(gHost.session,desc,gHost.colorFormat)) {
+                if(!gHost.hudSwapchainLogged) {
+                    gHost.hudSwapchainLogged=true;
+                    std::ostringstream line;
+                    line<<"result=0 detail=hud_swapchain format="<<gHost.colorFormat<<" captureFormat="<<desc.Format
+                        <<" size="<<desc.Width<<"x"<<desc.Height;
+                    Log(line.str());
                 }
-            }
-            if(!gHost.hudImages.empty()) {
-                XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
-                XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};wait.timeout=XR_INFINITE_DURATION;
-                std::uint32_t index=0;
-                const bool acquired=XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.hudSwapchain,&acquire,&index));
-                const bool waited=acquired && XR_SUCCEEDED(xrWaitSwapchainImage(gHost.hudSwapchain,&wait));
-                if(acquired && !waited) {gStopRequested.store(true);RefuseHudLayer("image_wait");}
-                if(waited) {
-                    if(index<gHost.hudImages.size()) {
-                        ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
-                        if(context) {context->CopyResource(gHost.hudImages[index].texture,captured);context->Release();hudActive=true;}
-                    }
-                    XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-                    if(XR_FAILED(xrReleaseSwapchainImage(gHost.hudSwapchain,&release))) {hudActive=false;RefuseHudLayer("image_release");}
-                }
+                ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+                const auto upload=gHost.hudSwapchain->Copy(context,captured);
+                if(context)context->Release();
+                hudActive=upload==InventorySwapchain::Upload::ready;
+                if(upload==InventorySwapchain::Upload::sessionFault){gStopRequested.store(true);RefuseHudLayer("image_wait_or_release");}
+            } else {
+                // Which step, the runtime's answer and both formats: the refusal
+                // this replaces named none of them.
+                const auto refusal=gHost.hudSwapchain->LastRefusal();
+                std::ostringstream line;
+                line<<"result=refused detail=hud_swapchain reason="<<InventorySwapchain::RefusalName(refusal)
+                    <<" xrResult="<<gHost.hudSwapchain->LastResult()<<" format="<<gHost.colorFormat
+                    <<" captureFormat="<<desc.Format<<" size="<<desc.Width<<"x"<<desc.Height;
+                Log(line.str());
+                gHost.hudSwapchain.reset(); // a later hud.layer 1 tries afresh
+                RefuseHudLayer(InventorySwapchain::RefusalName(refusal));
             }
             std::array<ui::Eye,2> optical{};
             for(int eye=0;eye<2;++eye) {
@@ -2103,13 +2189,74 @@ void ServiceXrFrame(void* renderer)
                 hudLayer.layerFlags=XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
                 hudLayer.pose={{p.pose.orientation.x,p.pose.orientation.y,p.pose.orientation.z,p.pose.orientation.w},
                                {p.pose.position.x,p.pose.position.y,p.pose.position.z}};
-                hudLayer.size={p.width,p.height};hudLayer.subImage.swapchain=gHost.hudSwapchain;
+                hudLayer.size={p.width,p.height};hudLayer.subImage.swapchain=gHost.hudSwapchain->Handle();
                 hudLayer.subImage.imageRect={{0,0},{static_cast<int>(desc.Width),static_cast<int>(desc.Height)}};
                 SetHudLayerPresentation(true,p.width,p.height,2);
             }
         }
     }
     if(!hudActive)SetHudLayerPresentation(false);
+    // **The text panel.** Notes and books, subtitles and tutorial cards, lifted
+    // out of the scene like the HUD (HudLayer TextLayerTexture) and shown on the
+    // same panel fit, above it, so each keeps the place it has on screen. Not
+    // tied to the HUD layer's own capture: a frame may have text and no HUD.
+    XrCompositionLayerQuad textLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    bool textActive=false;
+    if(rendered && haveViews && !panelActive && textTexture) {
+        D3D11_TEXTURE2D_DESC desc{};textTexture->GetDesc(&desc);
+        if(!gHost.textSwapchain)gHost.textSwapchain=std::make_unique<InventorySwapchain>(InventorySwapchainApi{
+            xrEnumerateSwapchainFormats,xrCreateSwapchain,xrEnumerateSwapchainImages,
+            xrAcquireSwapchainImage,xrWaitSwapchainImage,xrReleaseSwapchainImage,xrDestroySwapchain});
+        if(gHost.textSwapchain->Prepare(gHost.session,desc,gHost.colorFormat)) {
+            if(!gHost.textSwapchainLogged) {
+                gHost.textSwapchainLogged=true;
+                std::ostringstream line;
+                line<<"result=0 detail=text_swapchain format="<<gHost.colorFormat<<" captureFormat="<<desc.Format
+                    <<" size="<<desc.Width<<"x"<<desc.Height;
+                Log(line.str());
+            }
+            ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
+            const auto upload=gHost.textSwapchain->Copy(context,textTexture);
+            if(context)context->Release();
+            textActive=upload==InventorySwapchain::Upload::ready;
+            if(upload==InventorySwapchain::Upload::sessionFault){gStopRequested.store(true);RefuseTextLayer("image_wait_or_release");}
+        } else {
+            const auto refusal=gHost.textSwapchain->LastRefusal();
+            std::ostringstream line;
+            line<<"result=refused detail=text_swapchain reason="<<InventorySwapchain::RefusalName(refusal)
+                <<" xrResult="<<gHost.textSwapchain->LastResult()<<" format="<<gHost.colorFormat
+                <<" captureFormat="<<desc.Format<<" size="<<desc.Width<<"x"<<desc.Height;
+            Log(line.str());
+            gHost.textSwapchain.reset();
+            // The movies go back into the scene, where they are drawn per eye.
+            RefuseTextLayer(InventorySwapchain::RefusalName(refusal));
+        }
+        std::array<ui::Eye,2> optical{};
+        for(int eye=0;eye<2;++eye) {
+            const auto& p=views[eye].pose;
+            optical[eye]={Pose{{p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w},
+                {p.position.x,p.position.y,p.position.z}},views[eye].fov.angleLeft,views[eye].fov.angleRight,
+                views[eye].fov.angleUp,views[eye].fov.angleDown};
+        }
+        // The HUD panel's physical size, brought nearer: FitPanel's size is an
+        // angle, so the scale carries the 2 m width to the nearer distance. The
+        // fit's corner test still shrinks it back inside the margin if needed.
+        const float textDistance=static_cast<float>(gTextPanelCm.load(std::memory_order_relaxed))*.01f;
+        const auto panel=ui::FitPanel(inputHead,optical,
+            static_cast<float>(desc.Width)/desc.Height,textDistance,
+            static_cast<float>(gUiScalePercent.load(std::memory_order_relaxed))*.01f*(2.0f/textDistance),
+            UiFitMargin());
+        textActive=textActive && panel.has_value();
+        if(textActive) {
+            const auto& p=*panel;
+            textLayer.space=gHost.space;textLayer.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+            textLayer.layerFlags=XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+            textLayer.pose={{p.pose.orientation.x,p.pose.orientation.y,p.pose.orientation.z,p.pose.orientation.w},
+                            {p.pose.position.x,p.pose.position.y,p.pose.position.z}};
+            textLayer.size={p.width,p.height};textLayer.subImage.swapchain=gHost.textSwapchain->Handle();
+            textLayer.subImage.imageRect={{0,0},{static_cast<int>(desc.Width),static_cast<int>(desc.Height)}};
+        }
+    }
     XrCompositionLayerQuad wristLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
     bool wristActive=false;
     TrackingFrame wristFrame{};
@@ -2302,6 +2449,7 @@ void ServiceXrFrame(void* renderer)
     if(!optionsActive&&inventoryStereoSubmitted)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&rightPanelLayer));
     if(!optionsActive&&guideActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&guideLayer));
     else if(!optionsActive&&hudActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hudLayer));
+    if(!optionsActive&&!guideActive&&textActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&textLayer));
     if(beamActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&beamLayer));
     if(cursorActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&cursorLayer));
     if(wristActive)layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&wristLayer));
@@ -2451,6 +2599,19 @@ DWORD SetUiScalePercent(unsigned int percent)
 }
 
 DWORD UiScalePercent() { return gUiScalePercent.load(std::memory_order_acquire); }
+
+DWORD SetTextPanelDistanceCm(unsigned int centimetres)
+{
+    if (centimetres < 100 || centimetres > 200) {
+        Log("result=refused detail=text_panel_distance_out_of_range");
+        return 1;
+    }
+    gTextPanelCm.store(centimetres, std::memory_order_release);
+    Log("result=0 detail=text_panel_distance cm=" + std::to_string(centimetres));
+    return 0;
+}
+
+DWORD TextPanelDistanceCm() { return gTextPanelCm.load(std::memory_order_acquire); }
 
 // **Why this exists.** `ui.scale` stopped having any effect above about 130 at
 // 2688x2880, which reads as a hard maximum but is not one: the fit loops were
@@ -2650,6 +2811,124 @@ bool XrMonoView() { return gMonoView.load(std::memory_order_acquire); }
 unsigned long long DeclaredFovAgreeCount() { return gFovAgree.load(std::memory_order_relaxed); }
 unsigned long long DeclaredFovDivergeCount() { return gFovDiverge.load(std::memory_order_relaxed); }
 DWORD DeclaredFovWorstMilliTan() { return gWorstDivergenceMilliTan.load(std::memory_order_relaxed); }
+
+bool HoldDualFirstEye(void* renderer)
+{
+    const auto refuse = [] {
+        gDualHoldRefused.fetch_add(1, std::memory_order_relaxed);
+        return false;
+    };
+    if (renderer == nullptr ||
+        gStatus.load(std::memory_order_acquire) != static_cast<DWORD>(XrSessionStatus::running) ||
+        !gStereoSubmission.load(std::memory_order_acquire)) {
+        return refuse();
+    }
+    // Never wait: this runs inside the engine's scene submission.
+    std::unique_lock lock(gMutex, std::try_to_lock);
+    if (!lock.owns_lock() || !gHost.started || !gHost.sessionBegun || gHost.device == nullptr) {
+        return refuse();
+    }
+    IDXGISwapChain* swapChain = *reinterpret_cast<IDXGISwapChain**>(
+        reinterpret_cast<std::uintptr_t>(renderer) + engine::RendererLayout::swapchain);
+    ID3D11Texture2D* backBuffer = nullptr;
+    if (swapChain == nullptr ||
+        FAILED(swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer))) ||
+        backBuffer == nullptr) {
+        return refuse();
+    }
+    D3D11_TEXTURE2D_DESC desc{};
+    backBuffer->GetDesc(&desc);
+    // Same size gate as submission: an image of another size cannot be paired.
+    bool held = desc.Width == gHost.width && desc.Height == gHost.height && EnsureEyeImages(desc);
+    if (held) {
+        ID3D11DeviceContext* context = nullptr;
+        gHost.device->GetImmediateContext(&context);
+        if (context != nullptr) {
+            const int first = gSwapEyes.load(std::memory_order_acquire) ? 1 : 0;
+            context->CopyResource(gHost.eyeImage[first], backBuffer);
+            // Taken before the HUD is drawn, so the native HUD is not in it.
+            gHost.hudCapturePair.RecordEye(first, true);
+            // Identity only, never dereferenced: what an overlay must be drawing
+            // into for HeldFirstEyeTarget to repeat it into this eye.
+            gHost.heldBackBuffer = reinterpret_cast<std::uintptr_t>(backBuffer);
+            context->Release();
+        } else {
+            held = false;
+        }
+    }
+    backBuffer->Release();
+    if (!held) {
+        return refuse();
+    }
+    gDualFirstHeld.store(true, std::memory_order_release);
+    gDualHolds.fetch_add(1, std::memory_order_relaxed);
+    return true;
+}
+
+void OpenDualOverlayWindow()
+{
+    // Only over a held first eye: without one there is nothing to draw into, and
+    // the frame's both-eyes pair is refused anyway.
+    if (gDualFirstHeld.load(std::memory_order_acquire)) {
+        gDualOverlayOpen.store(true, std::memory_order_release);
+    }
+}
+
+bool DualOverlayWindowOpen()
+{
+    return gDualOverlayOpen.load(std::memory_order_acquire);
+}
+
+ID3D11RenderTargetView* HeldFirstEyeTarget(ID3D11RenderTargetView* destination, const char** refusal)
+{
+    const auto refuse = [&](const char* why) -> ID3D11RenderTargetView* {
+        if (refusal != nullptr) *refusal = why;
+        return nullptr;
+    };
+    if (!gDualOverlayOpen.load(std::memory_order_acquire) || !gDualFirstHeld.load(std::memory_order_acquire)) {
+        return refuse("window_closed");
+    }
+    if (destination == nullptr) return refuse("no_destination");
+    // Never wait: this runs inside the engine's overlay draws.
+    std::unique_lock lock(gMutex, std::try_to_lock);
+    if (!lock.owns_lock() || gHost.device == nullptr) return refuse("busy");
+    // Only what is drawn into the frame's own backbuffer belongs to the eye;
+    // Flash filters and other offscreen targets stay as they are.
+    ID3D11Resource* drawn = nullptr;
+    destination->GetResource(&drawn);
+    const bool intoBackBuffer = drawn != nullptr && reinterpret_cast<std::uintptr_t>(drawn) == gHost.heldBackBuffer;
+    if (drawn != nullptr) drawn->Release();
+    if (!intoBackBuffer) return refuse("not_backbuffer");
+    ID3D11Texture2D* eye = gHost.eyeImage[gSwapEyes.load(std::memory_order_acquire) ? 1 : 0];
+    if (eye == nullptr) return refuse("no_eye_image");
+    // The game's own view of the backbuffer, so the second draw encodes its
+    // colours exactly as the first did. The held image has the backbuffer's format.
+    D3D11_RENDER_TARGET_VIEW_DESC view{};
+    destination->GetDesc(&view);
+    if (gHost.heldTargetView != nullptr && (gHost.heldTargetImage != eye || gHost.heldTargetFormat != view.Format)) {
+        gHost.heldTargetView->Release();
+        gHost.heldTargetView = nullptr;
+    }
+    if (gHost.heldTargetView == nullptr) {
+        if (FAILED(gHost.device->CreateRenderTargetView(eye, &view, &gHost.heldTargetView))) {
+            gHost.heldTargetView = nullptr;
+            return refuse("view_create");
+        }
+        gHost.heldTargetImage = eye;
+        gHost.heldTargetFormat = view.Format;
+    }
+    return gHost.heldTargetView;
+}
+
+std::string DualPairReport()
+{
+    std::ostringstream out;
+    out << " pairHolds=" << gDualHolds.load(std::memory_order_relaxed)
+        << " pairHoldRefused=" << gDualHoldRefused.load(std::memory_order_relaxed)
+        << " pairsSubmitted=" << gDualPairsSubmitted.load(std::memory_order_relaxed)
+        << " pairsRefused=" << gDualPairsRefused.load(std::memory_order_relaxed);
+    return out.str();
+}
 
 DWORD SetXrSwapEyes(unsigned int enabled)
 {

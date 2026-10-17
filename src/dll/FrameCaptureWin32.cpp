@@ -103,6 +103,12 @@ bool WriteDump(
     return ok;
 }
 
+// Copies `source` through a staging texture and writes a .pvrframe dump named
+// `<stem>-<frame>-tag<tag>`. The caller keeps its reference to `source`.
+FrameCaptureResult DumpTexture(ID3D11Device* device, ID3D11Texture2D* source,
+                               std::uint32_t tag, unsigned long long frameIndex,
+                               const char* stem);
+
 } // namespace
 
 DWORD RequestInventoryPairCapture(std::uint32_t tag) {
@@ -206,7 +212,47 @@ void ServiceFrameCapture(void* renderer, unsigned long long frameIndex)
         Finish(FrameCaptureResult::failed, "get_buffer_failed");
         return;
     }
+    const auto result = DumpTexture(device, backBuffer, tag, frameIndex, "frame");
+    backBuffer->Release();
+    if (result == FrameCaptureResult::ok) {
+        gCompleted.fetch_add(1, std::memory_order_relaxed);
+    }
+}
 
+DWORD CaptureBackBufferNow(void* renderer, std::uint32_t tag, unsigned long long frameIndex,
+                           const char* stem)
+{
+    if (renderer == nullptr) {
+        Finish(FrameCaptureResult::unavailable, "null_renderer");
+        return static_cast<DWORD>(FrameCaptureResult::unavailable);
+    }
+    const auto rendererAddress = reinterpret_cast<std::uintptr_t>(renderer);
+    auto* swapChain = *reinterpret_cast<IDXGISwapChain**>(
+        rendererAddress + engine::RendererLayout::swapchain);
+    auto* device = *reinterpret_cast<ID3D11Device**>(
+        rendererAddress + engine::RendererLayout::device);
+    if (swapChain == nullptr || device == nullptr) {
+        Finish(FrameCaptureResult::unavailable, "swapchain_or_device_null");
+        return static_cast<DWORD>(FrameCaptureResult::unavailable);
+    }
+    ID3D11Texture2D* backBuffer = nullptr;
+    if (FAILED(swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D),
+                                    reinterpret_cast<void**>(&backBuffer))) ||
+        backBuffer == nullptr) {
+        Finish(FrameCaptureResult::failed, "get_buffer_failed");
+        return static_cast<DWORD>(FrameCaptureResult::failed);
+    }
+    const auto result = DumpTexture(device, backBuffer, tag, frameIndex, stem);
+    backBuffer->Release();
+    return static_cast<DWORD>(result);
+}
+
+namespace {
+
+FrameCaptureResult DumpTexture(ID3D11Device* device, ID3D11Texture2D* backBuffer,
+                               std::uint32_t tag, unsigned long long frameIndex,
+                               const char* stem)
+{
     D3D11_TEXTURE2D_DESC description{};
     backBuffer->GetDesc(&description);
 
@@ -214,9 +260,8 @@ void ServiceFrameCapture(void* renderer, unsigned long long frameIndex)
     // If that ever changes this must resolve first, and silently copying a
     // multisampled surface would produce a corrupt dump rather than an error.
     if (description.SampleDesc.Count != 1) {
-        backBuffer->Release();
         Finish(FrameCaptureResult::unavailable, "multisampled_backbuffer_needs_resolve");
-        return;
+        return FrameCaptureResult::unavailable;
     }
 
     D3D11_TEXTURE2D_DESC stagingDescription = description;
@@ -228,18 +273,16 @@ void ServiceFrameCapture(void* renderer, unsigned long long frameIndex)
     ID3D11Texture2D* staging = nullptr;
     if (FAILED(device->CreateTexture2D(&stagingDescription, nullptr, &staging)) ||
         staging == nullptr) {
-        backBuffer->Release();
         Finish(FrameCaptureResult::failed, "create_staging_failed");
-        return;
+        return FrameCaptureResult::failed;
     }
 
     ID3D11DeviceContext* context = nullptr;
     device->GetImmediateContext(&context);
     if (context == nullptr) {
         staging->Release();
-        backBuffer->Release();
         Finish(FrameCaptureResult::unavailable, "no_immediate_context");
-        return;
+        return FrameCaptureResult::unavailable;
     }
 
     context->CopyResource(staging, backBuffer);
@@ -248,9 +291,8 @@ void ServiceFrameCapture(void* renderer, unsigned long long frameIndex)
     if (FAILED(context->Map(staging, 0, D3D11_MAP_READ, 0, &mapped)) || mapped.pData == nullptr) {
         context->Release();
         staging->Release();
-        backBuffer->Release();
         Finish(FrameCaptureResult::failed, "map_failed");
-        return;
+        return FrameCaptureResult::failed;
     }
 
     framedump::Header header{};
@@ -262,7 +304,7 @@ void ServiceFrameCapture(void* renderer, unsigned long long frameIndex)
     header.tag = tag;
 
     std::ostringstream name;
-    name << "frame-" << frameIndex << "-tag" << tag << ".pvrframe";
+    name << stem << "-" << frameIndex << "-tag" << tag << ".pvrframe";
     const std::filesystem::path path = CaptureDirectory() / name.str();
 
     const bool written = WriteDump(
@@ -271,14 +313,12 @@ void ServiceFrameCapture(void* renderer, unsigned long long frameIndex)
     context->Unmap(staging, 0);
     context->Release();
     staging->Release();
-    backBuffer->Release();
 
     if (!written) {
         Finish(FrameCaptureResult::failed, "write_failed");
-        return;
+        return FrameCaptureResult::failed;
     }
 
-    gCompleted.fetch_add(1, std::memory_order_relaxed);
     std::ostringstream line;
     line << "preyvr_frame_capture result=0 frame=" << frameIndex
          << " tag=" << tag
@@ -289,6 +329,9 @@ void ServiceFrameCapture(void* renderer, unsigned long long frameIndex)
          << " path=" << path.string();
     lifecycle::Log(line.str());
     gLastResult.store(static_cast<DWORD>(FrameCaptureResult::ok), std::memory_order_release);
+    return FrameCaptureResult::ok;
 }
+
+} // namespace
 
 } // namespace preyvr::dll

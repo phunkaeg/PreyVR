@@ -24,46 +24,68 @@ bool InventoryTextureCompatible(const D3D11_TEXTURE2D_DESC& a,const D3D11_TEXTUR
     return Supported(a)&&Supported(b)&&a.Width==b.Width&&a.Height==b.Height&&
         Family(a.Format)==Family(b.Format);
 }
+const char* InventorySwapchain::RefusalName(Refusal refusal) {
+    switch(refusal) {
+    case Refusal::none:return "none";
+    case Refusal::session:return "no_session";
+    case Refusal::source:return "source_texture";
+    case Refusal::presentationFormat:return "presentation_format";
+    case Refusal::enumerateFormats:return "enumerate_formats";
+    case Refusal::formatNotListed:return "format_not_listed";
+    case Refusal::create:return "create_swapchain";
+    case Refusal::images:return "enumerate_images";
+    case Refusal::image:return "image_incompatible";
+    }
+    return "unknown";
+}
 void InventorySwapchain::Reset() {
     if(chain_)api_.destroy(chain_);
     chain_=XR_NULL_HANDLE;session_=XR_NULL_HANDLE;images_.clear();desc_={};
     presentationFormat_=DXGI_FORMAT_UNKNOWN;
     attempted_=fault_=false;
+    refusal_=Refusal::none;result_=XR_SUCCESS;
 }
 bool InventorySwapchain::Prepare(XrSession session,const D3D11_TEXTURE2D_DESC& source,DXGI_FORMAT presentationFormat) {
     if(attempted_ && session_==session && presentationFormat_==presentationFormat && desc_.Format==source.Format &&
        InventoryTextureCompatible(desc_,source))return chain_!=XR_NULL_HANDLE&&!fault_;
     Reset();attempted_=true;session_=session;desc_=source;
     presentationFormat_=presentationFormat;
-    if(!session || !Supported(source))return false;
+    auto refuse=[&](Refusal why,XrResult result=XR_SUCCESS){refusal_=why;result_=result;return false;};
+    if(!session)return refuse(Refusal::session);
+    if(!Supported(source))return refuse(Refusal::source);
     if((presentationFormat!=DXGI_FORMAT_R8G8B8A8_UNORM && presentationFormat!=DXGI_FORMAT_R8G8B8A8_UNORM_SRGB &&
         presentationFormat!=DXGI_FORMAT_B8G8R8A8_UNORM && presentationFormat!=DXGI_FORMAT_B8G8R8A8_UNORM_SRGB) ||
-       Family(presentationFormat)!=Family(source.Format))return false;
+       Family(presentationFormat)!=Family(source.Format))return refuse(Refusal::presentationFormat);
     uint32_t count=0;
-    if(api_.formats(session,0,&count,nullptr)!=XR_SUCCESS || !count || count>256)return false;
+    XrResult result=api_.formats(session,0,&count,nullptr);
+    if(result!=XR_SUCCESS || !count || count>256)return refuse(Refusal::enumerateFormats,result);
     std::vector<int64_t> formats(count);
-    if(api_.formats(session,count,&count,formats.data())!=XR_SUCCESS || count>formats.size())return false;
+    result=api_.formats(session,count,&count,formats.data());
+    if(result!=XR_SUCCESS || count>formats.size())return refuse(Refusal::enumerateFormats,result);
     formats.resize(count);
     // Inherit the actual main/menu choice, not an independent sRGB preference.
     // CopyResource preserves bytes; it neither converts gamma nor swizzles.
     const int64_t format=presentationFormat;
-    if(std::find(formats.begin(),formats.end(),format)==formats.end())return false;
+    if(std::find(formats.begin(),formats.end(),format)==formats.end())return refuse(Refusal::formatNotListed);
     XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};
     create.usageFlags=XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT|XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
     create.format=format;create.sampleCount=1;create.width=source.Width;create.height=source.Height;
     create.faceCount=1;create.arraySize=1;create.mipCount=1;
-    if(api_.create(session,&create,&chain_)!=XR_SUCCESS || !chain_) {chain_=XR_NULL_HANDLE;return false;}
-    auto refuse=[&]{api_.destroy(chain_);chain_=XR_NULL_HANDLE;images_.clear();return false;};
+    result=api_.create(session,&create,&chain_);
+    if(result!=XR_SUCCESS || !chain_) {chain_=XR_NULL_HANDLE;return refuse(Refusal::create,result);}
+    auto discard=[&](Refusal why,XrResult failed=XR_SUCCESS){
+        api_.destroy(chain_);chain_=XR_NULL_HANDLE;images_.clear();return refuse(why,failed);};
     count=0;
-    if(api_.images(chain_,0,&count,nullptr)!=XR_SUCCESS || !count || count>64)return refuse();
+    result=api_.images(chain_,0,&count,nullptr);
+    if(result!=XR_SUCCESS || !count || count>64)return discard(Refusal::images,result);
     images_.resize(count,{XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
-    if(api_.images(chain_,count,&count,reinterpret_cast<XrSwapchainImageBaseHeader*>(images_.data()))!=XR_SUCCESS ||
-       !count || count>images_.size())return refuse();
+    result=api_.images(chain_,count,&count,reinterpret_cast<XrSwapchainImageBaseHeader*>(images_.data()));
+    if(result!=XR_SUCCESS || !count || count>images_.size())return discard(Refusal::images,result);
     images_.resize(count);
     for(const auto& image:images_) {
-        if(!image.texture)return refuse();
+        if(!image.texture)return discard(Refusal::image);
         D3D11_TEXTURE2D_DESC d{};image.texture->GetDesc(&d);
-        if(!InventoryTextureCompatible(source,d))return refuse();
+        if(!InventoryTextureCompatible(source,d))return discard(Refusal::image);
     }
     return true;
 }

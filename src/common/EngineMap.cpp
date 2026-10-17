@@ -247,7 +247,77 @@ constexpr std::array<std::uint8_t, 7> kSystemSetViewCamera = {
     0x48, 0x81, 0xC1, 0x88, 0x07, 0x00, 0x00,
 };
 
-const std::array<Landmark, 34> kLandmarks = {{
+// R-128 CD3D9Renderer::RT_RenderScene(CRenderView*, int nFlags, SThreadInfo&,
+// void (*)()), renderer vtable +0x928. Promoted from an external lead
+// 2026-10-10 by decompilation: it saves m_TI[slot] into m_OldTI, installs the
+// passed SThreadInfo, renders, restores, and ends by switching the view to
+// ReadingDone and clearing it. Its two callers are RC_RenderScene (0xFEE280,
+// direct when on the render thread) and the render-command processor
+// (0xFE9A80). 27 bytes, stopping before `mov rdx,[rip+disp32]`; unique.
+constexpr std::array<std::uint8_t, 27> kRenderScene = {
+    0x44, 0x89, 0x44, 0x24, 0x18, 0x48, 0x89, 0x54,
+    0x24, 0x10, 0x53, 0x55, 0x56, 0x57, 0x48, 0x81,
+    0xEC, 0xA8, 0x00, 0x00, 0x00, 0x48, 0x8B, 0xF2,
+    0x48, 0x8B, 0xE9,
+};
+
+// CRenderView::SwitchUsageMode(EUsageMode), view vtable +0x50. Switching to the
+// current mode returns at once; 1 (reading) waits on the view's jobs and
+// finalises its lists, 3 dispatches JobRenderViewPostWrite. 38 bytes; unique.
+constexpr std::array<std::uint8_t, 38> kRenderViewSwitchUsageMode = {
+    0x48, 0x8B, 0xC4, 0x55, 0x56, 0x57, 0x48, 0x8D,
+    0x68, 0xA1, 0x48, 0x81, 0xEC, 0xE0, 0x00, 0x00,
+    0x00, 0x8B, 0xF2, 0x48, 0x8B, 0xF9, 0x3B, 0x51,
+    0x10, 0x0F, 0x84, 0xCD, 0x02, 0x00, 0x00, 0x48,
+    0x89, 0x58, 0x18, 0x83, 0xFA, 0x03,
+};
+
+// CRenderView::Clear. Empties the item lists, releases per-object resources and
+// recursively clears the shadow-frustum views. RT_RenderScene calls it last, so
+// a second submission of the same view needs this deferred. 43 bytes; unique.
+constexpr std::array<std::uint8_t, 43> kRenderViewClear = {
+    0x48, 0x89, 0x5C, 0x24, 0x18, 0x48, 0x89, 0x4C,
+    0x24, 0x08, 0x55, 0x56, 0x57, 0x48, 0x83, 0xEC,
+    0x20, 0x48, 0x8B, 0xE9, 0x33, 0xC9, 0x44, 0x8D,
+    0x41, 0x19, 0x89, 0x8D, 0x70, 0x0F, 0x00, 0x00,
+    0x48, 0x8D, 0x85, 0x48, 0x0E, 0x00, 0x00, 0x48,
+    0x8D, 0x55, 0x40,
+};
+
+// R-066 CD3D9Renderer::SetCamera(const CCamera&), renderer vtable. Picks the
+// SThreadInfo slot by thread (render thread: the process slot), loads the view
+// and projection matrix-stack tops, the zero-translation camera matrix (+0x28),
+// m_cam (+0x68) and m_rcam (+0x2A8), then RC_SetCamera -- which on the render
+// thread calls RT_SetCameraInfo directly. 33 bytes; unique.
+constexpr std::array<std::uint8_t, 33> kRendererSetCamera = {
+    0x48, 0x8B, 0xC4, 0x55, 0x53, 0x56, 0x57, 0x41,
+    0x56, 0x48, 0x8D, 0xA8, 0x38, 0xFF, 0xFF, 0xFF,
+    0x48, 0x81, 0xEC, 0xA0, 0x01, 0x00, 0x00, 0x48,
+    0x8B, 0xB9, 0x90, 0x0D, 0x00, 0x00, 0x4C, 0x8B,
+    0xF2,
+};
+
+// CCamera::UpdateFrustum: corners, the six planes at +0x10C, the plane sign
+// tables and the cached position at +0x230. 20 bytes; unique. Already gated
+// privately by CameraEditHook; listed here so the startup gate covers it.
+constexpr std::array<std::uint8_t, 20> kCameraUpdateFrustum = {
+    0x48, 0x8B, 0xC4, 0x55, 0x53, 0x48, 0x8D, 0x68,
+    0xA1, 0x48, 0x81, 0xEC, 0xF8, 0x00, 0x00, 0x00,
+    0xF3, 0x0F, 0x10, 0x59,
+};
+
+// CD3D9Renderer::RT_Draw2dImageInternal(S2DImage*, uint32 count): the one draw
+// behind RT_Draw2dImage (renderer vtable +0x990, render command 0x3B) and
+// RT_Draw2dImageList (+0x9A8), so every 2D image -- the flow-graph CHUDFader
+// and TrackView screen faders among them -- goes through it, after the scene.
+// 21 bytes; the 19-byte register-save prologue alone occurs twice.
+constexpr std::array<std::uint8_t, 21> kDraw2dImages = {
+    0x40, 0x55, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55,
+    0x41, 0x56, 0x41, 0x57, 0x48, 0x81, 0xEC, 0x10,
+    0x01, 0x00, 0x00, 0x48, 0x8D,
+};
+
+const std::array<Landmark, 40> kLandmarks = {{
     {"renderer.begin", "CD3D9Renderer::RT_BeginFrame", 0xF7D710, kBeginRendererScene},
     {"renderer.end", "CD3D9Renderer::RT_EndFrame", 0xF7E210, kEndRendererScene},
     {"renderer.present", "RT_EndFrame Present dispatch", 0xF7E48A, kPresentDispatch},
@@ -283,6 +353,12 @@ const std::array<Landmark, 34> kLandmarks = {{
     {"system.render_begin", "CSystem::RenderBegin", 0xE0BD80, kSystemRenderBegin},
     {"system.get_view_camera", "CSystem::GetViewCamera", 0xDF2BB0, kSystemGetViewCamera},
     {"system.set_view_camera", "CSystem::SetViewCamera", 0xDF4560, kSystemSetViewCamera},
+    {"renderer.render_scene", "CD3D9Renderer::RT_RenderScene", 0xF41CA0, kRenderScene},
+    {"view.switch_usage_mode", "CRenderView::SwitchUsageMode", 0xEE82F0, kRenderViewSwitchUsageMode},
+    {"renderer.set_camera", "CD3D9Renderer::SetCamera", 0xF7FE70, kRendererSetCamera},
+    {"camera.update_frustum", "CCamera::UpdateFrustum", 0x121D70, kCameraUpdateFrustum},
+    {"view.clear", "CRenderView::Clear", 0xEE4030, kRenderViewClear},
+    {"renderer.draw2d_images", "CD3D9Renderer::RT_Draw2dImageInternal", 0xF34C70, kDraw2dImages},
 }};
 
 } // namespace

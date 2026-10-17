@@ -9,6 +9,8 @@
 #include "HeadTrackingHook.h"
 #include "NearViewStereo.h"
 #include "NearParticleStereo.h"
+#include "DualSceneStereo.h"
+#include "DualOverlay.h"
 #include "NearFovOverride.h"
 #include "InputPost.h"
 #include "InputPathProbe.h"
@@ -36,6 +38,10 @@ Phase phase=Phase::off;
 std::string failure;
 unsigned setting=0;
 unsigned long long deadline=0, consoleCount=0, calibratedOwner=0, calibratedReference=0;
+// The both-eyes and HUD-panel counters, logged once a minute while VR is active
+// so a headset session records them without a tuner command.
+unsigned long long nextStatusReport=0;
+constexpr unsigned long long kStatusReportMs=60000;
 bool consolePending=false;
 unsigned desiredWidth=0,desiredHeight=0;
 unsigned long long firstFrame=0;
@@ -44,8 +50,45 @@ unsigned followedNearFov=0;
 unsigned long long nextInputProbe=0;
 const char* settings[]={"r_MotionBlur 0","r_AntialiasingMode 1"};
 void Log(const std::string& s) { lifecycle::Log("preyvr_vr " + s); }
+// The 3D VIEW option (VrMode.h). Owned by the command worker, like the rest of this file's state.
+unsigned stereoChosen=2, stereoActive=1;
+bool stereoApplied=false;
+// Switches the three paths in the order that never publishes a both-eyes contract without its second submission:
+// the render-thread mode is armed before the game thread's contract, and the contract is dropped before the mode.
+void ApplyStereoMode() {
+    const char* names[]={"mono","alternate","full"};
+    unsigned active=stereoChosen;
+    if(stereoChosen==2) {
+        SetXrMonoView(0);
+        if(SetDualSceneMode(3,0)==0) {
+            SetDualStereoContract(1);
+            // What the game draws after the world, into the held eye too (DualOverlay.h).
+            // PREYVR_DUAL_OVERLAY=0 leaves it in one eye.
+            wchar_t overlaySetting[8]{};
+            GetEnvironmentVariableW(L"PREYVR_DUAL_OVERLAY",overlaySetting,8);
+            if(overlaySetting[0]==L'0') Log("dual_overlay=off reason=PREYVR_DUAL_OVERLAY");
+            else if(SetDualOverlayRedraw(1)!=0) Log("dual_overlay=unavailable overlays=second_eye_only");
+            // The launcher reports the mode from these lines (Get-PreyVRStereoStatus).
+            Log("dual_stereo=on");
+        } else {
+            active=1;
+            Log("dual_stereo=unavailable fallback=alternate_eye");
+        }
+    }
+    if(active!=2) {
+        SetDualStereoContract(0); SetDualSceneMode(0,0); SetDualOverlayRedraw(0);
+        SetXrMonoView(active==0 ? 1u : 0u);
+        if(stereoChosen==0) Log("dual_stereo=mono reason=3D_VIEW");
+        else if(stereoChosen==1) Log("dual_stereo=off reason=3D_VIEW_or_PREYVR_DUAL_STEREO");
+    }
+    stereoActive=active; stereoApplied=true;
+    Log(std::string("stereo_mode=")+names[active]+" chosen="+names[stereoChosen]);
+}
 void StopFeatures() {
     SetHudLayerEnabled(0);
+    // Contract first, so no both-eyes record is published after its submissions stop.
+    SetDualStereoContract(0); SetDualSceneMode(0,0); SetDualOverlayRedraw(0);
+    SetXrMonoView(0); stereoApplied=false;
     SetSyntheticStereo(0,50);
     SetViewHookApplying(0); SetViewPositionApplying(0);
     SetNearViewStereo(0); SetNearFovDeciDegrees(0);
@@ -157,6 +200,17 @@ void TickVrMode() {
             SetNearViewStereo(1)!=0 || SetNearViewIpdMetres(ipd)!=0 || SetNearFovDeciDegrees(nearFov)!=0) {
             Fail("stereo_and_tracking"); return;
         }
+        // The 3D VIEW option (both eyes every frame, alternate eyes, or mono). PREYVR_DUAL_STEREO=0 -- the
+        // launcher's DualStereo 0 -- still forces the alternate-eye path for this launch.
+        {
+            wchar_t dualSetting[8]{};
+            GetEnvironmentVariableW(L"PREYVR_DUAL_STEREO",dualSetting,8);
+            if(dualSetting[0]==L'0' && stereoChosen==2) {
+                stereoChosen=1;
+                Log("stereo_mode=alternate reason=PREYVR_DUAL_STEREO");
+            }
+            ApplyStereoMode();
+        }
         // DrawNear particles in the weapon's camera space (preyvr/NearParticles.h).
         // Not fatal: without the hook they keep the native double parallax.
         EnsureNearParticleStereo();
@@ -199,10 +253,16 @@ void TickVrMode() {
         if(GetTickCount64()>deadline) { Fail("no_rendered_frames"); return; }
         if(XrSubmittedFrameCount()<firstFrame+3 || XrResolutionChain(14)!=0)return;
         phase=Phase::active;
+        nextStatusReport=GetTickCount64()+kStatusReportMs;
         Log("state=active panel=automatic recenter=F12_or_grips_and_left_Y");
     }
     if(phase==Phase::active) {
         if(XrSessionStatusValue()!=1) {Fail("openxr_session_ended");return;}
+        if(GetTickCount64()>=nextStatusReport) {
+            nextStatusReport=GetTickCount64()+kStatusReportMs;
+            // The same text dual.report and hud.layer answer with.
+            Log("status dual={"+DualSceneReport()+DualOverlayReport()+" } hud={"+HudLayerReport()+" }");
+        }
         const auto owner=AnimIkOwnerGeneration();
         const auto reference=HeadTrackingReferenceGeneration();
         if(AnimIkOwnerCharacter()!=0 && reference%2==0 &&
@@ -242,6 +302,15 @@ DWORD SetNearFovFollow(unsigned enabled) {
     Log(std::string("near_fov_follow=")+(nearFollow?"1":"0"));
     return 0;
 }
+DWORD SetVrStereoMode(unsigned mode) {
+    if(mode>2)return 1;
+    stereoChosen=mode;
+    // Before activation the choice waits for it; while VR runs it applies now.
+    if(phase==Phase::active)ApplyStereoMode();
+    return 0;
+}
+unsigned VrStereoModeChosen() { return stereoChosen; }
+unsigned VrStereoModeActive() { return stereoApplied ? stereoActive : stereoChosen; }
 unsigned NearFovFollowed() { return nearFollow?followedNearFov:0; }
 std::string VrModeReport() {
     const char* names[]={"off","preparing","settings","tracking","rendering","active","failed"};

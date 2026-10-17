@@ -17,6 +17,8 @@
 #include "HeadTrackingHook.h"
 #include "Logger.h"
 #include "NearViewStereo.h"
+#include "DualSceneStereo.h"
+#include "DualOverlay.h"
 #include "NearParticleStereo.h"
 #include "RenderFrame.h"
 #include "ReticleFollow.h"
@@ -495,6 +497,95 @@ bool ExecutePose(const std::vector<std::string>& args, std::ostringstream& out)
     return true;
 }
 
+// Stereo presentation: the 3D VIEW mode, the native-field placement, mono, the eye swap and the test pattern.
+// Kept out of Execute's chain for the same C1061 reason as ExecutePose.
+bool ExecuteStereoCommand(const std::vector<std::string>& args, std::ostringstream& out)
+{
+    const std::string& verb = args[0];
+    const auto arg = [&](std::size_t i, int fallback) {
+        int value = fallback;
+        if (i < args.size()) {
+            ParseInt(args[i], value);
+        }
+        return value;
+    };
+    if (verb == "xr.swap") {
+        // xr.swap 0|1 -- each eye's image into the other eye's socket (the inverted-stereo A/B)
+        if (args.size() >= 2) { SetXrSwapEyes(static_cast<unsigned int>(arg(1, 0))); }
+        out << "xr.swap result=0 enabled=" << (XrSwapEyes() ? 1 : 0);
+    } else if (verb == "xr.pattern") {
+        // xr.pattern 0|1 -- the stereo test pattern in place of Prey's image (1 re-anchors it at the head)
+        if (args.size() >= 2) { SetXrStereoPattern(static_cast<unsigned int>(arg(1, 0))); }
+        out << "xr.pattern result=0 enabled=" << (XrStereoPattern() ? 1 : 0);
+    } else if (verb == "xr.nativefov") {
+        // xr.nativefov 0|1 -- declare each eye's native field with the picture placed inside it (1, default) or
+        // Prey's own frustum (0, the double image on an immutable-fov runtime such as Meta's)
+        if (args.size() >= 2) { SetXrNativeFov(static_cast<unsigned int>(arg(1, 1))); }
+        out << "xr.nativefov result=0 enabled=" << (XrNativeFov() ? 1 : 0) << " fovMutable=" << (XrFovMutable() ? 1 : 0);
+    } else if (verb == "vr.stereo") {
+        // vr.stereo 0|1|2 -- the 3D VIEW option: mono, alternate eyes, full stereo (both eyes every frame)
+        DWORD result = 0;
+        if (args.size() >= 2) { result = SetVrStereoMode(static_cast<unsigned int>(arg(1, 2))); }
+        out << "vr.stereo result=" << result << " chosen=" << VrStereoModeChosen() << " active=" << VrStereoModeActive()
+            << " mono=" << (XrMonoView() ? 1 : 0);
+    } else if (verb == "xr.mono") {
+        // xr.mono 0|1 -- one picture from the centre of the head in both eyes (no depth, always fuses)
+        if (args.size() >= 2) { SetXrMonoView(static_cast<unsigned int>(arg(1, 0))); }
+        out << "xr.mono result=0 enabled=" << (XrMonoView() ? 1 : 0);
+    } else {
+        return false;
+    }
+    return true;
+}
+
+// Rung 1b, the RT_RenderScene double submission (DualSceneStereo.h). Kept out
+// of Execute's chain for the same C1061 reason as ExecutePose.
+bool ExecuteDualCommand(const std::vector<std::string>& args, std::ostringstream& out)
+{
+    const std::string& verb = args[0];
+    const auto arg = [&](std::size_t i, int fallback) {
+        int value = fallback;
+        if (i < args.size()) {
+            ParseInt(args[i], value);
+        }
+        return static_cast<unsigned int>(value);
+    };
+    if (verb == "dual.observe") {
+        // Pass-through logging of RT_RenderScene submissions.
+        out << "dual.observe result=" << SetDualSceneObserve(arg(1, 1)) << DualSceneReport();
+    } else if (verb == "dual.mode") {
+        // 0 off, 1 the same-camera control, 2 per-eye cameras. Second argument:
+        // frame budget.
+        out << "dual.mode result=" << SetDualSceneMode(arg(1, 0), arg(2, 0)) << DualSceneReport();
+    } else if (verb == "dual.ipd") {
+        out << "dual.ipd result=" << SetDualSceneIpdMillimetres(arg(1, 64)) << DualSceneReport();
+    } else if (verb == "dual.vr") {
+        // Headset A/B: 1 both eyes per frame, 0 the alternate-eye path. Ordered so
+        // no both-eyes contract is ever published without its second submission.
+        DWORD result = 0;
+        if (arg(1, 1) != 0) {
+            result = SetDualSceneMode(3, 0);
+            if (result == 0) SetDualStereoContract(1);
+        } else {
+            SetDualStereoContract(0);
+            result = SetDualSceneMode(0, 0);
+        }
+        out << "dual.vr result=" << result << DualSceneReport();
+    } else if (verb == "dual.capture") {
+        out << "dual.capture result=" << RequestDualSceneCapture(arg(1, 0));
+    } else if (verb == "dual.overlay") {
+        // Step 2 A/B: 1 repeats the after-world overlays into the held eye, 0
+        // leaves them in the second eye only. No argument: report.
+        out << "dual.overlay result=" << (args.size() > 1 ? SetDualOverlayRedraw(arg(1, 1)) : 0)
+            << DualOverlayReport();
+    } else if (verb == "dual.report") {
+        out << "dual.report result=0" << DualSceneReport() << DualOverlayReport();
+    } else {
+        return false;
+    }
+    return true;
+}
+
 // One verb, one operation. Deliberately not a name-to-export lookup: that would
 // be a call-anything primitive whose argument is a text file.
 void Execute(const std::vector<std::string>& args, std::ostringstream& out)
@@ -509,7 +600,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
     };
 
     if (ExecutePose(args, out) || ExecuteCarryCommand(args, out) || ExecuteGrenadeCommand(args, out) || ExecuteArmsCommand(args, out) ||
-        ExecuteWristCommand(args, out) || ExecuteBodyCommand(args, out)) {
+        ExecuteWristCommand(args, out) || ExecuteBodyCommand(args, out) || ExecuteDualCommand(args, out) ||
+        ExecuteStereoCommand(args, out)) {
         return;
     }
     if (verb == "vr.options") {
@@ -573,6 +665,11 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << " percent=" << UiScalePercent()
             << " margin=" << UiFitMarginPercent()
             << " guide=" << UiGuideEnabled();
+    } else if (verb == "ui.text") {
+        // Text panel distance in cm (100..200, default 140), at the HUD panel's
+        // physical size. No argument: report.
+        out << "ui.text result=" << (args.size() > 1 ? SetTextPanelDistanceCm(arg(1, 140)) : 0)
+            << " cm=" << TextPanelDistanceCm();
     } else if (verb == "ui.margin") {
         // The real size ceiling. ui.scale above ~130 was being absorbed by the
         // fit loops shrinking the panel back inside 72% of the reported frustum.
@@ -869,23 +966,6 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         const bool fitInside = arg(1, 1) != 0;
         out << "hud.fit result=" << QueueHudFit(!fitInside) << " queued=1"
             << " fitInside=" << (fitInside ? 1 : 0);
-    } else if (verb == "xr.swap") {
-        // xr.swap 0|1 -- each eye's image into the other eye's socket (the inverted-stereo A/B)
-        if (args.size() >= 2) { SetXrSwapEyes(static_cast<unsigned int>(arg(1, 0))); }
-        out << "xr.swap result=0 enabled=" << (XrSwapEyes() ? 1 : 0);
-    } else if (verb == "xr.pattern") {
-        // xr.pattern 0|1 -- the stereo test pattern in place of Prey's image (1 re-anchors it at the head)
-        if (args.size() >= 2) { SetXrStereoPattern(static_cast<unsigned int>(arg(1, 0))); }
-        out << "xr.pattern result=0 enabled=" << (XrStereoPattern() ? 1 : 0);
-    } else if (verb == "xr.nativefov") {
-        // xr.nativefov 0|1 -- declare each eye's native field with the picture placed inside it (1, default) or
-        // Prey's own frustum (0, the double image on an immutable-fov runtime such as Meta's)
-        if (args.size() >= 2) { SetXrNativeFov(static_cast<unsigned int>(arg(1, 1))); }
-        out << "xr.nativefov result=0 enabled=" << (XrNativeFov() ? 1 : 0) << " fovMutable=" << (XrFovMutable() ? 1 : 0);
-    } else if (verb == "xr.mono") {
-        // xr.mono 0|1 -- one picture from the centre of the head in both eyes (no depth, always fuses)
-        if (args.size() >= 2) { SetXrMonoView(static_cast<unsigned int>(arg(1, 0))); }
-        out << "xr.mono result=0 enabled=" << (XrMonoView() ? 1 : 0);
     } else if (verb == "xr.frustum") {
         out << "xr.frustum result=" << SetRuntimeFrustum(arg(1, 1))
             << " used=" << RuntimeFrustumUsedCount()

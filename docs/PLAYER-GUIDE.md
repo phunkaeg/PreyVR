@@ -76,6 +76,12 @@ native menu is already open; `vr.options 1` is the diagnostic equivalent.
   your head and walks it with you around the room; TURN ONLY keeps it in place; OFF
   leaves it to the sticks. A wall stops the body, and the view dims if your head goes
   into it. Reset VR view is on the Setup tab.
+- **View:** **3D view**. FULL STEREO (default) draws both eyes from every frame:
+  true depth with no doubling when you move, at the highest GPU cost. ALTERNATE EYES
+  draws one eye per frame: cheaper, but moving things can shimmer or double. MONO
+  shows one picture, taken from the centre of your head, to both eyes: no depth
+  (everything reads as far away, your hands included), but it fuses at any frame
+  rate and every frame updates both eyes. Changes apply at once.
 - **Hands:** two-hand aim on/off, hold/toggle foregrip, snapped/free support hand,
   and the optional psychoscope gesture.
 - **Interface:** size, visible-area limit, panel curvature and controls guide.
@@ -154,7 +160,7 @@ Gesture feel and native acceptance still need headset testing.
 Menu choices save automatically to **`%LOCALAPPDATA%\PreyVR\vr-options.ini`**.
 They take precedence over launcher defaults for the settings listed above.
 To return those settings to launcher defaults, rename that file with Prey closed.
-Resolution, runtime and reference-space selection remain launcher settings.
+Resolution, runtime, reference-space and stereo-mode selection remain launcher settings.
 
 This batch has offline tests and a production-rendered menu preview, but **has
 not been run in Prey or accepted in a headset**. See
@@ -185,16 +191,22 @@ does not yet implement physical crouch, avatar-height matching or a vignette.
 
 Menus and inventory open on a panel about **2 metres** away, anchored where you opened them. Reset view to bring a panel back in front of you. An optional card shows the menu controls (`UiGuide: 1`; hidden by default). The combined layout stays within conservative limits of **60° horizontally and 40° vertically**, shrinking further for narrower runtime frusta.
 
-The native gameplay HUD is captured once into a transparent target and displayed at its own depth. Its graphics and interaction prompts stay Prey's own. The reticle is remapped to the smaller HUD canvas; when aiming beyond the panel it clips out instead of marking its edge. This is a HUD reticle at a fixed depth, not a world-surface hit marker. World markers and subtitles remain in the scene.
+The native gameplay HUD is captured once into a transparent target and displayed on a floating panel about 2 metres in front of you. Its graphics and interaction prompts stay Prey's own. The reticle is remapped to the smaller HUD canvas; when aiming beyond the panel it clips out instead of marking its edge. This is a HUD reticle at a fixed depth, not a world-surface hit marker. Book and note popups, subtitles and tutorial cards appear on a panel of their own, 1.4 metres away and in front of the HUD, while the world stays visible around them; being nearer, their text is larger and sharper. For this session only, `ui.text 120` in **Tune Prey VR.cmd** moves it (100 to 200 cm; nearer is larger, 200 matches the HUD panel).
+
+Objective markers stay in the world view, in both eyes, at no particular depth: they read as far away, which suits distant objectives better than nearby ones.
 
 The default render size is **2016 × 2160 per eye**, independent of monitor DPI. This restores the tall aspect used in earlier headset testing; **2688 × 2880** offers more detail at the same aspect and higher GPU cost. Edit `Width` and `Height` in `PreyVR.json`, then restart Prey. Menus can have unused space within their floating panel; do not switch the world render to 16:9 just to fill that panel. This is a starting preset, not automatic headset-resolution detection or a guarantee of complete FOV coverage on every headset.
 
 The launcher migrates the old, unversioned **2560 × 1440** default once, backing up `PreyVR.json` first. Custom sizes remain unchanged. To intentionally retain that old size, add `"ResolutionDefaultsVersion": 1` to the JSON, or launch with both `-Width 2560 -Height 1440`. A single command-line dimension is rejected. `HudLayer` remains `1` for floating HUD or `0` for the native scene HUD.
 
+Each eye is shown through the field its headset asks for, with Prey's picture placed inside it. Meta's PC runtime (Quest over Link or Air Link) ignores any other field an application declares, which is what made earlier builds show a double image at every distance on the Quest 3. If the edge of your view shows a thin black band, the game's field of view is narrower than the headset's: raise Prey's FOV slider (about 104 degrees covers a Quest 3).
+
+The **3D view** option (View tab) chooses full stereo, alternate eyes or mono; `vr.stereo 2|1|0` in **Tune Prey VR.cmd** does the same for testing. Both eyes are rendered from the same game frame by default (`DualStereo: 1`). `DualStereo: 0` (or launching with `-DualStereo 0`, which is also saved) forces the earlier method that renders one eye per frame for that launch; it shows doubled edges when you or the scene move. Use it only to check whether a problem belongs to the both-eyes method, and report what you find. Fades, markers and anything else Prey draws over the world are drawn into both eyes; `dual.overlay 0` in **Tune Prey VR.cmd** leaves them in the right eye only, for comparison, and `dual.overlay 1` restores them. Once VR is ready, the launcher prints which method is running. If the both-eyes method is unavailable, it says so and Prey continues with alternate eyes.
+
 ## Recovery and support
 
-If startup fails, the launcher names the failed stage and the diagnostic folder under `%LOCALAPPDATA%\PreyVR\runs`. Resolve the headset/runtime issue, return focus to Prey, and press F11 to retry. Reconnect the runtime before retrying a lost XR session. F12 and the grip chord need a fresh tracked headset pose.
+If startup fails, the launcher names the failed stage and the diagnostic folder under `%LOCALAPPDATA%\PreyVR\runs`. While VR is running, that folder's `PreyVR.log` also records the rendering and HUD counters once a minute (lines starting `preyvr_vr status`); include it when reporting a problem. Resolve the headset/runtime issue, return focus to Prey, and press F11 to retry. Reconnect the runtime before retrying a lost XR session. F12 and the grip chord need a fresh tracked headset pose.
 
 This package supports the verified **Steam Prey 2017 x64 build** only. The launcher checks `PreyDll.dll` before loading anything; it does not patch game files. Keep the package files together. It also refuses to launch over another detected fleet game.
 
-This is a preview. The new interface has simulator and in-game checks; headset comfort, every weapon, and every in-world terminal still need player acceptance. Existing alternate-eye rendering and its performance limits remain.
+This is a preview. The new interface has simulator and in-game checks; headset comfort, every weapon, and every in-world terminal still need player acceptance. Rendering both eyes every frame costs frame rate, and that cost has not yet been measured properly at headset resolution.

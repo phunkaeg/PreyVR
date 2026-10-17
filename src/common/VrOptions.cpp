@@ -33,7 +33,8 @@ constexpr Spec specs[]={
  {"belt_hints",L"BODY SLOT FEEDBACK",L"Brief feedback for holster requests and medkit selection/use. Requires the corresponding body slot feature.",1,0,1,1},
  {"debug_overlay",L"DEBUG OVERLAY (TESTING)",L"Draws each hand's ray and target, body slots, the wrist test and the foregrip region in the world.",0,0,1,1},
  {"muzzle_aim",L"SHOTS FROM THE MUZZLE (EXPERIMENTAL)",L"Shots leave the weapon's muzzle along your controller's aim, so they land where the barrel points at any distance.",0,0,1,1},
- {"body_follow",L"BODY FOLLOWS YOU",L"Your character turns with your head and walks with you around the room. Walls stop it and dim the view.",2,0,2,1}
+ {"body_follow",L"BODY FOLLOWS YOU",L"Your character turns with your head and walks with you around the room. Walls stop it and dim the view.",2,0,2,1},
+ {"stereo",L"3D VIEW",L"Full stereo draws both eyes every frame. Alternate eyes costs less, but moving things can shimmer. Mono: one picture, no depth, always comfortable.",2,0,2,1}
 };
 }
 const Spec& Describe(unsigned id){return specs[id<Count?id:0];}
@@ -67,10 +68,10 @@ bool Parse(std::string_view text,Values& result){
  result=parsed;return true;
 }
 int Item(unsigned page,unsigned row){
- constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim}};
+ constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim},{Stereo,-2,-2,-2}};
  return page<Pages&&row<Rows?items[page][row]:-2;
 }
-const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP"};return names[p%Pages];}
+const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP",L"VIEW"};return names[p%Pages];}
 std::wstring Display(unsigned id,int v){
  if(id==PsiTarget)return v==1?L"HEAD":v==2?L"LEFT CONTROLLER":L"ORIGINAL";
  if(id==SwingSpeed)return std::to_wstring(v)+L" CM/S";
@@ -78,6 +79,7 @@ std::wstring Display(unsigned id,int v){
  if(id==Turn)return v?std::to_wstring(v)+L" DEGREES":L"SMOOTH";
  if(id==HeadRelative)return v?L"HEAD RELATIVE":L"BODY RELATIVE";
  if(id==BodyFollow)return v==2?L"TURN AND WALK":v==1?L"TURN ONLY":L"OFF";
+ if(id==Stereo)return v==2?L"FULL STEREO":v==1?L"ALTERNATE EYES":L"MONO";
  if(id==GripToggle)return v?L"TOGGLE":L"HOLD";
  if(id==SupportSnap)return v?L"SNAPPED":L"FREE";
  if(id==UiCurve)return v?std::to_wstring(v)+L" DEGREES":L"FLAT";

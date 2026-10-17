@@ -3,6 +3,7 @@
 #include <string>
 
 #include <Windows.h>
+#include <d3d11.h>
 
 // Hurdle 2: an OpenXR session hosted inside Prey, bound to **Prey's own D3D11
 // device**, submitting Prey's own backbuffer.
@@ -137,6 +138,28 @@ bool XrFovMutable();
 DWORD SetXrMonoView(unsigned int enabled);
 bool XrMonoView();
 
+// **Rung 1b.** Called on the render thread between the two scene submissions of
+// a both-eyes frame (DualSceneStereo mode 3): copies the backbuffer -- the first
+// eye, post-processed, before the HUD -- into that eye's held image. The next
+// ServiceXrFrame pairs it with the backbuffer (the second eye) under the frame's
+// both-eyes contract. False when no XR session is submitting stereo, the lock is
+// busy or the size differs; that frame's both-eyes contract is then refused.
+bool HoldDualFirstEye(void* renderer);
+
+// **Step 2: what the game draws after the world, into the held first eye too.**
+// DualSceneStereo opens the window after the second submission of a frame whose
+// first eye was held; the next ServiceXrFrame closes it, before it pairs the
+// eyes. While it is open, a draw into the frame's own backbuffer can be repeated
+// into the held first eye through the view this returns (same view format as
+// `destination`). Null, with `refusal` naming why, when the window is closed,
+// the destination is not that backbuffer, or the lock is busy. Render thread.
+void OpenDualOverlayWindow();
+bool DualOverlayWindowOpen();
+ID3D11RenderTargetView* HeldFirstEyeTarget(ID3D11RenderTargetView* destination, const char** refusal);
+
+// Holds made and refused, and both-eyes pairs submitted and refused.
+std::string DualPairReport();
+
 // Asks for the sRGB swapchain format rather than the exact match -- the
 // FAIL-STR-033 double-encoded-gamma fix.
 //
@@ -193,6 +216,11 @@ void ServiceXrFrame(void* renderer);
 DWORD SetUiScalePercent(unsigned int percent);
 unsigned UiCurveDegrees();
 DWORD UiScalePercent();
+// The text panel's distance (books/notes, subtitles, tutorial cards), 100..200 cm,
+// default 140. It keeps the HUD panel's physical size, so nearer is larger in
+// angle and its small text less minified. 200 matches the HUD panel exactly.
+DWORD SetTextPanelDistanceCm(unsigned int centimetres);
+DWORD TextPanelDistanceCm();
 // The fraction of the RUNTIME-REPORTED frustum a panel must stay inside, 30..100.
 // This, not ui.scale, is what caps panel size: the fit loops shrink the panel
 // until it satisfies this, so past the point where it binds, raising the scale

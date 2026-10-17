@@ -1,4 +1,5 @@
 #include "HudLayer.h"
+#include "DualOverlay.h"
 #include "Bootstrap.h"
 #include "MinHookInit.h"
 #include "Logger.h"
@@ -77,6 +78,52 @@ struct Capture {
     DWORD thread=0;
 };
 Capture captures[kMovies];
+
+// **The text panel's movies.** Notes and books, subtitles and tutorial cards
+// are separate elements from the gameplay HUD, so they stayed in the scene --
+// and in a both-eyes frame reached only the second eye. All of them draw into
+// one shared capture (the first each frame clears it, the rest draw over it),
+// shown by XrSessionHost on the HUD's panel fit, above the HUD.
+constexpr const char* kTextMovieNames[]={"DanielleTranscribeNote","DanielleSubtitles","DanielleTutorialCard"};
+constexpr unsigned kTextMovies=sizeof(kTextMovieNames)/sizeof(kTextMovieNames[0]);
+LatestSnapshot<Identity> seenText[kTextMovies];
+std::atomic<unsigned long long> textIdentified[kTextMovies]{};
+Capture textCapture;
+std::atomic<bool> textFault{false};
+std::atomic<unsigned long long> textCaptured{0},textRefused{0};
+
+// Every Flash element's render proxy and name, kept for reference so it
+// can say which movie it drew into the held eye (DualOverlayReport).
+struct Named {std::uintptr_t proxy=0;char name[40]{};};
+std::mutex namedMutex;
+std::array<Named,24> named{};
+std::size_t namedNext=0;
+void CopyName(char (&out)[40],const char* name) {
+    std::size_t i=0;for(;i+1<sizeof(out)&&name[i];++i)out[i]=name[i];out[i]=0;
+}
+void Remember(std::uintptr_t proxy,const char* name) {
+    std::lock_guard lock(namedMutex);
+    for(auto& entry:named)if(entry.proxy==proxy){CopyName(entry.name,name);return;}
+    auto& entry=named[namedNext++%named.size()];
+    entry.proxy=proxy;CopyName(entry.name,name);
+}
+std::string NameOf(std::uintptr_t proxy) {
+    std::lock_guard lock(namedMutex);
+    for(const auto& entry:named)if(entry.proxy==proxy)return entry.name;
+    return "unnamed";
+}
+
+// A movie left in the scene, drawn once more into the held first eye
+// inside its one native callback. Set by RedrawIntoHeldEye for
+// the duration of that callback and consumed by StereoDisplay.
+thread_local void* redrawRoot=nullptr;
+thread_local ID3D11DeviceContext* redrawContext=nullptr;
+thread_local ID3D11RenderTargetView* redrawFrom=nullptr;
+thread_local ID3D11DepthStencilView* redrawFromDepth=nullptr;
+thread_local ID3D11RenderTargetView* redrawTarget=nullptr;
+thread_local ID3D11DepthStencilView* redrawDepthView=nullptr;
+thread_local bool redrawn=false;
+Capture redrawDepth; // the stencil the native draw started from; depth fields only
 Capture inventoryRight;
 Capture nativeWrist;
 std::atomic<std::uint64_t> wristRequest{0};
@@ -323,8 +370,27 @@ void __fastcall StereoMatrix(void* renderer,const void* source,float* output) {
         stereoMatrices.fetch_add(1,std::memory_order_relaxed);
     } else stereoRefused.fetch_add(1,std::memory_order_relaxed);
 }
+// The native draw, into the frame being finished (the second eye), then
+// the same movie, same frame, into the held first eye -- starting from the
+// stencil the native draw started from, which Flash clips its viewport with.
+void RedrawDisplay(void* root) {
+    if(redrawFromDepth && redrawDepthView) {
+        ComPtr<ID3D11Resource> source;redrawFromDepth->GetResource(&source);
+        redrawContext->CopyResource(redrawDepth.depth.Get(),source.Get());
+    }
+    originalDisplay(root);
+    activeContext=redrawContext;originalDestination=redrawFrom;originalDepth=redrawFromDepth;
+    activeTarget=redrawTarget;activeDepthView=redrawDepthView;
+    originalTargets(redrawContext,1,&activeTarget,activeDepthView);
+    originalDisplay(root);
+    activeContext=nullptr;originalDestination=nullptr;originalDepth=nullptr;
+    activeTarget=nullptr;activeDepthView=nullptr;
+    originalTargets(redrawContext,1,&redrawFrom,redrawFromDepth);
+    redrawn=true;
+}
 void __fastcall StereoDisplay(void* root) {
     if(root==hudRoot && varWanted.load())RunVarOps(root);
+    if(redrawRoot && root==redrawRoot){RedrawDisplay(root);return;}
     const bool face=root==hudRoot && activeContext && spriteInstalled && WristMovesStatusOffFace();
     if(root==wristRoot && activeContext){
         // First preserve the normal draw. Replay stays inside the ONE native
@@ -351,34 +417,44 @@ void __fastcall StereoDisplay(void* root) {
     stereoProduced=true;
 }
 
-bool Identify(void* element,std::uintptr_t base,std::uintptr_t* proxy,Movie* movie) {
+// Any Flash UI element: its name, and its player's render proxy. 0 when it is
+// not one; 1 with the proxy; 2 when the proxy's vtable is not the expected one,
+// with `*proxy` holding that vtable's RVA instead.
+int Inspect(void* element,std::uintptr_t base,std::uintptr_t* proxy,char (&name)[40]) {
     __try {
         auto e=static_cast<std::uint8_t*>(element);
-        if(!e || *reinterpret_cast<std::uintptr_t*>(e)!=base+0x1CAB358)return false;
-        const char* name=*reinterpret_cast<const char**>(e+0x30);
-        if(!name)return false;
-        unsigned which=kMovies;
-        for(unsigned i=0;i<kMovies;++i)if(std::strcmp(name,kMovieNames[i])==0){which=i;break;}
-        if(which==kMovies)return false;
+        if(!e || *reinterpret_cast<std::uintptr_t*>(e)!=base+0x1CAB358)return 0;
+        const char* text=*reinterpret_cast<const char**>(e+0x30);
+        if(!text)return 0;
+        std::size_t i=0;for(;i+1<sizeof(name)&&text[i];++i)name[i]=text[i];name[i]=0;
         auto p=*reinterpret_cast<std::uintptr_t*>(e+0x58);
-        if(!p || *reinterpret_cast<std::uintptr_t*>(p)!=base+0x1DB56D8)return false;
+        if(!p || *reinterpret_cast<std::uintptr_t*>(p)!=base+0x1DB56D8)return 0;
         const auto proxyVtable=*reinterpret_cast<std::uintptr_t*>(p+8);
-        if(proxyVtable!=base+0x1DB58B8) {
-            // Fail closed, but say what was actually there. Recorded as an RVA
-            // so it can be read straight against the module.
-            proxyMismatch[which].store(proxyVtable>base?proxyVtable-base:proxyVtable,
-                                       std::memory_order_relaxed);
-            return false;
-        }
-        *proxy=p+8;*movie=static_cast<Movie>(which);
-        identified[which].fetch_add(1,std::memory_order_relaxed);
-        return true;
-    } __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
+        if(proxyVtable!=base+0x1DB58B8){*proxy=proxyVtable>base?proxyVtable-base:proxyVtable;return 2;}
+        *proxy=p+8;
+        return 1;
+    } __except(EXCEPTION_EXECUTE_HANDLER) {return 0;}
 }
 void __fastcall ObserveElement(void* element) {
-    std::uintptr_t proxy=0;Movie movie=Movie::hud;
-    if(Identify(element,reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll")),&proxy,&movie))
-        seen[static_cast<unsigned>(movie)].Publish({proxy,MonotonicNanoseconds()});
+    std::uintptr_t proxy=0;char name[40]{};
+    const int found=Inspect(element,reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll")),&proxy,name);
+    if(found!=0) {
+        const auto now=MonotonicNanoseconds();
+        for(unsigned i=0;i<kMovies;++i) {
+            if(std::strcmp(name,kMovieNames[i])!=0)continue;
+            // Fail closed, but say what was actually there. Recorded as an RVA
+            // so it can be read straight against the module.
+            if(found==2)proxyMismatch[i].store(proxy,std::memory_order_relaxed);
+            else {identified[i].fetch_add(1,std::memory_order_relaxed);seen[i].Publish({proxy,now});}
+        }
+        if(found==1) {
+            for(unsigned i=0;i<kTextMovies;++i) {
+                if(std::strcmp(name,kTextMovieNames[i])!=0)continue;
+                textIdentified[i].fetch_add(1,std::memory_order_relaxed);seenText[i].Publish({proxy,now});
+            }
+            Remember(proxy,name);
+        }
+    }
     originalElement(element);
 }
 void STDMETHODCALLTYPE RedirectTargets(ID3D11DeviceContext* context,UINT count,
@@ -441,6 +517,93 @@ void* InventoryRoot(void* proxy,std::uintptr_t base) {
         return root && *reinterpret_cast<std::uintptr_t*>(root)==base+0x1EB4B60?root:nullptr;
     } __except(EXCEPTION_EXECUTE_HANDLER) {return nullptr;}
 }
+bool EnsureDepthCopy(ID3D11Device* device,ID3D11DepthStencilView* ds,Capture& capture) {
+    ComPtr<ID3D11Resource> resource;ds->GetResource(&resource);
+    ComPtr<ID3D11Texture2D> texture;if(FAILED(resource.As(&texture)))return false;
+    D3D11_TEXTURE2D_DESC d{},previous{};texture->GetDesc(&d);if(capture.depth)capture.depth->GetDesc(&previous);
+    if(d.SampleDesc.Count!=1)return false;
+    if(!capture.depth || previous.Width!=d.Width || previous.Height!=d.Height || previous.Format!=d.Format) {
+        capture.depth.Reset();capture.depthView.Reset();
+        D3D11_DEPTH_STENCIL_VIEW_DESC view{};ds->GetDesc(&view);
+        if(FAILED(device->CreateTexture2D(&d,nullptr,&capture.depth)) ||
+           FAILED(device->CreateDepthStencilView(capture.depth.Get(),&view,&capture.depthView))) {
+            capture.depth.Reset();capture.depthView.Reset();return false;
+        }
+    }
+    return true;
+}
+struct NativeTargets {
+    ComPtr<ID3D11DeviceContext> context;ID3D11Device* device=nullptr;
+    std::array<ID3D11RenderTargetView*,8> saved{};ID3D11DepthStencilView* ds=nullptr;
+    bool single=false;
+    NativeTargets() {
+        const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
+        auto renderer=*reinterpret_cast<std::uintptr_t*>(base+engine::RendererLayout::singletonPointerRva);
+        device=*reinterpret_cast<ID3D11Device**>(renderer+engine::RendererLayout::device);
+        device->GetImmediateContext(&context);
+        context->OMGetRenderTargets(8,saved.data(),&ds);
+        single=saved[0]!=nullptr;for(unsigned i=1;i<8;++i)single=single && !saved[i];
+    }
+    ~NativeTargets(){for(auto p:saved)if(p)p->Release();if(ds)ds->Release();}
+    NativeTargets(const NativeTargets&)=delete;
+    NativeTargets& operator=(const NativeTargets&)=delete;
+};
+// **The text panel's capture.** Each text movie's one native callback, redirected
+// into the shared text texture. The first movie of a frame clears it; the
+// frame-boundary drain (TextLayerTexture) is what makes the next frame's first
+// movie first again. False leaves the movie to draw natively.
+bool CaptureText(void* proxy,bool release,std::uintptr_t address,std::uint64_t now) {
+    if(!enabled.load() || textFault.load() || activeContext || XrSessionStatusValue()!=1 ||
+       !HudGameplayInputAllowed())return false;
+    bool text=false;
+    for(auto& s:seenText){Identity id{};if(s.TryRead(id) && id.proxy==address && FreshSample(now,id.stamp)){text=true;break;}}
+    if(!text)return false;
+    NativeTargets native;
+    if(!native.single || !EnsureTexture(native.device,native.saved[0],native.ds,textCapture)) {
+        textRefused.fetch_add(1,std::memory_order_relaxed);return false;
+    }
+    auto* context=native.context.Get();
+    if(!textCapture.stamp || textCapture.thread!=GetCurrentThreadId()) {
+        const float clear[4]{};context->ClearRenderTargetView(textCapture.target.Get(),clear);
+    }
+    if(native.ds) {ComPtr<ID3D11Resource> source;native.ds->GetResource(&source);context->CopyResource(textCapture.depth.Get(),source.Get());}
+    originalDestination=native.saved[0];originalDepth=native.ds;activeContext=context;
+    activeTarget=textCapture.target.Get();activeDepthView=textCapture.depthView.Get();
+    originalTargets(context,1,&activeTarget,activeDepthView);
+    originalFlash(proxy,release);
+    activeContext=nullptr;originalDestination=nullptr;originalDepth=nullptr;
+    activeTarget=nullptr;activeDepthView=nullptr;
+    originalTargets(context,8,native.saved.data(),native.ds);
+    textCapture.stamp=MonotonicNanoseconds();textCapture.thread=GetCurrentThreadId();
+    textCaptured.fetch_add(1,std::memory_order_relaxed);
+    return true;
+}
+// A movie still drawing into the frame's backbuffer while a both-eyes frame
+// holds its first eye: its one native callback runs with the movie marked,
+// and StereoDisplay draws it twice -- natively, then into the held eye.
+// The stereo inventory's pattern: no extra outer callback, no extra Advance.
+// False leaves the movie to draw natively (and says why in the census).
+bool RedrawIntoHeldEye(void* proxy,bool release,std::uintptr_t address) {
+    if(!DualOverlayRedrawEnabled() || !DualOverlayWindowOpen() || activeContext || !displayInstalled)return false;
+    NativeTargets native;
+    const char* refusal=nullptr;
+    ID3D11RenderTargetView* held=native.single?HeldFirstEyeTarget(native.saved[0],&refusal):nullptr;
+    if(!native.single)refusal="multiple_targets";
+    void* root=held?InventoryRoot(proxy,reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"))):nullptr;
+    if(held && !root)refusal="movie_root";
+    if(root && native.ds && !EnsureDepthCopy(native.device,native.ds,redrawDepth)){root=nullptr;refusal="depth_copy";}
+    if(!root) {NoteFlashOverlay(NameOf(address).c_str(),false,refusal);return false;}
+    redrawRoot=root;redrawContext=native.context.Get();redrawFrom=native.saved[0];redrawFromDepth=native.ds;
+    redrawTarget=held;redrawDepthView=native.ds?redrawDepth.depthView.Get():nullptr;redrawn=false;
+    originalFlash(proxy,release);
+    const bool drew=redrawn;
+    redrawRoot=nullptr;redrawContext=nullptr;redrawFrom=nullptr;redrawFromDepth=nullptr;
+    redrawTarget=nullptr;redrawDepthView=nullptr;redrawn=false;
+    // As the captures do: the callback ends with the targets it was entered with.
+    originalTargets(native.context.Get(),8,native.saved.data(),native.ds);
+    NoteFlashOverlay(NameOf(address).c_str(),drew,drew?nullptr:"no_display");
+    return true;
+}
 void __fastcall CaptureFlash(void* proxy,bool release) {
     const auto address=reinterpret_cast<std::uintptr_t>(proxy);
     const auto now=MonotonicNanoseconds();
@@ -457,7 +620,10 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
             }
         }
     }
-    if(which==kMovies) {originalFlash(proxy,release);return;}
+    if(which==kMovies) {
+        if(CaptureText(proxy,release,address,now) || RedrawIntoHeldEye(proxy,release,address))return;
+        originalFlash(proxy,release);return;
+    }
     InventoryConsumer consumer{};
     if(which==static_cast<unsigned>(Movie::pda) &&
        (!inventoryConsumer.TryRead(consumer) || !FreshSample(now,consumer.stamp))) {
@@ -586,6 +752,7 @@ DWORD SetHudLayerEnabled(unsigned value) {
     if(value>1)return 1;
     std::lock_guard lock(installMutex);
     if(value && !Install())return 2;
+    if(value)textFault=false; // a refused text panel tries again with the layer
     enabled.store(value!=0);return 0;
 }
 bool HudLayerEnabled(){return enabled.load();}
@@ -629,12 +796,39 @@ std::string HudLayerReport(){
             static_cast<unsigned long long>(mismatch));return std::string(b);}();
         out+="}";
     }
+    out+=" text={captured="+std::to_string(textCaptured.load())+" refused="+std::to_string(textRefused.load())+
+         " fault="+std::to_string(textFault.load());
+    for(unsigned i=0;i<kTextMovies;++i)out+=std::string(" ")+kTextMovieNames[i]+"="+std::to_string(textIdentified[i].load());
+    out+="}";
     return out;
 }
 ID3D11Texture2D* HudLayerTexture(){
     auto texture=BorrowTexture(Movie::hud);
     captures[static_cast<unsigned>(Movie::hud)].stamp=0;
     return texture;
+}
+ID3D11Texture2D* TextLayerTexture(){
+    const bool fresh=textCapture.thread==GetCurrentThreadId() && FreshSample(MonotonicNanoseconds(),textCapture.stamp);
+    textCapture.stamp=0; // the next frame's first text movie clears it
+    return fresh && !textFault.load()?textCapture.texture.Get():nullptr;
+}
+void RefuseTextLayer(const char* reason){
+    if(!textFault.exchange(true))lifecycle::Log(std::string("preyvr_hud_layer text_disabled reason=")+reason);
+}
+bool EnsureOverlayHooks(){
+    std::lock_guard lock(installMutex);
+    return InstallDisplay();
+}
+bool DrawRedirected(ID3D11DeviceContext* context,ID3D11RenderTargetView* from,ID3D11DepthStencilView* fromDepth,
+                    ID3D11RenderTargetView* to,ID3D11DepthStencilView* toDepth,void(*draw)(void*),void* argument){
+    // Never inside a capture already in flight: its substitution owns the state.
+    if(!originalTargets || activeContext || !context || !from || !to)return false;
+    activeContext=context;originalDestination=from;originalDepth=fromDepth;activeTarget=to;activeDepthView=toDepth;
+    originalTargets(context,1,&to,toDepth);
+    draw(argument);
+    activeContext=nullptr;originalDestination=nullptr;originalDepth=nullptr;activeTarget=nullptr;activeDepthView=nullptr;
+    originalTargets(context,1,&from,fromDepth);
+    return true;
 }
 void RequestNativeWristCapture(bool active){
     // The face filter rides the same sprite hook, so it is installed as soon as

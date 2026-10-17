@@ -36,6 +36,8 @@ DWORD SetBodyYawFollow(unsigned v){bodyYaw=v;applied[options::BodyFollow]=bodyYa
 DWORD SetBodyRoomScale(unsigned v){bodyRoom=v;applied[options::BodyFollow]=bodyYaw+bodyRoom*bodyYaw;return 0;}
 unsigned BodyYawFollowEnabled(){return bodyYaw;}
 unsigned BodyRoomScaleEnabled(){return bodyRoom;}
+DWORD SetVrStereoMode(unsigned v){applied[options::Stereo]=static_cast<int>(v);return 0;}
+unsigned VrStereoModeChosen(){return static_cast<unsigned>(applied[options::Stereo]);}
 unsigned DebugOverlayMask(){return applied[options::DebugOverlay];}
 DWORD SetSnapTurnDegrees(unsigned v){applied[options::Turn]=v;return 0;}
 unsigned SnapTurnDegrees(){return applied[options::Turn];}
