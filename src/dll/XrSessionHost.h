@@ -80,6 +80,14 @@ DWORD StartXrSession();
 DWORD StopXrSession();
 // Runtime loss waits for native feature shutdown before render-thread destruction.
 bool XrSessionLossPending();
+// The session is begun and the runtime shows it (SYNCHRONIZED..FOCUSED). False
+// while the runtime holds it stopped -- the headset off -- which is a pause.
+bool XrSessionBegun();
+// Once per kick: the runtime has held the session stopped too long (Meta), so
+// VrMode replaces it with a new one.
+bool XrSessionKickDue();
+// The runtime asked the app to leave VR (EXITING): the user's choice, not retried.
+bool XrSessionExiting();
 
 DWORD XrSessionStatusValue();
 // 0=scene only, 1=automatic modal screen, 2=force screen (diagnostic).

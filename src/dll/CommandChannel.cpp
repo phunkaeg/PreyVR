@@ -60,6 +60,14 @@ void Log(const std::string& line)
 }
 
 std::atomic<bool> gRunning{false};
+// debug.crash overflow: unbounded recursion the optimiser cannot fold away.
+#pragma warning(suppress : 4717)
+int CrashByOverflow(int depth)
+{
+    volatile char frame[512];
+    frame[0] = static_cast<char>(depth);
+    return CrashByOverflow(depth + 1) + frame[0];
+}
 std::atomic<unsigned long long> gProcessed{0};
 std::atomic<unsigned long long> gRejected{0};
 
@@ -302,7 +310,7 @@ void WriteReport(std::ostringstream& out)
         << " moveHooked=" << MoveLaneHooked()
         << " moveOursX=" << MoveLaneOursX() << " moveOursY=" << MoveLaneOursY()
         << " moveNative=" << MoveLaneNative()
-        << " movePosted=" << MoveLanePosted() << " moveDropped=" << MoveLaneDropped()
+        << " movePosted=" << MoveLanePosted() << " moveDropped=" << MoveLaneDropped() << " moveHeld=" << MoveLaneHeld()
         << " moveInputObj=0x" << std::hex << MoveLaneInputObject() << std::dec
         << " moveAxisMilli=" << MoveLaneAxisMilli(0) << "," << MoveLaneAxisMilli(1)
         << " moveCinematic=" << MoveLaneCinematicGate()
@@ -683,6 +691,12 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << " enabled=" << UiGuideEnabled();
     } else if (verb == "ui.curve") {
         out << "ui.curve result=" << SetUiCurveDegrees(arg(1,35));
+    } else if (verb == "debug.crash" && args.size() >= 2) {
+        // The crash report's own test (CrashReport.h): kills Prey on purpose.
+        // debug.crash overflow | debug.crash null
+        if (args[1] == "overflow") { CrashByOverflow(1); }
+        if (args[1] == "null") { *static_cast<volatile int*>(nullptr) = 1; }
+        out << "debug.crash result=1 detail=unknown_kind";
     } else if (verb == "observer") {
         const DWORD status = SetFrameObserverEnabled(arg(1, 1));
         out << "observer status=" << ObserverStatusName(status) << "(" << status << ")";

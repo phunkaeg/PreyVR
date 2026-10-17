@@ -48,6 +48,10 @@ private:
     DXGI_FORMAT presentationFormat_=DXGI_FORMAT_UNKNOWN;
     std::vector<XrSwapchainImageD3D11KHR> images_;
     bool attempted_=false, fault_=false;
+    // An image whose wait timed out stays acquired and is waited for again next
+    // Copy: releasing it now is illegal, and a slow compositor is not a lost session.
+    bool acquired_=false;
+    uint32_t index_=0;
     Refusal refusal_=Refusal::none;
     XrResult result_=XR_SUCCESS;
 };

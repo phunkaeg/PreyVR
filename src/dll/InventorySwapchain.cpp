@@ -42,12 +42,13 @@ void InventorySwapchain::Reset() {
     if(chain_)api_.destroy(chain_);
     chain_=XR_NULL_HANDLE;session_=XR_NULL_HANDLE;images_.clear();desc_={};
     presentationFormat_=DXGI_FORMAT_UNKNOWN;
-    attempted_=fault_=false;
+    attempted_=fault_=acquired_=false;
     refusal_=Refusal::none;result_=XR_SUCCESS;
 }
 bool InventorySwapchain::Prepare(XrSession session,const D3D11_TEXTURE2D_DESC& source,DXGI_FORMAT presentationFormat) {
-    if(attempted_ && session_==session && presentationFormat_==presentationFormat && desc_.Format==source.Format &&
-       InventoryTextureCompatible(desc_,source))return chain_!=XR_NULL_HANDLE&&!fault_;
+    // A retired chain (a failed wait or release) is built again rather than kept dark.
+    if(attempted_ && !fault_ && session_==session && presentationFormat_==presentationFormat && desc_.Format==source.Format &&
+       InventoryTextureCompatible(desc_,source))return chain_!=XR_NULL_HANDLE;
     Reset();attempted_=true;session_=session;desc_=source;
     presentationFormat_=presentationFormat;
     auto refuse=[&](Refusal why,XrResult result=XR_SUCCESS){refusal_=why;result_=result;return false;};
@@ -90,23 +91,33 @@ bool InventorySwapchain::Prepare(XrSession session,const D3D11_TEXTURE2D_DESC& s
     return true;
 }
 InventorySwapchain::Upload InventorySwapchain::Copy(ID3D11DeviceContext* context,ID3D11Texture2D* source) {
-    if(fault_)return Upload::sessionFault;
+    if(fault_)return Upload::failed;   // retired until Prepare builds it again
     if(!chain_ || !context || !source)return Upload::failed;
     D3D11_TEXTURE2D_DESC d{};source->GetDesc(&d);
     if(!InventoryTextureCompatible(desc_,d))return Upload::failed;
-    uint32_t index=0;
-    XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
-    if(api_.acquire(chain_,&acquire,&index)!=XR_SUCCESS)return Upload::failed;
+    // Only a session or instance the runtime calls gone ends VR; any other
+    // failure retires this layer alone.
+    const auto fail=[&](XrResult result){
+        fault_=true;
+        return result==XR_ERROR_SESSION_LOST||result==XR_ERROR_INSTANCE_LOST?Upload::sessionFault:Upload::failed;};
+    if(!acquired_) {
+        XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+        if(const XrResult result=api_.acquire(chain_,&acquire,&index_);result!=XR_SUCCESS)
+            return result==XR_ERROR_SESSION_LOST||result==XR_ERROR_INSTANCE_LOST?fail(result):Upload::failed;
+        acquired_=true;
+    }
     XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
     wait.timeout=50000000; // 50 ms; no unbounded render-thread wait.
-    if(api_.wait(chain_,&wait)!=XR_SUCCESS) {
-        // XR_TIMEOUT_EXPIRED is positive, but it does NOT permit copy/release.
-        fault_=true;return Upload::sessionFault;
+    if(const XrResult result=api_.wait(chain_,&wait);result!=XR_SUCCESS) {
+        // XR_TIMEOUT_EXPIRED is positive, but it does NOT permit copy/release:
+        // this frame goes without the layer and the next Copy waits again.
+        return XR_FAILED(result)?fail(result):Upload::failed;
     }
-    const bool valid=index<images_.size();
-    if(valid)context->CopyResource(images_[index].texture,source);
+    acquired_=false;
+    const bool valid=index_<images_.size();
+    if(valid)context->CopyResource(images_[index_].texture,source);
     XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-    if(api_.release(chain_,&release)!=XR_SUCCESS) {fault_=true;return Upload::sessionFault;}
+    if(const XrResult result=api_.release(chain_,&release);result!=XR_SUCCESS)return fail(result);
     return valid?Upload::ready:Upload::failed;
 }
 }

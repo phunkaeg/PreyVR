@@ -67,7 +67,7 @@ bool Send(int event,int x,int y) {
 unsigned UiPointerHand(){return gFault.load()?2:gHand.load();}
 DWORD SetUiPointerHand(unsigned hand){if(hand>2)return ERROR_INVALID_PARAMETER;gHand.store(hand);ClearUiPointer();return 0;}
 void ClearUiPointer(){gClearGeneration.fetch_add(1);gSample.Clear();}
-UiPointerVisual PublishUiPointer(const ui::Surface* surface,unsigned width,unsigned height,unsigned long long reference) {
+UiPointerVisual PublishUiPointer(const ui::Surface* surface,unsigned width,unsigned height,unsigned long long reference,unsigned top) {
     UiPointerVisual visual;
     Sample sample;sample.stamp=MonotonicNanoseconds();sample.reference=reference;sample.generation=gClearGeneration.load();
     TrackingFrame frame;
@@ -83,7 +83,7 @@ UiPointerVisual PublishUiPointer(const ui::Surface* surface,unsigned width,unsig
                 sample.inside=visual.hit->inside;
                 // Off-screen drag coordinates remain off-screen. Bound integer conversion.
                 sample.x=static_cast<int>(std::clamp(visual.hit->u,-2.f,3.f)*static_cast<float>(width));
-                sample.y=static_cast<int>(std::clamp(visual.hit->v,-2.f,3.f)*static_cast<float>(height));
+                sample.y=static_cast<int>(top)+static_cast<int>(std::clamp(visual.hit->v,-2.f,3.f)*static_cast<float>(height));
             }
         }
     }

@@ -121,6 +121,7 @@ unsigned long long MoveLaneNative();
 // Events this lane handed to the input queue, and those the queue refused.
 unsigned long long MoveLanePosted();
 unsigned long long MoveLaneDropped();
+unsigned long long MoveLaneHeld();
 // The input object the handlers receive, and the movement axes read back from
 // it (`+0x5C`, `+0x60`, R-089) in thousandths. Read back rather than assumed:
 // a value we posted that never lands here did not move the player.

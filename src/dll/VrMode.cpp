@@ -13,8 +13,10 @@
 #include "DualOverlay.h"
 #include "NearFovOverride.h"
 #include "InputPost.h"
+#include "preyvr/InputEvent.h"
 #include "InputPathProbe.h"
 #include "MoveLane.h"
+#include "HudBridge.h"
 #include "AimTakeover.h"
 #include "ReticleFollow.h"
 #include "HudLayer.h"
@@ -38,20 +40,25 @@ Phase phase=Phase::off;
 std::string failure;
 unsigned setting=0;
 unsigned long long deadline=0, consoleCount=0, calibratedOwner=0, calibratedReference=0;
-// The both-eyes and HUD-panel counters, logged once a minute while VR is active
+// The frame rate, stick, both-eyes and HUD-panel counters, logged every 30 s while VR is active
 // so a headset session records them without a tuner command.
 unsigned long long nextStatusReport=0;
-constexpr unsigned long long kStatusReportMs=60000;
+constexpr unsigned long long kStatusReportMs=30000;
 bool consolePending=false;
 unsigned desiredWidth=0,desiredHeight=0;
 unsigned long long firstFrame=0;
 bool nearFollow=true;
 unsigned followedNearFov=0;
 unsigned long long nextInputProbe=0;
-const char* settings[]={"r_MotionBlur 0","r_AntialiasingMode 1"};
+// r_VSync 0: the headset's xrWaitFrame paces the game. Vsync to the PC's monitor
+// is a second clock against it -- every VR mod precedent turns it off.
+const char* settings[]={"r_MotionBlur 0","r_AntialiasingMode 1","r_VSync 0"};
 void Log(const std::string& s) { lifecycle::Log("preyvr_vr " + s); }
 // The 3D VIEW option (VrMode.h). Owned by the command worker, like the rest of this file's state.
-unsigned stereoChosen=2, stereoActive=1;
+// Alternate eyes by default: both eyes per frame costs twice the GPU and held ~19 fps
+// on the RTX 3060 laptop (headset, 2026-10-17); at the headset's rate one eye per
+// frame is the precedent that plays (Luke Ross R.E.A.L., UEVR's AFR).
+unsigned stereoChosen=1, stereoActive=1;
 bool stereoApplied=false;
 // Switches the three paths in the order that never publishes a both-eyes contract without its second submission:
 // the render-thread mode is armed before the game thread's contract, and the contract is dropped before the mode.
@@ -99,14 +106,20 @@ void StopFeatures() {
     // Leave the input drain alive to deliver the owned releases on the next frame.
     StopXrSession();
 }
-void Fail(const char* step) {
-    failure=step; phase=Phase::failed; StopFeatures();
-    Log("state=failed step="+failure+" retry=F11");
+// A failure the runtime caused (no headset yet, a lost or replaced session) is
+// retried on its own after retryMs; only the user's EXITING and the mod's own
+// faults wait for F11. Nothing a headset does should need a key on the PC.
+unsigned long long retryAt=0;
+bool paused=false;
+void Fail(const char* step, unsigned long long retryMs=0) {
+    failure=step; phase=Phase::failed; StopFeatures(); paused=false;
+    retryAt=retryMs?GetTickCount64()+retryMs:0;
+    Log("state=failed step="+failure+(retryMs?" retry=auto_ms_"+std::to_string(retryMs):" retry=F11"));
 }
 }
 void EnableVrMode() {
     if(phase!=Phase::off && phase!=Phase::failed) return;
-    failure.clear(); calibratedOwner=0;
+    failure.clear(); calibratedOwner=0; retryAt=0;
     if(SetFrameObserverEnabled(true)!=2 || EnsureRenderHookInstalled()!=0) {
         Fail("render_hooks"); return;
     }
@@ -144,7 +157,18 @@ void TickVrMode() {
     }
     focusWas=focus; f11Was=f11; f12Was=f12;
     f10Was=f10;
-    if(XrSessionLossPending()) {Fail("openxr_session_ended");return;}
+    if(XrSessionLossPending()) {
+        // EXITING is the user leaving VR from the runtime's menu: respected. A loss is not theirs.
+        if(XrSessionExiting()) Fail("openxr_session_exited");
+        else Fail("openxr_session_lost",5000);
+        return;
+    }
+    if(XrSessionKickDue()) {Fail("openxr_kick",1);return;}
+    // The old session is torn down on the render thread; a new one starts only after.
+    if(phase==Phase::failed && retryAt && GetTickCount64()>=retryAt && XrSessionStatusValue()!=1) {
+        Log("state=retrying step="+failure);
+        EnableVrMode();
+    }
     if(phase==Phase::preparing) {
         if(GetTickCount64()>deadline) { Fail("render_size_timeout"); return; }
         if(!XrBackbufferReady(desiredWidth,desiredHeight))return;
@@ -159,7 +183,8 @@ void TickVrMode() {
         firstFrame=XrSubmittedFrameCount();
         if(XrSessionStatusValue()!=1) {
             SetXrPreferSrgbFormat(1);
-            if(StartXrSession()!=1) { Fail("openxr_start"); return; }
+            // No headset or no Link yet: try again until there is one.
+            if(StartXrSession()!=1) { Fail("openxr_start",5000); return; }
         }
         if(!XrInputCreated()) { Fail("openxr_actions"); return; }
         SetUiPanelMode(1);SetMenuNavigationGate(1);SetMenuNavigation(1);
@@ -184,7 +209,7 @@ void TickVrMode() {
         Log("state=waiting_for_headset put_on_headset=1");
     }
     if(phase==Phase::tracking) {
-        if(GetTickCount64()>deadline) { Fail("headset_tracking_timeout"); return; }
+        if(GetTickCount64()>deadline) { Fail("headset_tracking_timeout",1000); return; }
         TrackingFrame frame{};
         if(!TryGetTrackingFrame(frame) || !FreshSample(MonotonicNanoseconds(),frame.publishedNs) ||
             !IsPoseUsable(frame.head,frame.headValidity,200000000ull)) return;
@@ -257,11 +282,34 @@ void TickVrMode() {
         Log("state=active panel=automatic recenter=F12_or_grips_and_left_Y");
     }
     if(phase==Phase::active) {
-        if(XrSessionStatusValue()!=1) {Fail("openxr_session_ended");return;}
+        if(XrSessionStatusValue()!=1) {Fail("openxr_session_ended",5000);return;}
+        // The runtime stopped the session (the headset came off) and will offer it
+        // back: everything stays armed, so this is only a note for the log.
+        if(const bool running=XrSessionBegun(); running==paused) {
+            paused=!running;
+            Log(paused?"state=paused reason=runtime_stopped_session":"state=resumed");
+            // And Prey is paused with it, as VR games do when the headset comes off:
+            // the world must not go on without the player. Opened once, only from
+            // play (never over a menu), and left for the player to close.
+            // PREYVR_PAUSE_ON_HEADSET_OFF=0 keeps the game running.
+            static const bool pauseGame=[]{wchar_t v[4]{};return !GetEnvironmentVariableW(L"PREYVR_PAUSE_ON_HEADSET_OFF",v,4)||v[0]!=L'0';}();
+            if(paused && pauseGame && HudGameplayInputAllowed()) {
+                const auto posted=PostMenuAction(static_cast<unsigned>(input::MenuAction::Start),0);
+                Log("game_pause result="+std::to_string(posted)+" reason=headset_off");
+            }
+        }
         if(GetTickCount64()>=nextStatusReport) {
             nextStatusReport=GetTickCount64()+kStatusReportMs;
-            // The same text dual.report and hud.layer answer with.
-            Log("status dual={"+DualSceneReport()+DualOverlayReport()+" } hud={"+HudLayerReport()+" }");
+            // The same text dual.report and hud.layer answer with, plus what a headset
+            // session needs read back: frames really submitted and the stick's fate.
+            static unsigned long long lastSubmitted=0;
+            const auto submitted=XrSubmittedFrameCount();
+            const auto fps=lastSubmitted?(submitted-lastSubmitted)/(kStatusReportMs/1000):0;
+            lastSubmitted=submitted;
+            Log("status fps="+std::to_string(fps)+" move={posted="+std::to_string(MoveLanePosted())+
+                " dropped="+std::to_string(MoveLaneDropped())+" held="+std::to_string(MoveLaneHeld())+
+                " menuSamples="+std::to_string(HudMenuStateSampleCount())+"} dual={"+DualSceneReport()+
+                DualOverlayReport()+" } hud={"+HudLayerReport()+" }");
         }
         const auto owner=AnimIkOwnerGeneration();
         const auto reference=HeadTrackingReferenceGeneration();

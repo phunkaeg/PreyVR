@@ -123,17 +123,27 @@ void Refusals() {
     r.index=2;
     CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::failed);
     Calls({"acquire","wait","release"});CheckPixels(r.image.Get(),0x12345678);r.index=0;
-    // A positive timeout is not a waited image: no copy, no release, no retry.
+    // A positive timeout is not a waited image: no copy, no release. The layer
+    // skips this frame and the next Copy waits for the SAME image again.
     r.waitResult=XR_TIMEOUT_EXPIRED;
-    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::sessionFault);
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::failed);
     Calls({"acquire","wait"});CheckPixels(r.image.Get(),0x12345678);
-    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::sessionFault);Calls({});
-    CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({});
-    owner.Reset();Calls({"destroy"});r.waitResult=XR_SUCCESS;
-    CHECK(owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({"create"});r.releaseResult=XR_ERROR_RUNTIME_FAILURE;
-    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::sessionFault);
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::failed);Calls({"wait"});
+    r.waitResult=XR_SUCCESS;
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::ready);
+    Calls({"wait","release"});CheckPixels(r.image.Get(),0xCC664422);
+    // A failed release retires the layer, not the session; Prepare builds it again.
+    r.releaseResult=XR_ERROR_RUNTIME_FAILURE;
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::failed);
     Calls({"acquire","wait","release"});
-    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::sessionFault);Calls({});
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::failed);Calls({});
+    r.releaseResult=XR_SUCCESS;
+    CHECK(owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({"destroy","create"});
+    // Only a session the runtime calls lost is a session fault.
+    r.waitResult=XR_ERROR_SESSION_LOST;
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::sessionFault);
+    Calls({"acquire","wait"});
+    r.waitResult=XR_SUCCESS;
     r.releaseResult=XR_SUCCESS;
 }
 void PresentationPolicy() {

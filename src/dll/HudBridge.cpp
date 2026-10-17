@@ -649,7 +649,14 @@ bool HudMenuIsOpen() { return gMenuOpen.load(std::memory_order_acquire); }
 unsigned long long HudMenuEpoch() { return gMenuEpoch.load(std::memory_order_acquire); }
 bool HudMenuStateKnown() { return FreshSample(MonotonicNanoseconds(), gMenuStamp.load()); }
 bool HudInventoryIsOpen() { return HudMenuStateKnown() && gInventoryOpen.load(std::memory_order_acquire); }
-bool HudGameplayInputAllowed() { return !VrOptionsInputOwned() && HudMenuStateKnown() && !HudMenuIsOpen(); }
+// **Gameplay keeps the last KNOWN menu state; it is not blocked by an old one.**
+// The sample is refreshed once per rendered frame, so at 19 fps, or through a
+// hitch, it was older than FreshSample's 200 ms for a quarter of the play time
+// (headset, 2026-10-17) -- and every such frame read as "a menu is open": the
+// lanes dropped the stick and latched it dead until it was recentred. A menu is
+// a change the sampler sees (the epoch moves); until then the player is playing.
+// Menu-side consumers (the navigator, the inventory) still require a fresh one.
+bool HudGameplayInputAllowed() { return !VrOptionsInputOwned() && gMenuStamp.load() != 0 && !HudMenuIsOpen(); }
 unsigned long long HudMenuStateSampleCount()
 {
     return gMenuStateSamples.load(std::memory_order_relaxed);

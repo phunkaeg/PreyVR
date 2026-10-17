@@ -4,8 +4,12 @@ param(
     [string]$PackageDir='',
     [string]$Runtime='',
     [string]$RunRoot="$env:LOCALAPPDATA\PreyVR\runs",
-    [int]$Width=2016,
-    [int]$Height=2160,
+    # **Per eye, about the headset's own density** (Meta asks ~1232 x 1360 at
+    # Link's default; Prey's wider field needs a little more). 2016 x 2160 was
+    # 2.5x the pixels the runtime asked for and held ~19 fps on the RTX 3060
+    # laptop (headset, 2026-10-17). Same 0.933 aspect, so the view is unchanged.
+    [int]$Width=1344,
+    [int]$Height=1440,
     [int]$HudLayer=1,
     [int]$UiCurveDegrees=35,
     [int]$PointerHand=1,
@@ -41,6 +45,7 @@ $ErrorActionPreference='Stop'
 
 function Resolve-PreyVRRenderSize {
     param($Saved, [int]$Width, [int]$Height, [bool]$WidthExplicit, [bool]$HeightExplicit)
+    $DefaultWidth=$Width;$DefaultHeight=$Height
     if ($WidthExplicit -ne $HeightExplicit) {
         throw 'Set both -Width and -Height together; a partial override changes the eye aspect ratio.'
     }
@@ -51,10 +56,13 @@ function Resolve-PreyVRRenderSize {
         # v0.5.0 persisted its widescreen default without recording whether the
         # user chose it. Migrate only that exact unversioned pair. Explicit CLI
         # dimensions, custom saved sizes and versioned settings remain choices.
-        $migrate=!$Saved.PSObject.Properties['ResolutionDefaultsVersion'] -and
-            $Saved.PSObject.Properties['Width'] -and $Saved.PSObject.Properties['Height'] -and
-            $Width -eq 2560 -and $Height -eq 1440
-        if ($migrate) {$Width=2016;$Height=2160}
+        # Version 2 does the same for the 2016 x 2160 default it replaced: also
+        # saved without recording whether anyone chose it.
+        $version=if ($Saved.PSObject.Properties['ResolutionDefaultsVersion']) {[int]$Saved.ResolutionDefaultsVersion} else {0}
+        $hasSize=$Saved.PSObject.Properties['Width'] -and $Saved.PSObject.Properties['Height']
+        $migrate=$hasSize -and (($version -lt 1 -and $Width -eq 2560 -and $Height -eq 1440) -or
+                                ($version -lt 2 -and $Width -eq 2016 -and $Height -eq 2160))
+        if ($migrate) {$Width=$DefaultWidth;$Height=$DefaultHeight}
     }
     if ($Width -lt 1280 -or $Width -gt 8192 -or $Height -lt 720 -or $Height -gt 8192) {
         throw 'Render size must be 1280..8192 by 720..8192.'
@@ -116,9 +124,7 @@ function Save-PreyVRConfiguration {
     }
     if (!$Saved) {$Saved=[pscustomobject]@{}}
     foreach ($key in $Settings.Keys) {$Saved | Add-Member -NotePropertyName $key -NotePropertyValue $Settings[$key] -Force}
-    if (!$Saved.PSObject.Properties['ResolutionDefaultsVersion']) {
-        $Saved | Add-Member -NotePropertyName 'ResolutionDefaultsVersion' -NotePropertyValue 1
-    }
+    $Saved | Add-Member -NotePropertyName 'ResolutionDefaultsVersion' -NotePropertyValue 2 -Force
     $Saved | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $Path -Encoding UTF8
 }
 
@@ -209,7 +215,7 @@ try {
     $running=@(Get-Process -Name $fleetNames -ErrorAction SilentlyContinue)
     if ($running.Count) {throw ('Close the running game first: '+(($running | Select-Object -ExpandProperty ProcessName) -join ', '))}
     Write-Host "Prey VR: $Width x $Height per eye; UI scale $UiScalePercent%; guide $(if($UiGuide){'on'}else{'off'}); stereo $(if($DualStereo){'both eyes per frame'}else{'alternate eyes'}); runtime: $(if($Runtime){$Runtime}else{'system OpenXR runtime'})"
-    if ($renderSize.MigrateLegacy) {Write-Host 'Replacing the v0.5.0 widescreen default with 2016 x 2160 for greater vertical view coverage.'}
+    if ($renderSize.MigrateLegacy) {Write-Host "Replacing an earlier default render size with $($renderSize.Width) x $($renderSize.Height) per eye, about the headset's own density."}
     Write-Host "Mod binaries: $BinDir"
     Write-Host "Comfort: snap $($comfort.SnapTurnDegrees) degrees (0 = smooth); head-relative $($comfort.HeadRelativeMovement); reference $($comfort.ReferenceSpace)"
     Write-Host 'Controls: menu button = pause; right stick = navigate; A = select; B = back.'

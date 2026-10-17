@@ -34,7 +34,7 @@ constexpr Spec specs[]={
  {"debug_overlay",L"DEBUG OVERLAY (TESTING)",L"Draws each hand's ray and target, body slots, the wrist test and the foregrip region in the world.",0,0,1,1},
  {"muzzle_aim",L"SHOTS FROM THE MUZZLE (EXPERIMENTAL)",L"Shots leave the weapon's muzzle along your controller's aim, so they land where the barrel points at any distance.",0,0,1,1},
  {"body_follow",L"BODY FOLLOWS YOU",L"Your character turns with your head and walks with you around the room. Walls stop it and dim the view.",2,0,2,1},
- {"stereo",L"3D VIEW",L"Full stereo draws both eyes every frame. Alternate eyes costs less, but moving things can shimmer. Mono: one picture, no depth, always comfortable.",2,0,2,1}
+ {"stereo",L"3D VIEW",L"Alternate eyes: one eye per frame, at the headset's rate. Full stereo draws both eyes every frame, at about half the frame rate. Mono: one picture, no depth, always comfortable.",1,0,2,1}
 };
 }
 const Spec& Describe(unsigned id){return specs[id<Count?id:0];}

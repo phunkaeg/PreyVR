@@ -160,12 +160,14 @@ int main(){
  Check(tick(),"held input quarantined");r.menuAccept=false;tick();Check(!tick(),"neutral releases ownership");
  ResetVrOptionsSession();Check(!VrOptionsInputOwned(),"teardown clears ownership");
  Check(pauseTaps==0,"opening from native menu posts no redundant pause");
- // The 3D VIEW row, alone on the last tab (one tab back from the first): full stereo by default, the stick lowers it
- // to alternate eyes, then mono.
+ // The 3D VIEW row, alone on the last tab (one tab back from the first): alternate eyes by default, the stick
+ // raises it to full stereo and lowers it back, then to mono.
  nativeModal=true;for(int n=0;n<4&&!VrOptionsOpen();++n){RequestVrOptions(true);tick();tick();}
  Check(VrOptionsOpen(),"options reopen");
  for(unsigned n=0;n<options::Pages&&VrOptionsPage()!=options::Pages-1;++n){r.gripPressed=true;tick();r.gripPressed=false;tick();}
- Check(VrOptionsPage()==options::Pages-1&&applied[options::Stereo]==2,"view tab reached with full stereo by default");
+ Check(VrOptionsPage()==options::Pages-1&&applied[options::Stereo]==1,"view tab reached with alternate eyes by default");
+ r.thumbstickX=1;tick();r.thumbstickX=0;tick();ServiceVrOptions();
+ Check(applied[options::Stereo]==2,"3D view raised to full stereo reaches VR mode");
  r.thumbstickX=-1;tick();r.thumbstickX=0;tick();ServiceVrOptions();
  Check(applied[options::Stereo]==1,"3D view lowered to alternate eyes reaches VR mode");
  r.thumbstickX=-1;tick();r.thumbstickX=0;tick();ServiceVrOptions();

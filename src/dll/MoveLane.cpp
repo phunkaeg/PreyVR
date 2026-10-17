@@ -121,6 +121,8 @@ std::atomic<unsigned int> gMode{0};
 std::atomic<unsigned int> gDeadzoneHundredths{15};
 std::atomic<unsigned long long> gOursX{0}, gOursY{0}, gNative{0};
 std::atomic<unsigned long long> gPosted{0}, gDropped{0};
+// Frames the stick was held through a missed tracking sample (UpdateMoveLane).
+std::atomic<unsigned long long> gHeld{0};
 std::atomic<unsigned long long> gInputObject{0};
 std::atomic<int> gAxisMilli[2]{0, 0};
 std::atomic<int> gCinematic{0};
@@ -312,13 +314,25 @@ void UpdateMoveLane()
     const bool neutralize = gMoveNeutralize.exchange(false, std::memory_order_acq_rel);
     const auto movementReference=HeadTrackingReferenceGeneration();
     TrackingFrame movementFrame{};
-    bool haveInput = active && !neutralize && HudGameplayInputAllowed() &&
-        TryGetTrackingFrame(movementFrame) && FreshSample(MonotonicNanoseconds(),movementFrame.publishedNs);
+    const bool gameplay = HudGameplayInputAllowed();
+    const bool read = TryGetTrackingFrame(movementFrame) && FreshSample(MonotonicNanoseconds(),movementFrame.publishedNs);
+    // A sample missed for a moment -- a contended read, a frame-long hitch -- holds
+    // what the game was last told instead of releasing the stick: a release there
+    // was a stutter in every walk. Past 300 ms it is a real loss and releases.
+    static unsigned long long lastReadMs=0;
+    const auto nowMs=GetTickCount64();
+    if(read) lastReadMs=nowMs;
+    else if(active && !neutralize && gameplay && gMoveMayBeHeld && nowMs-lastReadMs<300) { gHeld.fetch_add(1,std::memory_order_relaxed); return; }
+    bool haveInput = active && !neutralize && gameplay && read;
     if(haveInput) state=movementFrame.hands[0];
+    // After a menu, a stick still held from it must not walk the player: wait for
+    // it to come back to the centre, or for half a second of play.
     static bool awaitNeutral=false;
-    if (!HudGameplayInputAllowed()) { awaitNeutral=true; }
+    static unsigned long long gameplaySinceMs=0;
+    if (!gameplay) { awaitNeutral=true; gameplaySinceMs=0; }
+    else if (!gameplaySinceMs) { gameplaySinceMs=nowMs; }
     if (haveInput && awaitNeutral) {
-        if (std::fabs(state.thumbstickX)<=.15f && std::fabs(state.thumbstickY)<=.15f) awaitNeutral=false;
+        if ((std::fabs(state.thumbstickX)<=.15f && std::fabs(state.thumbstickY)<=.15f) || nowMs-gameplaySinceMs>=500) awaitNeutral=false;
         else haveInput=false;
     }
     if(haveInput && gHeadRelative.load()) {
@@ -716,6 +730,7 @@ unsigned long long MoveLaneOursX() { return gOursX.load(std::memory_order_relaxe
 unsigned long long MoveLaneOursY() { return gOursY.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneNative() { return gNative.load(std::memory_order_relaxed); }
 unsigned long long MoveLanePosted() { return gPosted.load(std::memory_order_relaxed); }
+unsigned long long MoveLaneHeld() { return gHeld.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneDropped() { return gDropped.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneInputObject() { return gInputObject.load(std::memory_order_relaxed); }
 int MoveLaneAxisMilli(unsigned int axis) { return axis < 2 ? gAxisMilli[axis].load(std::memory_order_relaxed) : 0; }

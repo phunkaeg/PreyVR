@@ -76,6 +76,13 @@ constexpr auto kControlLockTimeout = std::chrono::milliseconds(250);
 std::atomic<DWORD> gStatus{static_cast<DWORD>(XrSessionStatus::idle)};
 std::atomic<bool> gStopRequested{false};
 std::atomic<bool> gStopAcknowledged{false};
+// The runtime's last session state (XrSessionState), and since when it has held
+// the session stopped without offering READY back (0 = not stopped). A stop is a
+// pause -- on Meta's runtime it is the headset coming off -- never an end of VR.
+std::atomic<int> gSessionState{XR_SESSION_STATE_UNKNOWN};
+std::atomic<unsigned long long> gIdleSinceMs{0};
+// Set when a stopped session should be replaced by a new one (see ServiceXrFrame).
+std::atomic<bool> gKickDue{false};
 std::atomic<unsigned long long> gSubmitted{0};
 std::atomic<unsigned int> gUiPanelMode{0};
 std::atomic<unsigned long long> gUiPanelFrames{0};
@@ -172,6 +179,8 @@ struct Host {
     std::uint32_t width = 0;
     std::uint32_t height = 0;
     bool sessionBegun = false;
+    std::string runtimeName;
+    unsigned long long lastKickMs = 0;
     bool started = false;
     std::optional<ui::Panel> menuPanel;
     std::optional<ui::Panel> guidePanel;
@@ -180,6 +189,8 @@ struct Host {
     bool panelWasActive = false;
     float panelAngle=0;
     unsigned long long surfaceSerial=0;
+    // Since when the gaze has been off the menu panel (0 = on it); see the lazy follow.
+    unsigned long long panelAwaySinceMs=0;
 
     // Stereo submission: one held image per eye.
     //
@@ -288,6 +299,20 @@ void LogResult(const char* step, XrResult result)
     std::ostringstream line;
     line << "result=failed step=" << step << " code=" << static_cast<int>(result);
     Log(line.str());
+}
+
+// A failed swapchain or frame call ends VR only when the runtime says the session
+// or the instance is gone. Anything else costs that frame or that layer: a 50 ms
+// compositor hiccup used to tear VR down for good.
+void NoteXrFault(const char* step, XrResult result)
+{
+    if (result == XR_ERROR_SESSION_LOST || result == XR_ERROR_INSTANCE_LOST) {
+        gStopRequested.store(true);
+        LogResult(step, result);
+        return;
+    }
+    static std::atomic<unsigned> logged{0};
+    if (logged.fetch_add(1) < 20) { Log(std::string("frame_fault step=") + step + " code=" + std::to_string(result) + " kept=1"); }
 }
 
 // Prey's renderer holds the device it created at startup (R-007).
@@ -423,7 +448,7 @@ void EnsurePointerTexture()
     XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};wait.timeout=XR_INFINITE_DURATION;
     std::uint32_t index=0;
     if(XR_FAILED(xrAcquireSwapchainImage(gHost.pointerSwapchain,&acquire,&index)))return;
-    if(XR_FAILED(xrWaitSwapchainImage(gHost.pointerSwapchain,&wait))){gStopRequested.store(true);return;}
+    if(const XrResult waited=xrWaitSwapchainImage(gHost.pointerSwapchain,&wait);XR_FAILED(waited)){NoteXrFault("pointer_wait",waited);return;}
     if(index<images.size()) {
         ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
         if(context){context->UpdateSubresource(images[index].texture,0,nullptr,pixels.data(),32*4,0);context->Release();gHost.pointerReady=true;}
@@ -495,6 +520,7 @@ bool CreateInstanceAndSystem()
     XrInstanceProperties props{XR_TYPE_INSTANCE_PROPERTIES};
     if (XR_SUCCEEDED(xrGetInstanceProperties(gHost.instance, &props))) {
         Log(std::string("runtime name=\"") + props.runtimeName + "\"");
+        gHost.runtimeName = props.runtimeName;
     }
 
     XrSystemGetInfo systemInfo{XR_TYPE_SYSTEM_GET_INFO};
@@ -1277,26 +1303,59 @@ bool SubmitStereoPair(
     return true;
 }
 
+// **Prey draws every menu in the 16:9 band across the middle of the portrait
+// frame**, black above and below (measured 2026-10-17). The panel shows that band
+// only: fitted at the whole frame's aspect, the 40-degree vertical cap bound and
+// the menu came out about 27 degrees wide, its text unreadable; at 16:9 the
+// 60-degree horizontal cap binds instead (the sister mod's menu is 62 degrees).
+// PREYVR_UI_BAND=0 shows the whole frame, as before.
+struct MenuBand { unsigned top=0, height=0; };
+MenuBand MenuBandRows()
+{
+    static const bool enabled = [] {
+        char value[4]{};
+        return !GetEnvironmentVariableA("PREYVR_UI_BAND", value, sizeof(value)) || value[0] != '0';
+    }();
+    const unsigned band = enabled ? std::min(gHost.height, (gHost.width * 9 + 8) / 16) : gHost.height;
+    return {(gHost.height - band) / 2, band};
+}
+
 void PumpEvents()
 {
+    static const char* const kStateNames[] = {"UNKNOWN", "IDLE", "READY", "SYNCHRONIZED", "VISIBLE",
+                                              "FOCUSED", "STOPPING", "LOSS_PENDING", "EXITING"};
     XrEventDataBuffer event{XR_TYPE_EVENT_DATA_BUFFER};
     while (xrPollEvent(gHost.instance, &event) == XR_SUCCESS) {
         if (event.type == XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED) {
             const auto* changed = reinterpret_cast<const XrEventDataSessionStateChanged*>(&event);
+            const int state = changed->state;
+            gSessionState.store(state);
+            Log(std::string("session state=") + (state >= 0 && state <= 8 ? kStateNames[state] : "other"));
             if (changed->state == XR_SESSION_STATE_READY && !gHost.sessionBegun) {
                 XrSessionBeginInfo begin{XR_TYPE_SESSION_BEGIN_INFO};
                 begin.primaryViewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
-                if (XR_SUCCEEDED(xrBeginSession(gHost.session, &begin))) {
+                if (const XrResult result = xrBeginSession(gHost.session, &begin); XR_SUCCEEDED(result)) {
                     gHost.sessionBegun = true;
                     gHost.contract.SetSessionRunning(true);
+                    gIdleSinceMs.store(0);
                     Log("session begun");
+                } else {
+                    LogResult("begin_session", result);
                 }
             } else if (changed->state == XR_SESSION_STATE_STOPPING) {
-                xrEndSession(gHost.session);
+                // The runtime took the session away: on Meta's, the headset came off.
+                // A pause: ended here, begun again at READY, and everything the mod
+                // armed stays armed, so the game is back the moment the headset is.
+                if (gHost.sessionBegun) { xrEndSession(gHost.session); }
                 gHost.sessionBegun = false;
                 gHost.contract.SetSessionRunning(false);
-                Log("session stopping");
-                gStopRequested.store(true);
+                gHost.eyeImageValid[0] = gHost.eyeImageValid[1] = false;
+                gHost.menuPanel.reset();
+                gHost.guidePanel.reset();
+                InvalidateTrackingSamples();
+                ClearUiPointer();
+                gIdleSinceMs.store(GetTickCount64() | 1);
+                Log("session paused reason=runtime_stopping");
             } else if(changed->state==XR_SESSION_STATE_EXITING || changed->state==XR_SESSION_STATE_LOSS_PENDING) {
                 gStopRequested.store(true);
             }
@@ -1435,6 +1494,9 @@ DWORD StartXrSession()
         return gStatus.load(std::memory_order_acquire);
     }
 
+    gSessionState.store(XR_SESSION_STATE_UNKNOWN);
+    gIdleSinceMs.store(0);
+    gKickDue.store(false);
     // Bring-up is single-threaded on the render thread; see the header.
     gHost.contract.AllowSingleThreaded(true);
     gHost.started = true;
@@ -1456,6 +1518,10 @@ bool XrSessionLossPending() {
     return gStopRequested.load(std::memory_order_acquire) &&
         !gStopAcknowledged.load(std::memory_order_acquire);
 }
+
+bool XrSessionBegun() { return gStatus.load() == static_cast<DWORD>(XrSessionStatus::running) && gIdleSinceMs.load() == 0 && gSessionState.load() >= XR_SESSION_STATE_SYNCHRONIZED && gSessionState.load() <= XR_SESSION_STATE_FOCUSED; }
+bool XrSessionKickDue() { return gKickDue.exchange(false); }
+bool XrSessionExiting() { return gSessionState.load() == XR_SESSION_STATE_EXITING; }
 
 DWORD XrSessionStatusValue()
 {
@@ -1514,6 +1580,29 @@ void ServiceXrFrame(void* renderer)
         return;
     }
     if (!gHost.sessionBegun) {
+        // Meta's runtime can hold a stopped session for minutes (23-169 s measured
+        // in the sister mod) while a NEW session is READY at once. So after a few
+        // seconds stopped, VrMode replaces it. Only there: elsewhere a re-create
+        // that fails leaves VR off. PREYVR_XR_KICK_SECONDS (0 = never),
+        // PREYVR_XR_KICK_ANY=1 for any runtime.
+        static const unsigned long long kickMs = [] {
+            char value[16]{};
+            return GetEnvironmentVariableA("PREYVR_XR_KICK_SECONDS", value, sizeof(value)) ? std::strtoull(value, nullptr, 10) * 1000ull : 5000ull;
+        }();
+        static const bool kickAny = [] {
+            char value[4]{};
+            return GetEnvironmentVariableA("PREYVR_XR_KICK_ANY", value, sizeof(value)) && value[0] == '1';
+        }();
+        const auto since = gIdleSinceMs.load();
+        const auto now = GetTickCount64();
+        const bool meta = gHost.runtimeName.find("Oculus") != std::string::npos ||
+                          gHost.runtimeName.find("Meta") != std::string::npos;
+        if (kickMs && since && now >= since && now - since >= kickMs && (meta || kickAny) && now - gHost.lastKickMs >= 20000 &&
+            !gKickDue.load()) {
+            gHost.lastKickMs = now;
+            gKickDue.store(true);
+            Log("session kick reason=stopped_without_ready seconds=" + std::to_string((now - since) / 1000));
+        }
         return;
     }
 
@@ -1681,7 +1770,24 @@ void ServiceXrFrame(void* renderer)
     const bool planarInventory=(InventoryStereoEnabled() && HudInventoryIsOpen()) || inventoryRightTexture;
     const float curve=gHost.cylinderSupported && !planarInventory?
         static_cast<float>(gUiCurveDegrees.load())*.01745329252f:0;
-    if (wantPanel && (!gHost.menuPanel || curve!=gHost.panelAngle || (reference%2==0 && reference!=gHost.panelReference))) {
+    // Lazy follow (the sister mod; SteamVR's dashboard): a menu the head has turned
+    // away from comes back in front once the gaze has been more than 40 degrees off
+    // it for 0.8 s. Looking around inside it never moves it.
+    bool refollow=false;
+    if(wantPanel && gHost.menuPanel && haveViews) {
+        const auto& at=gHost.menuPanel->pose.position;
+        const Vec3 to{at.x-inputHead.position.x,at.y-inputHead.position.y,at.z-inputHead.position.z};
+        const Vec3 forward=Rotate(inputHead.orientation,Vec3{0,0,-1});
+        const float length=std::sqrt(to.x*to.x+to.y*to.y+to.z*to.z);
+        const bool away=length>1e-3f && (to.x*forward.x+to.y*forward.y+to.z*forward.z)/length<.766f;   // cos 40
+        const auto now=GetTickCount64();
+        if(!away) gHost.panelAwaySinceMs=0;
+        else if(!gHost.panelAwaySinceMs) gHost.panelAwaySinceMs=now;
+        else if(now-gHost.panelAwaySinceMs>=800) {refollow=true;gHost.panelAwaySinceMs=0;}
+    } else {
+        gHost.panelAwaySinceMs=0;
+    }
+    if (wantPanel && (!gHost.menuPanel || refollow || curve!=gHost.panelAngle || (reference%2==0 && reference!=gHost.panelReference))) {
         std::array<ui::Eye,2> optical{};
         for(int eye=0;eye<2;++eye) {
             const auto& p=views[eye].pose;
@@ -1690,7 +1796,7 @@ void ServiceXrFrame(void* renderer)
                           views[eye].fov.angleLeft,views[eye].fov.angleRight,
                           views[eye].fov.angleUp,views[eye].fov.angleDown};
         }
-        const float aspect=static_cast<float>(gHost.width)/static_cast<float>(gHost.height);
+        const float aspect=static_cast<float>(gHost.width)/static_cast<float>(MenuBandRows().height);
         constexpr float guideRatio=static_cast<float>(kGuideHeight)/kGuideWidth;
         constexpr float gapRatio=.015f;
         const float margin=UiFitMargin();
@@ -1726,7 +1832,7 @@ void ServiceXrFrame(void* renderer)
         gHost.panelReference=reference;
         gHost.panelAngle=curve;
         ++gHost.surfaceSerial;
-        Log("ui_surface angle_degrees="+std::to_string(curve*57.2957795f));
+        Log("ui_surface angle_degrees="+std::to_string(curve*57.2957795f)+(gHost.menuPanel?" width_m="+std::to_string(gHost.menuPanel->width)+" height_m="+std::to_string(gHost.menuPanel->height)+(refollow?" reason=lazy_follow":""):""));
     }
     const bool panelActive=wantPanel && gHost.menuPanel.has_value();
     if(panelActive && !gHost.guideAttempted) {
@@ -1755,8 +1861,9 @@ void ServiceXrFrame(void* renderer)
                 XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
                 if(XR_SUCCEEDED(enumerated) && XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.guideSwapchain,&acquire,&index))) {
                     XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO}; wait.timeout=XR_INFINITE_DURATION;
-                    const bool waited=XR_SUCCEEDED(xrWaitSwapchainImage(gHost.guideSwapchain,&wait));
-                    if(!waited)gStopRequested.store(true);
+                    const XrResult guideWait=xrWaitSwapchainImage(gHost.guideSwapchain,&wait);
+                    const bool waited=XR_SUCCEEDED(guideWait);
+                    if(!waited)NoteXrFault("guide_wait",guideWait);
                     if(waited && index<images.size()) {
                         ID3D11DeviceContext* context=nullptr;gHost.device->GetImmediateContext(&context);
                         if(context) {
@@ -1867,8 +1974,9 @@ void ServiceXrFrame(void* renderer)
             const bool gotImage =
                 matchingSize && !inventorySubmitted &&
                 XR_SUCCEEDED(xrAcquireSwapchainImage(gHost.swapchain, &acquire, &imageIndex));
-            const bool imageWaited=gotImage && XR_SUCCEEDED(xrWaitSwapchainImage(gHost.swapchain,&waitImage));
-            if(gotImage && !imageWaited)gStopRequested.store(true);
+            const XrResult eyeWait=gotImage ? xrWaitSwapchainImage(gHost.swapchain,&waitImage) : XR_SUCCESS;
+            const bool imageWaited=gotImage && XR_SUCCEEDED(eyeWait);
+            if(gotImage && !imageWaited)NoteXrFault("eye_wait",eyeWait);
             if (timing && matchingSize) {
                 gAcquireWait.AddNanoseconds(
                     preyvr::timing::MonotonicNanoseconds() - acquireStart);
@@ -1910,7 +2018,9 @@ void ServiceXrFrame(void* renderer)
                     context->Release();
                 }
                 XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-                if(XR_FAILED(xrReleaseSwapchainImage(gHost.swapchain,&release))) {rendered=false;gStopRequested.store(true);}
+                if(const XrResult released=xrReleaseSwapchainImage(gHost.swapchain,&release);XR_FAILED(released)) {
+                    rendered=false;NoteXrFault("eye_release",released);
+                }
 
                 // **What FOV to declare, and why it is not the runtime's.**
                 //
@@ -1990,7 +2100,8 @@ void ServiceXrFrame(void* renderer)
         panelLayer.subImage.swapchain=inventorySubmitted?gHost.inventorySwapchain->Handle():gHost.swapchain;
         if(inventorySubmitted)panelLayer.layerFlags=XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
         panelLayer.subImage.imageArrayIndex=0;
-        panelLayer.subImage.imageRect={{0,0},{static_cast<int>(gHost.width),static_cast<int>(gHost.height)}};
+        const auto band=MenuBandRows();
+        panelLayer.subImage.imageRect={{0,static_cast<int>(band.top)},{static_cast<int>(gHost.width),static_cast<int>(band.height)}};
         if(inventoryStereoSubmitted) {
             rightPanelLayer=panelLayer;
             panelLayer.eyeVisibility=XR_EYE_VISIBILITY_LEFT;
@@ -2089,7 +2200,7 @@ void ServiceXrFrame(void* renderer)
         PublishUiPointer(nullptr,0,0,0);
         if(gHost.pointerReady)pointer=OptionsPointer(surface);
     } else pointer=PublishUiPointer(panelActive&&rendered&&gHost.pointerReady&&!VrOptionsInputOwned()?&surface:nullptr,
-        gHost.width,gHost.height,gHost.surfaceSerial);
+        gHost.width,MenuBandRows().height,gHost.surfaceSerial,MenuBandRows().top);
     XrCompositionLayerQuad cursorLayer{XR_TYPE_COMPOSITION_LAYER_QUAD},beamLayer{XR_TYPE_COMPOSITION_LAYER_QUAD};
     const bool cursorActive=pointer.active&&pointer.hit&&pointer.hit->inside;
     bool beamActive=false;

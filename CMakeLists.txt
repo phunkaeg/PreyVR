@@ -176,6 +176,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/CameraEditHook.cpp
         src/dll/ConsoleBridgeWin32.cpp
         src/dll/DebugWatch.cpp
+        src/dll/CrashReport.cpp
         src/dll/DllMain.cpp
         src/dll/FrameCaptureWin32.cpp
         src/dll/FrameObserverHook.cpp
@@ -213,6 +214,8 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
     )
     target_compile_definitions(preyvr PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
     target_link_libraries(preyvr PRIVATE preyvr_core preyvr_win32_bootstrap minhook bcrypt psapi shell32 d3d11 dxgi d3dcompiler gdi32)
+    # PreyVR.map beside the DLL turns a crash report's PreyVR.dll+offset into a function (no PDB: see /Brepro).
+    target_link_options(preyvr PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/MAP>)
     if(PREYVR_BUILD_OPENXR_LOADER AND TARGET openxr_loader)
         # The in-process session host needs the loader. The DLL already ships
         # openxr_loader.dll beside itself for the preflight, so this adds a link
