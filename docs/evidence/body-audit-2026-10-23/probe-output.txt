@@ -1,0 +1,7 @@
+replacement_player_inherited_stand_taps=1 owned=1
+new_standing_baseline_owned=1 eye_lift_m=0.2 old_standing_m=1.7
+crouch_without_learned_baseline_owned=1 baseline_valid=0 eye_lift_m=0
+submetre_discontinuity_plan_valid=1 shin_to_foot_gap_m=0.388378 both_feet_stepping=1
+torso_cache_accepts_without_owner_epoch_reference=1 yaw=0.3
+reference_rebase_retained_torso_deg=20 reset_control_deg=90
+production_planbody_first_valid=1 changed_owner_valid=1 retained_foot_gap_m=0.388378 reset_control_gap_m=2.98198e-08

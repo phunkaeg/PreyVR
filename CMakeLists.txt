@@ -95,6 +95,7 @@ add_library(preyvr_core STATIC
     src/common/WristHolo.cpp
     src/common/NativeFovPlacement.cpp
     src/common/BodyFollow.cpp
+    src/common/BodyPose.cpp
     src/common/Locomotion.cpp
     src/common/MenuNavigator.cpp
     src/common/InventoryDepth.cpp
@@ -456,6 +457,10 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_body_follow_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_body_follow_tests)
     add_test(NAME body_follow COMMAND preyvr_body_follow_tests)
+    add_executable(preyvr_body_pose_tests tests/BodyPoseTests.cpp)
+    target_link_libraries(preyvr_body_pose_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_body_pose_tests)
+    add_test(NAME body_pose COMMAND preyvr_body_pose_tests)
 
     add_executable(preyvr_interaction_use_tests tests/InteractionUseTests.cpp)
     target_link_libraries(preyvr_interaction_use_tests PRIVATE preyvr_core)
@@ -574,6 +579,15 @@ if(PREYVR_BUILD_TESTS)
     add_test(NAME runtime_bootstrap COMMAND preyvr_runtime_bootstrap_tests)
 
     if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
+        foreach(body_runtime BodyFollow BodyPose)
+            string(TOLOWER "${body_runtime}" body_runtime_lower)
+            add_executable(preyvr_${body_runtime_lower}_runtime_tests tests/${body_runtime}RuntimeTests.cpp)
+            target_include_directories(preyvr_${body_runtime_lower}_runtime_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
+            target_compile_definitions(preyvr_${body_runtime_lower}_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+            target_link_libraries(preyvr_${body_runtime_lower}_runtime_tests PRIVATE preyvr_core minhook psapi)
+            preyvr_enable_warnings(preyvr_${body_runtime_lower}_runtime_tests)
+            add_test(NAME ${body_runtime_lower}_runtime COMMAND preyvr_${body_runtime_lower}_runtime_tests)
+        endforeach()
         add_executable(preyvr_slot_feedback_tests tests/SlotFeedbackTests.cpp)
         target_compile_definitions(preyvr_slot_feedback_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
         target_link_libraries(preyvr_slot_feedback_tests PRIVATE preyvr_core gdi32 user32)

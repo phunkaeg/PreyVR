@@ -42,6 +42,12 @@ unsigned BodyYawFollowEnabled(){return bodyYaw;}
 unsigned BodyRoomScaleEnabled(){return bodyRoom;}
 DWORD SetVrStereoMode(unsigned v){applied[options::Stereo]=static_cast<int>(v);return 0;}
 unsigned VrStereoModeChosen(){return static_cast<unsigned>(applied[options::Stereo]);}
+DWORD SetPhysicalCrouch(unsigned v){applied[options::PhysicalCrouch]=static_cast<int>(v);return 0;}
+unsigned PhysicalCrouchEnabled(){return static_cast<unsigned>(applied[options::PhysicalCrouch]);}
+DWORD SetHeadInWallsFade(unsigned v){applied[options::WallFade]=static_cast<int>(v);return 0;}
+unsigned HeadInWallsFadeEnabled(){return static_cast<unsigned>(applied[options::WallFade]);}
+DWORD SetBodyPose(unsigned v){applied[options::BodyPose]=static_cast<int>(v);return 0;}
+unsigned BodyPoseEnabled(){return static_cast<unsigned>(applied[options::BodyPose]);}
 unsigned DebugOverlayMask(){return applied[options::DebugOverlay];}
 DWORD SetSnapTurnDegrees(unsigned v){applied[options::Turn]=v;return 0;}
 unsigned SnapTurnDegrees(){return applied[options::Turn];}
@@ -191,6 +197,14 @@ int main(){
  Check(applied[options::Stereo]==1,"3D view lowered to alternate eyes reaches VR mode");
  r.thumbstickX=-1;tick();r.thumbstickX=0;tick();ServiceVrOptions();
  Check(applied[options::Stereo]==0&&VrOptionsValues()[options::Stereo]==0,"3D view lowered to mono reaches VR mode");
+ for(int rowDown=0;rowDown<3;++rowDown){r.thumbstickY=-1;tick();r.thumbstickY=0;tick();}
+ r.menuAccept=true;tick();r.menuAccept=false;tick();
+ Check(VrOptionsValues()[options::BodyPose]==0,"body posing pending edit survives bit 32 boundary");
+ ServiceVrOptions();Check(!BodyPoseEnabled(),"body posing opt-out reaches adapter");
+ r.thumbstickY=1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+ Check(!HeadInWallsFadeEnabled(),"wall fade high-bit edit reaches adapter");
+ r.thumbstickY=1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+ Check(!PhysicalCrouchEnabled(),"physical crouch high-bit edit reaches adapter");
  r.gripPressed=true;tick();r.gripPressed=false;tick();Check(VrOptionsPage()==9,"world tab reached");
  r.thumbstickY=-1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
  Check(VrOptionsValues()[options::CarryHand]&&!carryEffective,"last-bit setting persists while VR is off");

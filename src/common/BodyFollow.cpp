@@ -2,6 +2,7 @@
 
 #include "preyvr/StereoCamera.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace preyvr::body {
@@ -82,6 +83,36 @@ Vec2 RoomStep(Vec2 offset, const RoomPolicy& policy, bool& moving)
         return {offset.x * s, offset.y * s};
     }
     return offset;
+}
+
+Vec2 LeanStep(Vec2 offset, float headSpeed, float dt, bool leaning, const LeanPolicy& policy, bool& moving)
+{
+    const float length = std::sqrt(offset.x * offset.x + offset.y * offset.y);
+    if (!std::isfinite(length) || !(length > 0.0f)) { moving = false; return {}; }
+    // Past the radius the body walks back to it at once, leaning or not.
+    const float excess = std::max(0.0f, length - policy.radius);
+    if (excess > 0.0f || (length > policy.start && !leaning)) { moving = true; }
+    if (moving && (length <= policy.stop || (leaning && excess <= 0.0f))) { moving = false; }
+    float move = excess;
+    if (moving && !leaning) {
+        // Not leaning: it comes back under the head at the head's own speed (and
+        // at least the recentre speed) -- not only the part past the radius.
+        const float speed = std::max(policy.recentre, std::isfinite(headSpeed) ? headSpeed * 1.2f : 0.0f);
+        move = std::max(move, std::min(length, speed * std::clamp(dt, 0.0f, 0.1f)));
+    }
+    move = std::min(move, policy.maxStep);
+    return {offset.x * move / length, offset.y * move / length};
+}
+
+bool Leaning(const Quaternion& openXrHead, Vec2 direction, float neckDrop)
+{
+    const float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+    // A lean drops the neck a few centimetres (a hip hinge of 25 cm, ~5); far
+    // more is a squat or a crouch, which the body follows.
+    if (!(length > 0.005f) || !(neckDrop > 0.02f) || neckDrop > 0.15f) { return false; }
+    const Vec3 up = Rotate(Normalize(openXrHead), Vec3{0.0f, 1.0f, 0.0f});
+    // The crown's horizontal lean along the direction (tracking x, z): over ~7 degrees.
+    return (up.x * direction.x + up.z * direction.y) / length > 0.12f;
 }
 
 Vec2 Slide(Vec2 step, Vec2 wallNormal)

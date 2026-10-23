@@ -80,7 +80,8 @@ native menu is already open; `vr.options 1` is the diagnostic equivalent.
   speed, and **body follows you**: TURN AND WALK (default) turns your character with
   your head and walks it with you around the room; TURN ONLY keeps it in place; OFF
   leaves it to the sticks. A wall stops the body, and the view dims if your head goes
-  into it. Reset VR view is on the Setup tab.
+  into it. BODY RELATIVE movement follows the torso estimate, so you can look
+  around while walking. Reset VR view is on the Setup tab.
 - **View:** **3D view**. FULL STEREO draws both eyes from every frame:
   true depth with no doubling when you move, at the highest GPU cost. ALTERNATE EYES
   draws one eye per frame (current default): cheaper, but moving things can shimmer or double.
@@ -88,6 +89,12 @@ native menu is already open; `vr.options 1` is the diagnostic equivalent.
   shows one picture, taken from the centre of your head, to both eyes: no depth
   (everything reads as far away, your hands included), but it fuses at any frame
   rate and every frame updates both eyes. Changes apply at once.
+  **Physical crouch** (on) crouches the character after about 30 cm of real
+  crouching, and stands it when you stand and there is room. Stand normally for
+  a moment after loading so the native standing eye height can be learned.
+  **Head in walls** defaults to DARKEN; SEE THROUGH disables the fade.
+  **Body posing** (on) bends the torso and knees and plants the feet; OFF keeps
+  native body animation while the arms still follow the controllers.
 - **Hands:** two-hand aim on/off, hold/toggle foregrip, snapped/free support hand,
   and the optional psychoscope gesture.
 - **World:** left-hand interaction (on by default), hand carry/throw and hand grenades
@@ -193,8 +200,9 @@ commands do not update the JSON. Return the stick to neutral after changing mode
 
 `view.height` reports the chosen reference space and calibrated height.
 `view.calibrate` sets a new standing/seated baseline from the current tracked
-head position. Ordinary recenter preserves that height baseline. Floor tracking
-does not yet implement physical crouch, avatar-height matching or a vignette.
+head position. Ordinary recenter preserves that height baseline. Calibrate your
+posture standing or seated as intended; physical crouch measures the drop from
+that reference. Floor tracking does not implement avatar-height matching or a vignette.
 
 ## Display
 

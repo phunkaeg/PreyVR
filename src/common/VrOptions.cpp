@@ -36,8 +36,11 @@ constexpr Spec specs[]={
  {"body_follow",L"BODY FOLLOWS YOU",L"Your character turns with your head and walks with you around the room. Walls stop it and dim the view.",2,0,2,1},
  {"stereo",L"3D VIEW",L"Alternate eyes: one eye per frame, at the headset's rate. Full stereo draws both eyes every frame, at about half the frame rate. Mono: one picture, no depth, always comfortable.",1,0,2,1},
  {"use_hand",L"LEFT-HAND INTERACTION",L"Point and use with the left hand. Off restores the original right-grip use/reload binding.",1,0,1,1},
- {"carry_hand",L"HAND CARRY / THROW (EXPERIMENTAL)",L"Hold objects with the left grip; let go to drop or throw. Requires Left-hand Interaction. Off keeps native carry.",0,0,1,1},
- {"grenade_hand",L"HAND GRENADES (EXPERIMENTAL)",L"Throw from the right hand on a tracked trigger release. Off keeps the game's charged throw and surface deployment.",0,0,1,1}
+ {"carry_hand",L"HAND CARRY / THROW",L"Experimental: hold objects with the left grip; let go to drop or throw. Requires Left-hand Interaction. Off keeps native carry.",0,0,1,1},
+ {"grenade_hand",L"HAND GRENADES",L"Experimental: throw from the right hand on a tracked trigger release. Off keeps the game's charged throw and surface deployment.",0,0,1,1},
+ {"physical_crouch",L"PHYSICAL CROUCH",L"Crouch for real to crouch in the game; stand up to stand. The crouch button still works.",1,0,1,1},
+ {"wall_fade",L"HEAD IN WALLS",L"When your head goes into a wall or an object, darken the view, or let you see through it.",1,0,1,1},
+ {"body_pose",L"BODY POSING",L"Pose the torso and legs from your head and hands. Off keeps native body animation; controller-driven arms remain active.",1,0,1,1}
 };
 }
 const Spec& Describe(unsigned id){return specs[id<Count?id:0];}
@@ -71,7 +74,7 @@ bool Parse(std::string_view text,Values& result){
  result=parsed;return true;
 }
 int Item(unsigned page,unsigned row){
- constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim},{Stereo,-2,-2,-2},{UseHand,CarryHand,GrenadeHand,-2}};
+ constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim},{Stereo,PhysicalCrouch,WallFade,BodyPose},{UseHand,CarryHand,GrenadeHand,-2}};
  return page<Pages&&row<Rows?items[page][row]:-2;
 }
 const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP",L"VIEW",L"WORLD"};return names[p%Pages];}
@@ -83,6 +86,7 @@ std::wstring Display(unsigned id,int v){
  if(id==HeadRelative)return v?L"HEAD RELATIVE":L"BODY RELATIVE";
  if(id==BodyFollow)return v==2?L"TURN AND WALK":v==1?L"TURN ONLY":L"OFF";
  if(id==Stereo)return v==2?L"FULL STEREO":v==1?L"ALTERNATE EYES":L"MONO";
+ if(id==WallFade)return v?L"DARKEN":L"SEE THROUGH";
  if(id==GripToggle)return v?L"TOGGLE":L"HOLD";
  if(id==SupportSnap)return v?L"SNAPPED":L"FREE";
  if(id==UiCurve)return v?std::to_wstring(v)+L" DEGREES":L"FLAT";

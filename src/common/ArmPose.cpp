@@ -63,21 +63,70 @@ float HeadYaw(const Quaternion& head)
     return YawOf(h);
 }
 
-float TorsoYaw::Update(float headYaw, float dtSeconds, float deadzone, float relax)
+float TorsoEstimator::Update(const TorsoInput& in, float dtSeconds, const TorsoSettings& s, const Body& body)
 {
-    if (!std::isfinite(headYaw)) { return yaw; }
-    if (!valid || !std::isfinite(yaw)) {
-        yaw = headYaw;
-        valid = true;
-        return yaw;
+    const float head = HeadYaw(in.head.orientation);
+    if (!std::isfinite(head)) { return yaw_; }
+    const float dt = std::isfinite(dtSeconds) ? std::clamp(dtSeconds, 0.0f, 0.25f) : 0.0f;
+    if (!valid_ || !std::isfinite(yaw_)) {
+        yaw_ = history_ = vote_ = head;
+        valid_ = true;
+        catching_ = false;
+        return yaw_;
     }
-    float diff = Wrap(headYaw - yaw);
-    if (diff > deadzone) { yaw = Wrap(headYaw - deadzone); }
-    else if (diff < -deadzone) { yaw = Wrap(headYaw + deadzone); }
-    diff = Wrap(headYaw - yaw);
-    const float dt = std::clamp(dtSeconds, 0.0f, 0.25f);
-    yaw = Wrap(yaw + diff * std::min(1.0f, relax * dt));
-    return yaw;
+    history_ = Wrap(history_ + Wrap(head - history_) * (1.0f - std::exp(-dt / std::max(s.historyTau, 1e-3f))));
+
+    // The votes, as unit directions about the head's yaw.
+    float sx = 0.0f, sy = 0.0f;
+    const auto vote = [&](float yaw, float weight) {
+        const float d = Wrap(yaw - head);
+        sx += weight * std::cos(d);
+        sy += weight * std::sin(d);
+    };
+    vote(head, 1.0f);
+    vote(history_, 1.0f);
+    const TorsoFrame torso = TorsoFromYaw(yaw_);
+    const Vec3 from = in.haveBody ? Vec3{in.body.x, in.head.position.y, in.body.z} : in.head.position;
+    bool front[2]{}, hanging[2]{};
+    Vec3 flat[2]{};
+    for (int h = 0; h < 2; ++h) {
+        if (!in.handValid[h]) { continue; }
+        const Vec3 shoulder = ShoulderTarget(from, torso, h == 0 ? 1 : -1, body);
+        const Vec3 d = Sub(in.hand[h], shoulder);
+        const float ahead = Dot(d, torso.forward);
+        front[h] = ahead >= s.frontMin && ahead <= s.frontMax && d.y > -0.5f && d.y < 0.3f;
+        flat[h] = {in.hand[h].x - from.x, 0.0f, in.hand[h].z - from.z};
+        // Hanging: well below the shoulder, beside the body rather than reaching out.
+        hanging[h] = d.y < -0.3f && Length(flat[h]) < 0.35f;
+    }
+    if (front[0] && front[1]) {
+        const Vec3 mid = Mul(Add(flat[0], flat[1]), 0.5f);
+        if (Length(mid) > 0.05f) { vote(YawOf(mid), 2.5f); }
+    } else {
+        for (int h = 0; h < 2; ++h) {
+            if (front[h] && Length(flat[h]) > 0.05f) { vote(YawOf(flat[h]), 0.3f); }
+        }
+    }
+    if (hanging[0] && hanging[1]) {
+        // Square to the line from the left hand to the right one: forward is up x that line.
+        const Vec3 across = Sub(flat[0], flat[1]);
+        if (Length(across) > 0.2f) { vote(YawOf(Cross(Vec3{0, 1, 0}, across)), 2.0f); }
+    }
+    vote_ = Wrap(head + std::atan2(sy, sx));
+
+    // Steering with the stick: the body faces the view, as the walk does.
+    const float target = in.steering ? head : vote_;
+    const float error = Wrap(target - yaw_);
+    if (!catching_ && (in.steering || std::fabs(error) > s.deadzone)) { catching_ = true; }
+    if (catching_) {
+        yaw_ = Wrap(yaw_ + error * (1.0f - std::exp(-s.rate * dt)));
+        if (!in.steering && std::fabs(Wrap(target - yaw_)) < 0.0175f) { catching_ = false; }
+    } else {
+        yaw_ = Wrap(yaw_ + error * (1.0f - std::exp(-s.settle * dt)));
+    }
+    const float fromHead = Wrap(yaw_ - head);
+    if (std::fabs(fromHead) > s.maxFromHead) { yaw_ = Wrap(head + std::copysign(s.maxFromHead, fromHead)); }
+    return yaw_;
 }
 
 Vec3 ShoulderTarget(const Vec3& eye, const TorsoFrame& torso, Side side, const Body& body)

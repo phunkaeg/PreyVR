@@ -1,5 +1,6 @@
 #include "VrOptionsRuntime.h"
 #include "BodyFollow.h"
+#include "AnimIkTakeover.h"
 #include "InteractionLane.h"
 #include "CarryLane.h"
 #include "GrenadeLane.h"
@@ -96,6 +97,9 @@ void Apply(unsigned id,int v){
  case options::MuzzleAim:SetShotRay(v);break;
  case options::BodyFollow:SetBodyYawFollow(v>=1);SetBodyRoomScale(v>=2);break;
  case options::Stereo:SetVrStereoMode(static_cast<unsigned>(v));break;
+ case options::PhysicalCrouch:SetPhysicalCrouch(v!=0);break;
+ case options::WallFade:SetHeadInWallsFade(v!=0);break;
+ case options::BodyPose:SetBodyPose(v!=0);break;
  }
 }
 void Save(){
@@ -137,6 +141,9 @@ options::Values VrOptionsValues(){
  v[options::MuzzleAim]=ShotRayEnabled();
  v[options::BodyFollow]=BodyYawFollowEnabled()?(BodyRoomScaleEnabled()?2:1):0;
  v[options::Stereo]=static_cast<int>(VrStereoModeChosen());
+ v[options::PhysicalCrouch]=static_cast<int>(PhysicalCrouchEnabled());
+ v[options::WallFade]=static_cast<int>(HeadInWallsFadeEnabled());
+ v[options::BodyPose]=static_cast<int>(BodyPoseEnabled());
  v[options::UseHand]=useHand.load();v[options::CarryHand]=carryHand.load();v[options::GrenadeHand]=grenadeHand.load();
  // Read the actual lane settings, including changes made through the command
  // channel. Pending menu edits override only their own row until applied.

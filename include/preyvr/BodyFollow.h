@@ -57,6 +57,26 @@ struct RoomPolicy {
 // hysteresis so millimetre head noise does not move the body every frame.
 Vec2 RoomStep(Vec2 offset, const RoomPolicy& policy, bool& moving);
 
+// The lean radius (Quake VR's vr_lean_radius): the head may leave the body's
+// neck by `radius` before the body walks after it, at once and as far as it
+// takes to bring the head back to the radius. Inside, the body comes back under
+// the head at the head's own speed (at least `recentre`), with hysteresis --
+// unless the player is leaning, which the visible body shows by bending.
+struct LeanPolicy {
+    float radius = 0.25f;
+    float recentre = 0.5f;   // m/s
+    float start = 0.01f, stop = 0.003f;
+    float maxStep = 0.05f;   // metres per frame
+};
+Vec2 LeanStep(Vec2 offset, float headSpeed, float dt, bool leaning, const LeanPolicy& policy, bool& moving);
+
+// Leaning, not stepping (Quake VR: "head lower and tilted toward it"): the
+// neck lower than standing (a hip hinge drops it 2-15 cm; looking down about
+// the neck does not, a squat drops it more) and the crown tilted the way the
+// neck is going -- `direction` is
+// its offset from the body plus where it is heading.
+bool Leaning(const Quaternion& openXrHead, Vec2 direction, float neckDrop);
+
 // A step that would enter a wall slides along it instead: the part of the
 // step against the wall's horizontal normal is removed.
 Vec2 Slide(Vec2 step, Vec2 wallNormal);

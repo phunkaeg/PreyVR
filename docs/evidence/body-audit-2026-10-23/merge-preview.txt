@@ -1,0 +1,19 @@
+b74edf9419132c2389d3dfd18288776710756414
+docs/PLAYER-GUIDE.md
+include/preyvr/VrOptions.h
+src/common/VrOptions.cpp
+src/dll/VrOptionsRuntime.cpp
+
+Auto-merging CMakeLists.txt
+Auto-merging docs/PLAYER-GUIDE.md
+CONFLICT (content): Merge conflict in docs/PLAYER-GUIDE.md
+Auto-merging include/preyvr/VrOptions.h
+CONFLICT (content): Merge conflict in include/preyvr/VrOptions.h
+Auto-merging src/common/VrOptions.cpp
+CONFLICT (content): Merge conflict in src/common/VrOptions.cpp
+Auto-merging src/dll/MoveLane.cpp
+Auto-merging src/dll/VrMode.cpp
+Auto-merging src/dll/VrOptionsRuntime.cpp
+CONFLICT (content): Merge conflict in src/dll/VrOptionsRuntime.cpp
+Auto-merging src/dll/XrSessionHost.cpp
+Auto-merging tests/VrOptionsRuntimeTests.cpp

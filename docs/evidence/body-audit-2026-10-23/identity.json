@@ -1,0 +1,10 @@
+{
+  "reviewed_commit": "16a69ed3d9fa98803ce9562953122335bcd699d9",
+  "integration_commit": "b298f97bc62d902a715fbbd25871ef2cbb8b96bd",
+  "dll_sha256": "6064EC50DB4096862F7F2D626E564A1005779C6C1695F638A3AB93F9A8FAA9C8",
+  "dll_bytes": 2218496,
+  "compiler": "MSVC 19.50.35729.0; VS 18 2026; x64 Release",
+  "baseline": "70/70 offline CTest; 19.30 seconds",
+  "environment": "source and synthetic harness; no game or headset",
+  "source_changes": "none"
+}

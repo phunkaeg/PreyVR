@@ -1,4 +1,6 @@
 #include "MoveLane.h"
+#include "AnimIkTakeover.h"
+#include "BodyFollow.h"
 #include "ArmsLane.h"
 #include "AimTakeover.h"
 #include "BodyEquipment.h"
@@ -344,6 +346,15 @@ void UpdateMoveLane()
                 *yaw-HeadTrackingReferenceYaw(),gStrafeScale.load(),gBackwardScale.load());
             state.thumbstickX=v.x;state.thumbstickY=v.y;
         }
+    } else if(haveInput) {
+        // Body relative: the stick walks the way the torso faces (the arms' and the
+        // visible body's estimate), so the player can look around while walking.
+        float torso=0.0f;
+        if(TorsoYawNow(torso, movementFrame.epoch, movementReference)) {
+            const auto v=comfort::HeadRelativeStick({state.thumbstickX,state.thumbstickY},
+                torso-HeadTrackingReferenceYaw(),gStrafeScale.load(),gBackwardScale.load());
+            state.thumbstickX=v.x;state.thumbstickY=v.y;
+        } else { haveInput = false; } // no old-basis or arbitrary native-direction fallback
     }
     if(movementReference%2 || movementReference!=HeadTrackingReferenceGeneration()) haveInput=false;
     if (!haveInput) {
@@ -589,11 +600,13 @@ void UpdateTurnAndFireLanes()
         RequestUseTargetSuppression(useOut.suppressTarget);
         NoteUseButton(useOut.down, static_cast<unsigned>(useOut.owner), useOut.pressed, useOut.released,
                       (useOut.noTarget ? 1u : 0u) | (useOut.gaveUp ? 2u : 0u) | (useOut.busy ? 4u : 0u));
+        const bool crouchTap = TakePhysicalCrouchTap(inputFrame,
+            haveInput && actionsOn && !releaseActions && HudGameplayInputAllowed() && MoveLaneCinematicGate() == 0);
         const bool sources[kActionCount] = {
             useOut.down,                              // use/reload, decided above
             haveLeftHand && leftHand.menuAccept,      // inventory <- left X
             right.menuAccept,                         // jump      <- right A
-            right.menuCancel,                         // crouch    <- right B
+            right.menuCancel || crouchTap,            // crouch    <- right B, or a physical crouch
             right.weaponWheelPressed,                 // wheel     <- right stick click
         };
         static bool blocked[kActionCount]{};
@@ -739,6 +752,7 @@ unsigned long long MoveLanePosted() { return gPosted.load(std::memory_order_rela
 unsigned long long MoveLaneHeld() { return gHeld.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneDropped() { return gDropped.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneInputObject() { return gInputObject.load(std::memory_order_relaxed); }
+
 int MoveLaneAxisMilli(unsigned int axis) { return axis < 2 ? gAxisMilli[axis].load(std::memory_order_relaxed) : 0; }
 int MoveLaneCinematicGate() { return gCinematic.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneRecenterCount() { return gRecenters.load(std::memory_order_relaxed); }

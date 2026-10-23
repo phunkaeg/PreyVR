@@ -45,6 +45,15 @@ public:
         std::lock_guard lock(mutex_);
         present_ = false;
     }
+    // Consume one command atomically with respect to replacement publications.
+    bool TryTake(T& out)
+    {
+        std::unique_lock lock(mutex_, std::try_to_lock);
+        if (!lock.owns_lock() || !present_) { return false; }
+        out = value_;
+        present_ = false;
+        return true;
+    }
 private:
     mutable std::shared_mutex mutex_;
     T value_{};

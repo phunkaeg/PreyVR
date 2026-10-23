@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
 
 #include <windows.h>
 
@@ -135,6 +136,14 @@ DWORD SetHandPoseStretchPercent(int percent);
 //   knee <permille>              exact reach up to this fraction of the stretched arm (920)
 DWORD SetArmSetting(const std::string& what, const int* values, unsigned count);
 std::string ArmReport();
+// The visible body (body.pose): the torso turned, the spine bent and the hips
+// dropped so the body's neck stays where the player's is.
+DWORD SetBodyPose(unsigned enabled);
+DWORD SetBodyFeet(unsigned enabled);
+// The player's torso yaw (OpenXR tracking yaw), if estimated in the last 0.2 s.
+bool TorsoYawNow(float& yaw, std::uint64_t epoch, std::uint64_t reference);
+unsigned BodyPoseEnabled();
+std::string BodyPoseReport();
 // Settings, the measured error of each hand against the controller (palm
 // position, hand axes) and the grip pose relative to the aim pose.
 std::string HandPoseReport();

@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20261023-full-body-state-audit",
+  "recorded_at": "2026-10-23T05:14:06.544153+00:00",
+  "target": {
+    "name": "PreyVR jordi/robustness-body source and production-adapter fixtures",
+    "identity_kind": "git_commit",
+    "identity": "16a69ed3d9fa98803ce9562953122335bcd699d9"
+  },
+  "question": "Does full-body state remain bound to the correct player and tracking coordinate context across discontinuities?",
+  "claim": "The production adapters retain physical-crouch ownership and eye baseline across replacement players; a fixture emits an inherited stand request and retains 0.20 m eye lift at a changed standing baseline. Crouch can acquire before its compensation baseline is learned. The torso cache checks age without context identity, and estimator history retains the previous coordinate basis across a synthetic rebase (20 degrees vs 90 reset control). PlanBody retains planted world feet across a sub-metre owner/epoch discontinuity and reports valid despite a 0.388378 m shin-to-foot gap; Reset control reduces the gap to numerical noise. These are synthetic reproductions, not measured game occurrence.",
+  "evidence_grade": "LIVE",
+  "environment": "harness",
+  "method": "MSVC 19.50.35729.0, VS 18 2026 x64 Release/static CRT. Fresh body DLL build and CTest 70/70. Probe CMake builds crouch.cpp including unchanged BodyFollow.cpp, torso.cpp including unchanged AnimIkTakeover.cpp and geometry.cpp linked to actual reviewed core. Native/XR boundary calls are stubbed, fixtures supply actor/pose/rig memory. Positive controls establish learned-eye crouch acquisition and compensation, initial valid PlanBody, reset torso and reset feet. Commands and control/variable definitions are in frozen REPRODUCE.md; exact outputs and numbered source are retained. No game process, injection or headset run. Initial missing link stubs/CRT setup errors were corrected before the recorded run and are not production findings.",
+  "validity": "VALID",
+  "mutation": "none",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Reviewed source commit is pinned; unchanged worktree and built DLL identity are recorded in identity.json."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Probes execute the actual reviewed production adapters and pure solver with explicit synthetic boundaries. Frozen source/output establish tested paths."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Normal acquired crouch compensation vs replaced actor/changed baseline/no baseline; retained torso history vs Reset under identical rebased input; retained feet vs Reset under the same valid body displacement."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Synthetic source fixtures only; no native game scene."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "No production code, process or shared runtime state was mutated. Builds and probes use separate directories."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Fresh Release build and existing 70/70 offline CTest pass (ctest.txt). This establishes only that baseline; additional probes reproduce missing invariants and do not approve the branch for integration."
+  },
+  "limits": "Synthetic LIVE harness evidence does not establish native ABI, transition frequency, performance, headset quality or that every ordinary recenter changes the raw OpenXR coordinate basis. Direct calls isolate adapter state; native inputs are not posted. Author FunkMockXR report is retained as provenance and is not independently rerun. Full-body source remains separate from integration, with four textual merge conflicts and previously fixed common robustness work to retain.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/body-audit-2026-10-23/identity.json",
+      "sha256": "bdbba97de0660e38ca8f59d1213cf11b2475dcacfaa9b80f9ffd6ca18dbbb617",
+      "role": "Pinned source/integration and built DLL identities"
+    },
+    {
+      "path": "docs/evidence/body-audit-2026-10-23/ctest.txt",
+      "sha256": "0fdabd78a3d07ed5d6a9044b803212cfaac4e28c2af21a46c490d885a1a1234e",
+      "role": "Existing 70-test baseline"
+    },
+    {
+      "path": "docs/evidence/body-audit-2026-10-23/build.txt",
+      "sha256": "766a2b1e73501b8bbea1f20bdb4384cfecd518fae610c82697a7dedf43207091",
+      "role": "Fresh Release build result"
+    },
+    {
+      "path": "docs/evidence/body-audit-2026-10-23/probe-output.txt",
+      "sha256": "136faaeb725968c2799d38f5f7896d306a809170af628f554e93cc408d1970fb",
+      "role": "Measured synthetic counterexamples and controls"
+    },
+    {
+      "path": "docs/evidence/body-audit-2026-10-23/crouch.cpp",
+      "sha256": "68fb8f36f369a203534af322fe1aa2644c37ef905c3e6f97bf82a0f133ac1b33",
+      "role": "Production crouch-adapter probe with positive controls"
+    },
+    {
+      "path": "docs/evidence/body-audit-2026-10-23/torso.cpp",
+      "sha256": "c6bc019c41f022b0d595a9747bf532f511bd9b51de9c12e3a5c5f01c43bd6e02",
+      "role": "Production torso/PlanBody probes and reset controls"
+    },
+    {
+      "path": "docs/evidence/body-audit-2026-10-23/geometry.cpp",
+      "sha256": "9b7ec40c13ea374f4408f60c6dc5d629db457d4f4870070d856e7355d96e18f3",
+      "role": "Independent pure solver and planter fixture"
+    },
+    {
+      "path": "docs/evidence/body-audit-2026-10-23/CMakeLists.txt",
+      "sha256": "776f5f9a540add63b9f4530eea86eed60cd493b1da3cc9673ab1126b79b68e56",
+      "role": "Probe build and linkage definition"
+    },
+    {
+      "path": "docs/evidence/body-audit-2026-10-23/REPRODUCE.md",
+      "sha256": "4f5bf370bdc7a3d248b1c6e7d9e3dc884f791fcbdd6969577b4238fd0e6c247d",
+      "role": "Exact commands, hypothesis, controls and limits"
+    },
+    {
+      "path": "docs/evidence/body-audit-2026-10-23/source-excerpts.txt",
+      "sha256": "0cedbd1fc06f563a7f223ade7c7860b3bfa0b773d2c51cc6b208ef75a852676e",
+      "role": "Frozen numbered source establishing lifecycle gaps"
+    },
+    {
+      "path": "docs/evidence/body-audit-2026-10-23/merge-preview.txt",
+      "sha256": "a640e271feb1f5c140affcc24f469788f3753d498536b722713a38c7b0849fe8",
+      "role": "Non-mutating merge conflicts against integration"
+    },
+    {
+      "path": "docs/evidence/body-audit-2026-10-23/author-mock-report.txt",
+      "sha256": "67de5df96708c8ae7a2ebbc67ce404e6bb2c4debea5d6169540f415ce8822099",
+      "role": "Author-supplied game/mock measurements and disclosed limitations; not rerun"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Keep body separate; fix crouch ownership/baseline, coherent torso context publication and foot/pose state reset plus reachability. Add production-adapter regression assertions, resolve options conflicts preserving integration fixes, then perform bounded game and headset acceptance. Candidate for lifecycle-context playbook review, not bottleneck clearance."
+}

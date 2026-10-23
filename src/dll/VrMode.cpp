@@ -29,6 +29,8 @@
 #include "BodyFollow.h"
 #include "preyvr/DebugOverlayScene.h"
 #include "preyvr/LatestSnapshot.h"
+#include "MinHookInit.h"
+#include <MinHook.h>
 #include <algorithm>
 #include <cmath>
 #include <sstream>
@@ -64,6 +66,38 @@ unsigned stereoChosen=1, stereoActive=1;
 bool stereoAuto=true;
 unsigned long long rateWindowStart=0, rateWindowFrames=0;
 unsigned slowRateWindows=0;
+// PREYVR_FAKE_FOCUS=1 (the mock harness only): the game is told its window has
+// focus. With the desktop locked it never does, so it pauses itself on loading
+// and drops the pause menu's input; these three are what PreyDll asks.
+HWND gOwnWindow=nullptr;
+using WindowQueryFn=HWND(WINAPI*)();
+WindowQueryFn gForeground=nullptr,gActive=nullptr,gFocus=nullptr;
+BOOL CALLBACK FindOwnWindow(HWND h,LPARAM) {
+    DWORD pid=0;GetWindowThreadProcessId(h,&pid);
+    if(pid!=GetCurrentProcessId()||GetWindow(h,GW_OWNER)||!IsWindowVisible(h))return TRUE;
+    gOwnWindow=h;return FALSE;
+}
+HWND OwnWindow(WindowQueryFn original) {
+    if(!gOwnWindow)EnumWindows(&FindOwnWindow,0);
+    return gOwnWindow?gOwnWindow:original();
+}
+HWND WINAPI ForegroundShim(){return OwnWindow(gForeground);}
+HWND WINAPI ActiveShim(){return OwnWindow(gActive);}
+HWND WINAPI FocusShim(){return OwnWindow(gFocus);}
+void InstallFocusShim() {
+    wchar_t value[8]{};
+    if(!GetEnvironmentVariableW(L"PREYVR_FAKE_FOCUS",value,8)||value[0]!=L'1'||!EnsureMinHook())return;
+    const auto hook=[](const char* name,LPVOID detour,WindowQueryFn* original) {
+        LPVOID target=nullptr;
+        return MH_CreateHookApiEx(L"user32",name,detour,reinterpret_cast<LPVOID*>(original),&target)==MH_OK&&
+               MH_EnableHook(target)==MH_OK;
+    };
+    const bool ok=hook("GetForegroundWindow",reinterpret_cast<LPVOID>(&ForegroundShim),&gForeground)&&
+                  hook("GetActiveWindow",reinterpret_cast<LPVOID>(&ActiveShim),&gActive)&&
+                  hook("GetFocus",reinterpret_cast<LPVOID>(&FocusShim),&gFocus);
+    Log(std::string("fake_focus=")+(ok?"on":"failed"));
+}
+
 bool stereoApplied=false;
 // Switches the three paths in the order that never publishes a both-eyes contract without its second submission:
 // the render-thread mode is armed before the game thread's contract, and the contract is dropped before the mode.
@@ -135,6 +169,7 @@ void EnableVrMode() {
     if(!NativeProjectionEnabled() || SetViewHookObserving(1)!=0) {
         Fail("view_hook"); return;
     }
+    InstallFocusShim();
     wchar_t value[24]{};
     desiredWidth=GetEnvironmentVariableW(L"PREYVR_RENDER_WIDTH",value,24)?static_cast<unsigned>(_wtoi(value)):0;
     desiredHeight=GetEnvironmentVariableW(L"PREYVR_RENDER_HEIGHT",value,24)?static_cast<unsigned>(_wtoi(value)):0;

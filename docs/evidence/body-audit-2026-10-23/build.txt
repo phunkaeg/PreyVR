@@ -1,0 +1,405 @@
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/Dev Debug/PreyVR/build/headless/_deps/minhook-src/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  buffer.c
+  hook.c
+  AimState.cpp
+  trampoline.c
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  hde64.c
+  AnimIk.cpp
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/headless/_deps/openxr-src/include/openxr/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/headless/_deps/openxr-src/src/CMakeLists.txt
+  HandPose.cpp
+  DllSmokeHost.cpp
+  Generating Code...
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/headless/_deps/openxr-src/src/loader/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  ArmPose.cpp
+  main.cpp
+  main.cpp
+  InventorySwapchainTests.cpp
+  DebugDraw.cpp
+  android_utilities.cpp
+  minhook.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\_deps\minhook-build\Release\minhook.x64.lib
+  api_layer_interface.cpp
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  DebugOverlayScene.cpp
+  InventoryPointerCaptureTests.cpp
+  NearFovOverrideTests.cpp
+  ShotRay.cpp
+  preyvr_dxgi_probe.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_dxgi_probe.exe
+  InventorySwapchain.cpp
+  NearParticles.cpp
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(355,31): warning C4459: declaration of 'r' hides global declaration [D:\Dev Debug\PreyVR\build\review-body-20261023\preyvr_inventory_swapchain_tests.vcxproj]
+  (compiling source file 'C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/tests/InventorySwapchainTests.cpp')
+      C:\Users\meise\.codex\worktrees\jordi-review\PreyVR\tests\InventorySwapchainTests.cpp(26,3):
+      see declaration of '`anonymous-namespace'::r'
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(355,31):
+      the template instantiation context (the oldest one first) is
+          C:\Users\meise\.codex\worktrees\jordi-review\PreyVR\tests\InventorySwapchainTests.cpp(17,29):
+          see reference to class template instantiation 'Microsoft::WRL::ComPtr<ID3D11Texture2D>' being compiled
+          C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(355,10):
+          while compiling class template member function 'void Microsoft::WRL::ComPtr<ID3D11Texture2D>::Swap(Microsoft::WRL::ComPtr<ID3D11Texture2D> &) noexcept'
+              C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(335,50):
+              see the first reference to 'Microsoft::WRL::ComPtr<ID3D11Texture2D>::Swap' in 'Microsoft::WRL::ComPtr<ID3D11Texture2D>::operator ='
+              C:\Users\meise\.codex\worktrees\jordi-review\PreyVR\tests\InventorySwapchainTests.cpp(61,12):
+              see the first reference to 'Microsoft::WRL::ComPtr<ID3D11Texture2D>::operator =' in '`anonymous-namespace'::Create'
+  
+  WeaponRigAlignment.cpp
+  preyvr_dll_smoke_host.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_dll_smoke_host.exe
+  loader_core.cpp
+  CameraEdit.cpp
+  preyvr_injector.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_injector.exe
+  ConsolePolicy.cpp
+  Generating Code...
+  DebugRegisters.cpp
+  EngineMap.cpp
+  FrameDump.cpp
+  preyvr_inventory_swapchain_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_inventory_swapchain_tests.exe
+  FrameObserver.cpp
+  preyvr_near_fov_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_near_fov_tests.exe
+  loader_init_data.cpp
+  InputEvent.cpp
+  preyvr_inventory_capture_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_inventory_capture_tests.exe
+  InputQueue.cpp
+  InteractionQuery.cpp
+  InteractionUse.cpp
+  HandCarry.cpp
+  loader_instance.cpp
+  Generating Code...
+  loader_logger.cpp
+  Compiling...
+  GrenadeThrow.cpp
+  WristHolo.cpp
+  loader_logger_recorders.cpp
+  NativeFovPlacement.cpp
+  BodyFollow.cpp
+  BodyPose.cpp
+  loader_properties.cpp
+  Locomotion.cpp
+  MenuNavigator.cpp
+  InventoryDepth.cpp
+  UiPanel.cpp
+  manifest_file.cpp
+  MotionController.cpp
+  TwoHandedAim.cpp
+  VrOptions.cpp
+  runtime_interface.cpp
+  OpenXRBootstrap.cpp
+  RenderFrameTable.cpp
+  RuntimeSnapshot.cpp
+  object_info.cpp
+  StereoCamera.cpp
+  StereoFrame.cpp
+  xr_generated_loader.cpp
+  VrMath.cpp
+  DepthSubmission.cpp
+  FrameClock.cpp
+  Generating Code...
+  filesystem_utils.cpp
+  Compiling...
+  FrameTiming.cpp
+  json_reader.cpp
+  FrustumCoverage.cpp
+  json_value.cpp
+  WeaponAim.cpp
+  json_writer.cpp
+  WrenchQuery.cpp
+  Generating Code...
+  XrFrameContract.cpp
+  XrSwapchainFormat.cpp
+  Generating Code...
+  preyvr_core.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_core.lib
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  BodyFollowTests.cpp
+  BodyEquipmentTests.cpp
+  GrenadeThrowTests.cpp
+  HandPoseTests.cpp
+  VrOptionsTests.cpp
+  NativeFovPlacementTests.cpp
+  VrOptionsPanelTests.cpp
+  VrOptionsPanel.cpp
+  MotionControllerTests.cpp
+  MenuNavigatorTests.cpp
+  DepthSubmissionTests.cpp
+  OpenXRPreflightWin32.cpp
+  PhysicalRuntimeTests.cpp
+  preyvr_body_follow_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_body_follow_tests.exe
+  Generating Code...
+  preyvr_body_equipment_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_body_equipment_tests.exe
+  main.cpp
+  AimStateTests.cpp
+  preyvr_depth_submission_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_depth_submission_tests.exe
+  preyvr_native_fov_placement_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_native_fov_placement_tests.exe
+  preyvr_vr_options_panel_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_vr_options_panel_tests.exe
+  DebugRegistersTests.cpp
+  NativeWristTests.cpp
+  DebugDrawTests.cpp
+  ConsolePolicyTests.cpp
+  RuntimeSnapshotWin32.cpp
+  ComfortControlsTests.cpp
+  preyvr_ray_probe.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_ray_probe.exe
+  XrFrameContractTests.cpp
+  Generating Code...
+  NativeWristTexture.cpp
+  WrenchQueryTests.cpp
+  preyvr_debug_registers_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_debug_registers_tests.exe
+  preyvr_physical_runtime_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_physical_runtime_tests.exe
+  VrOptionsRuntimeTests.cpp
+  preyvr_win32_bootstrap.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_win32_bootstrap.lib
+  preyvr_debug_draw_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_debug_draw_tests.exe
+  xr_generated_dispatch_table_core.c
+  UiPanelTests.cpp
+  Generating Code...
+  preyvr_motion_controller_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_motion_controller_tests.exe
+  preyvr_comfort_controls_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_comfort_controls_tests.exe
+  preyvr_xr_frame_contract_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_xr_frame_contract_tests.exe
+  preyvr_aim_state_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_aim_state_tests.exe
+     Creating library D:/Dev Debug/PreyVR/build/review-body-20261023/_deps/openxr-build/src/loader/Release/openxr_loader.lib and object D:/Dev Debug/PreyVR/build/review-body-20261023/_deps/openxr-build/src/loader/Release/openxr_loader.exp
+  preyvr_hand_pose_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_hand_pose_tests.exe
+  preyvr_grenade_throw_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_grenade_throw_tests.exe
+  preyvr_console_policy_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_console_policy_tests.exe
+  preyvr_wrench_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_wrench_query_tests.exe
+  EngineMapTests.cpp
+  openxr_loader.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  preyvr_native_wrist_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_native_wrist_tests.exe
+  CameraEditTests.cpp
+  XrSwapchainFormatTests.cpp
+  BodyPoseTests.cpp
+  NearParticlesTests.cpp
+  preyvr_menu_navigator_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_menu_navigator_tests.exe
+  preyvr_ui_panel_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_ui_panel_tests.exe
+  RenderContractTests.cpp
+  RuntimeBootstrapTests.cpp
+  ShotRayTests.cpp
+  TwoHandedAimTests.cpp
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  SlotFeedbackTests.cpp
+  preyvr_camera_edit_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_camera_edit_tests.exe
+  WeaponRigAlignmentTests.cpp
+  preyvr_body_pose_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_body_pose_tests.exe
+  RenderFrameTableTests.cpp
+  preyvr_render_contract_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_render_contract_tests.exe
+  preyvr_near_particles_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_near_particles_tests.exe
+  preyvr_vr_options_runtime_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_vr_options_runtime_tests.exe
+  preyvr_xr_swapchain_format_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_xr_swapchain_format_tests.exe
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  PsiMedkitRuntimeTests.cpp
+  PhysicalInteractionsTests.cpp
+  preyvr_runtime_bootstrap_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_runtime_bootstrap_tests.exe
+  PsiMedkitTests.cpp
+  LocomotionTests.cpp
+  preyvr_engine_map_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_engine_map_tests.exe
+  preyvr_two_handed_aim_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_two_handed_aim_tests.exe
+  RuntimeSnapshotTests.cpp
+  StereoCameraTests.cpp
+  preyvr_slot_feedback_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_slot_feedback_tests.exe
+  preyvr_shot_ray_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_shot_ray_tests.exe
+  WristPanelTests.cpp
+  preyvr_physical_interactions_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_physical_interactions_tests.exe
+  preyvr_render_frame_table_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_render_frame_table_tests.exe
+  UiPointerTests.cpp
+  preyvr_weapon_rig_alignment_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_weapon_rig_alignment_tests.exe
+  WeaponAimTests.cpp
+  FrustumCoverageTests.cpp
+  preyvr_locomotion_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_locomotion_tests.exe
+  VrMathTests.cpp
+  WristPanel.cpp
+  preyvr_stereo_camera_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_stereo_camera_tests.exe
+  preyvr_psi_medkit_runtime_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_psi_medkit_runtime_tests.exe
+  StereoFrameTests.cpp
+  InventoryDepthTests.cpp
+  preyvr_psi_medkit_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_psi_medkit_tests.exe
+  Generating Code...
+  SceneQueryTests.cpp
+  preyvr_frustum_coverage_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_frustum_coverage_tests.exe
+  preyvr_vr_math_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_vr_math_tests.exe
+  preyvr_runtime_snapshot_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_runtime_snapshot_tests.exe
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  InteractionUseTests.cpp
+  InteractionQueryTests.cpp
+  WristHoloTests.cpp
+  preyvr_weapon_aim_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_weapon_aim_tests.exe
+  D:\Dev Debug\PreyVR\build\review-body-20261023\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  preyvr_inventory_depth_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_inventory_depth_tests.exe
+  D:\Dev Debug\PreyVR\build\review-body-20261023\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  D:\Dev Debug\PreyVR\build\review-body-20261023\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  preyvr_vr_options_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_vr_options_tests.exe
+  InputQueueTests.cpp
+  InputEventTests.cpp
+  preyvr_stereo_frame_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_stereo_frame_tests.exe
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  preyvr_ui_pointer_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_ui_pointer_tests.exe
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  preyvr_interaction_use_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_interaction_use_tests.exe
+  preyvr_wrist_panel_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_wrist_panel_tests.exe
+  main.cpp
+  OpenXRPreflightWin32Tests.cpp
+  main.cpp
+  preyvr_interaction_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_interaction_query_tests.exe
+  preyvr_scene_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_scene_query_tests.exe
+  preyvr_wrist_holo_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_wrist_holo_tests.exe
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  HandCarryTests.cpp
+  preyvr_input_queue_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_input_queue_tests.exe
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  FrameTimingTests.cpp
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  main.cpp
+  preyvr_input_event_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_input_event_tests.exe
+  AnimIkTests.cpp
+  HapticsTests.cpp
+  preyvr_xr_adapter_probe.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_xr_adapter_probe.exe
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  preyvr_xr_session_probe.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_xr_session_probe.exe
+  preyvr_hand_carry_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_hand_carry_tests.exe
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  FrameDumpTests.cpp
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  FrameClockTests.cpp
+  preyvr_frame_timing_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_frame_timing_tests.exe
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  main.cpp
+  ArmPoseTests.cpp
+  preyvr_frame_diff.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_frame_diff.exe
+  preyvr_openxr_preflight_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_openxr_preflight_tests.exe
+  Haptics.cpp
+  preyvr_frame_clock_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_frame_clock_tests.exe
+  preyvr_frame_dump_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_frame_dump_tests.exe
+  preyvr_anim_ik_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_anim_ik_tests.exe
+  preyvr_arm_pose_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_arm_pose_tests.exe
+  Generating Code...
+  preyvr_engine_map_probe.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_engine_map_probe.exe
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt
+  AimRayProbe.cpp
+  preyvr_haptics_tests.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\preyvr_haptics_tests.exe
+  AimTakeover.cpp
+  PsiMedkit.cpp
+  AnimIkTakeover.cpp
+  Bootstrap.cpp
+  VrMode.cpp
+  UiGuide.cpp
+  VrOptionsPanel.cpp
+  VrOptionsRuntime.cpp
+  Psychoscope.cpp
+  BodyEquipment.cpp
+  DebugOverlay.cpp
+  ShotRay.cpp
+  InteractionLane.cpp
+  CarryLane.cpp
+  GrenadeLane.cpp
+  ArmsLane.cpp
+  SlotFeedback.cpp
+  NativeWristTexture.cpp
+  WristLane.cpp
+  Generating Code...
+  Compiling...
+  HudLayer.cpp
+  InventorySwapchain.cpp
+  UiPointer.cpp
+  InventoryPointerCapture.cpp
+  CameraEditHook.cpp
+  ConsoleBridgeWin32.cpp
+  DebugWatch.cpp
+  CrashReport.cpp
+  DllMain.cpp
+  FrameCaptureWin32.cpp
+  FrameObserverHook.cpp
+  HeadTrackingHook.cpp
+  HudBridge.cpp
+  HotkeyBridge.cpp
+  IkTargetProbe.cpp
+  InputPathProbe.cpp
+  InputPost.cpp
+  MinHookInit.cpp
+  MoveLane.cpp
+  BodyFollow.cpp
+  Generating Code...
+  Compiling...
+  CommandChannel.cpp
+  HandRigTakeover.cpp
+  NearFovOverride.cpp
+  NearViewStereo.cpp
+  NearParticleStereo.cpp
+  DualSceneStereo.cpp
+  DualOverlay.cpp
+  RenderFrame.cpp
+  WeaponAttachment.cpp
+  PassCameraProbe.cpp
+  ReticleFollow.cpp
+  XrInput.cpp
+C:\Users\meise\.codex\worktrees\jordi-review\PreyVR\src\dll\XrInput.cpp(118,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\review-body-20261023\preyvr.vcxproj]
+C:\Users\meise\.codex\worktrees\jordi-review\PreyVR\src\dll\XrInput.cpp(119,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\review-body-20261023\preyvr.vcxproj]
+C:\Users\meise\.codex\worktrees\jordi-review\PreyVR\src\dll\XrInput.cpp(141,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\review-body-20261023\preyvr.vcxproj]
+C:\Users\meise\.codex\worktrees\jordi-review\PreyVR\src\dll\XrInput.cpp(142,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\review-body-20261023\preyvr.vcxproj]
+  Haptics.cpp
+  SceneQuery.cpp
+  PhysicalInteractions.cpp
+  XrSessionHost.cpp
+  Logger.cpp
+  Generating Code...
+     Creating library D:/Dev Debug/PreyVR/build/review-body-20261023/Release/PreyVR.lib and object D:/Dev Debug/PreyVR/build/review-body-20261023/Release/PreyVR.exp
+  preyvr.vcxproj -> D:\Dev Debug\PreyVR\build\review-body-20261023\Release\PreyVR.dll
+  Building Custom Rule C:/Users/meise/.codex/worktrees/jordi-review/PreyVR/CMakeLists.txt

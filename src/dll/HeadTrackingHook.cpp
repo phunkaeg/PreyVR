@@ -381,6 +381,11 @@ std::atomic<unsigned long long> gObserved{0};
 std::atomic<unsigned long long> gApplied{0};
 std::atomic<float> gLastFov{0.0f};
 std::atomic<float> gLastNearPlane{0.0f};
+// view.spectate: a camera outside the player, looking back at the body (research
+// and the mock's looks only). The offset it adds is published so the hands'
+// anchor can take it back out.
+std::atomic<int> gSpectateMm{0}, gSpectateAzDeg{0}, gSpectateUpMm{300}, gSpectateAtMm{-600};
+std::atomic<float> gSpectateX{0.0f}, gSpectateY{0.0f}, gSpectateZ{0.0f}, gSpectateYaw{0.0f};
 
 float ReadFloat(const std::uint8_t* base, std::size_t offset)
 {
@@ -463,6 +468,7 @@ void __fastcall UpdateViewObserved(void* camera, std::uint8_t* viewParams)
         // engine's business and only the offset from them is ours.
         std::memcpy(&reference.worldPosition, viewParams + kViewPosition,
                     sizeof(reference.worldPosition));
+        reference.worldPosition.z += CrouchEyeLift();   // a crouch made for real is not lowered twice
     }
     const Pose world = stereo::EyePoseInWorld(reference, headForView);
 
@@ -499,11 +505,34 @@ void __fastcall UpdateViewObserved(void* camera, std::uint8_t* viewParams)
     }
     std::memcpy(viewParams + kViewPosition, &world.position, sizeof(world.position));
     NoteComposedView(world.position, out, playSpaceYaw, reference.worldPosition, room.origin, headPose);
+    Pose rendered = world;
+    if (const int mm = gSpectateMm.load(std::memory_order_relaxed); mm > 0) {
+        // From `mm` away at `az` degrees round from where the view faces (0 = in
+        // front, looking back), `up` above the eye, looking at `at` below it.
+        const float viewYaw = stereo::CameraYawOf(stereo::MatrixFromPose(Pose{out, Vec3{}}));
+        const float az = viewYaw + gSpectateAzDeg.load(std::memory_order_relaxed) * 0.0174532925f;
+        const Vec3 offset{-std::sin(az) * mm * 0.001f, std::cos(az) * mm * 0.001f,
+                          gSpectateUpMm.load(std::memory_order_relaxed) * 0.001f};
+        const Vec3 at{world.position.x, world.position.y,
+                      world.position.z + gSpectateAtMm.load(std::memory_order_relaxed) * 0.001f};
+        const Vec3 eye{world.position.x + offset.x, world.position.y + offset.y, world.position.z + offset.z};
+        const Vec3 d{at.x - eye.x, at.y - eye.y, at.z - eye.z};
+        const float yaw = std::atan2(-d.x, d.y), pitch = std::atan2(d.z, std::sqrt(d.x * d.x + d.y * d.y));
+        const Quaternion look = Normalize(Multiply(stereo::YawQuaternion(yaw),
+            Quaternion{std::sin(pitch * 0.5f), 0.0f, 0.0f, std::cos(pitch * 0.5f)}));
+        std::memcpy(viewParams + kViewPosition, &eye, sizeof(eye));
+        std::memcpy(viewParams + kViewRotation, &look, sizeof(look));
+        gSpectateX.store(offset.x); gSpectateY.store(offset.y); gSpectateZ.store(offset.z);
+        rendered = Pose{look, eye};   // the render contract checks the camera against this
+        gSpectateYaw.store(yaw - viewYaw);
+    } else {
+        gSpectateX.store(0.0f); gSpectateY.store(0.0f); gSpectateZ.store(0.0f); gSpectateYaw.store(0.0f);
+    }
     // Publish only after BOTH rotation and position were accepted. Partial,
     // rotation-only and non-unit-scale research modes have no world contract.
     if (gPositionScale.load()==1.f && renderReference%2==0 &&
         renderReference==HeadTrackingReferenceGeneration())
-        tRenderedHead={headPose,world,tHeadLastGood.displayTime,renderReference,true};
+        tRenderedHead={headPose,rendered,tHeadLastGood.displayTime,renderReference,true};
     gPositionApplied.fetch_add(1, std::memory_order_relaxed);
     gLastOffsetMillimetres.store(
         static_cast<unsigned int>(std::sqrt(offsetSquared) * 1000.0f + 0.5f),
@@ -552,6 +581,20 @@ bool Install()
 unsigned long long ViewHookObservedCount() { return viewhook::gObserved.load(std::memory_order_relaxed); }
 unsigned long long ViewHookAppliedCount() { return viewhook::gApplied.load(std::memory_order_relaxed); }
 float ViewHookLastFov() { return viewhook::gLastFov.load(std::memory_order_relaxed); }
+DWORD SetViewSpectate(int distanceMm, int azimuthDeg, int upMm, int atMm)
+{
+    if (distanceMm < 0 || distanceMm > 10000) { return 1; }
+    viewhook::gSpectateAzDeg.store(azimuthDeg);
+    viewhook::gSpectateUpMm.store(upMm);
+    viewhook::gSpectateAtMm.store(atMm);
+    viewhook::gSpectateMm.store(distanceMm);
+    return 0;
+}
+float ViewSpectateYaw() { return viewhook::gSpectateYaw.load(); }
+Vec3 ViewSpectateOffset()
+{
+    return {viewhook::gSpectateX.load(), viewhook::gSpectateY.load(), viewhook::gSpectateZ.load()};
+}
 float ViewHookLastNearPlane() { return viewhook::gLastNearPlane.load(std::memory_order_relaxed); }
 
 DWORD SetViewHookObserving(unsigned int enabled)
@@ -633,6 +676,7 @@ DWORD SetViewHookApplying(unsigned int enabled)
         viewhook::gApplied.store(0, std::memory_order_relaxed);
     }
     viewhook::gApplying.store(on, std::memory_order_release);
+    SetBodyFollowActive(on);
     Log(std::string("result=0 detail=view_applying value=") + (on ? "1" : "0"));
     return 0;
 }

@@ -126,7 +126,8 @@ unsigned long long MoveLaneHeld();
 // it (`+0x5C`, `+0x60`, R-089) in thousandths. Read back rather than assumed:
 // a value we posted that never lands here did not move the player.
 unsigned long long MoveLaneInputObject();
-int MoveLaneAxisMilli(unsigned int axis);   // 0 x, 1 y
+int MoveLaneAxisMilli(unsigned int axis);
+// The physical crouch's toggle: the crouch button pressed for a few frames.
 // The cinematic gate the handlers test at `+0x94`. Non-zero means the engine
 // is discarding movement input, so a still player is the game's decision and
 // not this lane failing.

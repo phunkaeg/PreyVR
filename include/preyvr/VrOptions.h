@@ -9,7 +9,7 @@ enum Setting : unsigned { Turn, HeadRelative, TurnSpeed, TwoHand, GripToggle,
     SupportSnap, Psychoscope, UiScale, UiMargin, UiCurve, UiGuide, Holsters, Wrist, WristSize,
     SceneReticle, ReticleFallback, Haptics, HapticStrength, PhysicalMelee, PhysicalContacts, SwingSpeed, ContactStrength,
     PsiTarget, Medkit, BeltHints, DebugOverlay, MuzzleAim, BodyFollow, Stereo,
-    UseHand, CarryHand, GrenadeHand, Count };
+    UseHand, CarryHand, GrenadeHand, PhysicalCrouch, WallFade, BodyPose, Count };
 static_assert(Count<=64); // runtime dirty mailbox is a 64-bit mask
 struct Spec { const char* key; const wchar_t* label; const wchar_t* help; int initial,min,max,step; };
 const Spec& Describe(unsigned id);
