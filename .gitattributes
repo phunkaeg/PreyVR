@@ -73,3 +73,5 @@ tests/CarryRuntimeTests.cpp text eol=lf
 tests/GrenadeRuntimeTests.cpp text eol=lf
 tests/NativeFovBlitTests.cpp text eol=lf
 receipts/20261023-robustness-fixes.json text eol=lf
+receipts/20261023-full-body-state-audit.json text eol=lf
+receipts/20261023-full-body-fixes.json text eol=lf

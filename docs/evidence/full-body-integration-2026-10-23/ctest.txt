@@ -1,0 +1,157 @@
+Test project D:/Dev Debug/PreyVR/build/full-body-integration-20261023
+      Start  1: vr_math
+ 1/76 Test  #1: vr_math ..........................   Passed    0.04 sec
+      Start  2: engine_map
+ 2/76 Test  #2: engine_map .......................   Passed    0.11 sec
+      Start  3: aim_state_fixture
+ 3/76 Test  #3: aim_state_fixture ................   Passed    0.05 sec
+      Start  4: wrench_query_fixture
+ 4/76 Test  #4: wrench_query_fixture .............   Passed    0.06 sec
+      Start  5: interaction_query_fixture
+ 5/76 Test  #5: interaction_query_fixture ........   Passed    0.05 sec
+      Start  6: runtime_snapshot
+ 6/76 Test  #6: runtime_snapshot .................   Passed    0.05 sec
+      Start  7: xr_swapchain_format
+ 7/76 Test  #7: xr_swapchain_format ..............   Passed    0.06 sec
+      Start  8: xr_frame_contract
+ 8/76 Test  #8: xr_frame_contract ................   Passed    0.05 sec
+      Start  9: stereo_frame
+ 9/76 Test  #9: stereo_frame .....................   Passed    0.08 sec
+      Start 10: comfort_controls
+10/76 Test #10: comfort_controls .................   Passed    0.17 sec
+      Start 11: motion_controller
+11/76 Test #11: motion_controller ................   Passed    0.06 sec
+      Start 12: two_handed_aim
+12/76 Test #12: two_handed_aim ...................   Passed    0.08 sec
+      Start 13: vr_options_contracts
+13/76 Test #13: vr_options_contracts .............   Passed    0.07 sec
+      Start 14: body_equipment_contracts
+14/76 Test #14: body_equipment_contracts .........   Passed    0.08 sec
+      Start 15: anim_ik
+15/76 Test #15: anim_ik ..........................   Passed    0.06 sec
+      Start 16: hand_pose
+16/76 Test #16: hand_pose ........................   Passed    0.06 sec
+      Start 17: arm_pose
+17/76 Test #17: arm_pose .........................   Passed    0.08 sec
+      Start 18: debug_draw
+18/76 Test #18: debug_draw .......................   Passed    0.07 sec
+      Start 19: shot_ray
+19/76 Test #19: shot_ray .........................   Passed    0.06 sec
+      Start 20: near_particles
+20/76 Test #20: near_particles ...................   Passed    0.07 sec
+      Start 21: hand_carry
+21/76 Test #21: hand_carry .......................   Passed    0.07 sec
+      Start 22: throw_lifecycle
+22/76 Test #22: throw_lifecycle ..................   Passed    0.14 sec
+      Start 23: grenade_throw
+23/76 Test #23: grenade_throw ....................   Passed    0.17 sec
+      Start 24: native_fov_placement
+24/76 Test #24: native_fov_placement .............   Passed    0.06 sec
+      Start 25: wrist_holo
+25/76 Test #25: wrist_holo .......................   Passed    0.05 sec
+      Start 26: body_follow
+26/76 Test #26: body_follow ......................   Passed    0.05 sec
+      Start 27: body_pose
+27/76 Test #27: body_pose ........................   Passed    0.05 sec
+      Start 28: interaction_use
+28/76 Test #28: interaction_use ..................   Passed    0.07 sec
+      Start 29: weapon_rig_alignment
+29/76 Test #29: weapon_rig_alignment .............   Passed    0.06 sec
+      Start 30: weapon_aim
+30/76 Test #30: weapon_aim .......................   Passed    0.05 sec
+      Start 31: scene_query_contracts
+31/76 Test #31: scene_query_contracts ............   Passed    0.05 sec
+      Start 32: physical_interactions
+32/76 Test #32: physical_interactions ............   Passed    0.06 sec
+      Start 33: psi_medkit_contracts
+33/76 Test #33: psi_medkit_contracts .............   Passed    0.05 sec
+      Start 34: frustum_coverage
+34/76 Test #34: frustum_coverage .................   Passed    0.05 sec
+      Start 35: depth_submission
+35/76 Test #35: depth_submission .................   Passed    0.10 sec
+      Start 36: frame_clock
+36/76 Test #36: frame_clock ......................   Passed    0.05 sec
+      Start 37: frame_timing
+37/76 Test #37: frame_timing .....................   Passed    0.05 sec
+      Start 38: input_event
+38/76 Test #38: input_event ......................   Passed    0.05 sec
+      Start 39: input_queue
+39/76 Test #39: input_queue ......................   Passed    0.11 sec
+      Start 40: menu_navigator
+40/76 Test #40: menu_navigator ...................   Passed    0.06 sec
+      Start 41: render_contract
+41/76 Test #41: render_contract ..................   Passed    0.06 sec
+      Start 42: inventory_depth
+42/76 Test #42: inventory_depth ..................   Passed    0.06 sec
+      Start 43: ui_panel
+43/76 Test #43: ui_panel .........................   Passed    0.07 sec
+      Start 44: locomotion
+44/76 Test #44: locomotion .......................   Passed    0.05 sec
+      Start 45: render_frame_table
+45/76 Test #45: render_frame_table ...............   Passed    6.34 sec
+      Start 46: stereo_camera
+46/76 Test #46: stereo_camera ....................   Passed    0.10 sec
+      Start 47: camera_edit
+47/76 Test #47: camera_edit ......................   Passed    0.06 sec
+      Start 48: frame_dump
+48/76 Test #48: frame_dump .......................   Passed    0.08 sec
+      Start 49: debug_registers
+49/76 Test #49: debug_registers ..................   Passed    0.14 sec
+      Start 50: console_policy
+50/76 Test #50: console_policy ...................   Passed    0.18 sec
+      Start 51: runtime_bootstrap
+51/76 Test #51: runtime_bootstrap ................   Passed    0.33 sec
+      Start 52: bodyfollow_runtime
+52/76 Test #52: bodyfollow_runtime ...............   Passed    0.10 sec
+      Start 53: bodypose_runtime
+53/76 Test #53: bodypose_runtime .................   Passed    0.15 sec
+      Start 54: slot_feedback
+54/76 Test #54: slot_feedback ....................   Passed    0.14 sec
+      Start 55: psi_medkit_runtime
+55/76 Test #55: psi_medkit_runtime ...............   Passed    0.10 sec
+      Start 56: physical_runtime
+56/76 Test #56: physical_runtime .................   Passed    0.08 sec
+      Start 57: ui_pointer_dispatch
+57/76 Test #57: ui_pointer_dispatch ..............   Passed    0.12 sec
+      Start 58: vr_options_panel
+58/76 Test #58: vr_options_panel .................   Passed    0.32 sec
+      Start 59: wrist_panel
+59/76 Test #59: wrist_panel ......................   Passed    0.19 sec
+      Start 60: native_wrist
+60/76 Test #60: native_wrist .....................   Passed    0.51 sec
+      Start 61: native_fov_blit
+61/76 Test #61: native_fov_blit ..................   Passed    0.13 sec
+      Start 62: vr_options_runtime
+62/76 Test #62: vr_options_runtime ...............   Passed    0.27 sec
+      Start 63: carry_runtime
+63/76 Test #63: carry_runtime ....................   Passed    0.08 sec
+      Start 64: grenade_runtime
+64/76 Test #64: grenade_runtime ..................   Passed    0.08 sec
+      Start 65: inventory_pointer_capture
+65/76 Test #65: inventory_pointer_capture ........   Passed    0.02 sec
+      Start 66: near_fov_override
+66/76 Test #66: near_fov_override ................   Passed    0.02 sec
+      Start 67: dll_load_fail_closed
+67/76 Test #67: dll_load_fail_closed .............   Passed    0.08 sec
+      Start 68: haptics_contracts
+68/76 Test #68: haptics_contracts ................   Passed    0.07 sec
+      Start 69: inventory_swapchain
+69/76 Test #69: inventory_swapchain ..............   Passed    0.08 sec
+      Start 70: openxr_preflight_files
+70/76 Test #70: openxr_preflight_files ...........   Passed    0.08 sec
+      Start 71: dxgi_method_probe
+71/76 Test #71: dxgi_method_probe ................   Passed    0.28 sec
+      Start 72: launcher_resolution
+72/76 Test #72: launcher_resolution ..............   Passed    1.59 sec
+      Start 73: launcher_comfort
+73/76 Test #73: launcher_comfort .................   Passed    0.66 sec
+      Start 74: launcher_stereo
+74/76 Test #74: launcher_stereo ..................   Passed    0.71 sec
+      Start 75: smoke_log_parser
+75/76 Test #75: smoke_log_parser .................   Passed    0.69 sec
+      Start 76: build_doctor
+76/76 Test #76: build_doctor .....................   Passed    0.89 sec
+
+100% tests passed, 0 tests failed out of 76
+
+Total Test time (real) =  20.03 sec

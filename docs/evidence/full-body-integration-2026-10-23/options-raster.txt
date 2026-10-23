@@ -1,0 +1,2 @@
+GDI objects before=3 after=3
+Production panel raster and resource checks passed

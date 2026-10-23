@@ -1,0 +1,913 @@
+commit 55bc75b7e5d8199aacc77c683737e6c3611f82e1
+Author:     phunkaeg <phunkaeg@gmail.com>
+AuthorDate: Fri Oct 23 17:28:16 2026 +1100
+Commit:     phunkaeg <phunkaeg@gmail.com>
+CommitDate: Fri Oct 23 17:28:16 2026 +1100
+
+    Fix full-body ownership, scoped crouch input and leg reachability
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index db6d9f2..66ebbf1 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -574,6 +574,15 @@ if(PREYVR_BUILD_TESTS)
+     add_test(NAME runtime_bootstrap COMMAND preyvr_runtime_bootstrap_tests)
+ 
+     if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
++        foreach(body_runtime BodyFollow BodyPose)
++            string(TOLOWER "${body_runtime}" body_runtime_lower)
++            add_executable(preyvr_${body_runtime_lower}_runtime_tests tests/${body_runtime}RuntimeTests.cpp)
++            target_include_directories(preyvr_${body_runtime_lower}_runtime_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
++            target_compile_definitions(preyvr_${body_runtime_lower}_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
++            target_link_libraries(preyvr_${body_runtime_lower}_runtime_tests PRIVATE preyvr_core minhook psapi)
++            preyvr_enable_warnings(preyvr_${body_runtime_lower}_runtime_tests)
++            add_test(NAME ${body_runtime_lower}_runtime COMMAND preyvr_${body_runtime_lower}_runtime_tests)
++        endforeach()
+         add_executable(preyvr_slot_feedback_tests tests/SlotFeedbackTests.cpp)
+         target_compile_definitions(preyvr_slot_feedback_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+         target_link_libraries(preyvr_slot_feedback_tests PRIVATE preyvr_core gdi32 user32)
+diff --git a/include/preyvr/LatestSnapshot.h b/include/preyvr/LatestSnapshot.h
+index 0dddfc9..c16666b 100644
+--- a/include/preyvr/LatestSnapshot.h
++++ b/include/preyvr/LatestSnapshot.h
+@@ -45,6 +45,15 @@ public:
+         std::lock_guard lock(mutex_);
+         present_ = false;
+     }
++    // Consume one command atomically with respect to replacement publications.
++    bool TryTake(T& out)
++    {
++        std::unique_lock lock(mutex_, std::try_to_lock);
++        if (!lock.owns_lock() || !present_) { return false; }
++        out = value_;
++        present_ = false;
++        return true;
++    }
+ private:
+     mutable std::shared_mutex mutex_;
+     T value_{};
+diff --git a/src/common/BodyPose.cpp b/src/common/BodyPose.cpp
+index ade0f20..e7431a4 100644
+--- a/src/common/BodyPose.cpp
++++ b/src/common/BodyPose.cpp
+@@ -46,24 +46,30 @@ Vec3 Chain(const Skeleton& s, const Rigid& base, Vec3 b, Vec3 shift, const Limit
+ }
+ 
+ // Two-bone leg onto a planted foot; the knee keeps the animation's bend plane.
+-void Leg(const Skeleton& s, int k, const Rigid& turn, const Rigid& hip, const Vec3& forward, const Goal& goal,
++bool Leg(const Skeleton& s, int k, const Rigid& turn, const Rigid& hip, const Vec3& forward, const Goal& goal,
+          Plan& plan)
+ {
+     const Vec3 thigh0 = Apply(turn, s.thigh[k]), knee0 = Apply(turn, s.knee[k]), natural = Apply(turn, s.foot[k]);
+-    const Vec3 foot = goal.footSet[k] ? goal.foot[k] : natural;
+-    // The foot moves with its rotation; what the leg must reach is where it goes.
+-    const Rigid footRigid = Then(turn, Shift(Sub(foot, natural)));
++    Vec3 foot = goal.footSet[k] ? goal.foot[k] : natural;
+     const Vec3 a = Apply(hip, s.thigh[k]);
+     const float upper = Length(Sub(s.knee[k], s.thigh[k])), lower = Length(Sub(s.foot[k], s.knee[k]));
++    if (!Finite(foot) || !Finite(a) || !std::isfinite(upper) || !std::isfinite(lower) ||
++        !(upper > 1e-3f) || !(lower > 1e-3f)) { return false; }
+     Vec3 d = Sub(foot, a);
+-    const float reach = Length(d);
+-    if (!(reach > 1e-4f) || !(upper > 1e-3f) || !(lower > 1e-3f)) {
+-        plan.thigh[k] = plan.shin[k] = hip;
+-        plan.foot[k] = footRigid;
+-        return;
++    float reach = Length(d);
++    if (!std::isfinite(reach)) { return false; }
++    if (reach < 1e-4f) {
++        d = Sub(natural, thigh0); reach = Length(d);
++        if (reach < 1e-4f) { d = {0, 0, -1}; reach = 1; }
+     }
+     const Vec3 dir = Mul(d, 1.0f / reach);
+-    const float dist = std::clamp(reach, std::fabs(upper - lower) + 1e-4f, (upper + lower) * 0.9999f);
++    const float minimum = std::fabs(upper - lower) + 1e-4f, maximum = (upper + lower) * 0.9999f;
++    if (minimum > maximum) { return false; }
++    const float dist = std::clamp(reach, minimum, maximum);
++    // Clamp the actual endpoint too, not just the triangle used for the knee.
++    // Otherwise the foot separates from the rigid shin at unreachable targets.
++    foot = Add(a, Mul(dir, dist));
++    const Rigid footRigid = Then(turn, Shift(Sub(foot, natural)));
+     // The way the animation bends this knee (square to its own thigh-foot line);
+     // a leg the animation holds nearly straight folds forward, as knees do.
+     const Vec3 animated = Sub(natural, thigh0);
+@@ -73,8 +79,12 @@ void Leg(const Skeleton& s, int k, const Rigid& turn, const Rigid& hip, const Ve
+     pole = Add(pole, Mul(forward, std::max(0.0f, 0.02f - Length(pole))));
+     pole = Sub(pole, Mul(dir, Dot(pole, dir)));
+     if (Length(pole) < 1e-4f) { pole = Sub(forward, Mul(dir, Dot(forward, dir))); }
+-    const float pl = Length(pole);
+-    pole = pl > 1e-6f ? Mul(pole, 1.0f / pl) : Vec3{0, 1, 0};
++    float pl = Length(pole);
++    if (pl < 1e-6f) {
++        const Vec3 axis = std::fabs(dir.z) < .9f ? Vec3{0, 0, 1} : Vec3{1, 0, 0};
++        pole = Sub(axis, Mul(dir, Dot(axis, dir))); pl = Length(pole);
++    }
++    pole = Mul(pole, 1.0f / pl);
+     const float cosA = std::clamp((upper * upper + dist * dist - lower * lower) / (2.0f * upper * dist), -1.0f, 1.0f);
+     const float sinA = std::sqrt(std::max(0.0f, 1.0f - cosA * cosA));
+     const Vec3 knee = Add(a, Add(Mul(dir, upper * cosA), Mul(pole, upper * sinA)));
+@@ -85,6 +95,7 @@ void Leg(const Skeleton& s, int k, const Rigid& turn, const Rigid& hip, const Ve
+     const Quaternion q = Multiply(rs, rt);
+     plan.shin[k] = Then(turn, Rigid{q, Sub(knee, Rotate(q, knee0))});
+     plan.foot[k] = footRigid;
++    return true;
+ }
+ 
+ } // namespace
+@@ -209,7 +220,9 @@ Plan Solve(const Skeleton& s, const Goal& goal, const Limits& limits)
+     shift.z = dz;
+     reached = Chain(s, base, b, shift, limits, plan);
+     if (s.legs) {
+-        for (int k = 0; k < 2; ++k) { Leg(s, k, turn, plan.hip, forward, goal, plan); }
++        for (int k = 0; k < 2; ++k) {
++            if (!Leg(s, k, turn, plan.hip, forward, goal, plan)) { return {}; }
++        }
+     } else {
+         for (int k = 0; k < 2; ++k) { plan.thigh[k] = plan.shin[k] = plan.hip; plan.foot[k] = plan.hip; }
+     }
+diff --git a/src/dll/AnimIkTakeover.cpp b/src/dll/AnimIkTakeover.cpp
+index c6963cb..11f576c 100644
+--- a/src/dll/AnimIkTakeover.cpp
++++ b/src/dll/AnimIkTakeover.cpp
+@@ -23,6 +23,7 @@
+ #include "preyvr/TwoHandedAim.h"
+ #include "preyvr/WeaponRigAlignment.h"
+ #include "preyvr/EngineMap.h"
++#include "preyvr/LatestSnapshot.h"
+ #include "preyvr/StereoCamera.h"
+ #include "preyvr/VrMath.h"
+ 
+@@ -692,8 +693,18 @@ struct ArmStats {
+ };
+ std::mutex gArmMutex;           // the torso filter, pole smoothing and stats
+ armpose::TorsoEstimator gTorso;
+-std::atomic<float> gTorsoNow{0.0f};            // the torso's yaw (OpenXR), for MoveLane
+-std::atomic<std::uint64_t> gTorsoNowNs{0};
++struct TorsoContext {
++    std::uintptr_t player = 0;
++    std::uint64_t epoch = 0, reference = 0, weapon = 0;
++    bool operator==(const TorsoContext&) const = default;
++};
++TorsoContext TorsoContextOf(const GameplayPoseFrame& f)
++{
++    return {f.player, f.tracking.epoch, f.referenceGeneration, f.weaponGeneration};
++}
++struct TorsoSample { TorsoContext context; float yaw = 0; std::uint64_t stamp = 0; };
++LatestSnapshot<TorsoSample> gTorsoPublication;
++TorsoContext gTorsoContext;
+ std::uint64_t gTorsoNs = 0, gPoleNs[2]{};
+ Vec3 gPole[2]{};
+ ArmStats gArmStats;
+@@ -771,6 +782,30 @@ std::atomic<bool> gFeetOn{true};
+ bodypose::FootPlanter gFeet;            // under gIkMutex
+ Vec3 gLastLocation{};
+ bool gHaveLastLocation = false;
++struct BodyContext {
++    TorsoContext tracking;
++    std::uintptr_t character = 0;
++    std::uint64_t owner = 0;
++    bool operator==(const BodyContext&) const = default;
++};
++BodyContext gBodyContext;
++
++// Caller owns gIkMutex; lock ordering is always IK then arm state.
++void ResetBodyState()
++{
++    gBodyRig = {}; gBodyContext = {};
++    gFeet.Reset(); gHaveLastLocation = false; gLastLocation = {};
++    gBodyNs = 0; gBodyWeight = 0;
++    std::lock_guard lock(gArmMutex);
++    gTorso.Reset(); gTorsoNs = 0; gTorsoContext = {};
++    gTorsoPublication.Clear();
++    gPoleNs[0] = gPoleNs[1] = 0; gPole[0] = gPole[1] = {};
++}
++void BindBodyContext(const GameplayPoseFrame& frame, const EquippedRig& owner)
++{
++    const BodyContext context{TorsoContextOf(frame), owner.character, owner.generation};
++    if (!(context == gBodyContext)) { ResetBodyState(); gBodyContext = context; }
++}
+ // The eye from the head's pivot, in the head's frame (OpenXR): the rig's
+ // head_jnt sits 7.3 cm behind and 5.1 cm below its camera_jnt.
+ constexpr Vec3 kEyeFromPivot{0.0f, 0.0512f, -0.0732f};
+@@ -871,6 +906,9 @@ bodypose::Plan PlanBody(const GameplayPoseFrame& frame, const animik::Location&
+ {
+     const BodyRig& rig = gBodyRig;
+     const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
++    if (!FreshSample(now, gBodyNs, 250000000ull)) {
++        gFeet.Reset(); gHaveLastLocation = false; gBodyWeight = 0;
++    }
+     const float dt = gBodyNs != 0 ? std::min(static_cast<float>(now - gBodyNs) * 1e-9f, 0.1f) : 0.0f;
+     gBodyNs = now;
+     const bool want = gBodyPoseOn.load(std::memory_order_relaxed) && pose.mode == 1 && pose.armMode == 1;
+@@ -925,7 +963,11 @@ bodypose::Plan PlanBody(const GameplayPoseFrame& frame, const animik::Location&
+             leg[k] = (Dist3(s.knee[k], s.thigh[k]) + Dist3(s.foot[k], s.knee[k])) * location.s;
+         }
+         Vec3 velocity{};
+-        if (gHaveLastLocation && dt > 1e-4f) { velocity = Scale3(Sub3(location.t, gLastLocation), 1.0f / dt); }
++        const bool discontinuity = gHaveLastLocation && Dist3(location.t, gLastLocation) > 0.3f;
++        if (discontinuity) { gFeet.Reset(); }
++        if (gHaveLastLocation && !discontinuity && dt > 1e-4f) {
++            velocity = Scale3(Sub3(location.t, gLastLocation), 1.0f / dt);
++        }
+         gLastLocation = location.t;
+         gHaveLastLocation = true;
+         const float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+@@ -969,9 +1011,15 @@ float UpdateTorso(const GameplayPoseFrame& frame, const PoseSettings& pose)
+     in.steering = (MoveLaneAxisMilli(0) != 0 || MoveLaneAxisMilli(1) != 0) && HeadRelativeMovementEnabled();
+     float roomYaw = 0.0f;
+     unsigned long long generation = 0;
+-    in.haveBody = ReadHeadTrackingRoom(roomYaw, in.body, generation);   // the body's eye in the room
++    in.haveBody = ReadHeadTrackingRoom(roomYaw, in.body, generation) && generation == frame.referenceGeneration;
+     std::lock_guard lock(gArmMutex);
+     const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
++    const TorsoContext context = TorsoContextOf(frame);
++    if (!(context == gTorsoContext) || !FreshSample(now, gTorsoNs, 250000000ull)) {
++        gTorso.Reset(); gTorsoNs = 0; gTorsoContext = context;
++        gPoleNs[0] = gPoleNs[1] = 0;
++        gTorsoPublication.Clear();
++    }
+     const float dt = gTorsoNs != 0 ? static_cast<float>(now - gTorsoNs) * 1e-9f : 0.0f;
+     gTorsoNs = now;
+     const float yaw = gTorso.Update(in, dt, pose.torso, pose.body);
+@@ -982,8 +1030,8 @@ float UpdateTorso(const GameplayPoseFrame& frame, const PoseSettings& pose)
+     const float twist = longOwner != 0 && frame.weaponGeneration == longOwner && frame.twoHand.blend > 0.0f
+         ? gLongTwistDeg.load(std::memory_order_relaxed) * 0.01745329f * frame.twoHand.blend : 0.0f;
+     gArmStats.torsoYawDeg = (yaw - twist) * 57.29578f;
+-    gTorsoNow.store(yaw, std::memory_order_relaxed);
+-    gTorsoNowNs.store(now, std::memory_order_relaxed);
++    if (in.haveBody) { gTorsoPublication.Publish({context, yaw, now}); }
++    else { gTorsoPublication.Clear(); }
+     gArmStats.headYawDeg = armpose::HeadYaw(frame.tracking.head.orientation) * 57.29578f;
+     return yaw - twist;
+ }
+@@ -1970,6 +2018,10 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
+         gAlignGeneration = haveOwner ? owner.generation : 0;
+         gAlignSequence = haveOwner ? frame.tracking.sequence : 0;
+     }
++    if (stateLock.owns_lock() && (!haveFrame || !haveOwner)) { ResetBodyState(); }
++    if (haveOwner && owner.character == reinterpret_cast<std::uintptr_t>(character)) {
++        BindBodyContext(frame, owner);
++    }
+     if (mode != 0 && !stateLock.owns_lock()) { gBusy.fetch_add(1); }
+     if (mode != 0 && stateLock.owns_lock() && !haveOwner) { gNoOwner.fetch_add(1); }
+     if (haveOwner && gCalibration.Bind(owner.generation, frame.referenceGeneration, frame.tracking.epoch)) {
+@@ -2213,6 +2265,7 @@ DWORD SetAnimIkMode(unsigned int mode)
+     if (mode == 2u && (WeaponRotationDriveArmed() || WeaponOffsetArmed())) { return 3; }
+     std::lock_guard stateLock(gIkMutex);
+     if (mode == 0) {
++        ResetBodyState();
+         gCalibration = {};
+         for (auto& flag : gCalibrated) { flag.store(false); }
+         gAlignStatus = gAlignWeapon ? weaponrig::Status::noSample : weaponrig::Status::disabled;
+@@ -2239,6 +2292,7 @@ DWORD SetAnimIkControllerDrive(unsigned int enabled)
+ {
+     std::lock_guard stateLock(gIkMutex);
+     if (!enabled) {
++        ResetBodyState();
+         gCalibration = {};
+         for (auto& flag : gCalibrated) { flag.store(false); }
+         gAlignStatus = gAlignWeapon ? weaponrig::Status::noSample : weaponrig::Status::disabled;
+@@ -2516,6 +2570,8 @@ DWORD SetArmSetting(const std::string& what, const int* v, unsigned n)
+ DWORD SetBodyFeet(unsigned enabled)
+ {
+     if (enabled > 1) { return 1; }
++    std::lock_guard lock(gIkMutex);
++    if (gFeetOn.load() != (enabled != 0)) { gFeet.Reset(); gHaveLastLocation = false; }
+     gFeetOn.store(enabled != 0, std::memory_order_relaxed);
+     return 0;
+ }
+@@ -2523,17 +2579,22 @@ DWORD SetBodyFeet(unsigned enabled)
+ DWORD SetBodyPose(unsigned enabled)
+ {
+     if (enabled > 1) { return 1; }
++    std::lock_guard lock(gIkMutex);
++    if (gBodyPoseOn.load() != (enabled != 0)) { ResetBodyState(); }
+     gBodyPoseOn.store(enabled != 0, std::memory_order_relaxed);
+     Log(std::string("result=0 detail=body_pose value=") + (enabled ? "1" : "0"));
+     return 0;
+ }
+ unsigned BodyPoseEnabled() { return gBodyPoseOn.load() ? 1u : 0u; }
+ 
+-bool TorsoYawNow(float& yaw)
++bool TorsoYawNow(float& yaw, std::uint64_t epoch, std::uint64_t reference)
+ {
+-    const std::uint64_t at = gTorsoNowNs.load(std::memory_order_relaxed);
+-    if (at == 0 || preyvr::timing::MonotonicNanoseconds() - at > 200000000ull) { return false; }
+-    yaw = gTorsoNow.load(std::memory_order_relaxed);
++    TorsoSample sample{}; GameplayPoseFrame current{};
++    if (!gDrive.load() || !gTorsoPublication.TryRead(sample) ||
++        sample.context.epoch != epoch || sample.context.reference != reference || (reference & 1) ||
++        !FreshSample(preyvr::timing::MonotonicNanoseconds(), sample.stamp) ||
++        !TryGetGameplayPoseFrame(current, true) || !(sample.context == TorsoContextOf(current))) { return false; }
++    yaw = sample.yaw;
+     return true;
+ }
+ 
+diff --git a/src/dll/AnimIkTakeover.h b/src/dll/AnimIkTakeover.h
+index a227f2c..eeab956 100644
+--- a/src/dll/AnimIkTakeover.h
++++ b/src/dll/AnimIkTakeover.h
+@@ -1,6 +1,7 @@
+ #pragma once
+ 
+ #include <string>
++#include <cstdint>
+ 
+ #include <windows.h>
+ 
+@@ -140,7 +141,7 @@ std::string ArmReport();
+ DWORD SetBodyPose(unsigned enabled);
+ DWORD SetBodyFeet(unsigned enabled);
+ // The player's torso yaw (OpenXR tracking yaw), if estimated in the last 0.2 s.
+-bool TorsoYawNow(float& yaw);   // body.feet: planted feet (0 = the animation's)
++bool TorsoYawNow(float& yaw, std::uint64_t epoch, std::uint64_t reference);
+ unsigned BodyPoseEnabled();
+ std::string BodyPoseReport();
+ // Settings, the measured error of each hand against the controller (palm
+diff --git a/src/dll/BodyFollow.cpp b/src/dll/BodyFollow.cpp
+index 1145211..5e3a373 100644
+--- a/src/dll/BodyFollow.cpp
++++ b/src/dll/BodyFollow.cpp
+@@ -1,6 +1,7 @@
+ #include "BodyFollow.h"
+ 
+ #include "AnimIkTakeover.h"
++#include "AimTakeover.h"
+ #include "HeadTrackingHook.h"
+ #include "HudBridge.h"
+ #include "InputPost.h"
+@@ -132,13 +133,65 @@ std::uint64_t gCrouchAskedNs = 0;
+ float gStandingEye = 0; bool gHaveStandingEye = false;
+ std::atomic<float> gEyeLift{0.0f};
+ int gEyeStill = 0;                               // frames the game's eye height has held still
++std::atomic<int> gCrouchOwnedFlag{0};
++struct FollowContext {
++    std::uintptr_t player = 0;
++    std::uint64_t epoch = 0, reference = 0, reset = 0;
++    bool operator==(const FollowContext&) const = default;
++};
++FollowContext gFollowContext;
++std::atomic<std::uint64_t> gFollowReset{1};
++std::atomic<bool> gFollowActive{false};
++struct CrouchTap { FollowContext context; std::uint64_t stamp = 0; };
++LatestSnapshot<CrouchTap> gCrouchTap;
++struct EyeLift { FollowContext context; float metres = 0; };
++LatestSnapshot<EyeLift> gCrouchLift;
++
++void ResetFollowState()
++{
++    gCrouchOwned = gCrouchSeen = gHaveStandingEye = gHaveEye = false;
++    gCrouchAskedNs = 0; gStandingEye = 0; gEyeStill = 0;
++    gEyeLift = 0; gCrouchOwnedFlag = 0;
++    gCrouchTap.Clear(); gCrouchLift.Clear();
++    gWritten = {}; gAwaitingYaw = 0; gAwaitingGeneration = 0;
++    gMovePending = false; gHavePivotAtView = false; gLastMoveFrame = 0;
++    gCatching = gRoomMoving = gFollowing = gHavePlayYaw = false;
++    gHaveNeckBefore = false; gNeckSpeed = 0; gNeckVelocity = {};
++    gPushBackFrames = 0; gFadeTarget = 0; gFadeNs = 0;
++}
++
++void BindFollowContext(std::uint8_t* player, const TrackingFrame& frame, std::uint64_t reference)
++{
++    const FollowContext next{reinterpret_cast<std::uintptr_t>(player), frame.epoch, reference, gFollowReset.load()};
++    if (!(next == gFollowContext)) {
++        // Recenter changes tracking coordinates, not the same actor's native
++        // crouch. Keep only an acknowledged native stance and its eye baseline;
++        // clear all queued input and motion history. Otherwise recentering while
++        // physically crouched would apply the native eye drop a second time.
++        const bool sameNativeCrouch = next.player == gFollowContext.player && next.epoch == gFollowContext.epoch &&
++            next.reset == gFollowContext.reset && gCrouchOwned && gHaveStandingEye && player != nullptr &&
++            *reinterpret_cast<const int*>(player + kPlayerStance) == kStanceSneak;
++        const float standing = gStandingEye;
++        const std::uint64_t asked = gCrouchAskedNs;
++        ResetFollowState(); gFollowContext = next;
++        if (sameNativeCrouch) {
++            gCrouchOwned = gCrouchSeen = gHaveStandingEye = true;
++            gStandingEye = standing; gCrouchAskedNs = asked;
++        }
++    }
++}
++
++void AskCrouchTap()
++{
++    gCrouchTap.Publish({gFollowContext, MonotonicNanoseconds()});
++}
+ 
+ // --- report -----------------------------------------------------------------
+ std::atomic<unsigned long long> gCalls{0}, gYawWrites{0}, gYawAbsorbed{0}, gYawRejected{0}, gYawTakeover{0};
+ std::atomic<unsigned long long> gYawLimited{0}, gMoves{0}, gWalks{0}, gBlocked{0}, gSlid{0}, gNoGround{0}, gAbsorbFailed{0};
+ std::atomic<unsigned long long> gPushedBack{0}, gSettled{0}, gCrouchTaps{0}, gLeanHolds{0};
+ std::atomic<int> gYawErrorMilli{0}, gNeckOffsetMm{0}, gGroundMm{0}, gGates{0}, gState{0};
+-std::atomic<int> gStance{0}, gDropMm{0}, gCrouchOwnedFlag{0};
++std::atomic<int> gStance{0}, gDropMm{0};
+ 
+ // --- trace (research and the mock tests) --------------------------------------
+ std::atomic<std::uint64_t> gFrame{0};
+@@ -328,9 +381,19 @@ void UpdateCrouch(const std::uint8_t* player, const Vec3& neck, const Vec3& orig
+     const bool on = gCrouchOn.load(std::memory_order_relaxed);
+     const float down = gCrouchDownMm.load() / 1000.0f, up = gCrouchUpMm.load() / 1000.0f;
+     if (stance == kStanceSneak) { gCrouchSeen = true; }
++    if (!on) {
++        // Only this still-bound player may receive the cleanup press.
++        const bool stand = gCrouchOwned && stance == kStanceSneak && state == kStateGround;
++        gCrouchTap.Clear();
++        gCrouchOwned = gCrouchSeen = false;
++        gHaveStandingEye = false; gEyeStill = 0;
++        gEyeLift = 0; gCrouchLift.Clear(); gCrouchOwnedFlag = 0;
++        if (stand) { AskCrouchTap(); gCrouchTaps.fetch_add(1, std::memory_order_relaxed); }
++        return;
++    }
+     if (!gCrouchOwned) {
+-        if (on && stance == kStanceStand && drop > down && state == kStateGround) {
+-            RequestCrouchTap();
++        if (gHaveStandingEye && stance == kStanceStand && drop > down && state == kStateGround) {
++            AskCrouchTap();
+             gCrouchTaps.fetch_add(1, std::memory_order_relaxed);
+             gCrouchOwned = true;
+             gCrouchSeen = false;
+@@ -340,7 +403,7 @@ void UpdateCrouch(const std::uint8_t* player, const Vec3& neck, const Vec3& orig
+         if (stance == kStanceSneak) {
+             // Stand back up -- again every half second while something overhead stops it.
+             if (now - gCrouchAskedNs > 500000000ull && state == kStateGround) {
+-                RequestCrouchTap();
++                AskCrouchTap();
+                 gCrouchTaps.fetch_add(1, std::memory_order_relaxed);
+                 gCrouchAskedNs = now;
+             }
+@@ -352,7 +415,7 @@ void UpdateCrouch(const std::uint8_t* player, const Vec3& neck, const Vec3& orig
+     } else if (stance == kStanceStand && !gCrouchSeen && now - gCrouchAskedNs > 700000000ull &&
+                state == kStateGround) {
+         // Still low and the tap was not taken (input blocked that frame): once more.
+-        RequestCrouchTap();
++        AskCrouchTap();
+         gCrouchTaps.fetch_add(1, std::memory_order_relaxed);
+         gCrouchAskedNs = now;
+         gCrouchSeen = true;   // no third try; the player can press the button
+@@ -372,14 +435,17 @@ void FollowAfterGame(std::uint8_t* camera, std::uint8_t* player, float frameTime
+     Vec3 origin{};
+     unsigned long long generation = 0;
+     const bool gameplay = HudGameplayInputAllowed() && MoveLaneCinematicGate() == 0;
+-    const bool head = TryGetTrackingFrame(tracking) && FreshSample(MonotonicNanoseconds(), tracking.publishedNs) &&
++    const bool head = gFollowActive.load() && TryGetTrackingFrame(tracking) && FreshSample(MonotonicNanoseconds(), tracking.publishedNs) &&
+                       IsPoseUsable(tracking.head, tracking.headValidity, 200000000ull);
+     const bool room = ReadHeadTrackingRoom(roomYaw, origin, generation);
+     const bool turning = state == kStateGround || state == kStateJump || state == kStateFall || state == kStateSlide;
+     gGates.store((gameplay ? 1 : 0) | (head ? 2 : 0) | (room ? 4 : 0) | (turning ? 8 : 0) |
+                  (state == kStateGround ? 16 : 0) | (gHavePlayYaw ? 32 : 0), std::memory_order_relaxed);
+     gFollowing = gameplay && head && room && turning && gYawOn.load(std::memory_order_acquire);
+-    if (!gameplay || !head || !room) { gCatching = false; gRoomMoving = false; return; }
++    if (!head || !room) { ResetFollowState(); gFollowContext = {}; return; }
++    BindFollowContext(player, tracking, generation);
++    if (!gameplay) { gCrouchTap.Clear(); gCatching = false; gRoomMoving = false; return; }
++    gFollowing = turning && gYawOn.load(std::memory_order_acquire);
+     if (gAwaitingGeneration != generation) { gAwaitingYaw = 0; }
+     UpdateCrouch(player, body::NeckPoint(tracking.head, gNeckUpMm.load() / 1000.0f, gNeckForwardMm.load() / 1000.0f),
+                  origin, state);
+@@ -582,6 +648,18 @@ DWORD EnsureBodyFollowHook()
+ 
+ void NoteGameView(const Vec3& eye, const Quaternion& rotation)
+ {
++    std::uint8_t* const player = gInstalled ? CurrentPlayer() : nullptr;
++    TrackingFrame tracking{};
++    float yaw = 0;
++    Vec3 origin{};
++    unsigned long long generation = 0;
++    if (!gFollowActive.load() || player == nullptr || !TryGetTrackingFrame(tracking) ||
++        !FreshSample(MonotonicNanoseconds(), tracking.publishedNs) ||
++        !IsPoseUsable(tracking.head, tracking.headValidity, 200000000ull) ||
++        !ReadHeadTrackingRoom(yaw, origin, generation)) {
++        ResetFollowState(); gFollowContext = {}; return;
++    }
++    BindFollowContext(player, tracking, generation);
+     // The game's eye sits ~1 cm ahead of the pivot in the body's frame, so a body
+     // turning with the head swings it -- the camera would slide ~1 cm per 60
+     // degrees of head turn. While the body follows, horizontal changes of the eye
+@@ -593,25 +671,19 @@ void NoteGameView(const Vec3& eye, const Quaternion& rotation)
+     // the camera stays at the player's real head and only the body crouches.
+     const float rise = gHaveEye ? eye.z - gEye.z : 0.0f;
+     gEyeStill = std::fabs(rise) < 0.0005f ? std::min(gEyeStill + 1, 1000) : 0;
+-    if (!gCrouchOwned && gStance.load(std::memory_order_relaxed) == kStanceStand && gEyeStill > 10 &&
++    const int stance = *reinterpret_cast<const int*>(player + kPlayerStance);
++    if (!gCrouchOwned && stance == kStanceStand && gEyeStill > 10 &&
+         eye.z > 1.0f && eye.z < 2.5f) {
+         gStandingEye = eye.z;
+         gHaveStandingEye = true;
+     }
+     gEyeLift.store(gCrouchOwned && gHaveStandingEye ? std::clamp(gStandingEye - eye.z, 0.0f, 1.5f) : 0.0f,
+                    std::memory_order_relaxed);
++    gCrouchLift.Publish({gFollowContext, gCrouchOn.load() ? gEyeLift.load() : 0.0f});
+     gEye = eye;
+     gHaveEye = true;
+-    std::uint8_t* const player = gInstalled ? CurrentPlayer() : nullptr;
+     // This view shows the turns verified at the last PrePhysicsUpdate and the
+     // move made in it: take both out of the reference now, before it composes.
+-    float yaw = 0;
+-    Vec3 origin{};
+-    unsigned long long generation = 0;
+-    if (!ReadHeadTrackingRoom(yaw, origin, generation)) {
+-        gHavePlayYaw = false;
+-        return;
+-    }
+     float absorbYaw = gAwaitingGeneration == generation ? gAwaitingYaw : 0.0f;
+     const float playYaw = YawOf(rotation) - (yaw + absorbYaw);
+     Vec3 shiftWorld = eyeShift;
+@@ -784,11 +856,46 @@ DWORD SetPhysicalCrouch(unsigned enabled)
+ {
+     if (enabled > 1) { return 1; }
+     gCrouchOn.store(enabled != 0, std::memory_order_release);
++    if (!enabled) { gCrouchTap.Clear(); gCrouchLift.Clear(); }
+     Log(std::string("result=0 detail=crouch value=") + (enabled ? "1" : "0"));
+     return 0;
+ }
+ unsigned PhysicalCrouchEnabled() { return gCrouchOn.load() ? 1u : 0u; }
+-float CrouchEyeLift() { return gEyeLift.load(std::memory_order_relaxed); }
++float CrouchEyeLift()
++{
++    EyeLift lift{}; TrackingFrame frame{};
++    if (!gFollowActive.load() || !gCrouchOn.load() || !gCrouchLift.TryRead(lift) ||
++        reinterpret_cast<std::uintptr_t>(CurrentPlayer()) != lift.context.player ||
++        lift.context.reset != gFollowReset.load() || !TryGetTrackingFrame(frame) ||
++        frame.epoch != lift.context.epoch ||
++        lift.context.reference != HeadTrackingReferenceGeneration() ||
++        !FreshSample(MonotonicNanoseconds(), frame.publishedNs) ||
++        !IsPoseUsable(frame.head, frame.headValidity, 200000000ull)) { return 0.0f; }
++    return lift.metres;
++}
++void InvalidateBodyFollow()
++{
++    gFollowReset.fetch_add(1);
++    gCrouchTap.Clear(); gCrouchLift.Clear();
++}
++void SetBodyFollowActive(bool active)
++{
++    if (gFollowActive.exchange(active) != active) { InvalidateBodyFollow(); }
++}
++bool TakePhysicalCrouchTap(const TrackingFrame& frame, bool allowed)
++{
++    CrouchTap tap{};
++    if (!gCrouchTap.TryTake(tap)) { return false; } // blocked requests are discarded, never deferred
++    GameplayPoseFrame current{};
++    return allowed && gFollowActive.load() && FreshSample(MonotonicNanoseconds(), tap.stamp) &&
++        reinterpret_cast<std::uintptr_t>(CurrentPlayer()) == tap.context.player &&
++        FreshSample(MonotonicNanoseconds(), frame.publishedNs) &&
++        IsPoseUsable(frame.head, frame.headValidity, 200000000ull) &&
++        tap.context.reset == gFollowReset.load() && tap.context.epoch == frame.epoch &&
++        tap.context.reference == HeadTrackingReferenceGeneration() &&
++        TryGetGameplayPoseFrame(current, true) && current.player == tap.context.player &&
++        current.referenceGeneration == tap.context.reference && current.tracking.epoch == tap.context.epoch;
++}
+ DWORD SetHeadInWallsFade(unsigned enabled)
+ {
+     if (enabled > 1) { return 1; }
+diff --git a/src/dll/BodyFollow.h b/src/dll/BodyFollow.h
+index 15e95e3..d0085cd 100644
+--- a/src/dll/BodyFollow.h
++++ b/src/dll/BodyFollow.h
+@@ -32,6 +32,7 @@
+ // Both are deterministic: what is absorbed is what was written, read back the
+ // next frame. A write the game did not keep is given back (`yawRejected`).
+ namespace preyvr::dll {
++struct TrackingFrame;
+ 
+ // Installs the PrePhysicsUpdate hook (idempotent). 0 = installed.
+ DWORD EnsureBodyFollowHook();
+@@ -57,6 +58,12 @@ unsigned PhysicalCrouchEnabled();
+ // While the physical crouch owns the stance: how far the view's eye stands above
+ // the game's (the game crouched, the camera stays at the real head). Metres, up.
+ float CrouchEyeLift();
++// Invalidate from any thread; game-thread state is cleared before its next use.
++void InvalidateBodyFollow();
++void SetBodyFollowActive(bool active);
++// One scoped press, consumed only by the gameplay input drain. Never replayed
++// through a menu, replacement player, tracking epoch or recenter.
++bool TakePhysicalCrouchTap(const TrackingFrame& frame, bool allowed);
+ // The head in a wall darkens the view (off: the wall's inside is seen).
+ DWORD SetHeadInWallsFade(unsigned enabled);
+ unsigned HeadInWallsFadeEnabled();
+diff --git a/src/dll/HeadTrackingHook.cpp b/src/dll/HeadTrackingHook.cpp
+index aacaf8e..f57ab14 100644
+--- a/src/dll/HeadTrackingHook.cpp
++++ b/src/dll/HeadTrackingHook.cpp
+@@ -676,6 +676,7 @@ DWORD SetViewHookApplying(unsigned int enabled)
+         viewhook::gApplied.store(0, std::memory_order_relaxed);
+     }
+     viewhook::gApplying.store(on, std::memory_order_release);
++    SetBodyFollowActive(on);
+     Log(std::string("result=0 detail=view_applying value=") + (on ? "1" : "0"));
+     return 0;
+ }
+diff --git a/src/dll/MoveLane.cpp b/src/dll/MoveLane.cpp
+index 2dccc22..1273677 100644
+--- a/src/dll/MoveLane.cpp
++++ b/src/dll/MoveLane.cpp
+@@ -1,5 +1,6 @@
+ #include "MoveLane.h"
+ #include "AnimIkTakeover.h"
++#include "BodyFollow.h"
+ #include "ArmsLane.h"
+ #include "AimTakeover.h"
+ #include "BodyEquipment.h"
+@@ -114,7 +115,6 @@ ActionBinding gActions[kActionCount] = {
+ std::atomic<bool> gActionsEnabled{false};
+ // A crouch toggle asked for by the physical crouch (BodyFollow): the crouch
+ // button held this many more frames, then released.
+-std::atomic<int> gCrouchTapFrames{0};
+ std::atomic<bool> gActionsNeutralize{false};
+ // Use/reload: which hand presses the shared button, and whether the selection
+ // is cleared first. Owned by the frame thread.
+@@ -351,11 +351,11 @@ void UpdateMoveLane()
+         // Body relative: the stick walks the way the torso faces (the arms' and the
+         // visible body's estimate), so the player can look around while walking.
+         float torso=0.0f;
+-        if(TorsoYawNow(torso)) {
++        if(TorsoYawNow(torso, movementFrame.epoch, movementReference)) {
+             const auto v=comfort::HeadRelativeStick({state.thumbstickX,state.thumbstickY},
+                 torso-HeadTrackingReferenceYaw(),gStrafeScale.load(),gBackwardScale.load());
+             state.thumbstickX=v.x;state.thumbstickY=v.y;
+-        }
++        } else { haveInput = false; } // no old-basis or arbitrary native-direction fallback
+     }
+     if(movementReference%2 || movementReference!=HeadTrackingReferenceGeneration()) haveInput=false;
+     if (!haveInput) {
+@@ -596,8 +596,8 @@ void UpdateTurnAndFireLanes()
+         RequestUseTargetSuppression(useOut.suppressTarget);
+         NoteUseButton(useOut.down, static_cast<unsigned>(useOut.owner), useOut.pressed, useOut.released,
+                       (useOut.noTarget ? 1u : 0u) | (useOut.gaveUp ? 2u : 0u) | (useOut.busy ? 4u : 0u));
+-        const bool crouchTap = gCrouchTapFrames.load(std::memory_order_acquire) > 0;
+-        if (crouchTap) { gCrouchTapFrames.fetch_sub(1, std::memory_order_acq_rel); }
++        const bool crouchTap = TakePhysicalCrouchTap(inputFrame,
++            haveInput && actionsOn && !releaseActions && HudGameplayInputAllowed() && MoveLaneCinematicGate() == 0);
+         const bool sources[kActionCount] = {
+             useOut.down,                              // use/reload, decided above
+             haveLeftHand && leftHand.menuAccept,      // inventory <- left X
+@@ -748,7 +748,6 @@ unsigned long long MoveLanePosted() { return gPosted.load(std::memory_order_rela
+ unsigned long long MoveLaneHeld() { return gHeld.load(std::memory_order_relaxed); }
+ unsigned long long MoveLaneDropped() { return gDropped.load(std::memory_order_relaxed); }
+ unsigned long long MoveLaneInputObject() { return gInputObject.load(std::memory_order_relaxed); }
+-void RequestCrouchTap() { gCrouchTapFrames.store(3, std::memory_order_release); }
+ 
+ int MoveLaneAxisMilli(unsigned int axis) { return axis < 2 ? gAxisMilli[axis].load(std::memory_order_relaxed) : 0; }
+ int MoveLaneCinematicGate() { return gCinematic.load(std::memory_order_relaxed); }
+diff --git a/src/dll/MoveLane.h b/src/dll/MoveLane.h
+index 3c28c96..0a5a846 100644
+--- a/src/dll/MoveLane.h
++++ b/src/dll/MoveLane.h
+@@ -128,7 +128,6 @@ unsigned long long MoveLaneHeld();
+ unsigned long long MoveLaneInputObject();
+ int MoveLaneAxisMilli(unsigned int axis);
+ // The physical crouch's toggle: the crouch button pressed for a few frames.
+-void RequestCrouchTap();   // 0 x, 1 y
+ // The cinematic gate the handlers test at `+0x94`. Non-zero means the engine
+ // is discarding movement input, so a still player is the game's decision and
+ // not this lane failing.
+diff --git a/tests/BodyFollowRuntimeTests.cpp b/tests/BodyFollowRuntimeTests.cpp
+new file mode 100644
+index 0000000..7995d9e
+--- /dev/null
++++ b/tests/BodyFollowRuntimeTests.cpp
+@@ -0,0 +1,99 @@
++// Actual adapter, synthetic native/XR boundaries. No game is started.
++#include "../src/dll/BodyFollow.cpp"
++#include <iostream>
++#include <stdexcept>
++namespace {
++using namespace preyvr; using namespace preyvr::dll;
++bool room = true, tracked = true;
++std::uint64_t reference = 2;
++TrackingFrame sample{};
++alignas(16) unsigned char actorA[0x1900]{}, actorB[0x1900]{};
++unsigned char* actor = actorA;
++std::uint8_t* __fastcall GetActor() { return actor; }
++void Check(bool value, const char* why) { if (!value) { throw std::runtime_error(why); } }
++void Stance(int value) { std::memcpy(actor + kPlayerStance, &value, sizeof(value)); }
++void Fresh() { sample.publishedNs = MonotonicNanoseconds(); }
++void Reset()
++{
++    ResetFollowState(); gFollowContext = {}; gCrouchOn = true; gFollowActive = true;
++    actor = actorA; Stance(kStanceStand); room = tracked = true; reference = 2;
++    sample = {}; sample.epoch = 1; sample.head.position = {0, 1.7f, 0};
++    sample.headValidity = {true, true, true, true, 0}; Fresh();
++    gBase = reinterpret_cast<std::uintptr_t>(&GetActor) - kGetPlayerRva; gInstalled = true;
++}
++void Eye(float z) { Fresh(); NoteGameView({0, 0, z}, Quaternion{}); }
++void Baseline(float z = 1.7f) { for (int i = 0; i < 20; ++i) { Eye(z); } }
++void Crouch(float drop)
++{
++    Fresh(); BindFollowContext(actor, sample, reference);
++    UpdateCrouch(actor, {0, 1.7f - .075f - drop, 0}, {0, 1.7f, 0}, kStateGround);
++}
++}
++namespace preyvr::lifecycle { void Log(std::string_view) {} }
++namespace preyvr::dll {
++bool EnsureMinHook() { return false; }
++bool HudGameplayInputAllowed() { return true; }
++int MoveLaneCinematicGate() { return 0; }
++int MoveLaneAxisMilli(unsigned) { return 0; }
++bool TryGetTrackingFrame(TrackingFrame& f) { f = sample; return tracked; }
++bool TryGetGameplayPoseFrame(GameplayPoseFrame& f, bool)
++{
++    f = {}; f.player = reinterpret_cast<std::uintptr_t>(actor);
++    f.referenceGeneration = reference; f.tracking = sample; return tracked;
++}
++unsigned long long HeadTrackingReferenceGeneration() { return reference; }
++bool ReadHeadTrackingRoom(float& yaw, Vec3& origin, unsigned long long& gen)
++{ yaw = 0; origin = {0, 1.7f, 0}; gen = reference; return room; }
++bool AdjustHeadTrackingRoom(float, const Vec3&, unsigned long long) { return true; }
++bool QueryBodySegment(std::uintptr_t, Vec3, Vec3, scene::Hit&) { return false; }
++bool NewestWristArm(WristArmFrame&) { return false; }
++float ViewHookLastNearPlane() { return .1f; }
++DWORD SetBodyPose(unsigned) { return 0; }
++DWORD SetBodyFeet(unsigned) { return 0; }
++std::string BodyPoseReport() { return {}; }
++}
++int main()
++{
++    try {
++        using namespace preyvr; using namespace preyvr::dll;
++        Reset(); Crouch(.45f);
++        Check(!gCrouchOwned && !TakePhysicalCrouchTap(sample, true), "no acquisition before stable baseline");
++        Baseline(); Check(gHaveStandingEye, "learn standing positive control");
++        Crouch(.45f); Check(gCrouchOwned && TakePhysicalCrouchTap(sample, true), "scoped crouch positive control");
++        Check(!TakePhysicalCrouchTap(sample, true), "one press per request");
++        Stance(kStanceSneak); Eye(1.0f);
++        Check(CrouchEyeLift() > .69f, "owned eye lift positive control");
++        actor = actorB; Stance(kStanceSneak);
++        Check(CrouchEyeLift() == 0, "replacement rejects old lift before next view callback");
++        Eye(1.0f); Crouch(0);
++        Check(!gCrouchOwned && CrouchEyeLift() == 0 && !TakePhysicalCrouchTap(sample, true), "replacement never inherits crouch/cleanup");
++        Stance(kStanceStand); Baseline(1.5f);
++        Check(gHaveStandingEye && std::fabs(gStandingEye - 1.5f) < 1e-5f, "replacement learns own baseline");
++        Reset(); Baseline(); Crouch(.45f);
++        Check(!TakePhysicalCrouchTap(sample, false) && !TakePhysicalCrouchTap(sample, true), "modal refusal discards request");
++        AskCrouchTap(); ++sample.epoch;
++        Check(!TakePhysicalCrouchTap(sample, true), "new epoch refuses queued input");
++        Eye(1.7f); Check(!gCrouchOwned && !gHaveStandingEye, "epoch clears baseline/ownership");
++        Baseline(); Crouch(.45f); reference += 2;
++        Check(!TakePhysicalCrouchTap(sample, true) && CrouchEyeLift() == 0, "recenter invalidates input and lift immediately");
++        Eye(1.7f); Check(!gCrouchOwned, "reference rebind clears ownership");
++        Reset(); Baseline(); Crouch(.45f); Stance(kStanceSneak); Eye(1.0f);
++        reference += 2; Eye(1.0f);
++        Check(gCrouchOwned && CrouchEyeLift() > .69f && !TakePhysicalCrouchTap(sample, true),
++              "recenter preserves acknowledged native crouch compensation, not queued input");
++        Reset(); Baseline(); Crouch(.45f); Stance(kStanceSneak); Eye(1.0f);
++        SetPhysicalCrouch(0); Check(CrouchEyeLift() == 0, "disable clears published lift immediately");
++        Crouch(0); Check(!gCrouchOwned && TakePhysicalCrouchTap(sample, true), "disable cleanup only for bound actor");
++        Crouch(0); Check(!TakePhysicalCrouchTap(sample, true), "disable cleanup does not repeat");
++        Reset(); Baseline(); Crouch(.45f); Stance(kStanceSneak); Eye(1.0f);
++        SetBodyFollowActive(false); Check(CrouchEyeLift() == 0 && !TakePhysicalCrouchTap(sample, true), "VR stop invalidates immediately");
++        Eye(1.0f); Check(!gCrouchOwned && !gHaveStandingEye, "VR restart cannot retain standing baseline");
++        Reset(); Baseline(); Crouch(.45f); tracked = false; Eye(1.0f);
++        Check(!gCrouchOwned && CrouchEyeLift() == 0, "tracking loss clears owned state");
++        Reset(); Baseline(); Crouch(.45f);
++        gCrouchTap.Publish({gFollowContext, MonotonicNanoseconds() - 300000000ull});
++        Check(!TakePhysicalCrouchTap(sample, true), "expired press refused");
++        std::cout << "body_follow_runtime ok: scoped crouch, baseline, modal, epoch/reference, disable and stop\n";
++        return 0;
++    } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
++}
+diff --git a/tests/BodyPoseRuntimeTests.cpp b/tests/BodyPoseRuntimeTests.cpp
+new file mode 100644
+index 0000000..f08fd4c
+--- /dev/null
++++ b/tests/BodyPoseRuntimeTests.cpp
+@@ -0,0 +1,103 @@
++#include "../src/dll/AnimIkTakeover.cpp"
++#include <iostream>
++#include <stdexcept>
++namespace {
++float roomYaw=0;
++preyvr::dll::GameplayPoseFrame current{};
++bool haveFrame = true;
++void Check(bool value, const char* why) { if (!value) { throw std::runtime_error(why); } }
++}
++namespace preyvr::lifecycle {void Log(std::string_view){}}
++namespace preyvr::dll {
++unsigned HandRigMode(){return 0;}
++void PublishSupportGripGeometry(const SupportGripGeometry&){}
++unsigned TwoHandedAimEnabled(){return 1;}
++bool EnsureGameplayPoseObservation(){return false;}
++bool TryGetGameplayPoseFrame(GameplayPoseFrame& f,bool){f=current;return haveFrame;}
++unsigned AimBodyYawEnabled(){return 1;}
++bool TryGetEquippedRig(std::uintptr_t,EquippedRig&){return false;}
++std::uint64_t WeaponEquipGeneration(){return 0;}
++DWORD SetWeaponAttachmentObserving(unsigned){return 0;}
++unsigned WeaponOffsetArmed(){return 0;}
++unsigned WeaponRotationDriveArmed(){return 0;}
++bool CarryHoldingInHand(){return false;}
++bool GrenadeHeldByHand(std::uintptr_t){return false;}
++void PublishPhysicalWeapon(const GameplayPoseFrame&,const EquippedRig&,const animik::Location&,Pose,const weaponrig::ContactGeometry&){}
++bool PhysicalInteractionsEnabled(){return false;}
++void PublishWristArm(const WristArmFrame&){}
++bool ReadHeadTrackingRoom(float& yaw,Vec3& origin,unsigned long long& gen){yaw=roomYaw;origin={0,1.7f,0};gen=2;return true;}
++bool EnsureMinHook(){return false;}
++int MoveLaneAxisMilli(unsigned){return 0;}
++bool HeadRelativeMovementEnabled(){return false;}
++float CrouchEyeLift(){return 0;}
++}
++int main(){
++ try {
++ using namespace preyvr;using namespace preyvr::dll;
++ gDrive=true;
++ GameplayPoseFrame f{};f.player=1;f.tracking.epoch=1;f.referenceGeneration=2;f.tracking.head.position={0,1.7f,0};
++ PoseSettings settings{};gTorso.Reset();UpdateTorso(f,settings);
++ const auto readTorso = [&](float& y) { return TorsoYawNow(y, f.tracking.epoch, f.referenceGeneration); };
++ current=f; float yaw=0;
++ Check(readTorso(yaw), "valid torso positive control");
++ Check(!TorsoYawNow(yaw, 99, f.referenceGeneration), "consumer epoch mismatch refused");
++ Check(!TorsoYawNow(yaw, f.tracking.epoch, 98), "consumer reference mismatch refused");
++ for (int change=0; change<4; ++change) {
++   current=f;
++   if(change==0) ++current.player;
++   if(change==1) ++current.tracking.epoch;
++   if(change==2) current.referenceGeneration+=2;
++   if(change==3) ++current.weaponGeneration;
++   Check(!readTorso(yaw), "torso rejects changed player/epoch/reference/weapon");
++ }
++ current=f; haveFrame=false; Check(!readTorso(yaw), "missing frame invalidates torso"); haveFrame=true;
++ gTorsoPublication.Publish({TorsoContextOf(f), .3f, preyvr::timing::MonotonicNanoseconds()-300000000ull});
++ Check(!readTorso(yaw), "old torso refused"); UpdateTorso(f,settings);
++ // A coordinate-system rebase, not a physical head turn. Both head and room
++ // yaw change by +90deg, so their WORLD direction should remain unchanged.
++ f.tracking.epoch=2;f.referenceGeneration=4;f.tracking.head.orientation={0,.70710678f,0,.70710678f};roomYaw=1.5707963268f;
++ gTorsoNs=preyvr::timing::MonotonicNanoseconds()-13888889ull;
++ const float retained=UpdateTorso(f,settings);gTorso.Reset();const float reset=UpdateTorso(f,settings);
++ Check(std::fabs(retained-reset)<1e-4f, "rebase resets estimator before filtering");
++ // Exercise PlanBody itself with two owning publications on either side of a
++ // sub-metre world-position discontinuity. Pose, anchor and location agree.
++ gBodyRig={};gBodyRig.valid=true;gBodyRig.skeleton=123;gRigSkeleton=123;gBodyRig.count=13;
++ gBodyRig.hip=0;for(int k=0;k<4;++k)gBodyRig.spine[k]=k+1;gBodyRig.neck=5;gBodyRig.head=6;
++ gBodyRig.thigh[0]=7;gBodyRig.knee[0]=8;gBodyRig.foot[0]=9;
++ gBodyRig.thigh[1]=10;gBodyRig.knee[1]=11;gBodyRig.foot[1]=12;
++ QuatT absolute[13]{};for(auto& a:absolute)a.q[3]=1;
++ const Vec3 joints[13]={{0,0,.9f},{0,0,1},{0,0,1.15f},{0,0,1.3f},{0,0,1.4f},{0,0,1.5f},{0,0,1.65f},
++   {.1f,0,.9f},{.1f,.08f,.5f},{.1f,0,.1f},{-.1f,0,.9f},{-.1f,.08f,.5f},{-.1f,0,.1f}};
++ for(int k=0;k<13;++k){absolute[k].t[0]=joints[k].x;absolute[k].t[1]=joints[k].y;absolute[k].t[2]=joints[k].z;}
++ f={};f.player=1;f.tracking.epoch=1;f.referenceGeneration=2;f.tracking.head.position={0,1.7f,0};
++ f.cameraCentreValid=true;f.cameraCentre={0,0,1.7f};roomYaw=0;
++ gBodyWeight=1;gBodyPoseOn=true;gFeetOn=true;gFeet.Reset();gHaveLastLocation=false;
++ animik::Location location{};location.s=1;
++ gBodyNs=preyvr::timing::MonotonicNanoseconds()-13888889ull;
++ const auto first=PlanBody(f,location,reinterpret_cast<std::uint8_t*>(absolute),13,settings,0);
++ f.player=2;f.tracking.epoch=2;location.t.x=.9f;f.cameraCentre.x=.9f;
++ gBodyNs=preyvr::timing::MonotonicNanoseconds()-13888889ull;
++ const auto moved=PlanBody(f,location,reinterpret_cast<std::uint8_t*>(absolute),13,settings,0);
++ const auto gap=[&](const bodypose::Plan& p){return Dist3(bodypose::Apply(p.shin[0],joints[9]),bodypose::Apply(p.foot[0],joints[9]));};
++ gFeet.Reset();const auto clean=PlanBody(f,location,reinterpret_cast<std::uint8_t*>(absolute),13,settings,0);
++ Check(first.valid&&moved.valid&&clean.valid, "production PlanBody positive controls");
++ Check(gap(moved)<1e-4f&&gap(clean)<1e-4f, "discontinuity keeps shin/foot closed");
++ gBodyWeight=1;gBodyNs=preyvr::timing::MonotonicNanoseconds()-500000000ull;
++ const auto afterGap=PlanBody(f,location,reinterpret_cast<std::uint8_t*>(absolute),13,settings,0);
++ Check(afterGap.valid&&gBodyWeight<.6f&&!gFeet.Stepping(0)&&!gFeet.Stepping(1), "long callback gap resets feet and blend");
++ EquippedRig owner{};owner.character=11;owner.generation=1;
++ BindBodyContext(f,owner);gBodyWeight=1;gHaveLastLocation=true;gBodyNs=123;
++ owner.character=12;BindBodyContext(f,owner);
++ Check(gBodyWeight==0&&!gHaveLastLocation&&gBodyNs==0&&gBodyRig.skeleton==0, "same-skeleton replacement clears body state");
++ gBodyWeight=1;gHaveLastLocation=true;haveFrame=false;gMode=2;gOwnerCharacter=0;
++ ProcessAdikWithTakeover(nullptr,nullptr);
++ Check(gBodyWeight==0&&!gHaveLastLocation, "missing owned frame invalidates body through actual callback");haveFrame=true;
++ gBodyWeight=1;gHaveLastLocation=true;SetBodyPose(0);
++ Check(gBodyWeight==0&&!gHaveLastLocation, "pose disable resets body state");SetBodyPose(1);
++ gHaveLastLocation=true;SetBodyFeet(0);Check(!gHaveLastLocation, "feet toggle clears location history");
++ current=f;UpdateTorso(f,settings);SetAnimIkControllerDrive(0);
++ Check(!readTorso(yaw), "drive disable invalidates torso");
++ std::cout<<"body_pose_runtime ok: coherent torso identity, rebase, owner/pose/feet/drive reset and leg closure\n";
++ return 0;
++ } catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;}
++}
+diff --git a/tests/BodyPoseTests.cpp b/tests/BodyPoseTests.cpp
+index a8d2488..66ee8e0 100644
+--- a/tests/BodyPoseTests.cpp
++++ b/tests/BodyPoseTests.cpp
+@@ -163,6 +163,32 @@ int main()
+         planter.Update(natural, thigh, leg, 1.0f, 1.0f / 72.0f, true, fs, out);
+         Require(Dist(out[0], natural[0]) < 1e-5f, "a walk the game animates frees the feet");
+     }
++    // Unreachable planted targets must clamp the actual endpoint, keeping all
++    // rigid joint groups connected even before the first stepping frame moves.
++    for (float offset : {-1.2f, -.9f, .9f, 1.2f}) {
++        const Skeleton s = Rest();
++        Goal g{0.0f, s.head, 1.0f};
++        for (int k = 0; k < 2; ++k) { g.footSet[k] = true; g.foot[k] = s.foot[k]; g.foot[k].x += offset; }
++        const Plan p = Solve(s, g);
++        Require(p.valid, "unreachable foot yields finite clamped plan");
++        RequireLegs(s, p, "unreachable planted target stays attached");
++    }
++    {
++        Skeleton s = Rest(); Goal g{0.0f, s.head, 1.0f};
++        g.footSet[0] = true; g.foot[0] = s.thigh[0];
++        const Plan p = Solve(s, g);
++        Require(p.valid, "coincident foot/thigh has stable fallback");
++        RequireLegs(s, p, "coincident target keeps connected chain");
++        s.knee[0] = s.thigh[0];
++        Require(!Solve(s, g).valid, "degenerate leg refused");
++    }
++    for (const Vec3 target : {Vec3{0, -2, 0}, Vec3{0, 2, 0}, Vec3{0, 0, 3}, Vec3{0, 0, -2}}) {
++        Skeleton s = Rest(); Goal g{0.0f, s.head, 1.0f};
++        g.footSet[0] = true; g.foot[0] = target;
++        const Plan p = Solve(s, g);
++        Require(p.valid, "axial unreachable target solved");
++        RequireLegs(s, p, "axial target keeps leg closure");
++    }
+     std::cout << "body_pose ok\n";
+     return 0;
+ }

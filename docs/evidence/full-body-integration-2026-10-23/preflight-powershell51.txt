@@ -1,0 +1,8 @@
+Prey VR: 2016 x 2160 per eye; UI scale 100%; guide off; stereo saved 3D VIEW choice (full stereo allowed); runtime: system OpenXR runtime
+Mod binaries: D:\Dev Debug\PreyVR\build\packages\PreyVR-full-body-test-20261023
+Comfort: snap 45 degrees (0 = smooth); head-relative 1; reference auto
+Controls: menu button = pause; right stick = navigate; A = select; B = back.
+Point + beam-hand trigger = click/drag; grips = tabs; X/Y = actions.
+F12 or both grips + left Y = reset view. Press A at the title/loading prompt.
+Tilde (the key below Esc) opens Prey's own console, when focused.
+Preflight passed. Nothing launched.

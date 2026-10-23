@@ -1,0 +1,14 @@
+{
+  "sourceCommit": "43ddbf15ebbc30b76322a82f917a179cd4b62916",
+  "integrationMerge": "9b0d9c16f88eb7f4959758211ba3c6cd5d69cbed",
+  "upstreamBody": "16a69ed3d9fa98803ce9562953122335bcd699d9",
+  "bodyFix": "55bc75b7e5d8199aacc77c683737e6c3611f82e1",
+  "dllSha256": "4D28B592976693C7A13E6B742381DFD73B37F50A196478AE2036B9E559352D29",
+  "dllBytes": 2244608,
+  "zipSha256": "B5107468B5376AB1EA36022BC5451619983D152204ED02DBAF3E2A6A1E2FCE6E",
+  "package": "D:/Dev Debug/PreyVR/build/packages/PreyVR-full-body-test-20261023",
+  "runtime": "C:\\Program Files\\Virtual Desktop Streamer\\OpenXR\\virtualdesktop-openxr.json",
+  "offlineTests": "76/76; 20.03 seconds",
+  "environment": "source, boundary fixtures and WARP; no Prey/headset run",
+  "preflight": "Windows PowerShell 5.1 -DryRun passed; no launch"
+}

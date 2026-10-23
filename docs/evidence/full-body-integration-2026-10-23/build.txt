@@ -1,0 +1,438 @@
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/Dev Debug/PreyVR/build/headless/_deps/minhook-src/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/headless/_deps/openxr-src/src/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/build/headless/_deps/openxr-src/include/openxr/CMakeLists.txt
+  buffer.c
+  Building Custom Rule D:/Dev Debug/PreyVR/build/headless/_deps/openxr-src/src/loader/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  AimState.cpp
+  hook.c
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  trampoline.c
+  main.cpp
+  DllSmokeHost.cpp
+  android_utilities.cpp
+  api_layer_interface.cpp
+  AnimIk.cpp
+  hde64.c
+  main.cpp
+  HandPose.cpp
+  Generating Code...
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  ArmPose.cpp
+  minhook.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\_deps\minhook-build\Release\minhook.x64.lib
+  InventorySwapchainTests.cpp
+  loader_core.cpp
+  DebugDraw.cpp
+  preyvr_dxgi_probe.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_dxgi_probe.exe
+  DebugOverlayScene.cpp
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(355,31): warning C4459: declaration of 'r' hides global declaration [D:\Dev Debug\PreyVR\build\full-body-integration-20261023\preyvr_inventory_swapchain_tests.vcxproj]
+  (compiling source file '../../tests/InventorySwapchainTests.cpp')
+      D:\Dev Debug\PreyVR\tests\InventorySwapchainTests.cpp(26,3):
+      see declaration of '`anonymous-namespace'::r'
+      C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(355,31):
+      the template instantiation context (the oldest one first) is
+          D:\Dev Debug\PreyVR\tests\InventorySwapchainTests.cpp(17,29):
+          see reference to class template instantiation 'Microsoft::WRL::ComPtr<ID3D11Texture2D>' being compiled
+          C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(355,10):
+          while compiling class template member function 'void Microsoft::WRL::ComPtr<ID3D11Texture2D>::Swap(Microsoft::WRL::ComPtr<ID3D11Texture2D> &) noexcept'
+              C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\winrt\wrl\client.h(335,50):
+              see the first reference to 'Microsoft::WRL::ComPtr<ID3D11Texture2D>::Swap' in 'Microsoft::WRL::ComPtr<ID3D11Texture2D>::operator ='
+              D:\Dev Debug\PreyVR\tests\InventorySwapchainTests.cpp(61,12):
+              see the first reference to 'Microsoft::WRL::ComPtr<ID3D11Texture2D>::operator =' in '`anonymous-namespace'::Create'
+  
+  loader_init_data.cpp
+  InventorySwapchain.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  ShotRay.cpp
+  preyvr_dll_smoke_host.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_dll_smoke_host.exe
+  preyvr_injector.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_injector.exe
+  NearParticles.cpp
+  NearFovOverrideTests.cpp
+  InventoryPointerCaptureTests.cpp
+  WeaponRigAlignment.cpp
+  Generating Code...
+  CameraEdit.cpp
+  loader_instance.cpp
+  ConsolePolicy.cpp
+  DebugRegisters.cpp
+  EngineMap.cpp
+  preyvr_inventory_swapchain_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_inventory_swapchain_tests.exe
+  FrameDump.cpp
+  loader_logger.cpp
+  FrameObserver.cpp
+  InputEvent.cpp
+  InputQueue.cpp
+  InteractionQuery.cpp
+  preyvr_inventory_capture_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_inventory_capture_tests.exe
+  InteractionUse.cpp
+  loader_logger_recorders.cpp
+  preyvr_near_fov_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_near_fov_tests.exe
+  HandCarry.cpp
+  Generating Code...
+  loader_properties.cpp
+  manifest_file.cpp
+  Compiling...
+  GrenadeThrow.cpp
+  WristHolo.cpp
+  NativeFovPlacement.cpp
+  runtime_interface.cpp
+  BodyFollow.cpp
+  BodyPose.cpp
+  Locomotion.cpp
+  object_info.cpp
+  MenuNavigator.cpp
+  InventoryDepth.cpp
+  UiPanel.cpp
+  xr_generated_loader.cpp
+  MotionController.cpp
+  TwoHandedAim.cpp
+  VrOptions.cpp
+  filesystem_utils.cpp
+  OpenXRBootstrap.cpp
+  RenderFrameTable.cpp
+  RuntimeSnapshot.cpp
+  json_reader.cpp
+  StereoCamera.cpp
+  json_value.cpp
+  StereoFrame.cpp
+  json_writer.cpp
+  VrMath.cpp
+  DepthSubmission.cpp
+  FrameClock.cpp
+  Generating Code...
+  Generating Code...
+  Compiling...
+  FrameTiming.cpp
+  FrustumCoverage.cpp
+  WeaponAim.cpp
+  WrenchQuery.cpp
+  XrFrameContract.cpp
+  XrSwapchainFormat.cpp
+  Generating Code...
+  preyvr_core.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_core.lib
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  xr_generated_dispatch_table_core.c
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+     Creating library D:/Dev Debug/PreyVR/build/full-body-integration-20261023/_deps/openxr-build/src/loader/Release/openxr_loader.lib and object D:/Dev Debug/PreyVR/build/full-body-integration-20261023/_deps/openxr-build/src/loader/Release/openxr_loader.exp
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  openxr_loader.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  TwoHandedAimTests.cpp
+  AimStateTests.cpp
+  XrFrameContractTests.cpp
+  VrOptionsTests.cpp
+  NearParticlesTests.cpp
+  StereoFrameTests.cpp
+  FrustumCoverageTests.cpp
+  ArmPoseTests.cpp
+  StereoCameraTests.cpp
+  BodyEquipmentTests.cpp
+  preyvr_near_particles_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_near_particles_tests.exe
+  OpenXRPreflightWin32.cpp
+  preyvr_vr_options_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_vr_options_tests.exe
+  preyvr_frustum_coverage_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_frustum_coverage_tests.exe
+  preyvr_aim_state_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_aim_state_tests.exe
+  BodyPoseTests.cpp
+  BodyFollowTests.cpp
+  BodyPoseRuntimeTests.cpp
+  FrameTimingTests.cpp
+D:\Dev Debug\PreyVR\tests\BodyPoseTests.cpp(169,24): warning C4456: declaration of 's' hides previous local declaration [D:\Dev Debug\PreyVR\build\full-body-integration-20261023\preyvr_body_pose_tests.vcxproj]
+      D:\Dev Debug\PreyVR\tests\BodyPoseTests.cpp(56,20):
+      see declaration of 's'
+  
+D:\Dev Debug\PreyVR\tests\BodyPoseTests.cpp(177,18): warning C4456: declaration of 's' hides previous local declaration [D:\Dev Debug\PreyVR\build\full-body-integration-20261023\preyvr_body_pose_tests.vcxproj]
+      D:\Dev Debug\PreyVR\tests\BodyPoseTests.cpp(56,20):
+      see declaration of 's'
+  
+D:\Dev Debug\PreyVR\tests\BodyPoseTests.cpp(186,18): warning C4456: declaration of 's' hides previous local declaration [D:\Dev Debug\PreyVR\build\full-body-integration-20261023\preyvr_body_pose_tests.vcxproj]
+      D:\Dev Debug\PreyVR\tests\BodyPoseTests.cpp(56,20):
+      see declaration of 's'
+  
+  preyvr_arm_pose_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_arm_pose_tests.exe
+  preyvr_stereo_camera_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_stereo_camera_tests.exe
+  GrenadeRuntimeTests.cpp
+  preyvr_body_equipment_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_body_equipment_tests.exe
+  GrenadeThrowTests.cpp
+  preyvr_body_pose_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_body_pose_tests.exe
+  RuntimeSnapshotWin32.cpp
+  preyvr_body_follow_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_body_follow_tests.exe
+  CarryRuntimeTests.cpp
+  preyvr_two_handed_aim_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_two_handed_aim_tests.exe
+  preyvr_frame_timing_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_frame_timing_tests.exe
+  Generating Code...
+  ConsolePolicyTests.cpp
+  DepthSubmissionTests.cpp
+  EngineMapTests.cpp
+  FrameClockTests.cpp
+  preyvr_win32_bootstrap.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_win32_bootstrap.lib
+  RenderFrameTableTests.cpp
+  preyvr_console_policy_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_console_policy_tests.exe
+  SceneQueryTests.cpp
+  PsiMedkitTests.cpp
+  preyvr_grenade_throw_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_grenade_throw_tests.exe
+  preyvr_frame_clock_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_frame_clock_tests.exe
+  NativeFovBlitTests.cpp
+  preyvr_engine_map_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_engine_map_tests.exe
+  preyvr_grenade_runtime_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_grenade_runtime_tests.exe
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  preyvr_bodypose_runtime_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_bodypose_runtime_tests.exe
+  PsiMedkitRuntimeTests.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  NativeFovBlit.cpp
+  RenderContractTests.cpp
+  preyvr_carry_runtime_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_carry_runtime_tests.exe
+  preyvr_scene_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_scene_query_tests.exe
+  preyvr_xr_frame_contract_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_xr_frame_contract_tests.exe
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Generating Code...
+  preyvr_depth_submission_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_depth_submission_tests.exe
+  WristPanelTests.cpp
+  RuntimeSnapshotTests.cpp
+  preyvr_render_frame_table_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_render_frame_table_tests.exe
+  main.cpp
+  FrameDumpTests.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  preyvr_native_fov_blit_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_native_fov_blit_tests.exe
+  HandCarryTests.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  WristPanel.cpp
+  HandPoseTests.cpp
+  preyvr_frame_diff.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_frame_diff.exe
+  preyvr_psi_medkit_runtime_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_psi_medkit_runtime_tests.exe
+  Generating Code...
+  preyvr_psi_medkit_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_psi_medkit_tests.exe
+  WrenchQueryTests.cpp
+  WeaponAimTests.cpp
+  preyvr_frame_dump_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_frame_dump_tests.exe
+  VrOptionsRuntimeTests.cpp
+  NativeFovPlacementTests.cpp
+  preyvr_render_contract_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_render_contract_tests.exe
+  LocomotionTests.cpp
+  preyvr_hand_pose_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_hand_pose_tests.exe
+  preyvr_runtime_snapshot_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_runtime_snapshot_tests.exe
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  preyvr_hand_carry_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_hand_carry_tests.exe
+  SlotFeedbackTests.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  HapticsTests.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  ThrowLifecycleTests.cpp
+  XrSwapchainFormatTests.cpp
+  preyvr_native_fov_placement_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_native_fov_placement_tests.exe
+  VrMathTests.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  WristHoloTests.cpp
+  preyvr_xr_swapchain_format_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_xr_swapchain_format_tests.exe
+  Haptics.cpp
+  preyvr_throw_lifecycle_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_throw_lifecycle_tests.exe
+  preyvr_locomotion_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_locomotion_tests.exe
+  DebugDrawTests.cpp
+  CameraEditTests.cpp
+  preyvr_weapon_aim_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_weapon_aim_tests.exe
+  preyvr_vr_math_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_vr_math_tests.exe
+  preyvr_stereo_frame_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_stereo_frame_tests.exe
+  main.cpp
+  AnimIkTests.cpp
+  preyvr_wrench_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_wrench_query_tests.exe
+  preyvr_slot_feedback_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_slot_feedback_tests.exe
+  preyvr_wrist_holo_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_wrist_holo_tests.exe
+  preyvr_vr_options_runtime_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_vr_options_runtime_tests.exe
+  InputEventTests.cpp
+  preyvr_camera_edit_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_camera_edit_tests.exe
+  InputQueueTests.cpp
+  preyvr_wrist_panel_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_wrist_panel_tests.exe
+  Generating Code...
+  VrOptionsPanelTests.cpp
+  preyvr_debug_draw_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_debug_draw_tests.exe
+  UiPointerTests.cpp
+  PhysicalInteractionsTests.cpp
+  preyvr_haptics_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_haptics_tests.exe
+  NativeWristTests.cpp
+  VrOptionsPanel.cpp
+  MenuNavigatorTests.cpp
+  preyvr_input_queue_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_input_queue_tests.exe
+  preyvr_engine_map_probe.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_engine_map_probe.exe
+  DebugRegistersTests.cpp
+  ComfortControlsTests.cpp
+  Generating Code...
+  NativeWristTexture.cpp
+  preyvr_physical_interactions_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_physical_interactions_tests.exe
+  D:\Dev Debug\PreyVR\build\full-body-integration-20261023\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  D:\Dev Debug\PreyVR\build\full-body-integration-20261023\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  preyvr_anim_ik_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_anim_ik_tests.exe
+  D:\Dev Debug\PreyVR\build\full-body-integration-20261023\_deps\openxr-build\src\loader\Release\openxr_loader.dll
+  1 File(s) copied
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  preyvr_vr_options_panel_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_vr_options_panel_tests.exe
+  preyvr_input_event_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_input_event_tests.exe
+  main.cpp
+  Generating Code...
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  preyvr_comfort_controls_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_comfort_controls_tests.exe
+  main.cpp
+  InteractionQueryTests.cpp
+  InteractionUseTests.cpp
+  InventoryDepthTests.cpp
+  MotionControllerTests.cpp
+  preyvr_native_wrist_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_native_wrist_tests.exe
+  preyvr_ui_pointer_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_ui_pointer_tests.exe
+  preyvr_xr_adapter_probe.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_xr_adapter_probe.exe
+  preyvr_debug_registers_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_debug_registers_tests.exe
+  preyvr_interaction_query_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_interaction_query_tests.exe
+  preyvr_xr_session_probe.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_xr_session_probe.exe
+  preyvr_menu_navigator_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_menu_navigator_tests.exe
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  BodyFollowRuntimeTests.cpp
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  OpenXRPreflightWin32Tests.cpp
+  preyvr_motion_controller_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_motion_controller_tests.exe
+  AimRayProbe.cpp
+  preyvr_inventory_depth_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_inventory_depth_tests.exe
+  preyvr_interaction_use_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_interaction_use_tests.exe
+  PhysicalRuntimeTests.cpp
+  main.cpp
+  RuntimeBootstrapTests.cpp
+  ShotRayTests.cpp
+  AimTakeover.cpp
+  preyvr_shot_ray_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_shot_ray_tests.exe
+  preyvr_openxr_preflight_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_openxr_preflight_tests.exe
+  preyvr_runtime_bootstrap_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_runtime_bootstrap_tests.exe
+  preyvr_ray_probe.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_ray_probe.exe
+  preyvr_bodyfollow_runtime_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_bodyfollow_runtime_tests.exe
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt
+  UiPanelTests.cpp
+  WeaponRigAlignmentTests.cpp
+  preyvr_physical_runtime_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_physical_runtime_tests.exe
+  PsiMedkit.cpp
+  preyvr_ui_panel_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_ui_panel_tests.exe
+  preyvr_weapon_rig_alignment_tests.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\preyvr_weapon_rig_alignment_tests.exe
+  AnimIkTakeover.cpp
+  Bootstrap.cpp
+  VrMode.cpp
+  UiGuide.cpp
+  VrOptionsPanel.cpp
+  VrOptionsRuntime.cpp
+  Psychoscope.cpp
+  BodyEquipment.cpp
+  DebugOverlay.cpp
+  ShotRay.cpp
+  InteractionLane.cpp
+  CarryLane.cpp
+  GrenadeLane.cpp
+  ArmsLane.cpp
+  SlotFeedback.cpp
+  NativeWristTexture.cpp
+  WristLane.cpp
+  Generating Code...
+  Compiling...
+  HudLayer.cpp
+  InventorySwapchain.cpp
+  NativeFovBlit.cpp
+  UiPointer.cpp
+  InventoryPointerCapture.cpp
+  CameraEditHook.cpp
+  ConsoleBridgeWin32.cpp
+  DebugWatch.cpp
+  CrashReport.cpp
+  DllMain.cpp
+  FrameCaptureWin32.cpp
+  FrameObserverHook.cpp
+  HeadTrackingHook.cpp
+  HudBridge.cpp
+  HotkeyBridge.cpp
+  IkTargetProbe.cpp
+  InputPathProbe.cpp
+  InputPost.cpp
+  MinHookInit.cpp
+  MoveLane.cpp
+  Generating Code...
+  Compiling...
+  BodyFollow.cpp
+  CommandChannel.cpp
+  HandRigTakeover.cpp
+  NearFovOverride.cpp
+  NearViewStereo.cpp
+  NearParticleStereo.cpp
+  DualSceneStereo.cpp
+  DualOverlay.cpp
+  RenderFrame.cpp
+  WeaponAttachment.cpp
+  PassCameraProbe.cpp
+  ReticleFollow.cpp
+  XrInput.cpp
+D:\Dev Debug\PreyVR\src\dll\XrInput.cpp(118,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\full-body-integration-20261023\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\src\dll\XrInput.cpp(119,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\full-body-integration-20261023\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\src\dll\XrInput.cpp(141,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\full-body-integration-20261023\preyvr.vcxproj]
+D:\Dev Debug\PreyVR\src\dll\XrInput.cpp(142,10): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [D:\Dev Debug\PreyVR\build\full-body-integration-20261023\preyvr.vcxproj]
+  Haptics.cpp
+  SceneQuery.cpp
+  PhysicalInteractions.cpp
+  XrSessionHost.cpp
+  Logger.cpp
+  Generating Code...
+     Creating library D:/Dev Debug/PreyVR/build/full-body-integration-20261023/Release/PreyVR.lib and object D:/Dev Debug/PreyVR/build/full-body-integration-20261023/Release/PreyVR.exp
+  preyvr.vcxproj -> D:\Dev Debug\PreyVR\build\full-body-integration-20261023\Release\PreyVR.dll
+  Building Custom Rule D:/Dev Debug/PreyVR/CMakeLists.txt

@@ -1,0 +1,139 @@
+diff --git a/include/preyvr/VrOptions.h b/include/preyvr/VrOptions.h
+index 2697f38..1cd6d46 100644
+--- a/include/preyvr/VrOptions.h
++++ b/include/preyvr/VrOptions.h
+@@ -9,7 +9,7 @@ enum Setting : unsigned { Turn, HeadRelative, TurnSpeed, TwoHand, GripToggle,
+     SupportSnap, Psychoscope, UiScale, UiMargin, UiCurve, UiGuide, Holsters, Wrist, WristSize,
+     SceneReticle, ReticleFallback, Haptics, HapticStrength, PhysicalMelee, PhysicalContacts, SwingSpeed, ContactStrength,
+     PsiTarget, Medkit, BeltHints, DebugOverlay, MuzzleAim, BodyFollow, Stereo,
+-    UseHand, CarryHand, GrenadeHand, Count };
++    UseHand, CarryHand, GrenadeHand, PhysicalCrouch, WallFade, BodyPose, Count };
+ static_assert(Count<=64); // runtime dirty mailbox is a 64-bit mask
+ struct Spec { const char* key; const wchar_t* label; const wchar_t* help; int initial,min,max,step; };
+ const Spec& Describe(unsigned id);
+diff --git a/src/common/VrOptions.cpp b/src/common/VrOptions.cpp
+index 7783ff4..e38b354 100644
+--- a/src/common/VrOptions.cpp
++++ b/src/common/VrOptions.cpp
+@@ -36,8 +36,11 @@ constexpr Spec specs[]={
+  {"body_follow",L"BODY FOLLOWS YOU",L"Your character turns with your head and walks with you around the room. Walls stop it and dim the view.",2,0,2,1},
+  {"stereo",L"3D VIEW",L"Alternate eyes: one eye per frame, at the headset's rate. Full stereo draws both eyes every frame, at about half the frame rate. Mono: one picture, no depth, always comfortable.",1,0,2,1},
+  {"use_hand",L"LEFT-HAND INTERACTION",L"Point and use with the left hand. Off restores the original right-grip use/reload binding.",1,0,1,1},
+- {"carry_hand",L"HAND CARRY / THROW (EXPERIMENTAL)",L"Hold objects with the left grip; let go to drop or throw. Requires Left-hand Interaction. Off keeps native carry.",0,0,1,1},
+- {"grenade_hand",L"HAND GRENADES (EXPERIMENTAL)",L"Throw from the right hand on a tracked trigger release. Off keeps the game's charged throw and surface deployment.",0,0,1,1}
++ {"carry_hand",L"HAND CARRY / THROW",L"Experimental: hold objects with the left grip; let go to drop or throw. Requires Left-hand Interaction. Off keeps native carry.",0,0,1,1},
++ {"grenade_hand",L"HAND GRENADES",L"Experimental: throw from the right hand on a tracked trigger release. Off keeps the game's charged throw and surface deployment.",0,0,1,1},
++ {"physical_crouch",L"PHYSICAL CROUCH",L"Crouch for real to crouch in the game; stand up to stand. The crouch button still works.",1,0,1,1},
++ {"wall_fade",L"HEAD IN WALLS",L"When your head goes into a wall or an object, darken the view, or let you see through it.",1,0,1,1},
++ {"body_pose",L"BODY POSING",L"Pose the torso and legs from your head and hands. Off keeps native body animation; controller-driven arms remain active.",1,0,1,1}
+ };
+ }
+ const Spec& Describe(unsigned id){return specs[id<Count?id:0];}
+@@ -71,7 +74,7 @@ bool Parse(std::string_view text,Values& result){
+  result=parsed;return true;
+ }
+ int Item(unsigned page,unsigned row){
+- constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim},{Stereo,-2,-2,-2},{UseHand,CarryHand,GrenadeHand,-2}};
++ constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim},{Stereo,PhysicalCrouch,WallFade,BodyPose},{UseHand,CarryHand,GrenadeHand,-2}};
+  return page<Pages&&row<Rows?items[page][row]:-2;
+ }
+ const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP",L"VIEW",L"WORLD"};return names[p%Pages];}
+@@ -83,6 +86,7 @@ std::wstring Display(unsigned id,int v){
+  if(id==HeadRelative)return v?L"HEAD RELATIVE":L"BODY RELATIVE";
+  if(id==BodyFollow)return v==2?L"TURN AND WALK":v==1?L"TURN ONLY":L"OFF";
+  if(id==Stereo)return v==2?L"FULL STEREO":v==1?L"ALTERNATE EYES":L"MONO";
++ if(id==WallFade)return v?L"DARKEN":L"SEE THROUGH";
+  if(id==GripToggle)return v?L"TOGGLE":L"HOLD";
+  if(id==SupportSnap)return v?L"SNAPPED":L"FREE";
+  if(id==UiCurve)return v?std::to_wstring(v)+L" DEGREES":L"FLAT";
+diff --git a/src/dll/VrOptionsRuntime.cpp b/src/dll/VrOptionsRuntime.cpp
+index 15533c9..9bae715 100644
+--- a/src/dll/VrOptionsRuntime.cpp
++++ b/src/dll/VrOptionsRuntime.cpp
+@@ -1,5 +1,6 @@
+ #include "VrOptionsRuntime.h"
+ #include "BodyFollow.h"
++#include "AnimIkTakeover.h"
+ #include "InteractionLane.h"
+ #include "CarryLane.h"
+ #include "GrenadeLane.h"
+@@ -96,6 +97,9 @@ void Apply(unsigned id,int v){
+  case options::MuzzleAim:SetShotRay(v);break;
+  case options::BodyFollow:SetBodyYawFollow(v>=1);SetBodyRoomScale(v>=2);break;
+  case options::Stereo:SetVrStereoMode(static_cast<unsigned>(v));break;
++ case options::PhysicalCrouch:SetPhysicalCrouch(v!=0);break;
++ case options::WallFade:SetHeadInWallsFade(v!=0);break;
++ case options::BodyPose:SetBodyPose(v!=0);break;
+  }
+ }
+ void Save(){
+@@ -137,6 +141,9 @@ options::Values VrOptionsValues(){
+  v[options::MuzzleAim]=ShotRayEnabled();
+  v[options::BodyFollow]=BodyYawFollowEnabled()?(BodyRoomScaleEnabled()?2:1):0;
+  v[options::Stereo]=static_cast<int>(VrStereoModeChosen());
++ v[options::PhysicalCrouch]=static_cast<int>(PhysicalCrouchEnabled());
++ v[options::WallFade]=static_cast<int>(HeadInWallsFadeEnabled());
++ v[options::BodyPose]=static_cast<int>(BodyPoseEnabled());
+  v[options::UseHand]=useHand.load();v[options::CarryHand]=carryHand.load();v[options::GrenadeHand]=grenadeHand.load();
+  // Read the actual lane settings, including changes made through the command
+  // channel. Pending menu edits override only their own row until applied.
+diff --git a/tests/VrOptionsRuntimeTests.cpp b/tests/VrOptionsRuntimeTests.cpp
+index 2351c6e..f263b2d 100644
+--- a/tests/VrOptionsRuntimeTests.cpp
++++ b/tests/VrOptionsRuntimeTests.cpp
+@@ -42,6 +42,12 @@ unsigned BodyYawFollowEnabled(){return bodyYaw;}
+ unsigned BodyRoomScaleEnabled(){return bodyRoom;}
+ DWORD SetVrStereoMode(unsigned v){applied[options::Stereo]=static_cast<int>(v);return 0;}
+ unsigned VrStereoModeChosen(){return static_cast<unsigned>(applied[options::Stereo]);}
++DWORD SetPhysicalCrouch(unsigned v){applied[options::PhysicalCrouch]=static_cast<int>(v);return 0;}
++unsigned PhysicalCrouchEnabled(){return static_cast<unsigned>(applied[options::PhysicalCrouch]);}
++DWORD SetHeadInWallsFade(unsigned v){applied[options::WallFade]=static_cast<int>(v);return 0;}
++unsigned HeadInWallsFadeEnabled(){return static_cast<unsigned>(applied[options::WallFade]);}
++DWORD SetBodyPose(unsigned v){applied[options::BodyPose]=static_cast<int>(v);return 0;}
++unsigned BodyPoseEnabled(){return static_cast<unsigned>(applied[options::BodyPose]);}
+ unsigned DebugOverlayMask(){return applied[options::DebugOverlay];}
+ DWORD SetSnapTurnDegrees(unsigned v){applied[options::Turn]=v;return 0;}
+ unsigned SnapTurnDegrees(){return applied[options::Turn];}
+@@ -191,6 +197,14 @@ int main(){
+  Check(applied[options::Stereo]==1,"3D view lowered to alternate eyes reaches VR mode");
+  r.thumbstickX=-1;tick();r.thumbstickX=0;tick();ServiceVrOptions();
+  Check(applied[options::Stereo]==0&&VrOptionsValues()[options::Stereo]==0,"3D view lowered to mono reaches VR mode");
++ for(int rowDown=0;rowDown<3;++rowDown){r.thumbstickY=-1;tick();r.thumbstickY=0;tick();}
++ r.menuAccept=true;tick();r.menuAccept=false;tick();
++ Check(VrOptionsValues()[options::BodyPose]==0,"body posing pending edit survives bit 32 boundary");
++ ServiceVrOptions();Check(!BodyPoseEnabled(),"body posing opt-out reaches adapter");
++ r.thumbstickY=1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
++ Check(!HeadInWallsFadeEnabled(),"wall fade high-bit edit reaches adapter");
++ r.thumbstickY=1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
++ Check(!PhysicalCrouchEnabled(),"physical crouch high-bit edit reaches adapter");
+  r.gripPressed=true;tick();r.gripPressed=false;tick();Check(VrOptionsPage()==9,"world tab reached");
+  r.thumbstickY=-1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+  Check(VrOptionsValues()[options::CarryHand]&&!carryEffective,"last-bit setting persists while VR is off");
+diff --git a/tools/Start-PreyVR.ps1 b/tools/Start-PreyVR.ps1
+index c4ae9e5..030f1d6 100644
+--- a/tools/Start-PreyVR.ps1
++++ b/tools/Start-PreyVR.ps1
+@@ -26,11 +26,9 @@ param(
+     [int]$HeadRelativeMovement=1,
+     # auto prefers LOCAL_FLOOR, then STAGE, with LOCAL fallback.
+     [string]$ReferenceSpace='auto',
+-    # **Both eyes from one game frame (1) or alternate eyes (0).** 1 is the
+-    # route that removed the doubling a wearer saw in motion; 0 is the earlier
+-    # path that renders one eye per frame. Kept as an escape hatch for problems
+-    # specific to the both-eyes path (STEREO-DUAL-SUBMISSION-2026-10-10.md).
+-    # Read once when VR starts, as PREYVR_DUAL_STEREO.
++    # 1 permits the saved 3D VIEW choice, including full stereo; 0 forces
++    # alternate eyes if full stereo was selected. It does not force full stereo
++    # over a saved alternate/mono choice. Read at VR startup as PREYVR_DUAL_STEREO.
+     [int]$DualStereo=1,
+     # Testing aid, not persisted: 0 off, 255 every layer of the in-game debug
+     # overlay (rays, body slots, wrist test, foregrip; see dbg.draw).
+@@ -214,7 +212,7 @@ try {
+         'SystemShock2','SystemShock2Remastered','Swat4','Swat4X','SoF','TS4_x64','moh','moh_s','Il-2','Launcher64','carrier_command_2')
+     $running=@(Get-Process -Name $fleetNames -ErrorAction SilentlyContinue)
+     if ($running.Count) {throw ('Close the running game first: '+(($running | Select-Object -ExpandProperty ProcessName) -join ', '))}
+-    Write-Host "Prey VR: $Width x $Height per eye; UI scale $UiScalePercent%; guide $(if($UiGuide){'on'}else{'off'}); stereo $(if($DualStereo){'both eyes per frame'}else{'alternate eyes'}); runtime: $(if($Runtime){$Runtime}else{'system OpenXR runtime'})"
++    Write-Host "Prey VR: $Width x $Height per eye; UI scale $UiScalePercent%; guide $(if($UiGuide){'on'}else{'off'}); stereo $(if($DualStereo){'saved 3D VIEW choice (full stereo allowed)'}else{'full stereo restricted to alternate eyes'}); runtime: $(if($Runtime){$Runtime}else{'system OpenXR runtime'})"
+     if ($renderSize.MigrateLegacy) {Write-Host "Replacing an earlier default render size with $($renderSize.Width) x $($renderSize.Height) per eye, about the headset's own density."}
+     Write-Host "Mod binaries: $BinDir"
+     Write-Host "Comfort: snap $($comfort.SnapTurnDegrees) degrees (0 = smooth); head-relative $($comfort.HeadRelativeMovement); reference $($comfort.ReferenceSpace)"

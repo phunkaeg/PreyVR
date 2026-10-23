@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20261023-full-body-fixes",
+  "recorded_at": "2026-10-23T06:39:04.395899+00:00",
+  "target": {
+    "name": "PreyVR integrated full-body corrections and local player package",
+    "identity_kind": "git_commit",
+    "identity": "43ddbf15ebbc30b76322a82f917a179cd4b62916"
+  },
+  "question": "Do the revised full-body adapters reject stale ownership and coordinate contexts while keeping native crouch compensation and leg attachment valid in the tested transitions?",
+  "claim": "The actual body-follow adapter requires a standing baseline, rejects inherited player crouch/eye lift and scoped stale or blocked presses, invalidates disabled VR and preserves acknowledged same-player crouch compensation through ordinary recenter. Torso publications carry coherent player/epoch/reference/weapon identity and match their consumer; a rebased estimator matches its reset control. Actual body planning resets owner/pose/feet and long-gap state. The pure solver closes unreachable and axial leg targets without a separated foot and refuses degenerate legs. Combined source passes 76 offline checks, including existing robustness tests and high-bit VIEW/WORLD settings. The packaged DLL matches the tested DLL, and the player launcher passes Windows PowerShell 5.1 preflight without launching Prey.",
+  "evidence_grade": "LIVE",
+  "environment": "harness",
+  "method": "MSVC 19.50.35729.0, VS 18 2026 x64 Release, pinned MinHook/OpenXR 1.1.60; CMake build and CTest 76/76 in 20.03 s. BodyFollowRuntimeTests and BodyPoseRuntimeTests include production adapters with native/XR calls stubbed and positive normal-crouch/reset-estimator/valid-plan controls. Pure solver checks bone lengths and shin/foot attachment. Actual options adapter tests settings beyond bit 31; production GDI menu rasters inspected. Existing WARP/native-boundary tests are retained. The launcher wording was corrected after the full C++ suite with its stereo contract test and packaged 5.1 DryRun rerun; C++ and DLL did not change. Reproduction commands, source patches and logs are frozen. Fixes prior receipt PreyVR__20261023-full-body-state-audit. No game, injection, simulated game session or headset run.",
+  "validity": "VALID",
+  "mutation": "persistent",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Exact integrated source commit, upstream/fix/merge identities, tested DLL and local archive hashes are frozen in identity.json and the package manifest."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Regression checks execute actual production body adapters and pure solver with explicit boundary substitutions; package checker compares exact binary hashes."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Normal baseline/crouch vs missing baseline/replacement/invalid request; acknowledged native crouch vs unaccepted queued input on recenter; context-matched vs changed torso sample; retained vs reset rebase control; valid connected legs vs unreachable and degenerate targets; both existing WORLD and new high-bit VIEW settings exercised."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Synthetic native-boundary and WARP fixtures, not a running Prey scene."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "Persistent version-controlled source changes and a fresh local package/shortcut; no running game or shared OpenXR configuration was modified."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Combined Release build and 76/76 offline checks pass, plus actual player preflight and package hash checks. This is source/harness baseline health, not headset acceptance."
+  },
+  "limits": "No native crouch/input acceptance, save-load behavior, headset appearance, comfort or performance measured. Synthetic receivers and joint arrays do not prove native ABI. The existing target offsets and source ownership gates are retained. Shadows still use a second unmodified character; stick walking uses native animation and floor-edge restrictions remain. The local 2016x2160 profile is a starting point, not an optimized GPU benchmark. Saved 3D VIEW choice is preserved; full stereo must be selected if desired.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/identity.json",
+      "sha256": "49dbb79e141c107f441edb0531268f86b189e3f2cfe18290570006cf91466eac",
+      "role": "Exact branch, DLL, archive, package and runtime identities"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/ctest.txt",
+      "sha256": "38f0d5ccd4a92c0b0f7f4bc16bd9eba07a60ad4135839c9d955017e56fe04cc6",
+      "role": "76-test combined baseline"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/build.txt",
+      "sha256": "2bb3cc847b6717e1ef7492df020639b6f83660ad003435dc5cc0c388be3ff87f",
+      "role": "Fresh integrated Release build"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/final-build.txt",
+      "sha256": "12fc8b12a61bfbabd7741062a434474f42a1ed12d85247df0467c6a41d131d63",
+      "role": "Final incremental build after menu label correction"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/body-branch-ctest.txt",
+      "sha256": "607e903970f441cd2cc1ee8237b8871cb3ef5c3618ce44d3ace02dac84ad85fa",
+      "role": "Separate fixed-body branch 72-test baseline before merge"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/body-fix.patch",
+      "sha256": "a3172a43a8b4b3f30fc8320df0c4ec90e34e49547147fd4e12cacd65af5048eb",
+      "role": "Production body changes and regression assertions at the pinned fix commit"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/integration-options.patch",
+      "sha256": "91f697b5978c353ff763b790ad2eee5e53c8fd60b7a66f7f880d6fecc990e8f5",
+      "role": "Integration options/persistence merge and launcher clarification"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/options-8.png",
+      "sha256": "ff43c5fb28005d832848d2ba374062242e00a49ad50b2a14645a73b2e7008604",
+      "role": "Production VIEW panel visual inspection"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/options-9.png",
+      "sha256": "ca9c20994c4cca1dcb89702608bb5a42ca6d39d69869f47f1563a2383f0cab96",
+      "role": "Production WORLD panel visual inspection"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/options-raster.txt",
+      "sha256": "0afb83c3e8b473ee7845e4d104672404cdf105423bd326405f911b57a7b31b55",
+      "role": "Production menu raster and GDI ownership check"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/preflight-powershell51.txt",
+      "sha256": "de4ae8271758ff8c5a0f7193cfb4debc2ef325f76919a251e606eb26d5a5f063",
+      "role": "Actual packaged launcher under Windows PowerShell 5.1, no launch"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/package-check.txt",
+      "sha256": "5b8b9631dbf33bf68b899f6bee58ab1283fd024664e97240ba20ee5620de24be",
+      "role": "Package and zip DLL identity checks plus runtime manifest existence"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/package-manifest.json",
+      "sha256": "63c62007d4dd3080a913a4aa6c3836883375403e009d05b24168b34e4fc70bb6",
+      "role": "Frozen initial player package file hashes and settings"
+    },
+    {
+      "path": "docs/evidence/full-body-integration-2026-10-23/REPRODUCE.md",
+      "sha256": "3c94e8ae91741e6b9ca16a2652f9c51505e4caa0cea472f49dccdf4fc32106e3",
+      "role": "Commands, controls, claim scope and acceptance boundary"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Integrated into collab/integration and prepared a separate local development test package. Perform the short headset checklist for crouch/recenter, weapon transitions, feet, menu settings and save reload. Candidate for lifecycle-context playbook review; no runtime/headset or bottleneck clearance claimed."
+}

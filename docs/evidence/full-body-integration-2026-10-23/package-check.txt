@@ -1,0 +1,4 @@
+PASS: 12 package files match manifest.
+PASS: archive contains the exact tested DLL (4D28B592976693C7A13E6B742381DFD73B37F50A196478AE2036B9E559352D29).
+PASS: selected VDXR runtime manifest exists.
+PASS: Windows PowerShell 5.1 dry-run completed; no game launched.

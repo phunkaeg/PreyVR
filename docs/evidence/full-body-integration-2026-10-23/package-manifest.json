@@ -1,0 +1,72 @@
+{
+  "built": "2026-10-23T06:39:03.6415462Z",
+  "sourceCommit": "43ddbf15ebbc30b76322a82f917a179cd4b62916",
+  "bodyMergeCommit": "9b0d9c16f88eb7f4959758211ba3c6cd5d69cbed",
+  "bodyFixCommit": "55bc75b7e5d8199aacc77c683737e6c3611f82e1",
+  "supportedPreyDll": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "developmentTest": true,
+  "offlineTests": "76/76",
+  "gameOrHeadsetRun": false,
+  "files": [
+    {
+      "path": "licenses/MinHook.txt",
+      "bytes": 4446,
+      "sha256": "4f21f857550d7be854da6ea5f2da4e6775ca4e3fbb535e4f3d961c47d0bf3335"
+    },
+    {
+      "path": "licenses/OpenXR.txt",
+      "bytes": 11560,
+      "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+    },
+    {
+      "path": "openxr_loader.dll",
+      "bytes": 655360,
+      "sha256": "cd5b35fed75714c68a0910e9f94fc2140cf2d564493185f147890c5647f0f1c5"
+    },
+    {
+      "path": "preyvr_injector.exe",
+      "bytes": 277504,
+      "sha256": "73fa2207d260e588a39c960273f4d0d563a426493d28ff87148845d48c37ec5c"
+    },
+    {
+      "path": "PreyVR.dll",
+      "bytes": 2244608,
+      "sha256": "4d28b592976693c7a13e6b742381dfd73b37f50a196478ae2036b9e559352d29"
+    },
+    {
+      "path": "PreyVR.json",
+      "bytes": 368,
+      "sha256": "4b9ee6888b1cc4d833b597e4a723512b480a17797521699ad6ac8198b2a37854"
+    },
+    {
+      "path": "README.md",
+      "bytes": 19694,
+      "sha256": "2a6d97c05f81d68df18c3ec6ef0b77aa2b9889bab3de1e8f7b77d4d539fe5454"
+    },
+    {
+      "path": "Send-PreyVR.ps1",
+      "bytes": 6214,
+      "sha256": "0099bc22f1669fa3702b4ad9ad61f0fbaa0978e26374a1eaae3cea2579f9e0e5"
+    },
+    {
+      "path": "Start Prey VR.cmd",
+      "bytes": 93,
+      "sha256": "2fb0e50199b90dc8abd3b1c9afc0cb6054985b5573ee5356e47c63c54aab064e"
+    },
+    {
+      "path": "Start-PreyVR.ps1",
+      "bytes": 19620,
+      "sha256": "73521beb93e6973d2e0b7650c2fd43b8442450dec7865ecf8f7ef8f53b70d684"
+    },
+    {
+      "path": "Tune Prey VR.cmd",
+      "bytes": 96,
+      "sha256": "8e62909d3ee890909ce4bebdcc181a5bf2e081c07bd713edf567523295757063"
+    },
+    {
+      "path": "VALIDATION.md",
+      "bytes": 2438,
+      "sha256": "a96ba5ed12d7e62f88769bb04168b8a2d7298d913c9bd3c330ded113c99137f1"
+    }
+  ]
+}
