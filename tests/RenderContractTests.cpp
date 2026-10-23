@@ -25,6 +25,19 @@ int main() {
     queue.Reset();Require(queue.Push(a)&&queue.Pop(out),"reset failed");
     b=a;b.pose.orientation.w=0;Require(!ValidRenderContract(b),"invalid pose accepted");
     b=a;b.displayTime=0;Require(!ValidRenderContract(b),"missing sample time accepted");
+    // Both eyes from one frame (rung 1b): the head pose plus two eye poses, all
+    // checked, and carried through the queue as one record.
+    RenderContract pair=a;pair.eye=kRenderContractBothEyes;
+    pair.eyePoses[0].position.x=-.032f;pair.eyePoses[1].position.x=.032f;
+    Require(ValidRenderContract(pair),"valid both-eyes record rejected");
+    b=pair;b.eyePoses[1].orientation.w=0;Require(!ValidRenderContract(b),"invalid right eye pose accepted");
+    b=pair;b.eyePoses[0].position.y=std::numeric_limits<float>::infinity();
+    Require(!ValidRenderContract(b),"non-finite left eye pose accepted");
+    b=pair;b.eye=3;Require(!ValidRenderContract(b),"out-of-range eye accepted");
+    b=a;b.eye=-1;Require(!ValidRenderContract(b),"missing eye accepted");
+    queue.Reset();Require(queue.Push(pair)&&queue.Pop(out),"both-eyes publish");
+    Require(out.eye==kRenderContractBothEyes&&out.eyePoses[0].position.x==-.032f&&
+            out.eyePoses[1].position.x==.032f&&out.displayTime==pair.displayTime,"both-eyes record altered");
     SettingReadback readback{1,1000};
     Require(readback.Observe(false,1,1)==ReadbackResult::pending,"unread value accepted");
     Require(readback.Observe(true,3,999)==ReadbackResult::pending,"queue acknowledgement accepted");

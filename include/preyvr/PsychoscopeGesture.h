@@ -6,13 +6,15 @@ namespace preyvr {
 // travel; no action on head proximity alone. Native game owns scope/unlock state.
 class PsychoscopeGesture {
 public:
+ // Head-local zone in front of the face where a squeeze starts the gesture.
+ static bool InZone(Vec3 hand){return std::fabs(hand.x)<.27f&&hand.z<.12f&&hand.z>-.34f&&hand.y>-.24f&&hand.y<.34f;}
  bool Update(Vec3 hand,bool grip,bool usable,float dt,std::uint64_t generation) {
   if(!usable||generation!=generation_||!std::isfinite(dt)||dt<=0||dt>.2f||
      !std::isfinite(hand.x)||!std::isfinite(hand.y)||!std::isfinite(hand.z)){
    *this={};generation_=generation;return false;
   }
   if(!grip){armed_=true;drag_=false;time_=0;return false;}
-  const bool inZone=std::fabs(hand.x)<.27f&&hand.z<.12f&&hand.z>-.34f&&hand.y>-.24f&&hand.y<.34f;
+  const bool inZone=InZone(hand);
   if(armed_){armed_=false;if(inZone){drag_=true;start_=hand;time_=0;}return false;}
   if(!drag_)return false;
   time_+=dt;

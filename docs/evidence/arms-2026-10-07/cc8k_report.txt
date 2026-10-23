@@ -1,0 +1,18 @@
+=== 2026-10-07T12:56:08 CarryCases
+carry: installed=1 hand=1 holdToHold=1 velocityQueue=1
+[PASS] K grab a prop to throw while walking  grab=1 entity=3409 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.133 rotErrDeg=0.0 constrained=1
+[PASS] K throw while walking: flies with hand + player velocity  thrown=1 hand=5,03 m/s asked=8,92 flew=8,87 m/s angle=0,0 deg
+    player velocity at the release: 2,00 m/s
+[PASS] K the thrown prop stays in the world  use.find result=0 id=3409 found=1 name=ArkPhysicsProps.Bathroom.Towels bounds=1 centre=827.976,1589.992,15.514 lhandYaw=-22.19 lhandPitch=-47.79 distM=1.87
+
+SUMMARY 3/3 PASS
+
+case                                                       ok detail                                                                                                                                                     
+----                                                       -- ------                                                                                                                                                     
+K grab a prop to throw while walking                     True grab=1 entity=3409 kind=light mass=1.00 diag=0.66 hold=0.00 corpsePoints=0 written=1 centreErrorM=0.000 gripDistM=0.133 rotErrDeg=0.0 constrained=1        
+K throw while walking: flies with hand + player velocity True thrown=1 hand=5,03 m/s asked=8,92 flew=8,87 m/s angle=0,0 deg                                                                                              
+K the thrown prop stays in the world                     True use.find result=0 id=3409 found=1 name=ArkPhysicsProps.Bathroom.Towels bounds=1 centre=827.976,1589.992,15.514 lhandYaw=-22.19 lhandPitch=-47.79 distM=1.87
+
+
+
+carry: carry.report result=0 installed=1 hand=1 holdToHold=1 grabPointMode=1 holding=0 velocityQueue=1 updates=78672 starts=9 stops=10 releasesAsked=6 releasesDone=5 refused=0 throws=3 drops=2 nativeThrows=1 velocitySets=5 velocityFaults=0 faults=0 stale=0 motionSamples=174016 runtimeVelocitySamples=165744 gain=1.40 throwSpeed=1.60 maxSpeed=16.00 heavyMaxSpeed=5.00 grab=0 entity=3409 name=ArkPhysicsProps.Bathroom.Towels class=RigidBodyEx kind=light mass=1.00 diag=0.66 hold=0.00 articulated=0 targets=943 writes=939 corpsePoints=0 written=1 grabPoint=1 grabLocal=-0.041,0.078,0.018 native=827.559,1587.655,16.759 target=827.408,1588.398,16.522 wantCentre=827.405,1588.386,16.408 grip=827.400,1588.309,16.517 centreErrorM=0.057 gripDistM=0.127 rotErrDeg=0.0 lastRelease=throw releasedEntity=3409 handSpeed=5.03 handWorld=0.281,4.618,1.974 spinWorld=9.727,-0.591,0.000 playerV=0.121,1.996,0.000 velocity=0.514,8.461,2.763 angular=9.727,-0.591,0.000 capped=0 motionRuntime=1 motionSamples=14 settledDrop=0.739 restored=1 restoredFrame=46 impulseMode=0 nativeImpulseScale=3.00 flightV2=0.514,8.454,2.650 flightSpeed2=8.87 flightSpeed12=8.53 expected=0.150,2.472,2.763 lastStop={entity=3409 impulse=0.00 angular=0 thrown=0 ours=1 sentThrown=1} kickBacks=0.00,1.00,2.00,3.00 grabberBreakSq=1.00 lerpSpeed=20.00 lerpObstructed=20.00 lerpAccel=300.00 lerpObstructedAccel=50.00 maxTimeUnder=1.00 constrained=1 justThrown=0 constraintId=0 dragHeight=-0.35 dragDistance=0.00 dragBreakSq=6.76

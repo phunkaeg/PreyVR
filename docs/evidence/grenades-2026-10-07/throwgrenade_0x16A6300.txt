@@ -1,0 +1,216 @@
+016A6300: mov     rax, rsp
+016A6303: push    rbp
+016A6304: push    rsi
+016A6305: push    r14
+016A6307: lea     rbp, [rax - 0x68]
+016A630B: sub     rsp, 0x150
+016A6312: mov     rsi, qword ptr [rcx + 0x40]
+016A6316: mov     r14, rcx
+016A6319: test    rsi, rsi
+016A631C: je      0x1816a66a3
+016A6322: cmp     qword ptr [rcx + 0x2b0], 0
+016A632A: je      0x1816a66a3
+016A6330: mov     qword ptr [rax + 0x18], rbx
+016A6334: add     rcx, 8
+016A6338: mov     rbx, qword ptr [rip + 0xba76f9]
+016A633F: mov     qword ptr [rax - 0x20], rdi
+016A6343: mov     qword ptr [rax - 0x28], r15
+016A6347: movaps  xmmword ptr [rax - 0x38], xmm6
+016A634B: mov     rdi, qword ptr [rbx]
+016A634E: movaps  xmmword ptr [rax - 0x48], xmm7
+016A6352: mov     rax, qword ptr [rcx]
+016A6355: call    qword ptr [rax + 0x1d8]
+016A635B: mov     edx, eax
+016A635D: mov     rcx, rbx
+016A6360: call    qword ptr [rdi + 0x70]
+016A6363: xor     r8d, r8d
+016A6366: lea     rdx, [rsp + 0x70]
+016A636B: mov     r9, rax
+016A636E: mov     rcx, r14
+016A6371: call    0x181694bc0
+016A6376: mov     rax, qword ptr [r14]
+016A6379: lea     rdx, [rsp + 0x50]
+016A637E: mov     rcx, r14
+016A6381: call    qword ptr [rax + 0x148]
+016A6387: movss   xmm4, dword ptr [rsp + 0x50]
+016A638D: subss   xmm4, dword ptr [rsp + 0x74]
+016A6393: movss   xmm5, dword ptr [rsp + 0x54]
+016A6399: subss   xmm5, dword ptr [rsp + 0x78]
+016A639F: movss   xmm6, dword ptr [rsp + 0x58]
+016A63A5: subss   xmm6, dword ptr [rsp + 0x7c]
+016A63AB: movss   xmm7, dword ptr [rip + 0x5d93ed]
+016A63B3: movaps  xmm3, xmm4
+016A63B6: mov     rax, qword ptr [r14 + 0x2e0]
+016A63BD: mulss   xmm3, xmm4
+016A63C1: movaps  xmm0, xmm5
+016A63C4: mulss   xmm0, xmm5
+016A63C8: movaps  xmm1, xmm6
+016A63CB: mulss   xmm1, xmm6
+016A63CF: addss   xmm3, xmm0
+016A63D3: addss   xmm3, xmm1
+016A63D7: movaps  xmm1, xmm7
+016A63DA: addss   xmm3, dword ptr [rip + 0x5d873e]
+016A63E2: movaps  xmm0, xmm3
+016A63E5: movaps  xmm2, xmm0
+016A63E8: rsqrtss xmm2, xmm3
+016A63EC: movaps  xmm0, xmm2
+016A63EF: mulss   xmm0, xmm3
+016A63F3: mulss   xmm0, xmm2
+016A63F7: mulss   xmm0, dword ptr [rip + 0x5d8725]
+016A63FF: subss   xmm1, xmm0
+016A6403: mulss   xmm1, xmm2
+016A6407: mulss   xmm4, xmm1
+016A640B: mulss   xmm5, xmm1
+016A640F: mulss   xmm6, xmm1
+016A6413: movss   dword ptr [rsp + 0x60], xmm4
+016A6419: movss   dword ptr [rsp + 0x64], xmm5
+016A641F: movss   dword ptr [rsp + 0x68], xmm6
+016A6425: cmp     dword ptr [rax - 0xc], 0
+016A6429: jl      0x1816a6434
+016A642B: mov     qword ptr [rbp + 0x78], rax
+016A642F: inc     dword ptr [rax - 0xc]
+016A6432: jmp     0x1816a643f
+016A6434: lea     rax, [rip + 0xba6c01]
+016A643B: mov     qword ptr [rbp + 0x78], rax
+016A643F: lea     rcx, [r14 + 0x1a0]
+016A6446: call    0x181083490
+016A644B: mov     rdx, qword ptr [rsi]
+016A644E: mov     rcx, rsi
+016A6451: movzx   ebx, al
+016A6454: call    qword ptr [rdx + 8]
+016A6457: movzx   ecx, byte ptr [r14 + 0x2c8]
+016A645F: lea     r8, [rsp + 0x60]
+016A6464: mov     byte ptr [rsp + 0x48], 0
+016A6469: lea     rdx, [rsp + 0x74]
+016A646E: mov     r9d, eax
+016A6471: xor     edi, edi
+016A6473: mov     dword ptr [rsp + 0x40], edi
+016A6477: lea     rax, [rbp + 0x78]
+016A647B: mov     dword ptr [rsp + 0x38], 0x20
+016A6483: mov     byte ptr [rsp + 0x30], cl
+016A6487: mov     rcx, qword ptr [r14 + 0x4f0]
+016A648E: mov     byte ptr [rsp + 0x28], bl
+016A6492: mov     qword ptr [rsp + 0x20], rax
+016A6497: call    0x18168f2b0
+016A649C: mov     r15, rax
+016A649F: test    rax, rax
+016A64A2: je      0x1816a665a
+016A64A8: lea     rcx, [r14 + 0x524]
+016A64AF: call    0x181284cc0
+016A64B4: movaps  xmm6, xmm0
+016A64B7: xorps   xmm1, xmm1
+016A64BA: comiss  xmm6, xmm1
+016A64BD: jbe     0x1816a660f
+016A64C3: mov     rcx, qword ptr [r15 + 0x38]
+016A64C7: mov     rax, qword ptr [rcx]
+016A64CA: call    qword ptr [rax + 0x228]
+016A64D0: mov     rbx, rax
+016A64D3: test    rax, rax
+016A64D6: je      0x1816a660f
+016A64DC: mov     rax, qword ptr [rax]
+016A64DF: lea     rdx, [rbp - 0x50]
+016A64E3: xorps   xmm0, xmm0
+016A64E6: mov     dword ptr [rbp - 0x44], edi
+016A64E9: xorps   xmm1, xmm1
+016A64EC: movups  xmmword ptr [rbp - 0x40], xmm0
+016A64F0: mov     rcx, rbx
+016A64F3: movups  xmmword ptr [rbp - 0x30], xmm1
+016A64F7: movups  xmmword ptr [rbp - 0x20], xmm0
+016A64FB: mov     qword ptr [rbp - 0x10], rdi
+016A64FF: mov     dword ptr [rbp - 0x4c], 0x80000000
+016A6506: mov     dword ptr [rbp - 0x48], 0x80000000
+016A650D: mov     dword ptr [rbp - 0x50], 8
+016A6514: mov     qword ptr [rbp - 4], rdi
+016A6518: mov     qword ptr [rbp + 4], rdi
+016A651C: mov     dword ptr [rbp - 8], edi
+016A651F: call    qword ptr [rax + 0x30]
+016A6522: test    eax, eax
+016A6524: je      0x1816a660f
+016A652A: lea     rcx, [r14 + 0x524]
+016A6531: call    0x181284cd0
+016A6536: movss   xmm5, dword ptr [rbp - 0x44]
+016A653B: lea     r8d, [rdi + 1]
+016A653F: movss   xmm1, dword ptr [r14 + 0x4e0]
+016A6548: lea     rdx, [rbp - 0x80]
+016A654C: movss   xmm4, dword ptr [rbp - 0x40]
+016A6551: movaps  xmm2, xmm5
+016A6554: movss   xmm3, dword ptr [rbp - 0x3c]
+016A6559: mov     rcx, rbx
+016A655C: divss   xmm0, xmm6
+016A6560: mov     dword ptr [rbp - 0x80], 0xa
+016A6567: mov     dword ptr [rbp - 0x7c], 0x80000000
+016A656E: mov     dword ptr [rbp - 0x78], 0x80000000
+016A6575: mov     dword ptr [rbp - 0x68], 0xffbfffff
+016A657C: mov     dword ptr [rbp - 0x5c], edi
+016A657F: movss   xmm6, dword ptr [r14 + 0x4e4]
+016A6588: subss   xmm6, xmm1
+016A658C: mulss   xmm2, xmm5
+016A6590: mulss   xmm6, xmm0
+016A6594: movaps  xmm0, xmm4
+016A6597: mulss   xmm0, xmm4
+016A659B: addss   xmm6, xmm1
+016A659F: movaps  xmm1, xmm3
+016A65A2: mulss   xmm1, xmm3
+016A65A6: addss   xmm2, xmm0
+016A65AA: addss   xmm2, xmm1
+016A65AE: addss   xmm2, dword ptr [rip + 0x5d856a]
+016A65B6: movaps  xmm0, xmm2
+016A65B9: movaps  xmm1, xmm0
+016A65BC: rsqrtss xmm1, xmm2
+016A65C0: movaps  xmm0, xmm1
+016A65C3: mulss   xmm0, xmm2
+016A65C7: mulss   xmm0, xmm1
+016A65CB: mulss   xmm0, dword ptr [rip + 0x5d8551]
+016A65D3: subss   xmm7, xmm0
+016A65D7: mulss   xmm7, xmm1
+016A65DB: mulss   xmm5, xmm7
+016A65DF: mulss   xmm3, xmm7
+016A65E3: mulss   xmm4, xmm7
+016A65E7: mulss   xmm3, xmm6
+016A65EB: mulss   xmm5, xmm6
+016A65EF: movss   dword ptr [rbp + 0x18], xmm3
+016A65F4: mov     eax, dword ptr [rbp + 0x18]
+016A65F7: mulss   xmm4, xmm6
+016A65FB: movaps  xmm0, xmm5
+016A65FE: mov     dword ptr [rbp - 0x6c], eax
+016A6601: mov     rax, qword ptr [rbx]
+016A6604: unpcklps xmm0, xmm4
+016A6607: movsd   qword ptr [rbp - 0x74], xmm0
+016A660C: call    qword ptr [rax + 0x38]
+016A660F: mov     rax, qword ptr [rip + 0x157022a]
+016A6616: mov     rcx, qword ptr [rax + 0x308]
+016A661D: call    0x1810ea1a0
+016A6622: mov     rbx, qword ptr [rax]
+016A6625: mov     rsi, qword ptr [rax + 8]
+016A6629: sub     rsi, rbx
+016A662C: add     rsi, 7
+016A6630: shr     rsi, 3
+016A6634: cmp     rbx, qword ptr [rax + 8]
+016A6638: cmova   rsi, rdi
+016A663C: test    rsi, rsi
+016A663F: je      0x1816a665a
+016A6641: mov     rcx, qword ptr [rbx]
+016A6644: mov     rdx, qword ptr [r15 + 0x38]
+016A6648: mov     rax, qword ptr [rcx]
+016A664B: call    qword ptr [rax + 8]
+016A664E: inc     rdi
+016A6651: lea     rbx, [rbx + 8]
+016A6655: cmp     rdi, rsi
+016A6658: jne     0x1816a6641
+016A665A: mov     rcx, qword ptr [r14 + 0x2b0]
+016A6661: mov     edx, 1
+016A6666: mov     rax, qword ptr [rcx]
+016A6669: call    qword ptr [rax + 0x88]
+016A666F: mov     rax, qword ptr [r14]
+016A6672: mov     rcx, r14
+016A6675: call    qword ptr [rax + 0x1f8]
+016A667B: movaps  xmm7, xmmword ptr [rsp + 0x120]
+016A6683: movaps  xmm6, xmmword ptr [rsp + 0x130]
+016A668B: mov     r15, qword ptr [rsp + 0x140]
+016A6693: mov     rdi, qword ptr [rsp + 0x148]
+016A669B: mov     rbx, qword ptr [rsp + 0x180]
+016A66A3: add     rsp, 0x150
+016A66AA: pop     r14
+016A66AC: pop     rsi
+016A66AD: pop     rbp
+016A66AE: ret     

@@ -18,7 +18,7 @@ struct Runtime {
     XrSwapchainCreateInfo created{};
     std::vector<std::string> calls;
     std::vector<int64_t> formats{DXGI_FORMAT_R8G8B8A8_UNORM_SRGB};
-    XrResult acquireResult=XR_SUCCESS,waitResult=XR_SUCCESS,releaseResult=XR_SUCCESS;
+    XrResult createResult=XR_SUCCESS,acquireResult=XR_SUCCESS,waitResult=XR_SUCCESS,releaseResult=XR_SUCCESS;
     uint32_t index=0;
     bool nullImage=false;
     unsigned serial=0;
@@ -56,6 +56,7 @@ XrResult XRAPI_CALL Formats(XrSession s,uint32_t capacity,uint32_t* count,int64_
 }
 XrResult XRAPI_CALL Create(XrSession,const XrSwapchainCreateInfo* info,XrSwapchain* out) {
     r.calls.push_back("create");r.created=*info;
+    if(r.createResult!=XR_SUCCESS)return r.createResult;
     auto d=Description(info->width);d.Height=info->height;d.Format=static_cast<DXGI_FORMAT>(info->format);
     r.image=Texture(d,0x12345678);
     r.handle=reinterpret_cast<XrSwapchain>(static_cast<uintptr_t>(0x2000+(++r.serial)*0x10));
@@ -103,12 +104,18 @@ void LifecycleAndPixels() {
 void Refusals() {
     InventorySwapchain owner(Api());auto d=Description();
     d.ArraySize=2;CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::source);
     d=Description();d.SampleDesc.Count=4;CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::source);
     d=Description();d.Format=DXGI_FORMAT_B8G8R8A8_UNORM;CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::presentationFormat);
     d=Description();r.nullImage=true;
     CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));CHECK(!owner.Handle());Calls({"create","destroy"});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::image);
     CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({}); // no allocation loop on refusal
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::image);
     r.nullImage=false;owner.Reset();CHECK(owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({"create"});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::none);
     auto source=Texture(d,0xCC664422);
     r.acquireResult=XR_ERROR_RUNTIME_FAILURE;
     CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::failed);Calls({"acquire"});
@@ -116,18 +123,41 @@ void Refusals() {
     r.index=2;
     CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::failed);
     Calls({"acquire","wait","release"});CheckPixels(r.image.Get(),0x12345678);r.index=0;
-    // A positive timeout is not a waited image: no copy, no release, no retry.
+    // A positive timeout is not a waited image: no copy, no release. The layer
+    // skips this frame and the next Copy waits for the SAME image again.
     r.waitResult=XR_TIMEOUT_EXPIRED;
-    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::sessionFault);
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::failed);
     Calls({"acquire","wait"});CheckPixels(r.image.Get(),0x12345678);
-    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::sessionFault);Calls({});
-    CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({});
-    owner.Reset();Calls({"destroy"});r.waitResult=XR_SUCCESS;
-    CHECK(owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({"create"});r.releaseResult=XR_ERROR_RUNTIME_FAILURE;
-    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::sessionFault);
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::failed);Calls({"wait"});
+    r.waitResult=XR_SUCCESS;
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::ready);
+    Calls({"wait","release"});CheckPixels(r.image.Get(),0xCC664422);
+    // A failed release retires the layer, not the session; Prepare builds it again.
+    r.releaseResult=XR_ERROR_RUNTIME_FAILURE;
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::failed);
     Calls({"acquire","wait","release"});
-    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::sessionFault);Calls({});
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::failed);Calls({});
     r.releaseResult=XR_SUCCESS;
+    CHECK(owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({"destroy","create"});
+    // Only a session the runtime calls lost is a session fault.
+    r.waitResult=XR_ERROR_SESSION_LOST;
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::sessionFault);
+    Calls({"acquire","wait"});
+    r.waitResult=XR_SUCCESS;
+    r.releaseResult=XR_SUCCESS;
+}
+void SmallStatusCard() {
+    r.formats={DXGI_FORMAT_R8G8B8A8_UNORM_SRGB};
+    InventorySwapchain owner(Api());auto d=Description(1024);d.Height=224;
+    CHECK(owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({"create"});
+    CHECK(r.created.width==1024 && r.created.height==224);
+    auto source=Texture(d,0x80402010);
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::ready);
+    Calls({"acquire","wait","release"});CheckPixels(r.image.Get(),0x80402010);
+    owner.Reset();Calls({"destroy"});
+    d.Width=0;CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::source);
+    d.Width=1024;d.Height=0;CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({});
 }
 void PresentationPolicy() {
     // Source resource spelling and runtime preference order do not decide the
@@ -151,8 +181,36 @@ void PresentationPolicy() {
     // Do not silently change transfer function if the requested one is absent.
     r.formats={DXGI_FORMAT_R8G8B8A8_UNORM_SRGB};
     CHECK(!owner.Prepare(session,Description(),DXGI_FORMAT_R8G8B8A8_UNORM));Calls({});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::formatNotListed);
     CHECK(!owner.Prepare(session,Description(),DXGI_FORMAT_R8G8B8A8_TYPELESS));Calls({});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::presentationFormat);
     CHECK(!owner.Prepare(session,Description(),DXGI_FORMAT_B8G8R8A8_UNORM_SRGB));Calls({});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::presentationFormat);
+}
+void HudShapeAndRefusalReasons() {
+    // The HUD's shape: a capture spelled with its render target's sRGB view,
+    // presented in the main swapchain's linear format, on a runtime that lists
+    // only that one. The capture's own spelling is never what is asked for.
+    r.formats={DXGI_FORMAT_R8G8B8A8_UNORM};
+    InventorySwapchain owner(Api());auto d=Description();d.Format=DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    CHECK(owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM));CHECK(r.created.format==DXGI_FORMAT_R8G8B8A8_UNORM);
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::none);Calls({"create"});
+    auto source=Texture(d,0x80402010);
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::ready);
+    CheckPixels(r.image.Get(),0x80402010);Calls({"acquire","wait","release"});
+    owner.Reset();Calls({"destroy"});
+    // A runtime that refuses creation is reported with its own XrResult.
+    r.createResult=XR_ERROR_SWAPCHAIN_FORMAT_UNSUPPORTED;
+    CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM));CHECK(!owner.Handle());Calls({"create"});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::create);
+    CHECK(owner.LastResult()==XR_ERROR_SWAPCHAIN_FORMAT_UNSUPPORTED);
+    CHECK(std::string(InventorySwapchain::RefusalName(owner.LastRefusal()))=="create_swapchain");
+    CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM));Calls({}); // cached; reason kept
+    CHECK(owner.LastResult()==XR_ERROR_SWAPCHAIN_FORMAT_UNSUPPORTED);
+    r.createResult=XR_SUCCESS;owner.Reset();Calls({});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::none && owner.LastResult()==XR_SUCCESS);
+    CHECK(!owner.Prepare(XR_NULL_HANDLE,d,DXGI_FORMAT_R8G8B8A8_UNORM));Calls({});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::session);
 }
 }
 int main() {
@@ -160,8 +218,9 @@ int main() {
         CHECK(SUCCEEDED(D3D11CreateDevice(nullptr,D3D_DRIVER_TYPE_WARP,nullptr,0,nullptr,0,
             D3D11_SDK_VERSION,&r.device,nullptr,&r.context)));
         LifecycleAndPixels();Refusals();Calls({"destroy"});
-        PresentationPolicy();
-        std::cout<<"inventory_swapchain PASS: real WARP copy/alpha, independent world texture, lifetime, resize, inherited linear/sRGB format, XR failures\n";
+        SmallStatusCard();PresentationPolicy();
+        HudShapeAndRefusalReasons();Calls({});
+        std::cout<<"inventory_swapchain PASS: real WARP copy/alpha, independent world texture, lifetime, resize, inherited linear/sRGB format, XR failures, refusal reasons\n";
         return 0;
     } catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;}
 }

@@ -7,7 +7,25 @@ The notebook separates evidence from plans so implementation follows demonstrate
 > test queued next. Then [`FAILURE_REGISTRY.md`](FAILURE_REGISTRY.md) for the
 > traps that have each cost a session, and
 > [`RE-INVESTIGATION-GUIDE.md`](RE-INVESTIGATION-GUIDE.md) for how a static claim
-> has to be established here.
+> has to be established here. Testing in the mock or the headset: the save games
+> kept as test environments, and which one "Continue" loads, are in
+> [`TEST-SAVES.md`](TEST-SAVES.md).
+> World interaction (the left hand points and uses, the right grip reloads):
+> [`INTERACTION-LEFT-HAND-2026-10-06.md`](INTERACTION-LEFT-HAND-2026-10-06.md).
+> The arms with no weapon drawn, holster/draw on the right grip and carried objects held by
+> their near side: [`ARMS-NO-WEAPON-2026-10-07.md`](ARMS-NO-WEAPON-2026-10-07.md).
+> Grenades in the right hand, thrown with it (leave at the trigger's release, land where a real ball would):
+> [`GRENADES-HAND-2026-10-07.md`](GRENADES-HAND-2026-10-07.md).
+> Health, suit and psi as a hologram on the left forearm, checked like a watch (and off the
+> screen): [`WRIST-HOLOGRAM-2026-10-07.md`](WRIST-HOLOGRAM-2026-10-07.md).
+> The body turns with the head and walks with the player, the view fading if the head goes into a wall:
+> [`BODY-FOLLOW-2026-10-16.md`](BODY-FOLLOW-2026-10-16.md).
+> Both eyes rendered in one frame (the render view submitted twice), with the HUD, text
+> popups, markers, fades and the reticle in both eyes:
+> [`STEREO-DUAL-SUBMISSION-2026-10-10.md`](STEREO-DUAL-SUBMISSION-2026-10-10.md).
+> Each eye declared with its native field and Prey's picture placed inside it (Meta's runtime ignores any other
+> field: the "always double" image on the Quest 3), and the 3D VIEW option (full stereo, alternate eyes, mono):
+> [`STEREO-NATIVE-FOV-2026-10-17.md`](STEREO-NATIVE-FOV-2026-10-17.md).
 >
 > [`HANDOVER-2026-08-07-HARDENING.md`](HANDOVER-2026-08-07-HARDENING.md) remains
 > the record of binary identity and lifecycle decisions.

@@ -1,0 +1,5 @@
+[tucked/front off=0] holdBackMm=165 latched=374,615,201 weaponVtable=0x1E6E9F0
+[one-hand beam] fromMuzzleMm=0.0 angleDeg=0.000 hitOffBarrelMm=0.0 ageMs=3
+[left at grab] grip=-0.157,1.2321,-0.342 shoulderToGripM=0.454 near=1 supportMm=-355.223,475.703,-234.473 handLocalMm=-355.236,475.735,-234.51
+[held] held=1 gates=0 drawnLeftShortCm=13.1 torsoYawDeg=-30.0 | scaleR=1.000 straightR=0 scaleL=1.000 straightL=0
+[two-hand beam] held=1 fromMuzzleMm=0.0 angleDeg=0.000 hitOffBarrelMm=0.0 twoHand=1 ageMs=7

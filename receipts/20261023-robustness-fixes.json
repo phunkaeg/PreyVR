@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20261023-robustness-fixes",
+  "recorded_at": "2026-10-23T04:17:52.071592+00:00",
+  "target": {
+    "name": "PreyVR robustness integration fixes, source and native-boundary/WARP harnesses",
+    "identity_kind": "git_commit",
+    "identity": "1c1ce42727df3e15e80f0955a0953c2c0a48ca59"
+  },
+  "question": "Do the revised production adapters reject stale/cancelled throw ownership, and can narrow rendered FOVs be mapped into a fixed native eye field without the previous incompatible fallback?",
+  "claim": "Production carry/grenade boundary tests reject invalid, stale, modal, session/reference-discontinuous motion and safety releases. Disabled grenade updates preserve native deployment; an already-thrown grenade's delayed-event marker survives disable. The actual WARP FOV remapper preserves angular directions, encoded RGBA/BGRA linear/sRGB bytes and the tested pipeline state. The real swapchain owner now accepts and copies the 1024x224 status card. The source no longer declares unremapped rendered FOV on an immutable runtime after placement refusal.",
+  "evidence_grade": "LIVE",
+  "environment": "harness",
+  "method": "MSVC 19.50.35729.0, VS 18 2026 x64 Release with pinned MinHook and OpenXR 1.1.60. CTest --test-dir <build> -C Release --output-on-failure: 73/73. Four added tests: throw_lifecycle, carry_runtime, grenade_runtime, native_fov_blit. Runtime adapters compile the real source with only native/XR boundaries replaced; positive controls cover live velocities, active deployment suppression and valid scene misses/hits. The D3D11 shader runs under WARP, with independent tangent reconstruction and hostile incoming state. Existing inventory/options tests cover actual preparation/copy and preference application. Fixes the source findings in prior receipt PreyVR__20261023-throw-history-review. No Prey, injection, xr-sim game session or headset run.",
+  "validity": "VALID",
+  "mutation": "persistent",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Exact committed fix source is identified; frozen identity.json records the tested DLL hash and original branch identities."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Tests call the production carry/grenade sources, real inventory swapchain owner and actual D3D11 remap shader; all 73 checks pass."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Fresh same-space motion vs stale/invalid/changed reference; physical vs forced release; query refusal vs valid miss/hit; enabled vs disabled native deployment; independent pixel-direction reconstruction and raw format/alpha checks."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Synthetic source/native-boundary and WARP fixtures, no game scene."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "Persistent version-controlled source changes; no running game/session was mutated. WARP checks verify preservation of the tested incoming graphics state."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Release build and 73/73 offline checks pass. Only the source/harness baseline is established; native gameplay and headset acceptance are not measured."
+  },
+  "limits": "No game-level acceptance of native cancellation, weapon transitions, throw feel, UI states, compositor compatibility or headset comfort. Narrow FOV remapping cannot reconstruct missing coverage; uncovered pixels stay black and minification may change sharpness. WARP tests cover representative formats and state, not every driver. The full-body branch is excluded. Source routing keeps floating panel textures unremapped, but that route still needs live menu acceptance.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/robustness-fixes-2026-10-23/identity.json",
+      "sha256": "949e2d1e5cdfccfda2b8b592470eaa51661fafce52a7d368be9d46b1c1be2283",
+      "role": "Reviewed branches, build identity and tested DLL hash"
+    },
+    {
+      "path": "docs/evidence/robustness-fixes-2026-10-23/ctest.txt",
+      "sha256": "98b52eb95aba8edd7936418c11432c68c117c1c2e0d1ee3fe580c45d862b26c0",
+      "role": "Frozen full offline test result"
+    },
+    {
+      "path": "docs/evidence/robustness-fixes-2026-10-23/build.txt",
+      "sha256": "136aaf22754c38f2f407abc57ef381508e799f0c1f2032aa6603bdd1964adb63",
+      "role": "Frozen final Release build result"
+    },
+    {
+      "path": "docs/INTEGRATION-ROBUSTNESS-FIXES-2026-10-23.md",
+      "sha256": "0268319ae0995d9c37d4c22ba5083febd9e6dde2c194841aaf1c5ccc51f6699e",
+      "role": "Fix decisions, reproduction, applicability and limits"
+    },
+    {
+      "path": "tests/CarryRuntimeTests.cpp",
+      "sha256": "8d8095a543df727c70ea33ff33945d531a8deaf545f25d983cde6ecbe691c090",
+      "role": "Actual carry adapter controls and lifecycle assertions"
+    },
+    {
+      "path": "tests/GrenadeRuntimeTests.cpp",
+      "sha256": "59a34866d166d49707e9d5c9d1106fcc7a01a80cf5308c2952a9b65eb94a51fe",
+      "role": "Actual grenade adapter/hook and scene-query controls"
+    },
+    {
+      "path": "tests/NativeFovBlitTests.cpp",
+      "sha256": "59a9ba01b49a36405c81f56fa3d7712c8f3c9884f4511c545dbd00e086efb8ce",
+      "role": "Actual WARP shader, encoded pixel and state-restoration controls"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Merge common robustness fixes while keeping full-body work separate. Later perform bounded game/headset acceptance for charged-grenade modal transitions, carry reacquisition, native UI pointer alignment, status cards and narrow/wide FOVs. Candidate for lifecycle/render-contract playbook review; no bottleneck clearance."
+}

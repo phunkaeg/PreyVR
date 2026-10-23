@@ -8,6 +8,7 @@ unsigned PsiTargetMode();
 DWORD SetMedkitSlot(unsigned enabled);
 unsigned MedkitSlotEnabled();
 bool MedkitOwnsGrip();
+bool MedkitZoneHasLeftHand();
 void UpdatePsiMedkit(const GameplayPoseFrame&,bool valid);
 std::string PsiMedkitReport();
 }

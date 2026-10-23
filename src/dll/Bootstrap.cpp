@@ -22,6 +22,7 @@
 #include "RenderFrame.h"
 #include "WeaponAttachment.h"
 #include "DebugWatch.h"
+#include "CrashReport.h"
 #include "OpenXRPreflightWin32.h"
 #include "RuntimeSnapshotWin32.h"
 #include "Version.h"
@@ -175,6 +176,7 @@ bool PinCurrentModule()
 DWORD RunBootstrap(HMODULE self)
 {
     lifecycle::ResetLog();
+    InstallCrashReport();
 
     const auto selfPath = ModulePath(self);
     std::ostringstream identity;

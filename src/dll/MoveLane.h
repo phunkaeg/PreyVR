@@ -81,6 +81,12 @@ unsigned int FireLaneEnabled();
 unsigned long long FireLanePressed();
 unsigned long long FireLaneReleased();
 unsigned long long FireLaneRefused();
+// 1 (default): while the trigger stays pressed, post the per-frame hold event
+// the engine generates for a physical key. Needed by every "while held" weapon
+// action (GLOO automatic fire, Disruptor charge). 0 = press/release only.
+DWORD SetFireLaneHold(unsigned int enabled);
+unsigned int FireLaneHold();
+unsigned long long FireLaneHoldPosted();
 
 // **Interaction bindings: grip to use, and the face buttons.** Sources are the
 // right grip (interact), left X (inventory), right A (jump) and right B
@@ -115,6 +121,7 @@ unsigned long long MoveLaneNative();
 // Events this lane handed to the input queue, and those the queue refused.
 unsigned long long MoveLanePosted();
 unsigned long long MoveLaneDropped();
+unsigned long long MoveLaneHeld();
 // The input object the handlers receive, and the movement axes read back from
 // it (`+0x5C`, `+0x60`, R-089) in thousandths. Read back rather than assumed:
 // a value we posted that never lands here did not move the player.

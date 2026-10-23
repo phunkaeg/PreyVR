@@ -22,6 +22,11 @@ bool InventoryTextureCompatible(const D3D11_TEXTURE2D_DESC& a,
 class InventorySwapchain {
 public:
     enum class Upload { ready, failed, sessionFault };
+    // Which step the last Prepare refused at, so a layer that cannot be created
+    // names the step (and the runtime's XrResult) instead of one reason for all.
+    enum class Refusal { none, session, source, presentationFormat, enumerateFormats, formatNotListed,
+                         create, images, image };
+    static const char* RefusalName(Refusal refusal);
     explicit InventorySwapchain(InventorySwapchainApi api):api_(api){}
     ~InventorySwapchain(){Reset();}
     InventorySwapchain(const InventorySwapchain&)=delete;
@@ -33,6 +38,8 @@ public:
     void Reset(); // Must run before destroying the owning XR session.
     XrSwapchain Handle() const {return chain_;}
     const D3D11_TEXTURE2D_DESC& Description() const {return desc_;}
+    Refusal LastRefusal() const {return refusal_;}
+    XrResult LastResult() const {return result_;}
 private:
     InventorySwapchainApi api_;
     XrSession session_=XR_NULL_HANDLE;
@@ -41,5 +48,11 @@ private:
     DXGI_FORMAT presentationFormat_=DXGI_FORMAT_UNKNOWN;
     std::vector<XrSwapchainImageD3D11KHR> images_;
     bool attempted_=false, fault_=false;
+    // An image whose wait timed out stays acquired and is waited for again next
+    // Copy: releasing it now is illegal, and a slow compositor is not a lost session.
+    bool acquired_=false;
+    uint32_t index_=0;
+    Refusal refusal_=Refusal::none;
+    XrResult result_=XR_SUCCESS;
 };
 }

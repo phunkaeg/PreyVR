@@ -1,0 +1,11 @@
+{
+  "reviewed_robustness": "b07a056c047741257a1443ee53fe4a7724e032b5",
+  "integration_before": "368118b10cb1482dbaedd8b38f8b5ba4e9d4a0d8",
+  "full_body_excluded": "8de6574",
+  "compiler": "MSVC 19.50.35729.0 / Visual Studio 18 2026 x64 Release",
+  "openxr": "1.1.60",
+  "tested_dll_sha256": "cdc006cff3d7256347eda17b0a76835a69157b1b40c9613fdd3bc865780ce262",
+  "ctest": "73/73 offline, 0 failures",
+  "environment": "source + WARP/native-boundary harnesses; no game or headset",
+  "note": "Fix sources and tests are committed alongside this evidence; receipt identifies that source commit."
+}

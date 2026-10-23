@@ -81,6 +81,10 @@ std::atomic<unsigned long long> gBuiltEyeSerial{0};
 std::atomic<unsigned long long> gBuiltEyeCount{0};
 std::atomic<unsigned long long> gBuiltEyeMisses{0};
 std::atomic<int> gEyeLock{-1};   // -1 = alternate
+// Rung 1b. When set, the stereo branch leaves the head camera on the frame and
+// publishes a both-eyes contract; the render thread submits the frame twice and
+// builds each eye there (BuildDualEyeCamera, DualSceneStereo.h).
+std::atomic<bool> gDualStereo{false};
 std::atomic<float> gAsymmetry{1.1f};
 
 // Rung 3: inherit Prey's own projection instead of overwriting it.
@@ -344,6 +348,23 @@ void WriteEyeProjection(std::array<std::uint8_t, cameraedit::kCameraSize>& edite
     write(engine::CameraLayout::asymRight, projection.asymmetry.right);
     write(engine::CameraLayout::asymBottom, projection.asymmetry.bottom);
     write(engine::CameraLayout::asymTop, projection.asymmetry.top);
+}
+
+// Publishes an eye WITH the camera it produced, so a downstream consumer can
+// identify it from content rather than from a mutable global. H-022: a global is
+// a frame ahead of the render thread and every tag it carries is individually
+// valid. Called by whichever thread built the camera, immediately, so the record
+// holds the exact bits the render view will carry.
+void PublishBuiltEye(const stereo::Matrix34& m, const stereo::Matrix34& centre, int eye)
+{
+    BuiltEye record{};
+    record.position[0] = m[3];  record.position[1] = m[7];  record.position[2] = m[11];
+    record.right[0] = m[0];     record.right[1] = m[4];     record.right[2] = m[8];
+    record.centre[0] = centre[3]; record.centre[1] = centre[7]; record.centre[2] = centre[11];
+    record.eye = eye;
+    record.serial = gBuiltEyeSerial.fetch_add(1, std::memory_order_relaxed) + 1;
+    gBuiltEyes[record.serial % kBuiltEyeSlots] = record;
+    gBuiltEyeCount.store(record.serial, std::memory_order_release);
 }
 
 bool BuildSyntheticEye(
@@ -1138,7 +1159,28 @@ void __fastcall RenderWithCameraEdit(void* system)
     }
 
     bool built = headRotationApplied;
-    if (stereoArmed) {
+    if (stereoArmed && gDualStereo.load(std::memory_order_acquire)) {
+        // Rung 1b: both eyes in this frame. The engine culls and prepares the
+        // frame from the head camera, left exactly as it is; the render thread
+        // submits it twice and builds, publishes and draws each eye there
+        // (BuildDualEyeCamera), so the eye records hold the bits the render view
+        // actually carries. This record states both eye poses for one display
+        // time, offset from the head the same way BuildSyntheticEye offsets the
+        // camera.
+        const float renderIpd = gStereoIpd.load(std::memory_order_acquire);
+        built = true;
+        gLastEye.store(kRenderContractBothEyes, std::memory_order_release);
+        SetFrameCaptureTagOverride(-1);
+        renderContract.eye = kRenderContractBothEyes;
+        renderContract.pose = renderHead;
+        for (int eye = 0; eye < 2; ++eye) {
+            renderContract.eyePoses[eye] = Compose(renderHead, Pose{Quaternion{}, Vec3{
+                (eye == 0 ? -.5f : .5f) * renderIpd, 0, 0}});
+        }
+        const auto fov = stereoframe::TangentsFromCamera(edited);
+        if (fov) renderContract.tangents = {fov->tanLeft, fov->tanRight, fov->tanUp, fov->tanDown};
+        renderContract.valid = haveRenderHead && !headRotationApplied && fov.has_value();
+    } else if (stereoArmed) {
         // Alternate every frame. With the simulation frozen, consecutive frames
         // differ only by the eye, which is exactly a stereo pair.
         // A locked eye is held for as long as it is set, so a capture taken a
@@ -1149,25 +1191,14 @@ void __fastcall RenderWithCameraEdit(void* system)
         const int eye = (locked == 0 || locked == 1)
             ? locked
             : static_cast<int>(gEyeCounter.fetch_add(1, std::memory_order_relaxed) & 1ull);
-        const float renderIpd = gStereoIpd.load(std::memory_order_acquire);
+        // Mono renders every frame from the centre of the head; submission gives that picture to both eyes.
+        const float renderIpd = XrMonoView() ? 0.0f : gStereoIpd.load(std::memory_order_acquire);
+        const stereo::Matrix34 centre = stereo::ReadMatrix(edited);
         built = BuildSyntheticEye(edited, eye,
                                   renderIpd,
                                   gStereoHalfFov.load(std::memory_order_acquire));
         if (built) {
-            // Publish the eye WITH the camera it produced, so a downstream
-            // consumer can identify it from content rather than from the
-            // mutable global below. H-022: the global is a frame ahead of the
-            // render thread and every tag it carries is individually valid.
-            {
-                const stereo::Matrix34 m = stereo::ReadMatrix(edited);
-                BuiltEye record{};
-                record.position[0] = m[3];  record.position[1] = m[7];  record.position[2] = m[11];
-                record.right[0] = m[0];     record.right[1] = m[4];     record.right[2] = m[8];
-                record.eye = eye;
-                record.serial = gBuiltEyeSerial.fetch_add(1, std::memory_order_relaxed) + 1;
-                gBuiltEyes[record.serial % kBuiltEyeSlots] = record;
-                gBuiltEyeCount.store(record.serial, std::memory_order_release);
-            }
+            PublishBuiltEye(stereo::ReadMatrix(edited), centre, eye);
             gLastEye.store(eye, std::memory_order_release);
             // Stamp the capture so the two dumps of a pair cannot be confused.
             SetFrameCaptureTagOverride(eye);
@@ -1431,6 +1462,50 @@ bool FindBuiltEyeByPosition(const float position[3], BuiltEye& out)
     }
     gBuiltEyeMisses.fetch_add(1, std::memory_order_relaxed);
     return false;
+}
+
+DWORD SetDualStereoContract(unsigned int enabled)
+{
+    const bool on = enabled != 0;
+    if (gDualStereo.exchange(on, std::memory_order_acq_rel) != on) {
+        lifecycle::Log(std::string("preyvr_camera_edit result=0 detail=dual_stereo value=") +
+                       (on ? "1" : "0"));
+    }
+    return 0;
+}
+
+bool DualStereoContractEnabled()
+{
+    return gDualStereo.load(std::memory_order_acquire);
+}
+
+float SyntheticStereoIpdMetres()
+{
+    return gStereoIpd.load(std::memory_order_acquire);
+}
+
+bool BuildDualEyeCamera(std::uint8_t* camera, int eye)
+{
+    const float ipd = gStereoIpd.load(std::memory_order_acquire);
+    const UpdateFrustumFn updateFrustum = gUpdateFrustum.load(std::memory_order_acquire);
+    if (camera == nullptr || !(ipd > 0.0f) || (eye != 0 && eye != 1) || updateFrustum == nullptr) {
+        return false;
+    }
+    std::array<std::uint8_t, cameraedit::kCameraSize> edited{};
+    std::memcpy(edited.data(), camera, edited.size());
+    const stereo::Matrix34 centre = stereo::ReadMatrix(edited);
+    // The same construction the alternate-eye path uses, so the two routes give
+    // identical eyes for identical heads.
+    if (!BuildSyntheticEye(edited, eye, ipd, gStereoHalfFov.load(std::memory_order_acquire))) {
+        return false;
+    }
+    updateFrustum(edited.data());
+    if (!cameraedit::RotationIsSafeToWrite(edited)) {
+        return false;
+    }
+    PublishBuiltEye(stereo::ReadMatrix(edited), centre, eye);
+    std::memcpy(camera, edited.data(), edited.size());
+    return true;
 }
 
 unsigned long long BuiltEyeLookupMissCount()

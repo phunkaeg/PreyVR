@@ -17,6 +17,12 @@ struct ControllerState {
     Pose aimPose{};
     PoseValidity gripValidity{};
     PoseValidity aimValidity{};
+    // The grip's velocity as the runtime reports it (XrSpaceVelocity), in the
+    // tracking space; for throwing (HandCarry.h). Valid only when the runtime
+    // set both VALID bits.
+    bool gripVelocityValid = false;
+    Vec3 gripLinearVelocity{};
+    Vec3 gripAngularVelocity{};
     float thumbstickX = 0.0f;
     float thumbstickY = 0.0f;
     bool weaponWheelPressed = false;

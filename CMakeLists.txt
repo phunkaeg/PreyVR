@@ -73,6 +73,12 @@ target_include_directories(preyvr_headers INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}
 add_library(preyvr_core STATIC
     src/common/AimState.cpp
     src/common/AnimIk.cpp
+    src/common/HandPose.cpp
+    src/common/ArmPose.cpp
+    src/common/DebugDraw.cpp
+    src/common/DebugOverlayScene.cpp
+    src/common/ShotRay.cpp
+    src/common/NearParticles.cpp
     src/common/WeaponRigAlignment.cpp
     src/common/CameraEdit.cpp
     src/common/ConsolePolicy.cpp
@@ -83,6 +89,12 @@ add_library(preyvr_core STATIC
     src/common/InputEvent.cpp
     src/common/InputQueue.cpp
     src/common/InteractionQuery.cpp
+    src/common/InteractionUse.cpp
+    src/common/HandCarry.cpp
+    src/common/GrenadeThrow.cpp
+    src/common/WristHolo.cpp
+    src/common/NativeFovPlacement.cpp
+    src/common/BodyFollow.cpp
     src/common/Locomotion.cpp
     src/common/MenuNavigator.cpp
     src/common/InventoryDepth.cpp
@@ -148,15 +160,24 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/VrOptionsRuntime.cpp
         src/dll/Psychoscope.cpp
         src/dll/BodyEquipment.cpp
+        src/dll/DebugOverlay.cpp
+        src/dll/ShotRay.cpp
+        src/dll/InteractionLane.cpp
+        src/dll/CarryLane.cpp
+        src/dll/GrenadeLane.cpp
+        src/dll/ArmsLane.cpp
         src/dll/SlotFeedback.cpp
         src/dll/NativeWristTexture.cpp
+        src/dll/WristLane.cpp
         src/dll/HudLayer.cpp
         src/dll/InventorySwapchain.cpp
+        src/dll/NativeFovBlit.cpp
         src/dll/UiPointer.cpp
         src/dll/InventoryPointerCapture.cpp
         src/dll/CameraEditHook.cpp
         src/dll/ConsoleBridgeWin32.cpp
         src/dll/DebugWatch.cpp
+        src/dll/CrashReport.cpp
         src/dll/DllMain.cpp
         src/dll/FrameCaptureWin32.cpp
         src/dll/FrameObserverHook.cpp
@@ -168,10 +189,14 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/InputPost.cpp
         src/dll/MinHookInit.cpp
         src/dll/MoveLane.cpp
+        src/dll/BodyFollow.cpp
         src/dll/CommandChannel.cpp
         src/dll/HandRigTakeover.cpp
         src/dll/NearFovOverride.cpp
         src/dll/NearViewStereo.cpp
+        src/dll/NearParticleStereo.cpp
+        src/dll/DualSceneStereo.cpp
+        src/dll/DualOverlay.cpp
         src/dll/RenderFrame.cpp
         src/dll/WeaponAttachment.cpp
         src/dll/PassCameraProbe.cpp
@@ -190,6 +215,8 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
     )
     target_compile_definitions(preyvr PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
     target_link_libraries(preyvr PRIVATE preyvr_core preyvr_win32_bootstrap minhook bcrypt psapi shell32 d3d11 dxgi d3dcompiler gdi32)
+    # PreyVR.map beside the DLL turns a crash report's PreyVR.dll+offset into a function (no PDB: see /Brepro).
+    target_link_options(preyvr PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/MAP>)
     if(PREYVR_BUILD_OPENXR_LOADER AND TARGET openxr_loader)
         # The in-process session host needs the loader. The DLL already ships
         # openxr_loader.dll beside itself for the preflight, so this adds a link
@@ -376,6 +403,65 @@ if(PREYVR_BUILD_TESTS)
     preyvr_enable_warnings(preyvr_anim_ik_tests)
     add_test(NAME anim_ik COMMAND preyvr_anim_ik_tests)
 
+    add_executable(preyvr_hand_pose_tests tests/HandPoseTests.cpp)
+    target_link_libraries(preyvr_hand_pose_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_hand_pose_tests)
+    add_test(NAME hand_pose COMMAND preyvr_hand_pose_tests)
+
+    add_executable(preyvr_arm_pose_tests tests/ArmPoseTests.cpp)
+    target_link_libraries(preyvr_arm_pose_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_arm_pose_tests)
+    add_test(NAME arm_pose COMMAND preyvr_arm_pose_tests)
+
+    add_executable(preyvr_debug_draw_tests tests/DebugDrawTests.cpp)
+    target_link_libraries(preyvr_debug_draw_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_debug_draw_tests)
+    add_test(NAME debug_draw COMMAND preyvr_debug_draw_tests)
+
+    add_executable(preyvr_shot_ray_tests tests/ShotRayTests.cpp)
+    target_link_libraries(preyvr_shot_ray_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_shot_ray_tests)
+    add_test(NAME shot_ray COMMAND preyvr_shot_ray_tests)
+
+    add_executable(preyvr_near_particles_tests tests/NearParticlesTests.cpp)
+    target_link_libraries(preyvr_near_particles_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_near_particles_tests)
+    add_test(NAME near_particles COMMAND preyvr_near_particles_tests)
+
+    add_executable(preyvr_hand_carry_tests tests/HandCarryTests.cpp)
+    target_link_libraries(preyvr_hand_carry_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_hand_carry_tests)
+    add_test(NAME hand_carry COMMAND preyvr_hand_carry_tests)
+    add_executable(preyvr_throw_lifecycle_tests tests/ThrowLifecycleTests.cpp)
+    target_link_libraries(preyvr_throw_lifecycle_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_throw_lifecycle_tests)
+    add_test(NAME throw_lifecycle COMMAND preyvr_throw_lifecycle_tests)
+
+    add_executable(preyvr_grenade_throw_tests tests/GrenadeThrowTests.cpp)
+    target_link_libraries(preyvr_grenade_throw_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_grenade_throw_tests)
+    add_test(NAME grenade_throw COMMAND preyvr_grenade_throw_tests)
+
+    add_executable(preyvr_native_fov_placement_tests tests/NativeFovPlacementTests.cpp)
+    target_link_libraries(preyvr_native_fov_placement_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_native_fov_placement_tests)
+    add_test(NAME native_fov_placement COMMAND preyvr_native_fov_placement_tests)
+
+    add_executable(preyvr_wrist_holo_tests tests/WristHoloTests.cpp)
+    target_link_libraries(preyvr_wrist_holo_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_wrist_holo_tests)
+    add_test(NAME wrist_holo COMMAND preyvr_wrist_holo_tests)
+
+    add_executable(preyvr_body_follow_tests tests/BodyFollowTests.cpp)
+    target_link_libraries(preyvr_body_follow_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_body_follow_tests)
+    add_test(NAME body_follow COMMAND preyvr_body_follow_tests)
+
+    add_executable(preyvr_interaction_use_tests tests/InteractionUseTests.cpp)
+    target_link_libraries(preyvr_interaction_use_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_interaction_use_tests)
+    add_test(NAME interaction_use COMMAND preyvr_interaction_use_tests)
+
     add_executable(preyvr_weapon_rig_alignment_tests tests/WeaponRigAlignmentTests.cpp)
     target_link_libraries(preyvr_weapon_rig_alignment_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_weapon_rig_alignment_tests)
@@ -525,12 +611,30 @@ if(PREYVR_BUILD_TESTS)
         target_link_libraries(preyvr_native_wrist_tests PRIVATE preyvr_core d3d11 d3dcompiler)
         preyvr_enable_warnings(preyvr_native_wrist_tests)
         add_test(NAME native_wrist COMMAND preyvr_native_wrist_tests)
+        add_executable(preyvr_native_fov_blit_tests tests/NativeFovBlitTests.cpp src/dll/NativeFovBlit.cpp)
+        target_compile_definitions(preyvr_native_fov_blit_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        target_link_libraries(preyvr_native_fov_blit_tests PRIVATE preyvr_core d3d11 d3dcompiler)
+        preyvr_enable_warnings(preyvr_native_fov_blit_tests)
+        add_test(NAME native_fov_blit COMMAND preyvr_native_fov_blit_tests)
         add_executable(preyvr_vr_options_runtime_tests tests/VrOptionsRuntimeTests.cpp)
         target_include_directories(preyvr_vr_options_runtime_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
         target_compile_definitions(preyvr_vr_options_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
         target_link_libraries(preyvr_vr_options_runtime_tests PRIVATE preyvr_core)
         preyvr_enable_warnings(preyvr_vr_options_runtime_tests)
         add_test(NAME vr_options_runtime COMMAND preyvr_vr_options_runtime_tests)
+        foreach(lane carry grenade)
+            if(lane STREQUAL "carry")
+                set(lane_test_source tests/CarryRuntimeTests.cpp)
+            else()
+                set(lane_test_source tests/GrenadeRuntimeTests.cpp)
+            endif()
+            add_executable(preyvr_${lane}_runtime_tests ${lane_test_source})
+            target_include_directories(preyvr_${lane}_runtime_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
+            target_compile_definitions(preyvr_${lane}_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+            target_link_libraries(preyvr_${lane}_runtime_tests PRIVATE preyvr_core minhook)
+            preyvr_enable_warnings(preyvr_${lane}_runtime_tests)
+            add_test(NAME ${lane}_runtime COMMAND preyvr_${lane}_runtime_tests)
+        endforeach()
 
         add_executable(preyvr_inventory_capture_tests tests/InventoryPointerCaptureTests.cpp)
         target_include_directories(preyvr_inventory_capture_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
@@ -595,6 +699,8 @@ if(PREYVR_BUILD_TESTS)
             -NoProfile -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/LauncherResolution.Tests.ps1")
         add_test(NAME launcher_comfort COMMAND "${PREYVR_POWERSHELL_EXECUTABLE}"
             -NoProfile -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/LauncherComfort.Tests.ps1")
+        add_test(NAME launcher_stereo COMMAND "${PREYVR_POWERSHELL_EXECUTABLE}"
+            -NoProfile -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/LauncherStereo.Tests.ps1")
     endif()
     if(PREYVR_POWERSHELL_EXECUTABLE AND PREYVR_BUILD_SMOKE_DLL AND WIN32)
         add_test(

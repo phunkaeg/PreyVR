@@ -1,6 +1,13 @@
 #include "MoveLane.h"
+#include "ArmsLane.h"
 #include "AimTakeover.h"
 #include "BodyEquipment.h"
+#include "InteractionLane.h"
+#include "CarryLane.h"
+#include "GrenadeLane.h"
+#include "preyvr/ThrowLifecycle.h"
+#include "PsiMedkit.h"
+#include "Psychoscope.h"
 
 #include "InputPost.h"
 #include "HeadTrackingHook.h"
@@ -9,6 +16,7 @@
 #include "MinHookInit.h"
 #include "XrInput.h"
 #include "preyvr/InputEvent.h"
+#include "preyvr/InteractionUse.h"
 #include "preyvr/Locomotion.h"
 #include "preyvr/ComfortControls.h"
 #include "preyvr/StereoCamera.h"
@@ -95,7 +103,7 @@ struct ActionBinding {
 };
 
 ActionBinding gActions[kActionCount] = {
-    {{input::kButtonX}, {0}, {0}, {0}, false},   // interact  <- right grip
+    {{input::kButtonX}, {0}, {0}, {0}, false},   // use/reload <- grips (preyvr/InteractionUse.h)
     {{input::kBack}, {0}, {0}, {0}, false},      // inventory <- left X
     {{input::kButtonA}, {0}, {0}, {0}, false},   // jump      <- right A
     {{input::kButtonB}, {0}, {0}, {0}, false},   // crouch    <- right B
@@ -105,11 +113,17 @@ ActionBinding gActions[kActionCount] = {
 };
 std::atomic<bool> gActionsEnabled{false};
 std::atomic<bool> gActionsNeutralize{false};
+// Use/reload: which hand presses the shared button, and whether the selection
+// is cleared first. Owned by the frame thread.
+use::UseButton gUseButton;
+std::atomic<unsigned long long> gUseHoldPosted{0};
 
 std::atomic<unsigned int> gMode{0};
 std::atomic<unsigned int> gDeadzoneHundredths{15};
 std::atomic<unsigned long long> gOursX{0}, gOursY{0}, gNative{0};
 std::atomic<unsigned long long> gPosted{0}, gDropped{0};
+// Frames the stick was held through a missed tracking sample (UpdateMoveLane).
+std::atomic<unsigned long long> gHeld{0};
 std::atomic<unsigned long long> gInputObject{0};
 std::atomic<int> gAxisMilli[2]{0, 0};
 std::atomic<int> gCinematic{0};
@@ -138,6 +152,9 @@ bool gFireHeld = false;
 float gLastFireSent = 0.0f;
 bool gFirePrimed = false;
 std::atomic<bool> gFireNeutralize{false};
+// Hold events for the trigger button while it stays pressed (move.firehold).
+std::atomic<bool> gFireHold{true};
+std::atomic<unsigned long long> gFireHoldPosted{0};
 
 // Recentre-on-both-grips, edge triggered so a held pair fires once.
 bool gRecenterHeld = false;
@@ -298,13 +315,25 @@ void UpdateMoveLane()
     const bool neutralize = gMoveNeutralize.exchange(false, std::memory_order_acq_rel);
     const auto movementReference=HeadTrackingReferenceGeneration();
     TrackingFrame movementFrame{};
-    bool haveInput = active && !neutralize && HudGameplayInputAllowed() &&
-        TryGetTrackingFrame(movementFrame) && FreshSample(MonotonicNanoseconds(),movementFrame.publishedNs);
+    const bool gameplay = HudGameplayInputAllowed();
+    const bool read = TryGetTrackingFrame(movementFrame) && FreshSample(MonotonicNanoseconds(),movementFrame.publishedNs);
+    // A sample missed for a moment -- a contended read, a frame-long hitch -- holds
+    // what the game was last told instead of releasing the stick: a release there
+    // was a stutter in every walk. Past 300 ms it is a real loss and releases.
+    static unsigned long long lastReadMs=0;
+    const auto nowMs=GetTickCount64();
+    if(read) lastReadMs=nowMs;
+    else if(active && !neutralize && gameplay && gMoveMayBeHeld && nowMs-lastReadMs<300) { gHeld.fetch_add(1,std::memory_order_relaxed); return; }
+    bool haveInput = active && !neutralize && gameplay && read;
     if(haveInput) state=movementFrame.hands[0];
+    // After a menu, a stick still held from it must not walk the player: wait for
+    // it to come back to the centre, or for half a second of play.
     static bool awaitNeutral=false;
-    if (!HudGameplayInputAllowed()) { awaitNeutral=true; }
+    static unsigned long long gameplaySinceMs=0;
+    if (!gameplay) { awaitNeutral=true; gameplaySinceMs=0; }
+    else if (!gameplaySinceMs) { gameplaySinceMs=nowMs; }
     if (haveInput && awaitNeutral) {
-        if (std::fabs(state.thumbstickX)<=.15f && std::fabs(state.thumbstickY)<=.15f) awaitNeutral=false;
+        if ((std::fabs(state.thumbstickX)<=.15f && std::fabs(state.thumbstickY)<=.15f) || nowMs-gameplaySinceMs>=500) awaitNeutral=false;
         else haveInput=false;
     }
     if(haveInput && gHeadRelative.load()) {
@@ -440,12 +469,15 @@ void UpdateTurnAndFireLanes()
         }
     }
 
-    static bool awaitTriggerRelease=false;
-    if (!HudGameplayInputAllowed()) { awaitTriggerRelease=true; }
-    if (haveInput && right.triggerValue<=.05f) { awaitTriggerRelease=false; }
-    const bool fireOn = gFireEnabled.load(std::memory_order_acquire) &&
-                       HudGameplayInputAllowed() && !awaitTriggerRelease;
+    static carry::FireGate fireGate;
     const bool releaseFire = gFireNeutralize.exchange(false, std::memory_order_acq_rel);
+    const auto fire=fireGate.Update(haveInput &&
+        IsPoseUsable(right.gripPose,right.gripValidity,60000000ull),
+        gFireEnabled.load() && HudGameplayInputAllowed(),releaseFire,gRecenterHeld,
+        right.triggerPressed,right.triggerValue<=.05f,inputFrame.epoch,HeadTrackingReferenceGeneration());
+    if(!fire.physical)CancelGrenadeTrigger();
+    const bool fireOn = gFireEnabled.load(std::memory_order_acquire) &&
+                       HudGameplayInputAllowed() && fire.physical;
     if (fireOn || gFireHeld || (gFirePrimed && gLastFireSent != 0)) {
         // **The real travel is posted, not a quantised press.** `xi_triggerr` is
         // an analog axis, and sending only 0 or 1000 threw away everything
@@ -453,7 +485,7 @@ void UpdateTurnAndFireLanes()
         float value = (fireOn && !releaseFire) ? right.triggerValue : 0.0f;
         if (!std::isfinite(value)) { value = 0.0f; }
         value = value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
-        const bool pressed = fireOn && !releaseFire && right.triggerPressed;
+        const bool pressed = fire.pressed;
         // Emit on a meaningful change OR on a press-state crossing, so the
         // counters still name a discrete pull while the value stays continuous.
         if (!gFirePrimed ||
@@ -480,14 +512,34 @@ void UpdateTurnAndFireLanes()
         // Sent as a press/release EDGE rather than a changed value, because a
         // button posted as "changed" is not a press and the action map wants
         // the transition.
+        // **A held trigger must also be posted as HELD.** CryEngine turns a key
+        // that stays down into one eIS_Down event per frame from its own list of
+        // held symbols, and a posted press never joins that list: the event
+        // carries no device symbol. So the action map saw a press and then
+        // nothing until the release. Every "while held" action was dead -- the
+        // GLOO's automatic fire stopped after one shot (HANDOFF 2026-10-05: "held
+        // 1.2 s, ONE shot") and the Disruptor could not charge at all. This
+        // posts the hold the engine would have, once per frame.
+        if (pressed && gFireHeld && gFireHold.load(std::memory_order_relaxed)) {
+            if (PostRawInputImmediate(input::kTriggerRButton, input::kStateDown, 1000) == 0) {
+                gFireHoldPosted.fetch_add(1, std::memory_order_relaxed);
+            } else {
+                gFireRefused.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
         if (pressed != gFireHeld) {
             const unsigned int state = pressed ? static_cast<unsigned int>(input::kStatePressed)
                                                : static_cast<unsigned int>(input::kStateReleased);
+            // A grenade leaves the hand at this edge, with the hand's motion as
+            // of now (GrenadeLane.h). Noted BEFORE the post: posting runs the
+            // game's fire handler -- and the release -- synchronously.
+            NoteGrenadeTrigger(pressed,fire.physical);
             if (PostRawInputImmediate(input::kTriggerRButton, state, pressed ? 1000 : 0) == 0) {
                 gFireHeld = pressed;
                 (pressed ? gFirePressed : gFireReleased)
                     .fetch_add(1, std::memory_order_relaxed);
             } else {
+                CancelGrenadeTrigger(); // a refused press/release grants no throw authorization
                 // A refused RELEASE must be retried, or the weapon keeps firing.
                 if (!pressed) { gFireNeutralize.store(true, std::memory_order_release); }
                 gFireRefused.fetch_add(1, std::memory_order_relaxed);
@@ -505,8 +557,40 @@ void UpdateTurnAndFireLanes()
     const bool releaseActions = gActionsNeutralize.exchange(false, std::memory_order_acq_rel);
     {
         const bool haveLeftHand = haveInput;
+        // **Use and reload share the native button (X).** With use.hand left
+        // (the default) the left grip uses what the left hand points at and
+        // the right grip only reloads, clearing the selection first; with
+        // use.hand 0 the right grip is the button, as before.
+        use::ButtonInput useIn{};
+        useIn.gameplay = actionsOn && !releaseActions && haveInput;
+        useIn.leftHand = UseHandLeft() != 0;
+        useIn.leftGrip = haveLeftHand && leftHand.gripPressed;
+        useIn.rightGrip = haveInput && right.gripPressed;
+        useIn.leftBusy = gRecenterHeld || MedkitZoneHasLeftHand() || SupportGripNear() || TwoHandedAimHeld() ||
+                         PsychoscopeZoneHasLeftHand();
+        // A paired squeeze is a hold, not use/reload.
+        // While something is carried the button drops it: the left grip lets
+        // go, and the right one (reload) has nothing to do.
+        const bool carrying = UseCarrying();
+        useIn.rightBusy = gRecenterHeld || HolsterOwnsGrip() || TwoHandedAimHeld() ||
+                          (haveLeftHand && leftHand.squeezeValue >= .45f && !useIn.leftHand) ||
+                          (carrying && useIn.leftHand);
+        useIn.target = UseTargetPresent() || carrying;
+        // Phase 2: held in the hand for as long as the grip is (carry.hold).
+        useIn.carrying = carrying;
+        useIn.holdToHold = CarryHoldToHold() != 0;
+        useIn.targetId = UseTargetId();
+        useIn.tapOnly = UseTargetTapOnly();
+        useIn.holstered = ArmsHolstered();
+        const use::ButtonOutput useOut = gUseButton.Update(useIn);
+        if (useOut.releaseCarry && useIn.gameplay && !gRecenterHeld &&
+            IsPoseUsable(leftHand.gripPose,leftHand.gripValidity,60000000ull)) { RequestCarryRelease(); }
+        if (useOut.drawWeapon) { RequestDrawWeapon(); }
+        RequestUseTargetSuppression(useOut.suppressTarget);
+        NoteUseButton(useOut.down, static_cast<unsigned>(useOut.owner), useOut.pressed, useOut.released,
+                      (useOut.noTarget ? 1u : 0u) | (useOut.gaveUp ? 2u : 0u) | (useOut.busy ? 4u : 0u));
         const bool sources[kActionCount] = {
-            right.gripPressed,                        // use/reload; support chord suppresses below
+            useOut.down,                              // use/reload, decided above
             haveLeftHand && leftHand.menuAccept,      // inventory <- left X
             right.menuAccept,                         // jump      <- right A
             right.menuCancel,                         // crouch    <- right B
@@ -514,11 +598,8 @@ void UpdateTurnAndFireLanes()
         };
         static bool blocked[kActionCount]{};
         for (int slot = 0; slot < kActionCount; ++slot) {
-            // A paired squeeze is a hold, not use/reload. Require the right
-            // grip to release before use returns, including after support release.
-            if(slot==0&&right.gripPressed&&
-               (gRecenterHeld||HolsterOwnsGrip()||TwoHandedAimHeld()||(haveLeftHand&&leftHand.squeezeValue>=.45f))) blocked[slot]=true;
-            if (!HudGameplayInputAllowed() && sources[slot]) blocked[slot]=true;
+            // Slot 0's grip arbitration lives in the use button above.
+            if (slot != kActionInteract && !HudGameplayInputAllowed() && sources[slot]) blocked[slot]=true;
             if (!sources[slot]) blocked[slot]=false;
             ActionBinding& binding = gActions[slot];
             const bool wanted = actionsOn && !releaseActions && sources[slot] && !blocked[slot];
@@ -540,6 +621,16 @@ void UpdateTurnAndFireLanes()
                 binding.refused.fetch_add(1, std::memory_order_relaxed);
             }
         }
+        // **A held use button must also be posted as HELD**, for the reason the
+        // fire lane gives: a posted press never joins the engine's held-symbol
+        // list, so "hold to carry" (a bin, a body) would never complete.
+        static bool useHeldLastFrame = false;
+        ActionBinding& useBinding = gActions[kActionInteract];
+        if (useBinding.held && useHeldLastFrame && UseHoldEnabled() &&
+            PostRawInputImmediate(useBinding.keyId.load(std::memory_order_acquire), input::kStateDown, 1000) == 0) {
+            gUseHoldPosted.fetch_add(1, std::memory_order_relaxed);
+        }
+        useHeldLastFrame = useBinding.held;
     }
 
 }
@@ -592,6 +683,15 @@ unsigned int FireLaneEnabled() { return gFireEnabled.load(std::memory_order_rela
 unsigned long long FireLanePressed() { return gFirePressed.load(std::memory_order_relaxed); }
 unsigned long long FireLaneReleased() { return gFireReleased.load(std::memory_order_relaxed); }
 unsigned long long FireLaneRefused() { return gFireRefused.load(std::memory_order_relaxed); }
+DWORD SetFireLaneHold(unsigned int enabled)
+{
+    if (enabled > 1) { return 1; }
+    gFireHold.store(enabled != 0u, std::memory_order_relaxed);
+    Log(std::string("result=0 detail=fire_hold value=") + (enabled ? "1" : "0"));
+    return 0;
+}
+unsigned int FireLaneHold() { return gFireHold.load(std::memory_order_relaxed) ? 1u : 0u; }
+unsigned long long FireLaneHoldPosted() { return gFireHoldPosted.load(std::memory_order_relaxed); }
 
 unsigned int MoveLaneMode() { return gMode.load(std::memory_order_relaxed); }
 DWORD SetInteractionEnabled(unsigned int enabled)
@@ -617,7 +717,8 @@ std::string InteractionReport()
     static const char* const kSlotNames[kActionCount] = {
         "interact", "inventory", "jump", "crouch", "wheel"};
     std::ostringstream out;
-    out << " actions=" << (gActionsEnabled.load(std::memory_order_relaxed) ? 1 : 0);
+    out << " actions=" << (gActionsEnabled.load(std::memory_order_relaxed) ? 1 : 0)
+        << " useHoldPosted=" << gUseHoldPosted.load(std::memory_order_relaxed);
     for (int slot = 0; slot < kActionCount; ++slot) {
         const int keyId = gActions[slot].keyId.load(std::memory_order_relaxed);
         const char* const name = input::KeyNameFor(keyId);
@@ -635,6 +736,7 @@ unsigned long long MoveLaneOursX() { return gOursX.load(std::memory_order_relaxe
 unsigned long long MoveLaneOursY() { return gOursY.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneNative() { return gNative.load(std::memory_order_relaxed); }
 unsigned long long MoveLanePosted() { return gPosted.load(std::memory_order_relaxed); }
+unsigned long long MoveLaneHeld() { return gHeld.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneDropped() { return gDropped.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneInputObject() { return gInputObject.load(std::memory_order_relaxed); }
 int MoveLaneAxisMilli(unsigned int axis) { return axis < 2 ? gAxisMilli[axis].load(std::memory_order_relaxed) : 0; }

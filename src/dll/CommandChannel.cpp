@@ -6,6 +6,7 @@
 
 #include "AimTakeover.h"
 #include "AnimIkTakeover.h"
+#include "DebugOverlay.h"
 #include "NearFovOverride.h"
 #include "CameraEditHook.h"
 #include "ConsoleBridgeWin32.h"
@@ -16,14 +17,24 @@
 #include "HeadTrackingHook.h"
 #include "Logger.h"
 #include "NearViewStereo.h"
+#include "DualSceneStereo.h"
+#include "DualOverlay.h"
+#include "NearParticleStereo.h"
 #include "RenderFrame.h"
 #include "ReticleFollow.h"
 #include "SceneQuery.h"
+#include "ShotRay.h"
+#include "InteractionLane.h"
+#include "CarryLane.h"
+#include "GrenadeLane.h"
+#include "ArmsLane.h"
 #include "PhysicalInteractions.h"
 #include "PsiMedkit.h"
 #include "Haptics.h"
 #include "HudBridge.h"
 #include "HudLayer.h"
+#include "WristLane.h"
+#include "BodyFollow.h"
 #include "UiPointer.h"
 #include "FrameCaptureWin32.h"
 #include "InputPost.h"
@@ -49,6 +60,14 @@ void Log(const std::string& line)
 }
 
 std::atomic<bool> gRunning{false};
+// debug.crash overflow: unbounded recursion the optimiser cannot fold away.
+#pragma warning(suppress : 4717)
+int CrashByOverflow(int depth)
+{
+    volatile char frame[512];
+    frame[0] = static_cast<char>(depth);
+    return CrashByOverflow(depth + 1) + frame[0];
+}
 std::atomic<unsigned long long> gProcessed{0};
 std::atomic<unsigned long long> gRejected{0};
 
@@ -172,6 +191,7 @@ void WriteReport(std::ostringstream& out)
         << " nearNoProvenance=" << NearViewNoProvenanceCount()
         << " eyeLookupMiss=" << BuiltEyeLookupMissCount()
         << " nearDeltaUm=" << NearViewLastDeltaMicrometres()
+        << " " << NearParticleStereoReport()
         << " handMatched=" << HandRigMatchedCount()
         << " handSkipped=" << HandRigSkippedCount()
         << " handApplied=" << HandRigAppliedCount()
@@ -224,6 +244,7 @@ void WriteReport(std::ostringstream& out)
         << " weaponBone=" << WeaponAttachmentJointIndex()
         << " weaponSim=0x" << std::hex << WeaponAttachmentSimulationFlags() << std::dec
         << WeaponMuzzleAlignmentReport()
+        << ShotRayReport()
         << " aimOriginApplied=" << AimOriginAppliedCount()
         << " aimSamples=" << AimSamplePublishedCount()
         << " aimOriginMode=" << AimOriginMode()
@@ -289,7 +310,7 @@ void WriteReport(std::ostringstream& out)
         << " moveHooked=" << MoveLaneHooked()
         << " moveOursX=" << MoveLaneOursX() << " moveOursY=" << MoveLaneOursY()
         << " moveNative=" << MoveLaneNative()
-        << " movePosted=" << MoveLanePosted() << " moveDropped=" << MoveLaneDropped()
+        << " movePosted=" << MoveLanePosted() << " moveDropped=" << MoveLaneDropped() << " moveHeld=" << MoveLaneHeld()
         << " moveInputObj=0x" << std::hex << MoveLaneInputObject() << std::dec
         << " moveAxisMilli=" << MoveLaneAxisMilli(0) << "," << MoveLaneAxisMilli(1)
         << " moveCinematic=" << MoveLaneCinematicGate()
@@ -297,6 +318,7 @@ void WriteReport(std::ostringstream& out)
         << " turnPosted=" << TurnLanePosted() << " turnRefused=" << TurnLaneRefused()
         << " fireEnabled=" << FireLaneEnabled()
         << " firePressed=" << FireLanePressed() << " fireReleased=" << FireLaneReleased()
+        << " fireHold=" << FireLaneHold() << " fireHoldPosted=" << FireLaneHoldPosted()
         << " fireRefused=" << FireLaneRefused()
         << " mirrorFovPct=" << MirrorFovPercent()
         << " xrSyncs=" << XrInputSyncCount()
@@ -340,6 +362,238 @@ const char* ObserverStatusName(DWORD value)
     }
 }
 
+// The hand-pose verbs (jordi/hand-pose). Kept out of Execute's chain, which is
+// at MSVC's block-nesting limit (C1061).
+bool ExecutePose(const std::vector<std::string>& args, std::ostringstream& out)
+{
+    const std::string& verb = args[0];
+    const auto arg = [&](std::size_t i, int fallback) {
+        int value = fallback;
+        if (i < args.size()) {
+            ParseInt(args[i], value);
+        }
+        return value;
+    };
+    if (verb == "use.report") {
+        out << "use.report result=0" << UseReport();
+    } else if (verb == "use.find" && args.size() > 1) {
+        out << "use.find result=0" << UseFind(static_cast<std::uint32_t>(arg(1, 0)));
+    } else if (verb == "use.hand" || verb == "use.hold" || verb == "use.trace" || verb == "use.back") {
+        // Bare verbs report; a value sets. use.hand 1 = left hand points and
+        // uses, right grip reloads (default); 0 = right grip, weapon ray.
+        DWORD result = 0;
+        if (args.size() > 1) {
+            const unsigned v = static_cast<unsigned>(arg(1, 1));
+            result = verb == "use.hand" ? SetUseHand(v) : verb == "use.hold" ? SetUseHold(v)
+                   : verb == "use.trace" ? SetUseTrace(v) : SetUseBackMillimetres(v);
+        }
+        out << verb << " result=" << result << UseReport();
+    } else if (verb == "use.filter") {
+        // use.filter <0|1> [minCutoffCentiHz 100] [betaHundredths 200] [backlashCentiDegrees 75]:
+        // One Euro then a dead band on the pointer.
+        DWORD result = 0;
+        if (args.size() > 1) {
+            result = SetUseFilter(static_cast<unsigned>(arg(1, 1)), static_cast<float>(arg(2, 100)) * .01f,
+                                  static_cast<float>(arg(3, 200)) * .01f, static_cast<float>(arg(4, 75)) * .01f);
+        }
+        out << "use.filter result=" << result << UseReport();
+    } else if (verb == "ik.skel") {
+        out << "ik.skel result=" << RequestAnimIkSkeletonDump();
+    } else if (verb == "ik.widesupport") {
+        out << "ik.widesupport result=" << (args.size() > 1 ? SetAnimIkWideSupport(static_cast<unsigned>(arg(1, 1))) : 0)
+            << " wide=" << AnimIkWideSupport();
+    } else if (verb == "ik.supportlatch") {
+        out << "ik.supportlatch result=" << (args.size() > 1 ? SetAnimIkSupportLatch(static_cast<unsigned>(arg(1, 1))) : 0)
+            << " latch=" << AnimIkSupportLatch();
+    } else if (verb == "ik.longreach") {
+        // ik.longreach [on comfortMm maxBackMm supportBackMm twistDeg]; bare reports.
+        DWORD result = 0;
+        if (args.size() > 1) {
+            result = SetAnimIkLongReach(arg(1, 1), arg(2, 450), arg(3, 200), arg(4, 100), arg(5, 30));
+        }
+        out << "ik.longreach result=" << result << AnimIkLongReachReport();
+    } else if (verb == "ik.helpers") {
+        out << "ik.helpers result=" << RequestAnimIkHelperDump() << " (see PreyVR.log: preyvr_anim_ik helper)";
+    } else if (verb == "pose.mode") {
+        out << "pose.mode result=" << (args.size() > 1 ? SetHandPoseMode(static_cast<unsigned>(arg(1, 1))) : 0)
+            << HandPoseReport();
+    } else if (verb == "pose.curl") {
+        out << "pose.curl result=" << (args.size() > 1 ? SetHandPoseCurlPercent(arg(1, 100)) : 0) << HandPoseReport();
+    } else if (verb == "pose.grip") {
+        out << "pose.grip result="
+            << (args.size() > 4 ? SetHandPoseGrip(arg(1, 550), arg(2, 35), arg(3, 0), arg(4, 150)) : 0)
+            << HandPoseReport();
+    } else if (verb == "pose.reach") {
+        out << "pose.reach result="
+            << (args.size() > 2 ? SetHandPoseReach(static_cast<unsigned>(arg(1, 1)), arg(2, 85)) : 0)
+            << HandPoseReport();
+    } else if (verb == "near.follow") {
+        out << "near.follow result=" << (args.size() > 1 ? SetNearFovFollow(static_cast<unsigned>(arg(1, 1))) : 0)
+            << " followedDeci=" << NearFovFollowed();
+    } else if (verb == "pose.roll") {
+        out << "pose.roll result=" << (args.size() > 1 ? SetHandPoseWeaponRoll(static_cast<unsigned>(arg(1, 1))) : 0)
+            << HandPoseReport();
+    } else if (verb == "pose.stretch") {
+        out << "pose.stretch result=" << (args.size() > 1 ? SetHandPoseStretchPercent(arg(1, 120)) : 0)
+            << HandPoseReport();
+    } else if (verb == "arm.report") {
+        out << "arm.report result=0" << ArmReport();
+    } else if (verb.rfind("arm.", 0) == 0) {
+        int values[4]{};
+        unsigned count = 0;
+        for (std::size_t i = 1; i < args.size() && count < 4; ++i) { values[count++] = arg(i, 0); }
+        out << verb << " result=" << (count > 0 ? SetArmSetting(verb.substr(4), values, count) : 0) << ArmReport();
+    } else if (verb == "pose.report") {
+        out << "pose.report result=0" << HandPoseReport();
+    } else if (verb == "pose.marks") {
+        out << "pose.marks result=0\n" << HandPoseMarks();
+    } else if (verb == "dbg.draw") {
+        // Bare `dbg.draw` only reports. `on`/`all` = every layer, `off` = 0,
+        // otherwise a layer mask (see DebugOverlayScene.h).
+        DWORD result = 0;
+        if (args.size() > 1) {
+            const std::string& value = args[1];
+            int mask = -1;
+            if (value == "on" || value == "all") { mask = 255; }
+            else if (value == "off") { mask = 0; }
+            else if (!ParseInt(value, mask) || mask < 0 || mask > 255) { mask = -1; }
+            result = mask >= 0 ? SetDebugOverlay(static_cast<unsigned>(mask)) : ERROR_INVALID_PARAMETER;
+        }
+        out << "dbg.draw result=" << result << DebugOverlayReport();
+    } else if (verb == "move.firehold") {
+        out << "move.firehold result=" << (args.size() > 1 ? SetFireLaneHold(static_cast<unsigned>(arg(1, 1))) : 0)
+            << " hold=" << FireLaneHold() << " posted=" << FireLaneHoldPosted();
+    } else if (verb == "aim.shotprobe") {
+        out << "aim.shotprobe result=" << (args.size() > 1 ? SetShotProbe(static_cast<unsigned>(arg(1, 0))) : 0)
+            << ShotProbeReport();
+    } else if (verb == "aim.shot") {
+        // Bare `aim.shot` only reports (and installs the observers, so a shot
+        // with the lane off is measured too). 1 = the shot leaves the muzzle
+        // along the aim; 0 = the native eye-origin query.
+        DWORD result = 0;
+        if (args.size() > 1) {
+            const int value = arg(1, -1);
+            result = value == 0 || value == 1 ? SetShotRay(static_cast<unsigned>(value)) : ERROR_INVALID_PARAMETER;
+        }
+        out << "aim.shot result=" << result << ShotRayReport();
+    } else if (verb == "aim.beam") {
+        // Q-Beam: the last beam (damage ray + drawn beam) against the muzzle,
+        // the aim and the amber marker. Observation only.
+        out << "aim.beam result=0" << BeamReport();
+    } else if (verb == "near.fx") {
+        // Bare `near.fx` only reports. 1 = DrawNear particles in the weapon's
+        // camera space (default), 0 = native, for A/B.
+        DWORD result = 0;
+        if (args.size() > 1) {
+            const int value = arg(1, -1);
+            result = value == 0 || value == 1 ? SetNearParticleStereo(static_cast<unsigned>(value))
+                                              : ERROR_INVALID_PARAMETER;
+        }
+        out << "near.fx result=" << result << " " << NearParticleStereoReport();
+    } else if (verb == "near.fxbridge") {
+        out << "near.fxbridge result=" << (args.size() > 1 ? SetNearParticleBridge(static_cast<unsigned>(arg(1, 1))) : 0)
+            << " " << NearParticleStereoReport();
+    } else if (verb == "near.fxhide") {
+        out << "near.fxhide result=" << SetNearParticleHide(static_cast<unsigned>(arg(1, 1)));
+    } else if (verb == "dbg.report") {
+        out << "dbg.report result=0" << DebugOverlayReport();
+    } else if (verb == "dbg.marks") {
+        out << "dbg.marks result=0\n" << DebugOverlayMarks();
+    } else {
+        return false;
+    }
+    return true;
+}
+
+// Stereo presentation: the 3D VIEW mode, the native-field placement, mono, the eye swap and the test pattern.
+// Kept out of Execute's chain for the same C1061 reason as ExecutePose.
+bool ExecuteStereoCommand(const std::vector<std::string>& args, std::ostringstream& out)
+{
+    const std::string& verb = args[0];
+    const auto arg = [&](std::size_t i, int fallback) {
+        int value = fallback;
+        if (i < args.size()) {
+            ParseInt(args[i], value);
+        }
+        return value;
+    };
+    if (verb == "xr.swap") {
+        // xr.swap 0|1 -- each eye's image into the other eye's socket (the inverted-stereo A/B)
+        if (args.size() >= 2) { SetXrSwapEyes(static_cast<unsigned int>(arg(1, 0))); }
+        out << "xr.swap result=0 enabled=" << (XrSwapEyes() ? 1 : 0);
+    } else if (verb == "xr.pattern") {
+        // xr.pattern 0|1 -- the stereo test pattern in place of Prey's image (1 re-anchors it at the head)
+        if (args.size() >= 2) { SetXrStereoPattern(static_cast<unsigned int>(arg(1, 0))); }
+        out << "xr.pattern result=0 enabled=" << (XrStereoPattern() ? 1 : 0);
+    } else if (verb == "xr.nativefov") {
+        // xr.nativefov 0|1 -- declare each eye's native field with the picture placed inside it (1, default) or
+        // Prey's own frustum (0, the double image on an immutable-fov runtime such as Meta's)
+        if (args.size() >= 2) { SetXrNativeFov(static_cast<unsigned int>(arg(1, 1))); }
+        out << "xr.nativefov result=0 enabled=" << (XrNativeFov() ? 1 : 0) << " fovMutable=" << (XrFovMutable() ? 1 : 0);
+    } else if (verb == "vr.stereo") {
+        // vr.stereo 0|1|2 -- the 3D VIEW option: mono, alternate eyes, full stereo (both eyes every frame)
+        DWORD result = 0;
+        if (args.size() >= 2) { result = SetVrStereoMode(static_cast<unsigned int>(arg(1, 2))); }
+        out << "vr.stereo result=" << result << " chosen=" << VrStereoModeChosen() << " active=" << VrStereoModeActive()
+            << " mono=" << (XrMonoView() ? 1 : 0);
+    } else if (verb == "xr.mono") {
+        // xr.mono 0|1 -- one picture from the centre of the head in both eyes (no depth, always fuses)
+        if (args.size() >= 2) { SetXrMonoView(static_cast<unsigned int>(arg(1, 0))); }
+        out << "xr.mono result=0 enabled=" << (XrMonoView() ? 1 : 0);
+    } else {
+        return false;
+    }
+    return true;
+}
+
+// Rung 1b, the RT_RenderScene double submission (DualSceneStereo.h). Kept out
+// of Execute's chain for the same C1061 reason as ExecutePose.
+bool ExecuteDualCommand(const std::vector<std::string>& args, std::ostringstream& out)
+{
+    const std::string& verb = args[0];
+    const auto arg = [&](std::size_t i, int fallback) {
+        int value = fallback;
+        if (i < args.size()) {
+            ParseInt(args[i], value);
+        }
+        return static_cast<unsigned int>(value);
+    };
+    if (verb == "dual.observe") {
+        // Pass-through logging of RT_RenderScene submissions.
+        out << "dual.observe result=" << SetDualSceneObserve(arg(1, 1)) << DualSceneReport();
+    } else if (verb == "dual.mode") {
+        // 0 off, 1 the same-camera control, 2 per-eye cameras. Second argument:
+        // frame budget.
+        out << "dual.mode result=" << SetDualSceneMode(arg(1, 0), arg(2, 0)) << DualSceneReport();
+    } else if (verb == "dual.ipd") {
+        out << "dual.ipd result=" << SetDualSceneIpdMillimetres(arg(1, 64)) << DualSceneReport();
+    } else if (verb == "dual.vr") {
+        // Headset A/B: 1 both eyes per frame, 0 the alternate-eye path. Ordered so
+        // no both-eyes contract is ever published without its second submission.
+        DWORD result = 0;
+        if (arg(1, 1) != 0) {
+            result = SetDualSceneMode(3, 0);
+            if (result == 0) SetDualStereoContract(1);
+        } else {
+            SetDualStereoContract(0);
+            result = SetDualSceneMode(0, 0);
+        }
+        out << "dual.vr result=" << result << DualSceneReport();
+    } else if (verb == "dual.capture") {
+        out << "dual.capture result=" << RequestDualSceneCapture(arg(1, 0));
+    } else if (verb == "dual.overlay") {
+        // Step 2 A/B: 1 repeats the after-world overlays into the held eye, 0
+        // leaves them in the second eye only. No argument: report.
+        out << "dual.overlay result=" << (args.size() > 1 ? SetDualOverlayRedraw(arg(1, 1)) : 0)
+            << DualOverlayReport();
+    } else if (verb == "dual.report") {
+        out << "dual.report result=0" << DualSceneReport() << DualOverlayReport();
+    } else {
+        return false;
+    }
+    return true;
+}
+
 // One verb, one operation. Deliberately not a name-to-export lookup: that would
 // be a call-anything primitive whose argument is a text file.
 void Execute(const std::vector<std::string>& args, std::ostringstream& out)
@@ -353,6 +607,11 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         return value;
     };
 
+    if (ExecutePose(args, out) || ExecuteCarryCommand(args, out) || ExecuteGrenadeCommand(args, out) || ExecuteArmsCommand(args, out) ||
+        ExecuteWristCommand(args, out) || ExecuteBodyCommand(args, out) || ExecuteDualCommand(args, out) ||
+        ExecuteStereoCommand(args, out)) {
+        return;
+    }
     if (verb == "vr.options") {
         if(args.size()>1)RequestVrOptions(arg(1,0)!=0);
         out << "vr.options" << VrOptionsReport() << PsychoscopeReport() << BodyEquipmentReport();
@@ -364,6 +623,14 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << VrModeReport();
     } else if (verb == "vr.recenter") {
         out << "vr.recenter result=" << RecenterHeadTracking();
+    } else if (verb == "hud.var") {
+        // hud.var [path ...]       -- queue reads; with no path, the last result
+        // hud.setvar <path> <num>  -- queue a write (SV_Normal), then a read
+        DWORD result = 0;
+        for (std::size_t i = 1; i < args.size() && result == 0; ++i) { result = QueueHudVariable(args[i], false, 0); }
+        out << "hud.var result=" << result << ' ' << HudVariableReport();
+    } else if (verb == "hud.setvar" && args.size() >= 3) {
+        out << "hud.setvar result=" << QueueHudVariable(args[1], true, std::atof(args[2].c_str()));
     } else if (verb == "hud.layer") {
         const auto result=args.size()>1?SetHudLayerEnabled(arg(1,0)):0;
         out << "hud.layer result=" << result << ' ' << HudLayerReport();
@@ -406,6 +673,11 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         out << " percent=" << UiScalePercent()
             << " margin=" << UiFitMarginPercent()
             << " guide=" << UiGuideEnabled();
+    } else if (verb == "ui.text") {
+        // Text panel distance in cm (100..200, default 140), at the HUD panel's
+        // physical size. No argument: report.
+        out << "ui.text result=" << (args.size() > 1 ? SetTextPanelDistanceCm(arg(1, 140)) : 0)
+            << " cm=" << TextPanelDistanceCm();
     } else if (verb == "ui.margin") {
         // The real size ceiling. ui.scale above ~130 was being absorbed by the
         // fit loops shrinking the panel back inside 72% of the reported frustum.
@@ -419,6 +691,12 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
             << " enabled=" << UiGuideEnabled();
     } else if (verb == "ui.curve") {
         out << "ui.curve result=" << SetUiCurveDegrees(arg(1,35));
+    } else if (verb == "debug.crash" && args.size() >= 2) {
+        // The crash report's own test (CrashReport.h): kills Prey on purpose.
+        // debug.crash overflow | debug.crash null
+        if (args[1] == "overflow") { CrashByOverflow(1); }
+        if (args[1] == "null") { *static_cast<volatile int*>(nullptr) = 1; }
+        out << "debug.crash result=1 detail=unknown_kind";
     } else if (verb == "observer") {
         const DWORD status = SetFrameObserverEnabled(arg(1, 1));
         out << "observer status=" << ObserverStatusName(status) << "(" << status << ")";
@@ -464,6 +742,8 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         DWORD result = 0;
         if (args.size() > 1) {
             int value = 0;
+            // An explicit value is a choice: stop following the world FOV.
+            SetNearFovFollow(0);
             result = args.size() == 2 && ParseInt(args[1], value) && value >= 0
                 ? SetNearFovDeciDegrees(static_cast<unsigned int>(value)) : 1u;
         }

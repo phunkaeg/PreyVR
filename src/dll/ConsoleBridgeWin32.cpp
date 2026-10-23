@@ -158,6 +158,7 @@ DWORD QueueVerifiedRendererSetting(const char* command) {
     const char* name=nullptr;int expected=0;
     if(command && std::strcmp(command,"r_MotionBlur 0")==0) name="r_MotionBlur";
     else if(command && std::strcmp(command,"r_AntialiasingMode 1")==0) {name="r_AntialiasingMode";expected=1;}
+    else if(command && std::strcmp(command,"r_VSync 0")==0) name="r_VSync";
     else return static_cast<DWORD>(ConsoleBridgeResult::denied);
     std::unique_lock lock(gQueueMutex,kQueueLockTimeout);
     if(!lock.owns_lock() || gHasQueued.load()) return static_cast<DWORD>(ConsoleBridgeResult::busy);

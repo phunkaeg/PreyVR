@@ -1,11 +1,18 @@
 #include "AimTakeover.h"
+#include "ArmsLane.h"
+#include "WristLane.h"
 #include "SceneQuery.h"
+#include "ShotRay.h"
 #include "PhysicalInteractions.h"
 #include "Haptics.h"
 #include "BodyEquipment.h"
 #include "Psychoscope.h"
 #include "PsiMedkit.h"
 #include "WeaponAttachment.h"
+#include "DebugOverlay.h"
+#include "InteractionLane.h"
+#include "CarryLane.h"
+#include "GrenadeLane.h"
 #include "preyvr/AnimIk.h"
 #include "MinHookInit.h"
 #include "preyvr/LatestSnapshot.h"
@@ -49,10 +56,11 @@ LatestSnapshot<GameplayPoseFrame> gGameplayFrame;
 LatestSnapshot<preyvr::aim::Sample> gAimSample;
 LatestSnapshot<SupportGripGeometry> gSupportGeometry;
 LatestSnapshot<twohand::Input> gSupportInput;
+std::atomic<unsigned> gTwoHandGates{0}, gTwoHandGatesSeen{0};
 std::atomic<bool> gTwoHandEnabled{true};
 std::atomic<bool> gTwoHandToggle{false},gTwoHandSnap{true};
 std::atomic<unsigned int> gTwoHandReset{0};
-std::atomic<bool> gTwoHandHeld{false}, gTwoHandRegionReady{false};
+std::atomic<bool> gTwoHandHeld{false}, gTwoHandRegionReady{false}, gSupportNear{false};
 std::atomic<unsigned long long> gTwoHandFrames{0};
 thread_local twohand::Solver gTwoHandSolver;
 thread_local unsigned int gTwoHandSeenReset=0;
@@ -133,13 +141,25 @@ void SolveTwoHandedFrame(GameplayPoseFrame& frame, bool tracking)
         FreshSample(now,geometry.publishedNs);
     if(region) { input.region=geometry.region;input.visualPrimaryOffset=geometry.primaryOffsetWorld; }
     gTwoHandRegionReady.store(region);
-    input.usable=region&&tracking&&!MedkitOwnsGrip()&&frame.headYawUsable&&frame.cameraCentreValid&&
-        gEnabled.load()&&gTwoHandEnabled.load()&&HudGameplayInputAllowed()&&
-        IsPoseUsable(right.aimPose,right.aimValidity,200000000ull)&&
-        IsPoseUsable(right.gripPose,right.gripValidity,200000000ull)&&
-        IsPoseUsable(left.gripPose,left.gripValidity,200000000ull);
+    // Each gate as a bit, for aim.twohand: which one released a held foregrip.
+    const unsigned gates=(region?0u:1u)|(tracking?0u:2u)|(MedkitOwnsGrip()?4u:0u)|
+        (frame.headYawUsable?0u:8u)|(frame.cameraCentreValid?0u:16u)|
+        (gEnabled.load()&&gTwoHandEnabled.load()?0u:32u)|(HudGameplayInputAllowed()?0u:64u)|
+        (IsPoseUsable(right.aimPose,right.aimValidity,200000000ull)&&
+         IsPoseUsable(right.gripPose,right.gripValidity,200000000ull)&&
+         IsPoseUsable(left.gripPose,left.gripValidity,200000000ull)?0u:128u);
+    gTwoHandGates.store(gates);
+    if(gates) gTwoHandGatesSeen.fetch_or(gates);
+    input.usable=gates==0;
     frame.twoHand=gTwoHandSolver.Update(input);
+    {
+        Vec3 point{};
+        // The left hand inside the foregrip region: a squeeze there is the
+        // two-hand hold, never a use (InteractionUse.h).
+        gSupportNear.store(region&&input.usable&&twohand::ClosestGrip(input,point));
+    }
     frame.twoHand.snapSupport=gTwoHandSnap.load();
+    DebugOverlayForegrip(frame,input,frame.twoHand,region);
     gSupportInput.Publish(input);
     const bool wasHeld=gTwoHandHeld.exchange(frame.twoHand.held);
     if(frame.twoHand.held&&!wasHeld)
@@ -300,6 +320,12 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
     UpdatePsychoscopeGesture(frame,haveTracking&&gEnabled.load());
     UpdateBodyEquipment(frame,haveTracking&&gEnabled.load());
     UpdatePhysicalInteractions(frame,haveTracking&&gEnabled.load());
+    UpdateInteractionLane(frame,haveTracking&&gEnabled.load());
+    UpdateCarryLane(frame,haveTracking&&gEnabled.load());
+    UpdateGrenadeLane(frame,haveTracking&&gEnabled.load());
+    UpdateArmsLane(frame,haveTracking&&gEnabled.load());
+    UpdateWristLane(frame,haveTracking&&gEnabled.load());
+    DebugOverlayGameFrame(frame,haveTracking);
     if (!haveTracking) { gRejNoPose.fetch_add(1); return; }
     // A frame whose play-space yaw is unknown cannot aim, and must not silently
     // aim with the camera-relative yaw the body-yaw mode exists to replace.
@@ -405,10 +431,15 @@ void __fastcall UpdateCachedRayWithTakeover(void* player)
             static_cast<int>((&controller.aimPose.orientation.x)[i] * 1000.0f),
             std::memory_order_relaxed);
     }
+    // aim.shot: the published ray starts at the muzzle the shot leaves from, so
+    // the scene query, the reticles and the overlay all describe the shot. The
+    // engine's cached origin stays the eye (see ShotRay.h).
+    if (originMode == 0) { ShotRayFrame(frame, sample); }
     QueryAimScene(frame,sample);
     sample.publishedNs = MonotonicNanoseconds();
     gAimSample.Publish(sample);
     gAimSamplePublished.fetch_add(1, std::memory_order_relaxed);
+    DebugOverlayAim(frame, sample);
 
     // Screen projection is deferred until CSystem::Render has installed the
     // actual eye camera. Here the global camera still has gameplay projection;
@@ -512,10 +543,13 @@ DWORD SetTwoHandSupportSnap(unsigned enabled) {
 bool TwoHandGripToggle(){return gTwoHandToggle.load();}
 bool TwoHandSupportSnap(){return gTwoHandSnap.load();}
 bool TwoHandedAimHeld(){return gTwoHandEnabled.load()&&gTwoHandHeld.load();}
+bool SupportGripNear(){return gTwoHandEnabled.load()&&gSupportNear.load();}
 std::string TwoHandedAimStatus() {
     std::ostringstream out;
     out<<" enabled="<<TwoHandedAimEnabled()<<" held="<<gTwoHandHeld.load()
-       <<" regionReady="<<gTwoHandRegionReady.load()<<" frames="<<gTwoHandFrames.load();
+       <<" regionReady="<<gTwoHandRegionReady.load()<<" frames="<<gTwoHandFrames.load()
+       // 1 region 2 tracking 4 medkit 8 headYaw 16 camera 32 disabled 64 hud 128 poses
+       <<" gates="<<gTwoHandGates.load()<<" gatesSeen="<<gTwoHandGatesSeen.exchange(0);
     SupportGripGeometry geometry{};
     if(gSupportGeometry.TryRead(geometry)) out<<" owner="<<geometry.owner
         <<" supportMm="<<geometry.region.start.x*1000<<","<<geometry.region.start.y*1000<<","<<geometry.region.start.z*1000;

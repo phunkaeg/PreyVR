@@ -1,4 +1,5 @@
 #include "XrInput.h"
+#include "CarryLane.h"
 #include "HapticsXr.h"
 #include "VrOptionsRuntime.h"
 #include "UiPointer.h"
@@ -268,8 +269,7 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
     ControllerState rightState{};
     bool leftStart = false;
     if (!gCreated.load(std::memory_order_acquire)) {
-        gTrackingEpoch.fetch_add(1);
-        gTrackingFrame.Clear();
+        InvalidateTrackingSamples();
         return;
     }
     const auto session = static_cast<XrSession>(sessionHandle);
@@ -289,15 +289,13 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
     const XrResult syncResult = xrSyncActions(session, &sync);
     if (XR_FAILED(syncResult)) {
         ResetHaptics(session,gHaptic,{gHands[0].subactionPath,gHands[1].subactionPath});
-        gTrackingEpoch.fetch_add(1);
-        gTrackingFrame.Clear();
+        InvalidateTrackingSamples();
         return;
     }
     if (syncResult == XR_SESSION_NOT_FOCUSED) {
         ResetHaptics(session,gHaptic,{gHands[0].subactionPath,gHands[1].subactionPath});
         gSyncsNotFocused.fetch_add(1, std::memory_order_relaxed);
-        gTrackingEpoch.fetch_add(1);
-        gTrackingFrame.Clear();
+        InvalidateTrackingSamples();
         return;   // never retain a tracked snapshot after focus loss
     }
     gSyncs.fetch_add(1, std::memory_order_relaxed);
@@ -307,10 +305,19 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
         const XrPath subaction = gHands[hand].subactionPath;
 
         XrSpaceLocation location{XR_TYPE_SPACE_LOCATION};
+        XrSpaceVelocity velocity{XR_TYPE_SPACE_VELOCITY};
+        location.next = &velocity;
         if (XR_SUCCEEDED(xrLocateSpace(gHands[hand].gripSpace, space,
                                        static_cast<XrTime>(predictedDisplayTime), &location))) {
             state.gripPose = FromXrPose(location.pose);
             state.gripValidity = ValidityFrom(location.locationFlags);
+            constexpr XrSpaceVelocityFlags both = XR_SPACE_VELOCITY_LINEAR_VALID_BIT | XR_SPACE_VELOCITY_ANGULAR_VALID_BIT;
+            if ((velocity.velocityFlags & both) == both) {
+                state.gripVelocityValid = true;
+                state.gripLinearVelocity = {velocity.linearVelocity.x, velocity.linearVelocity.y, velocity.linearVelocity.z};
+                state.gripAngularVelocity = {velocity.angularVelocity.x, velocity.angularVelocity.y,
+                                             velocity.angularVelocity.z};
+            }
         }
         XrSpaceLocation aimLocation{XR_TYPE_SPACE_LOCATION};
         if (XR_SUCCEEDED(xrLocateSpace(gHands[hand].aimSpace, space,
@@ -376,6 +383,7 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
     frame.epoch = gTrackingEpoch.load();
     frame.publishedNs = MonotonicNanoseconds();
     gTrackingFrame.Publish(frame);
+    RecordCarryMotion(frame);
     ServiceHaptics(session,gHaptic,{gHands[0].subactionPath,gHands[1].subactionPath},frame,true);
     if((gMenuNavigation.load()||VrOptionsInputOwned())&&VrOptionsReady()&&ProcessVrOptionsInput(frame)) {
         gNavigator.Reset();gLastDisplayTime.store(predictedDisplayTime);
@@ -462,7 +470,7 @@ unsigned long long MenuNavigationActionCount()
     return gMenuActions.load(std::memory_order_relaxed);
 }
 
-void InvalidateTrackingSamples() { gTrackingEpoch.fetch_add(1); gTrackingFrame.Clear(); }
+void InvalidateTrackingSamples() { gTrackingEpoch.fetch_add(1); gTrackingFrame.Clear(); InvalidateCarryMotion(); }
 
 void DestroyXrInput()
 {
@@ -486,8 +494,7 @@ void DestroyXrInput()
     for (auto& count : gLocated) {
         count.store(0, std::memory_order_relaxed);
     }
-    gTrackingEpoch.fetch_add(1);
-    gTrackingFrame.Clear();
+    InvalidateTrackingSamples();
 }
 
 bool TryGetTrackingFrame(TrackingFrame& out)

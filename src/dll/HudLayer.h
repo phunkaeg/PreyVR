@@ -15,6 +15,18 @@ std::string HudLayerReport();
 // Render-thread frame-boundary calls only. Drain once even when XR skips a frame.
 // The borrowed texture remains owned by the capture.
 ID3D11Texture2D* HudLayerTexture();
+// The text panel: note/book, subtitle and tutorial-card movies, captured with
+// the HUD layer on into one texture. Same frame-boundary rule as the HUD.
+// RefuseTextLayer returns them to the scene until the HUD layer is re-enabled.
+ID3D11Texture2D* TextLayerTexture();
+void RefuseTextLayer(const char* reason);
+// The render-target substitution and movie display hooks the per-eye
+// redraw needs, installed together. Then a draw made between the two
+// targeted binds runs with `from` rebound to `to` wherever it asks for it.
+// False when the hooks are missing or a capture is already in flight.
+bool EnsureOverlayHooks();
+bool DrawRedirected(ID3D11DeviceContext* context, ID3D11RenderTargetView* from, ID3D11DepthStencilView* fromDepth,
+                    ID3D11RenderTargetView* to, ID3D11DepthStencilView* toDepth, void (*draw)(void*), void* argument);
 // The inventory/PDA movie, captured on the opposite gate to the gameplay HUD:
 // that one wants gameplay input allowed, this one wants a modal screen up. Null
 // until DaniellePDA has been identified AND captured this frame -- check
@@ -37,4 +49,8 @@ bool HudLayerReticle(float tanX, float tanY, float& x, float& y);
 void RequestNativeWristCapture(bool active);
 ID3D11Texture2D* NativeWristLayerTexture();
 void ResetNativeWristCapture(); // render-thread session teardown
+// hud.var / hud.setvar (diagnostics): queued, run in the next gameplay HUD
+// display callback. The report lists each path's value after the operation.
+DWORD QueueHudVariable(const std::string& path,bool set,double value);
+std::string HudVariableReport();
 }

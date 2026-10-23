@@ -3644,3 +3644,26 @@ Release build and 50/50 offline tests pass; nine native body/accessor identities
 and concrete vtables match the Steam PE. No game or headset run occurred. Native
 replay behavior, visibility, comfort and frame cost remain live acceptance work.
 See [implementation and static contracts](NATIVE-WRIST-IMPLEMENTATION-2026-09-28.md).
+
+## 2026-10-11 — After-world overlays in both eyes; the HUD panel on SteamVR
+
+With both eyes from one frame, the first eye is held right after its
+`RT_RenderScene`, so everything Prey draws after the world reached the second eye
+only: the wearer saw fades, the reticle, objective markers and book popups in the
+right eye. Statically, the screen faders (flow-graph `CHUDFader`, TrackView
+`ScreenFader`) are full-screen `Draw2dImage` calls that all end in
+`RT_Draw2dImageInternal` `0xF34C70` (R-135); markers, books/notes, subtitles and
+tutorial cards are separate Flash elements from `DanielleHUD`; and the floating HUD
+layer had never come up on SteamVR because its swapchain asked for the capture's
+own format (F-017), so the HUD itself was in the scene.
+
+Fixed on branch `stereo-both-eyes`: the HUD swapchain goes through
+`InventorySwapchain` in the main format; the text movies are captured onto the HUD
+panel; during a both-eyes frame's overlay window, every Flash movie and 2D image
+drawn into the backbuffer is drawn a second time into the held eye (`DualOverlay`,
+landmark 40); and the crosshair leaves the panel for a reticle drawn in each eye at
+the aim ray's scene hit. Headset (Steam Frame), one ~10-minute run: 41,855 doubled
+frames, 0 refused; 3,635 2D images and 41,605 marker draws redrawn, 0 refused;
+84% of reticle samples on a scene hit; the wearer confirmed every element in both
+eyes. Markers have no depth yet and the reticle is generic rather than Prey's own
+art. See [after-world overlays](STEREO-DUAL-SUBMISSION-2026-10-10.md#after-world-overlays-in-both-eyes-2026-10-11).

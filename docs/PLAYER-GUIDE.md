@@ -17,9 +17,9 @@ The launcher starts Prey, loads the mod, waits for the requested render size, an
 | Right A / B | Jump / crouch | Select / back |
 | Left X | Open inventory | X action shown by Prey |
 | Left Y | — | Y action shown by Prey |
-| Right grip | Native use / reload button | Next tab, on release |
-| Left grip | Hold a long weapon's support grip | Previous tab, on release |
-| Triggers | Right: fire | Previous / next page (LT / RT) |
+| Right grip | Tap: reload (never uses what the left hand points at). Hold: holster the weapon. With the weapon holstered: draw it again | Next tab, on release |
+| Left grip | Use what the left hand points at; hold a long weapon's support grip. Optional hand carry: hold picked-up objects, open to drop or throw | Previous tab, on release |
+| Triggers | Right: fire (hold for automatic fire and to charge the Disruptor). Optional hand grenades: release during a throwing motion to throw | Previous / next page (LT / RT) |
 | Left menu button | Tap: pause. Hold: VR options | Tap: pause / resume. Hold: VR options |
 | Both grips + left Y | Reset VR view | Reset and bring the panel in front of you |
 | F11 | Enable VR or retry setup | Enable VR or retry setup |
@@ -32,8 +32,32 @@ For two-handed aiming, bring your left hand to the weapon's foregrip and squeeze
 the left grip. Keep it squeezed while aiming with both hands; release to return
 smoothly to one hand. A squeeze away from the weapon does nothing. Changing
 weapons, opening a menu or losing tracking requires releasing and grabbing again.
-Use/reload remains on the right grip when the support grip is detached. To recenter,
-hold both grips, then press left Y; F12 also works.
+To recenter, hold both grips, then press left Y; F12 also works.
+
+To use something, point at it with the left hand and follow Prey's usual prompt.
+The cyan diagnostic ray is available through Debug Overlay and is off by default.
+Squeeze the left grip briefly for the
+prompt's tap action (take, carry, search, take the highlighted item of a locker) or keep it squeezed for the
+hold action (drag a body, carry a heavy object). Enable **VR Options → World → Hand Carry / Throw**
+for the following behaviour (off by default). What you pick up stays in the left hand for as long as the grip
+is closed: a light object flies to the hand and is held by the side you pointed at, a heavy one floats ahead and
+follows the hand, a body is dragged from it. Open the hand to drop it, or open it during a throwing motion to
+throw it with the hand's speed; the right trigger still throws it the game's way. `carry.hold 0` restores
+"squeeze again to drop".
+
+**Hand grenades** are enabled through **VR Options → World → Hand Grenades** (off by default).
+With it enabled, grenades (EMP, Recycler, Nullwave, Lure) sit in the right hand. Hold the right trigger, throw with your
+arm and let go of the trigger: the grenade leaves at that instant with your hand's speed and direction, and comes
+down about where a real ball thrown the same way would. Let go with the hand still and it drops at your feet.
+Looking at a nearby surface no longer sticks the grenade to it. `grenade.hand 0` restores the game's own
+charged throw along the view. Turning the option off restores native throwing and surface deployment.
+Tracking loss, menus, recentering and VR shutdown do not count as physical throws.
+If tracking is lost during a hand carry, the object remains in native carry; pick it up again to reattach it to the hand.
+
+With no weapon drawn -- holstered, or while carrying something -- both hands stay visible at the controllers
+(open; the left one closes around what it carries). Hold the right grip to holster the weapon, squeeze it again
+to draw it. `arms.free 0` lets the game lower the arms out of view again. A squeeze on the foregrip, at the left-hip medkit slot or in the recenter chord never uses
+anything. `use.hand 0` restores the previous layout (right grip uses and reloads along the weapon's aim).
 `aim.twohand 0` disables support aiming; `aim.twohand 1` enables it (default).
 
 To equip a weapon, open inventory with **X**, highlight it with the right stick, press **X** for Prey's Equip action, then **B** to return to the game. Follow the native button prompts for other items. B backs out one level at a time in nested screens.
@@ -53,14 +77,37 @@ before they can operate the screen behind it. F10 is a desktop shortcut while a
 native menu is already open; `vr.options 1` is the diagnostic equivalent.
 
 - **Comfort:** snap angle / smooth turning, head-relative movement, smooth-turn
-  speed, and reset VR view.
+  speed, and **body follows you**: TURN AND WALK (default) turns your character with
+  your head and walks it with you around the room; TURN ONLY keeps it in place; OFF
+  leaves it to the sticks. A wall stops the body, and the view dims if your head goes
+  into it. Reset VR view is on the Setup tab.
+- **View:** **3D view**. FULL STEREO draws both eyes from every frame:
+  true depth with no doubling when you move, at the highest GPU cost. ALTERNATE EYES
+  draws one eye per frame (current default): cheaper, but moving things can shimmer or double.
+  Before an explicit in-session choice, persistently low alternate-eye frame rate may switch to mono. MONO
+  shows one picture, taken from the centre of your head, to both eyes: no depth
+  (everything reads as far away, your hands included), but it fuses at any frame
+  rate and every frame updates both eyes. Changes apply at once.
 - **Hands:** two-hand aim on/off, hold/toggle foregrip, snapped/free support hand,
   and the optional psychoscope gesture.
+- **World:** left-hand interaction (on by default), hand carry/throw and hand grenades
+  (both off by default). Carry needs left-hand interaction. These choices persist across VR restarts;
+  turning VR off withdraws their native overrides without erasing your preferences.
 - **Interface:** size, visible-area limit, panel curvature and controls guide.
-- **Equipment:** optional body holsters, wrist status, wrist-card size and clear
-  holster assignments. Both new features default off.
+- **Equipment:** optional body holsters, wrist status, wrist-hologram size and clear
+  holster assignments. Holsters default off; the wrist status defaults on.
 - **Abilities:** psychic targeting (Original / Head / Left Controller) and the
   optional left-hip medkit slot. Original targeting and slot off are the defaults.
+- **Setup:** calibrate posture, reset VR view, and **Debug Overlay (Testing)**,
+  which draws each hand's ray and target, the body slots, the wrist test and the
+  foregrip region in the world. Off by default; see
+  [the overlay note](DEBUG-OVERLAY-2026-10-06.md).
+  **Shots from the Muzzle (Experimental)** makes every shot leave the weapon's
+  muzzle along your controller's aim, so it lands where the barrel points at any
+  distance, also from the hip or around a corner (otherwise the shot is aimed from
+  your eyes and misses by up to several degrees close by). Off by default;
+  `Start-PreyVR.ps1 -MuzzleAim` turns it on for a session. See
+  [the shot note](SHOT-RAY-2026-10-06.md).
 
 **Psychic targeting:** equip a power using Prey's normal quick wheel. Choose Head
 or Left Controller on the Abilities tab, then hold **left trigger** to target and
@@ -91,14 +138,21 @@ to bind different weapons; weapons remain in your inventory. Assignments are
 session-local, not saved. This first version uses inferred hip/chest positions,
 not tracked torso/hip hardware, and has no visible holstered weapon props.
 
-**Wrist status (native HUD candidate):** turn the left palm up and look at the wrist.
-The September 28 candidate captures the game's health, psi and suit widgets onto
-a transparent panel, preserving their native artwork and visibility. Size adjusts
-from 80% to 140%. It hides in menus, during two-handed aiming, on tracking loss
-and when looking away. It supplements the forward HUD; reticles, prompts and
-native status widgets remain unchanged. Off by default; implemented and tested
-offline, awaiting in-game and headset verification.
-See [implementation and test details](NATIVE-WRIST-IMPLEMENTATION-2026-09-28.md).
+**Wrist status (hologram on the left forearm):** check it like a watch. Raise the left
+forearm and turn its back towards you, then look at it. After a moment a small
+glass panel unfolds just above the sleeve, behind the wrist. It shows the game's own
+health, suit and psi meters and any status effects such as bleeding or radiation,
+and the left controller gives a faint tick. The panel stays on the arm you see. It
+turns towards your eyes by up to 40°, and its text stays level even with the arm held
+out in front. It fades when you look away or turn the wrist back. It stays hidden
+while you hold a weapon with both hands, in menus and the inventory, and when the arm
+is inside a wall or your right hand or weapon is in front of it. A hand sweeping past
+your view does not open it. Size adjusts from 80% to 140%.
+With the wrist status on, health, suit and psi are **no longer on the screen in front
+of you**: they live on the wrist. The rest of the gameplay HUD (reticle, prompts,
+ammo, objectives) is unchanged, and the game still warns of low health with its red
+screen edges and heartbeat. Turn WRIST STATUS off to get the meters back in front.
+On by default. See [the hologram note](WRIST-HOLOGRAM-2026-10-07.md).
 
 **Toggle foregrip:** squeeze near the foregrip to attach; release the grip button
 and squeeze again to detach. **Free support hand** keeps its visual position on
@@ -115,7 +169,7 @@ Gesture feel and native acceptance still need headset testing.
 Menu choices save automatically to **`%LOCALAPPDATA%\PreyVR\vr-options.ini`**.
 They take precedence over launcher defaults for the settings listed above.
 To return those settings to launcher defaults, rename that file with Prey closed.
-Resolution, runtime and reference-space selection remain launcher settings.
+Resolution, runtime, reference-space and stereo-mode selection remain launcher settings.
 
 This batch has offline tests and a production-rendered menu preview, but **has
 not been run in Prey or accepted in a headset**. See
@@ -146,16 +200,22 @@ does not yet implement physical crouch, avatar-height matching or a vignette.
 
 Menus and inventory open on a panel about **2 metres** away, anchored where you opened them. Reset view to bring a panel back in front of you. An optional card shows the menu controls (`UiGuide: 1`; hidden by default). The combined layout stays within conservative limits of **60° horizontally and 40° vertically**, shrinking further for narrower runtime frusta.
 
-The native gameplay HUD is captured once into a transparent target and displayed at its own depth. Its graphics and interaction prompts stay Prey's own. The reticle is remapped to the smaller HUD canvas; when aiming beyond the panel it clips out instead of marking its edge. This is a HUD reticle at a fixed depth, not a world-surface hit marker. World markers and subtitles remain in the scene.
+The native gameplay HUD is captured once into a transparent target and displayed on a floating panel about 2 metres in front of you. Its graphics and interaction prompts stay Prey's own. The reticle is remapped to the smaller HUD canvas; when aiming beyond the panel it clips out instead of marking its edge. This is a HUD reticle at a fixed depth, not a world-surface hit marker. Book and note popups, subtitles and tutorial cards appear on a panel of their own, 1.4 metres away and in front of the HUD, while the world stays visible around them; being nearer, their text is larger and sharper. For this session only, `ui.text 120` in **Tune Prey VR.cmd** moves it (100 to 200 cm; nearer is larger, 200 matches the HUD panel).
+
+Objective markers stay in the world view, in both eyes, at no particular depth: they read as far away, which suits distant objectives better than nearby ones.
 
 The default render size is **2016 × 2160 per eye**, independent of monitor DPI. This restores the tall aspect used in earlier headset testing; **2688 × 2880** offers more detail at the same aspect and higher GPU cost. Edit `Width` and `Height` in `PreyVR.json`, then restart Prey. Menus can have unused space within their floating panel; do not switch the world render to 16:9 just to fill that panel. This is a starting preset, not automatic headset-resolution detection or a guarantee of complete FOV coverage on every headset.
 
 The launcher migrates the old, unversioned **2560 × 1440** default once, backing up `PreyVR.json` first. Custom sizes remain unchanged. To intentionally retain that old size, add `"ResolutionDefaultsVersion": 1` to the JSON, or launch with both `-Width 2560 -Height 1440`. A single command-line dimension is rejected. `HudLayer` remains `1` for floating HUD or `0` for the native scene HUD.
 
+Each eye is shown through the field its headset asks for, with Prey's picture placed inside it. Meta's PC runtime (Quest over Link or Air Link) ignores any other field an application declares, which is what made earlier builds show a double image at every distance on the Quest 3. If the edge of your view shows a thin black band, the game's field of view is narrower than the headset's: raise Prey's FOV slider (about 104 degrees covers a Quest 3).
+
+The **3D view** option (View tab) chooses full stereo, alternate eyes or mono; `vr.stereo 2|1|0` in **Tune Prey VR.cmd** does the same for testing. Both eyes are rendered from the same game frame by default (`DualStereo: 1`). `DualStereo: 0` (or launching with `-DualStereo 0`, which is also saved) forces the earlier method that renders one eye per frame for that launch; it shows doubled edges when you or the scene move. Use it only to check whether a problem belongs to the both-eyes method, and report what you find. Fades, markers and anything else Prey draws over the world are drawn into both eyes; `dual.overlay 0` in **Tune Prey VR.cmd** leaves them in the right eye only, for comparison, and `dual.overlay 1` restores them. Once VR is ready, the launcher prints which method is running. If the both-eyes method is unavailable, it says so and Prey continues with alternate eyes.
+
 ## Recovery and support
 
-If startup fails, the launcher names the failed stage and the diagnostic folder under `%LOCALAPPDATA%\PreyVR\runs`. Resolve the headset/runtime issue, return focus to Prey, and press F11 to retry. Reconnect the runtime before retrying a lost XR session. F12 and the grip chord need a fresh tracked headset pose.
+If startup fails, the launcher names the failed stage and the diagnostic folder under `%LOCALAPPDATA%\PreyVR\runs`. While VR is running, that folder's `PreyVR.log` also records the rendering and HUD counters once a minute (lines starting `preyvr_vr status`); include it when reporting a problem. Resolve the headset/runtime issue, return focus to Prey, and press F11 to retry. Reconnect the runtime before retrying a lost XR session. F12 and the grip chord need a fresh tracked headset pose.
 
 This package supports the verified **Steam Prey 2017 x64 build** only. The launcher checks `PreyDll.dll` before loading anything; it does not patch game files. Keep the package files together. It also refuses to launch over another detected fleet game.
 
-This is a preview. The new interface has simulator and in-game checks; headset comfort, every weapon, and every in-world terminal still need player acceptance. Existing alternate-eye rendering and its performance limits remain.
+This is a preview. The new interface has simulator and in-game checks; headset comfort, every weapon, and every in-world terminal still need player acceptance. Rendering both eyes every frame costs frame rate, and that cost has not yet been measured properly at headset resolution.

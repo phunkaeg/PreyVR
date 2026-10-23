@@ -16,6 +16,7 @@ void RequestVrOptions(bool open);
 void ResetVrOptionsSession(); // XR teardown
 void LoadVrOptions(); // command worker, once after launch defaults have applied
 void ServiceVrOptions(); // worker: settings application and disk I/O
+void ApplyVrWorldOptions(bool active); // worker: preferences survive VR shutdown
 options::Values VrOptionsValues();
 unsigned VrOptionsPage();
 unsigned VrOptionsRow();

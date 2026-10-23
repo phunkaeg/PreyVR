@@ -14,6 +14,9 @@ public:
     return false;
  }
  bool OwnsGrip()const{return selected_&&zone_.OwnsGrip();}
+ // Diagnostics (dbg.draw).
+ const HolsterGesture& Zone()const{return zone_;}
+ bool TriggerArmed()const{return triggerArmed_;}
  void Reset(){zone_.Reset();selected_=triggerArmed_=used_=false;}
 private:
  HolsterGesture zone_{{{{-.25f,-.65f,.02f},{-.25f,-.65f,.02f}}}};

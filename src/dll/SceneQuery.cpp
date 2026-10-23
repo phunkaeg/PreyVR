@@ -85,6 +85,49 @@ bool QueryPhysicalSegment(const GameplayPoseFrame& frame,Vec3 origin,Vec3 delta,
     }
     return result==ERROR_SUCCESS;
 }
+bool QueryDebugRay(const GameplayPoseFrame& frame,Vec3 origin,Vec3 direction,scene::Hit& hit){
+    hit={};hit.distance=-1;
+    if(fault.load()||!HudGameplayInputAllowed()||!FreshSample(MonotonicNanoseconds(),frame.tracking.publishedNs)||
+       frame.referenceGeneration!=HeadTrackingReferenceGeneration())return false;
+    thread_local bool busy=false;
+    if(busy)return false;
+    busy=true;const auto result=Query(frame,origin,direction,scene::Range,hit);busy=false;
+    if(result){lastError=result;++refused;
+        if(result!=ERROR_NOT_READY&&result!=ERROR_INVALID_THREAD_ID)fault=true;
+        hit={};hit.distance=-1;
+    }
+    return result==ERROR_SUCCESS;
+}
+bool QuerySegment(const GameplayPoseFrame& frame,Vec3 a,Vec3 b,scene::Hit& hit){
+    hit={};hit.distance=-1;
+    const Vec3 d{b.x-a.x,b.y-a.y,b.z-a.z};
+    const float length=std::sqrt(d.x*d.x+d.y*d.y+d.z*d.z);
+    if(fault.load()||!std::isfinite(length)||length<.001f||length>2.f||!HudGameplayInputAllowed()||
+       !FreshSample(MonotonicNanoseconds(),frame.tracking.publishedNs)||
+       frame.referenceGeneration!=HeadTrackingReferenceGeneration())return false;
+    thread_local bool busy=false;
+    if(busy)return false;
+    busy=true;const auto result=Query(frame,a,{d.x/length,d.y/length,d.z/length},length,hit);busy=false;
+    if(result){lastError=result;++refused;
+        if(result!=ERROR_NOT_READY&&result!=ERROR_INVALID_THREAD_ID)fault=true;
+        hit={};hit.distance=-1;
+    }
+    return result==ERROR_SUCCESS;
+}
+bool QueryBodySegment(std::uintptr_t player,Vec3 a,Vec3 b,scene::Hit& hit){
+    hit={};hit.distance=-1;
+    const Vec3 d{b.x-a.x,b.y-a.y,b.z-a.z};
+    const float length=std::sqrt(d.x*d.x+d.y*d.y+d.z*d.z);
+    if(fault.load()||!player||!std::isfinite(length)||length<.001f||length>3.f)return false;
+    GameplayPoseFrame frame{};frame.player=player;
+    const auto result=Query(frame,a,{d.x/length,d.y/length,d.z/length},length,hit);
+    if(result){lastError=result;++refused;
+        if(result!=ERROR_NOT_READY&&result!=ERROR_INVALID_THREAD_ID)fault=true;
+        hit={};hit.distance=-1;
+    }
+    return result==ERROR_SUCCESS;
+}
+bool SceneQueryFaulted(){return fault.load();}
 void SetSceneReticle(unsigned on){enabled=on!=0;}
 unsigned SceneReticleEnabled(){return enabled.load()?1u:0u;}
 std::string SceneQueryReport(){return " enabled="+std::to_string(enabled.load())+" fault="+std::to_string(fault.load())+

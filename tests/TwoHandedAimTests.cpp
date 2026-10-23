@@ -65,5 +65,36 @@ int main() {
     i=Base();s={};Hold(s,i);i.squeeze=std::numeric_limits<float>::quiet_NaN();Check(!s.Update(i).held,"NaN squeeze refuses");
     i=Base();s={};Hold(s,i);i.support.position.x=std::numeric_limits<float>::infinity();Check(!s.Update(i).held,"nonfinite tracking refuses");
     i=Base();s={};Hold(s,i);i.dt=1;Check(!s.Update(i).held,"long stall resets smoothing");
+    {
+        // Q-Beam samples, metres in the barrel frame (2026-10-07).
+        RegionLatch latch;Vec3 socket{};const Vec3 rest{.375f,.616f,.198f};
+        Check(!latch.Update(5,true,rest,socket),"one sample does not latch");
+        for(int n=0;n<RegionLatch::kSettleSamples-2;++n) Check(!latch.Update(5,true,{rest.x+(n%2)*.002f,rest.y,rest.z},socket),"settling");
+        Check(latch.Update(5,true,rest,socket)&&Near(socket,rest),"a resting palm latches");
+        Check(latch.Update(5,false,{},socket)&&Near(socket,rest),"out-of-bounds palm (firing animation) keeps the region");
+        for(int n=0;n<200;++n) latch.Update(5,true,{.129f,.473f,.096f},socket);
+        Check(Near(socket,rest),"an animated palm, even resting elsewhere, never moves a latched region");
+        Check(!latch.Update(6,true,{.1f,.3f,0},socket),"re-equip starts over");
+        Check(!latch.Update(0,true,rest,socket),"no owner, no region");
+        RegionLatch moving;
+        for(int n=0;n<100;++n) Check(!moving.Update(5,true,{.3f+n*.02f,.6f,.2f},socket),"an equip animation never settles");
+        moving.Update(5,true,{std::numeric_limits<float>::quiet_NaN(),0,0},socket);
+        for(int n=0;n<RegionLatch::kSettleSamples;++n) moving.Update(5,true,rest,socket);
+        Check(moving.Latched()&&Near(socket,rest),"then latches once it rests");
+    }
+    {
+        LongReach reach{};
+        const Vec3 qbeam{-.355f,.576f,-.233f},gloo{-.103f,.424f,.013f};   // measured 2026-10-07
+        Check(std::fabs(HoldBack(qbeam,reach)-.126f)<.001f,"Q-Beam foregrip comes back to 0.45 m ahead");
+        Check(HoldBack(gloo,reach)==0,"a foregrip within reach is untouched");
+        Check(HoldBack({0,1.5f,0},reach)==reach.maxHoldBack,"hold-back is bounded");
+        Check(HoldBack({0,std::numeric_limits<float>::quiet_NaN(),0},reach)==0,"nonfinite socket refuses");
+        const Region far=SupportRegion(qbeam,.126f,reach),near=SupportRegion(gloo,0,reach);
+        Check(Near(far.start,{qbeam.x,qbeam.y-.14f,qbeam.z})&&Near(far.end,{qbeam.x,qbeam.y+.04f,qbeam.z}),"long weapon grabs behind its foregrip");
+        Check(Near(near.start,{gloo.x,gloo.y-.04f,gloo.z})&&Near(near.end,{gloo.x,gloo.y+.04f,gloo.z}),"other weapons keep the native region");
+        // A grab 12 cm behind the foregrip, inside the radius, latches there: steering starts without a jump.
+        Input g=Base();g.region=far;g.support.position={qbeam.x,qbeam.y-.12f,qbeam.z};Solver s2;auto o=Hold(s2,g);
+        Check(o.held&&Near(o.socket,g.support.position)&&Near(Rotate(o.orientation,{0,1,0}),{0,1,0}),"behind-foregrip grab holds without an aim jump");
+    }
     std::cout<<"Two-handed aim geometry, lifecycle and barrel integration passed\n";
 }

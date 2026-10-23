@@ -1,0 +1,29 @@
+Wrist hologram, mock measurements 2026-10-07 (Steam PreyDll.dll, Campaign2\manual4, wrench / GLOO).
+Images (not in git, docs/evidence/**/*.jpg is ignored): wrist_hologram_sheet.jpg, nine cases.
+
+== Before (Funk's native card, wrist=1) ==
+hud.var: _root.safe.quadrant_SW._xrotation=-15 _yrotation=-15 _xscale=50 _alpha=100 _visible=1
+         health_mc._visible=0 status_effects._visible=0   (profile Option.hud_showPlayerState=0: dynamic)
+hud.layer: nativeWrist={captured=0 refused=1135 fault=0}; face HUD quad alpha>0 pixels 0 (meters closed)
+hud.call healthOpen/psiOpen/armorOpen -> face HUD 20170 px; nativeWrist captured=148 (card shown)
+healthClose -> whole quadrant closed (2890 px left); healthStatic 1 does not prevent it.
+
+== After ==
+wrist.report (watch check): gate=511 eligible=1 arm=1 card=1 alpha=1.00 facing=0.86 viewing=0.91 dist=0.351
+  tilt=25.7 roll=-9.7 sceneOcc=0 handOcc=0 | armLagMs=0.0 published=6583 exact=6559 older=22
+hud.layer: nativeWrist={captured=1878 refused=0 fault=0 layout=1878/0 faceFrames=5403 faceRefused=0}
+look ahead (headPitch 0): alpha=0.00 viewing=0.43; look back: alpha=1.00
+wrist roll 0 / -60 / -30 deg: alpha 0 (facing -0.57) / 1 (0.53) / 0 (-0.12)
+arm held straight out: alpha=1.00 roll=-87.9 (text level)
+right hand at the eye-card midpoint: alpha=0.00 handOcc=1; moved away: alpha=1.00 handOcc=0
+forearm into a locker (lhandX -0.15 / -0.35 / -0.55): sceneOcc 0 / 1 / 1, sceneHits 0 / 144 / 341
+GLOO two-handed, held=1: eligible=0 alpha=0 (also rolled and looked at); released + looked at: alpha=1
+inventory open: gate=471 eligible=0 (quads: menu panel + pointer only); closed: gate=511
+carrying a towel (carry holding=1) in the watch pose: gate=511 alpha=1.00
+WristSweep.ps1 lateral +-0.55 m: pass 0.25 s (mean 4.4 m/s): 0 openings; pass 2.0 s: 1; slow return: 1 each
+healthClose then hud.call healthUpdate 27 100: health_mc._visible=0, wrist shows 27
+face HUD quad with meters opened by the game: 0 px; wrist.face 0: 19990 px
+haptics submitted: 2 -> 3 on one opening; wrist.haptic 0: no pulse
+xr.timing visible vs hidden: frameP50 7097 vs 6976 us, serviceP50 258 vs 231 us
+wrist.anchor 0: the grip card at its old place (flattened meters, no glass)
+CTest 66/66

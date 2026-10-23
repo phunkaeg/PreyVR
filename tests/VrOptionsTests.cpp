@@ -27,7 +27,9 @@ void MenuChecks(){
  i.y=0;m.Update(i);i.y=-1;m.Update(i);Check(m.row==2,"neutral rearm stick");
  i.y=0;i.x=1;auto change=m.Update(i);Check(change.setting==SupportSnap&&change.direction==1,"selected grip preference");
  i.x=0;i.trigger=true;i.hover=4;m.Update(i);Check(m.page==0,"ray tab click");
- i.trigger=false;m.Update(i);i.trigger=true;i.hover=3;Check(m.Update(i).recenter,"ray recenter action");
+ i.trigger=false;m.Update(i);i.trigger=true;i.hover=3;Check(m.Update(i).setting==BodyFollow,"comfort's fourth row is body follow");
+ i.trigger=false;m.Update(i);i.trigger=true;i.hover=Rows+7;m.Update(i);Check(m.page==7,"ray to the setup tab");
+ i.trigger=false;m.Update(i);i.trigger=true;i.hover=1;Check(m.Update(i).recenter,"ray recenter action");
  i.trigger=false;i.cancel=true;m.Update(i);Check(!m.Open()&&m.OwnsInput(),"closing press remains quarantined");
  m.Update(i);Check(m.OwnsInput(),"held close never leaks");
  i.cancel=false;m.Update(i);Check(!m.OwnsInput(),"neutral gives input back");
@@ -58,7 +60,9 @@ void SettingsChecks(){
  Check(Valid(Turn,75)&&Adjust(Turn,75,1)==90&&Adjust(Turn,75,-1)==60,"custom command angle displays and adjusts correctly");
  Check(Adjust(UiScale,200,1)==200&&Adjust(UiScale,20,-1)==20,"scale limits");
  Check(Defaults()[Psychoscope]==0,"gesture opt in");
- Check(Defaults()[Holsters]==0&&Defaults()[Wrist]==0,"equipment features opt in");
+ Check(Defaults()[Holsters]==0&&Defaults()[Wrist]==1,"holsters opt in; the wrist hologram is on (2026-10-07)");
+ Check(Defaults()[BodyFollow]==2&&Display(BodyFollow,0)==L"OFF"&&Display(BodyFollow,1)==L"TURN ONLY",
+       "the body follows (turn and walk) unless turned off (2026-10-16)");
  Check(Parse("version=1\nturn=45\n",parsed)&&parsed[Holsters]==0&&parsed[WristSize]==100,"old settings upgrade safely");
  Check(Item(3,0)==Holsters&&Item(3,1)==Wrist&&Item(3,3)==-3,"equipment page layout");
  Check(Defaults()[PsiTarget]==0&&Defaults()[Medkit]==0,"abilities preserve original behavior by default");
@@ -78,6 +82,10 @@ void SettingsChecks(){
  Check(!setup.Update(si).calibrate,"held calibration button never repeats");
  si.accept=false;setup.Update(si);si.y=-1;setup.Update(si);si.y=0;setup.Update(si);si.accept=true;
  Check(setup.Update(si).recenter,"setup retains reset without height calibration");
+ Check(Item(7,2)==DebugOverlay&&Defaults()[DebugOverlay]==0,"debug overlay is an opt-in setup row");
+ Check(Item(7,3)==MuzzleAim&&Defaults()[MuzzleAim]==0,"shots from the muzzle are an opt-in setup row");
+ Check(Parse("version=1\nmuzzle_aim=1\n",parsed)&&parsed[MuzzleAim]==1&&!Valid(MuzzleAim,2),"muzzle aim persists as on/off");
+ Check(Parse("version=1\ndebug_overlay=1\n",parsed)&&parsed[DebugOverlay]==1&&!Valid(DebugOverlay,2),"debug overlay persists as on/off");
 }
 void GestureChecks(){
  PsychoscopeGesture g;const Vec3 high{-.12f,.18f,-.12f},low{-.12f,-.02f,-.12f};

@@ -18,8 +18,8 @@ constexpr Spec specs[]={
  {"ui_curve",L"PANEL CURVATURE",L"Curves supported mono menus. Experimental stereo PDA stays planar.",35,0,60,5},
  {"ui_guide",L"CONTROLS GUIDE",L"Shows a help card below native menus; uses some panel space.",0,0,1,1},
  {"holsters",L"BODY HOLSTERS",L"Right grip at right hip or left chest: store current weapon, then draw/stow. Session only.",0,0,1,1},
- {"wrist",L"WRIST STATUS",L"Turn your left palm up and look at your wrist for health, psi and suit integrity.",0,0,1,1},
- {"wrist_size",L"WRIST DISPLAY SIZE",L"Adjust the status card size. Hidden in menus and during two-hand aiming.",100,80,140,10},
+ {"wrist",L"WRIST STATUS",L"Raise your left forearm and look at its back, like a watch: health, suit and psi.",1,0,1,1},
+ {"wrist_size",L"WRIST DISPLAY SIZE",L"Adjust the status hologram size. Hidden in menus and during two-hand aiming.",100,80,140,10},
  {"scene_reticle",L"SCENE RETICLE (EXPERIMENTAL)",L"Place the reticle on the first surface along the weapon's aim. Does not steer shots.",0,0,1,1},
  {"reticle_fallback_mm",L"RETICLE FALLBACK DISTANCE",L"Distance used when no scene hit is available, or Scene Reticle is off.",10000,500,200000,500},
  {"haptics",L"CONTROLLER FEEDBACK",L"Short pulses for VR menu changes and attaching the support hand.",1,0,1,1},
@@ -30,7 +30,14 @@ constexpr Spec specs[]={
  {"contact_strength",L"OBJECT NUDGE STRENGTH",L"Scales gentle object impulses. Wrench damage uses the game's rules.",50,0,100,10},
  {"psi_target",L"PSYCHIC TARGETING",L"Head or left controller: hold left trigger to aim the equipped power; release to cast. Original keeps native controls.",0,0,2,1},
  {"medkit_slot",L"LEFT-HIP MEDKIT SLOT",L"Squeeze left grip at left hip, then press left trigger while holding grip. One medkit per grab; native use rules apply.",0,0,1,1},
- {"belt_hints",L"BODY SLOT FEEDBACK",L"Brief feedback for holster requests and medkit selection/use. Requires the corresponding body slot feature.",1,0,1,1}
+ {"belt_hints",L"BODY SLOT FEEDBACK",L"Brief feedback for holster requests and medkit selection/use. Requires the corresponding body slot feature.",1,0,1,1},
+ {"debug_overlay",L"DEBUG OVERLAY (TESTING)",L"Draws each hand's ray and target, body slots, the wrist test and the foregrip region in the world.",0,0,1,1},
+ {"muzzle_aim",L"SHOTS FROM THE MUZZLE (EXPERIMENTAL)",L"Shots leave the weapon's muzzle along your controller's aim, so they land where the barrel points at any distance.",0,0,1,1},
+ {"body_follow",L"BODY FOLLOWS YOU",L"Your character turns with your head and walks with you around the room. Walls stop it and dim the view.",2,0,2,1},
+ {"stereo",L"3D VIEW",L"Alternate eyes: one eye per frame, at the headset's rate. Full stereo draws both eyes every frame, at about half the frame rate. Mono: one picture, no depth, always comfortable.",1,0,2,1},
+ {"use_hand",L"LEFT-HAND INTERACTION",L"Point and use with the left hand. Off restores the original right-grip use/reload binding.",1,0,1,1},
+ {"carry_hand",L"HAND CARRY / THROW (EXPERIMENTAL)",L"Hold objects with the left grip; let go to drop or throw. Requires Left-hand Interaction. Off keeps native carry.",0,0,1,1},
+ {"grenade_hand",L"HAND GRENADES (EXPERIMENTAL)",L"Throw from the right hand on a tracked trigger release. Off keeps the game's charged throw and surface deployment.",0,0,1,1}
 };
 }
 const Spec& Describe(unsigned id){return specs[id<Count?id:0];}
@@ -64,16 +71,18 @@ bool Parse(std::string_view text,Values& result){
  result=parsed;return true;
 }
 int Item(unsigned page,unsigned row){
- constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,-1},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,-2,-2}};
+ constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim},{Stereo,-2,-2,-2},{UseHand,CarryHand,GrenadeHand,-2}};
  return page<Pages&&row<Rows?items[page][row]:-2;
 }
-const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP"};return names[p%Pages];}
+const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP",L"VIEW",L"WORLD"};return names[p%Pages];}
 std::wstring Display(unsigned id,int v){
  if(id==PsiTarget)return v==1?L"HEAD":v==2?L"LEFT CONTROLLER":L"ORIGINAL";
  if(id==SwingSpeed)return std::to_wstring(v)+L" CM/S";
  if(id==ContactStrength)return std::to_wstring(v)+L"%";
  if(id==Turn)return v?std::to_wstring(v)+L" DEGREES":L"SMOOTH";
  if(id==HeadRelative)return v?L"HEAD RELATIVE":L"BODY RELATIVE";
+ if(id==BodyFollow)return v==2?L"TURN AND WALK":v==1?L"TURN ONLY":L"OFF";
+ if(id==Stereo)return v==2?L"FULL STEREO":v==1?L"ALTERNATE EYES":L"MONO";
  if(id==GripToggle)return v?L"TOGGLE":L"HOLD";
  if(id==SupportSnap)return v?L"SNAPPED":L"FREE";
  if(id==UiCurve)return v?std::to_wstring(v)+L" DEGREES":L"FLAT";

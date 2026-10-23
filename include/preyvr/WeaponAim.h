@@ -44,6 +44,9 @@ struct Sample {
     Quaternion orientation{};
     // Synchronous scene query of this exact ray. Negative means no usable hit.
     float sceneDistance = -1.0f;
+    // The origin is the equipped weapon's muzzle (aim.shot), a real world point,
+    // rather than the eye or a controller point.
+    bool muzzleOrigin = false;
 
     // --- provenance -------------------------------------------------------
     //

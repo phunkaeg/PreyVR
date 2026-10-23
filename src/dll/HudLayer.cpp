@@ -1,10 +1,12 @@
 #include "HudLayer.h"
+#include "DualOverlay.h"
 #include "Bootstrap.h"
 #include "MinHookInit.h"
 #include "Logger.h"
 #include "HudBridge.h"
 #include "XrSessionHost.h"
 #include "InventorySwapchain.h"
+#include "WristLane.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/LatestSnapshot.h"
 #include "preyvr/UiPanel.h"
@@ -19,6 +21,8 @@
 #include <cmath>
 #include <mutex>
 #include <string>
+#include <vector>
+#include <cstdio>
 
 namespace preyvr::dll {
 namespace {
@@ -74,6 +78,52 @@ struct Capture {
     DWORD thread=0;
 };
 Capture captures[kMovies];
+
+// **The text panel's movies.** Notes and books, subtitles and tutorial cards
+// are separate elements from the gameplay HUD, so they stayed in the scene --
+// and in a both-eyes frame reached only the second eye. All of them draw into
+// one shared capture (the first each frame clears it, the rest draw over it),
+// shown by XrSessionHost on the HUD's panel fit, above the HUD.
+constexpr const char* kTextMovieNames[]={"DanielleTranscribeNote","DanielleSubtitles","DanielleTutorialCard"};
+constexpr unsigned kTextMovies=sizeof(kTextMovieNames)/sizeof(kTextMovieNames[0]);
+LatestSnapshot<Identity> seenText[kTextMovies];
+std::atomic<unsigned long long> textIdentified[kTextMovies]{};
+Capture textCapture;
+std::atomic<bool> textFault{false};
+std::atomic<unsigned long long> textCaptured{0},textRefused{0};
+
+// Every Flash element's render proxy and name, kept for reference so it
+// can say which movie it drew into the held eye (DualOverlayReport).
+struct Named {std::uintptr_t proxy=0;char name[40]{};};
+std::mutex namedMutex;
+std::array<Named,24> named{};
+std::size_t namedNext=0;
+void CopyName(char (&out)[40],const char* name) {
+    std::size_t i=0;for(;i+1<sizeof(out)&&name[i];++i)out[i]=name[i];out[i]=0;
+}
+void Remember(std::uintptr_t proxy,const char* name) {
+    std::lock_guard lock(namedMutex);
+    for(auto& entry:named)if(entry.proxy==proxy){CopyName(entry.name,name);return;}
+    auto& entry=named[namedNext++%named.size()];
+    entry.proxy=proxy;CopyName(entry.name,name);
+}
+std::string NameOf(std::uintptr_t proxy) {
+    std::lock_guard lock(namedMutex);
+    for(const auto& entry:named)if(entry.proxy==proxy)return entry.name;
+    return "unnamed";
+}
+
+// A movie left in the scene, drawn once more into the held first eye
+// inside its one native callback. Set by RedrawIntoHeldEye for
+// the duration of that callback and consumed by StereoDisplay.
+thread_local void* redrawRoot=nullptr;
+thread_local ID3D11DeviceContext* redrawContext=nullptr;
+thread_local ID3D11RenderTargetView* redrawFrom=nullptr;
+thread_local ID3D11DepthStencilView* redrawFromDepth=nullptr;
+thread_local ID3D11RenderTargetView* redrawTarget=nullptr;
+thread_local ID3D11DepthStencilView* redrawDepthView=nullptr;
+thread_local bool redrawn=false;
+Capture redrawDepth; // the stencil the native draw started from; depth fields only
 Capture inventoryRight;
 Capture nativeWrist;
 std::atomic<std::uint64_t> wristRequest{0};
@@ -85,8 +135,11 @@ using SpriteDisplay=void(__fastcall*)(void*,void*);
 SpriteDisplay originalSpriteDisplay=nullptr;
 bool spriteInstalled=false;
 thread_local hud::Isolation<NativeHudApi>* wristFilter=nullptr;
+bool FaceExcludes(const void* sprite);
+bool DrawStatusGuarded(void* root);
 void __fastcall FilterStatusSprite(void* sprite,void* context){
     if(wristFilter&&wristFilter->Excludes(sprite))return;
+    if(!wristFilter&&FaceExcludes(sprite))return;
     if(wristFilter)wristFilter->Observe(sprite);
     originalSpriteDisplay(sprite,context);
 }
@@ -116,6 +169,146 @@ thread_local ID3D11RenderTargetView* activeTarget=nullptr;
 thread_local ID3D11DepthStencilView* activeDepthView=nullptr;
 
 bool WantWrist(){return !wristFault.load()&&FreshSample(MonotonicNanoseconds(),wristRequest.load());}
+
+// hud.var / hud.setvar: read or write ActionScript properties of the gameplay
+// HUD, run inside its display callback (the native locks Resolve also runs in).
+// SetVariable is the movie root's slot +0x80 (0x18ABCC0): path, value, type;
+// its value converter is 0x183F4F0, the pair of GetVariable's 0x183F680.
+struct VarOp {std::string path;bool set=false;double value=0;};
+std::mutex varMutex;
+std::vector<VarOp> varPending;
+std::string varLast="none";
+std::atomic<bool> varWanted{false};
+thread_local void* hudRoot=nullptr;
+using SetVar=bool(__fastcall*)(void*,const char*,const NativeHudValue*,int);
+bool SetNumberGuarded(void* root,std::uintptr_t base,const char* path,double value){
+    __try {
+        NativeHudValue v{};v.type=3;std::memcpy(&v.payload,&value,sizeof(value));
+        return reinterpret_cast<SetVar>(base+0x18ABCC0)(root,path,&v,0);
+    } __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+}
+bool GetValueGuarded(void* root,std::uintptr_t base,const char* path,NativeHudValue& v){
+    __try {return reinterpret_cast<NativeHudApi::Get>(base+0x18ABE10)(root,&v,path);}
+    __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+}
+std::string DescribeValue(const NativeHudValue& v){
+    char b[96];const unsigned t=v.type&0x3F;
+    double d=0;std::memcpy(&d,&v.payload,sizeof(d));
+    if(t==3)std::snprintf(b,sizeof(b),"number %.4f",d);
+    else if(t==2)std::snprintf(b,sizeof(b),"bool %u",static_cast<unsigned>(v.payload&0xFF));
+    else if(t==8)std::snprintf(b,sizeof(b),"object 0x%llX",static_cast<unsigned long long>(v.payload));
+    else std::snprintf(b,sizeof(b),"type 0x%X",v.type);
+    return b;
+}
+bool SetValueGuarded(void* root,std::uintptr_t base,const char* path,const NativeHudValue& v){
+    __try {return reinterpret_cast<SetVar>(base+0x18ABCC0)(root,path,&v,0);}
+    __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+}
+
+// **The wrist's own presentation of the native status, for its replay only.**
+// The quadrant is authored tilted (-15/-15 deg, Health's init) at half scale,
+// and the game closes the meters (_visible false) a few seconds after a change
+// when "player state" is dynamic -- the profile default here. For the one
+// filtered replay the wrist draws, the quadrant is flattened, enlarged and the
+// meters shown; every value is read first and written back right after, so the
+// gameplay HUD and the movie's own logic never see the difference.
+constexpr const char* kStatusOverride[]={
+    "_root.safe.quadrant_SW._xrotation","_root.safe.quadrant_SW._yrotation",
+    "_root.safe.quadrant_SW._xscale","_root.safe.quadrant_SW._yscale",
+    "_root.safe.quadrant_SW.health_mc._visible","_root.safe.quadrant_SW.psi_mc._visible",
+    "_root.safe.quadrant_SW.armor_mc._visible","_root.safe.quadrant_SW.bg_mc._visible",
+    "_root.safe.quadrant_SW.bg2_mc._visible","_root.safe.quadrant_SW.line_mc._visible"};
+constexpr std::size_t kStatusOverrides=sizeof(kStatusOverride)/sizeof(kStatusOverride[0]);
+std::atomic<unsigned long long> overrideApplied{0},overrideRefused{0};
+struct StatusOverride {
+    std::array<NativeHudValue,kStatusOverrides> original{};
+    std::size_t written=0;
+    // `background`: keep the meters' own backdrop and top line (bg_mc, bg2_mc,
+    // line_mc); off, the hologram's glass stands in for them and the framing
+    // closes on the meters.
+    bool Apply(void* root,std::uintptr_t base,float scale,bool background){
+        for(std::size_t i=0;i<kStatusOverrides;++i){
+            NativeHudValue v{};
+            if(!GetValueGuarded(root,base,kStatusOverride[i],v))return false;
+            // Plain numbers and booleans only: nothing to release, safe to replay.
+            if(v.type!=(i<4?3u:2u))return false;
+            original[i]=v;
+        }
+        for(std::size_t i=0;i<kStatusOverrides;++i){
+            NativeHudValue v{};
+            if(i<2){v.type=3;const double zero=0;std::memcpy(&v.payload,&zero,sizeof(zero));}
+            else if(i<4){v.type=3;double s=0;std::memcpy(&s,&original[i].payload,sizeof(s));s*=scale;std::memcpy(&v.payload,&s,sizeof(s));}
+            else {v.type=2;v.payload=i<7||background?1:0;}
+            if(!SetValueGuarded(root,base,kStatusOverride[i],v))return false;
+            written=i+1;
+        }
+        return true;
+    }
+    void Restore(void* root,std::uintptr_t base){
+        for(std::size_t i=written;i-->0;)SetValueGuarded(root,base,kStatusOverride[i],original[i]);
+        written=0;
+    }
+};
+
+// **The status meters leave the face** when the wrist shows them (wrist.face):
+// excluded from the gameplay HUD's normal draw, the rest of it unchanged.
+constexpr const char* kFaceExcluded[]={
+    "_root.safe.quadrant_SW.health_mc","_root.safe.quadrant_SW.psi_mc","_root.safe.quadrant_SW.armor_mc",
+    "_root.safe.quadrant_SW.bg_mc","_root.safe.quadrant_SW.bg2_mc","_root.safe.quadrant_SW.line_mc",
+    "_root.safe.quadrant_SW.status_effects"};
+constexpr std::size_t kFaceExclusions=sizeof(kFaceExcluded)/sizeof(kFaceExcluded[0]);
+struct FaceFilter {
+    std::array<NativeHudValue,kFaceExclusions> values{};
+    std::array<void*,kFaceExclusions> objects{};
+    std::size_t count=0;
+    bool Excludes(const void* sprite)const{
+        for(std::size_t i=0;i<count;++i)if(objects[i]==sprite)return true;
+        return false;
+    }
+};
+thread_local FaceFilter* faceFilter=nullptr;
+std::atomic<unsigned long long> faceFrames{0},faceRefused{0};
+bool FaceExcludes(const void* sprite){return faceFilter&&faceFilter->Excludes(sprite);}
+// The normal draw with the status meters left out. Resolved for this one draw
+// (handles never outlive it) and released whatever happens; if any path does
+// not resolve, the HUD draws unchanged.
+bool DrawWithoutStatus(void* root){
+    NativeHudApi api{root,reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"))};
+    FaceFilter filter{};
+    bool resolved=api.Valid();
+    for(std::size_t i=0;resolved&&i<kFaceExclusions;++i){
+        void* object=nullptr;
+        resolved=api.Resolve(kFaceExcluded[i],filter.values[i],object)&&object;
+        filter.objects[i]=object;filter.count=i+1;
+    }
+    bool drawn=false;
+    if(resolved){
+        faceFilter=&filter;
+        drawn=DrawStatusGuarded(root);
+        faceFilter=nullptr;
+        faceFrames.fetch_add(1,std::memory_order_relaxed);
+    } else faceRefused.fetch_add(1,std::memory_order_relaxed);
+    for(std::size_t i=0;i<filter.count;++i)api.Release(filter.values[i]);
+    (void)drawn;
+    return resolved; // drawn, or faulted inside the draw: either way not to be redrawn
+}
+
+void RunVarOps(void* root){
+    std::vector<VarOp> ops;
+    {std::lock_guard lock(varMutex);ops.swap(varPending);varWanted=false;}
+    NativeHudApi api{root,reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"))};
+    std::string out;
+    if(!api.Valid())out="root_invalid";
+    else for(const auto& op:ops){
+        out+=op.path+"=";
+        if(op.set){out+=SetNumberGuarded(root,api.base,op.path.c_str(),op.value)?"set ":"set_failed ";}
+        NativeHudValue v{};
+        if(GetValueGuarded(root,api.base,op.path.c_str(),v)){out+=DescribeValue(v);api.Release(v);}
+        else out+="unresolved";
+        out+="; ";
+    }
+    std::lock_guard lock(varMutex);varLast=out;
+}
 bool DrawStatusGuarded(void* root){
     __try {originalDisplay(root);return true;}
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
@@ -131,9 +324,13 @@ void CaptureNativeStatus(void* root){
         activeTarget=nativeWrist.target.Get();activeDepthView=nativeWrist.depthView.Get();
         const float clear[4]{};activeContext->ClearRenderTargetView(activeTarget,clear);
         originalTargets(activeContext,1,&activeTarget,activeDepthView);
+        StatusOverride layout;
+        if(layout.Apply(root,api.base,WristNativeScalePercent()*.01f,WristNativeBackground()))overrideApplied.fetch_add(1,std::memory_order_relaxed);
+        else {layout.Restore(root,api.base);overrideRefused.fetch_add(1,std::memory_order_relaxed);}
         wristFilter=&isolation;
         produced=DrawStatusGuarded(root);
         wristFilter=nullptr;
+        layout.Restore(root,api.base);
         // Require traversal below the common SW ancestor; cached ancestors
         // could otherwise contribute pixels without passing the sprite filter.
         coverage=isolation.Complete();
@@ -173,12 +370,35 @@ void __fastcall StereoMatrix(void* renderer,const void* source,float* output) {
         stereoMatrices.fetch_add(1,std::memory_order_relaxed);
     } else stereoRefused.fetch_add(1,std::memory_order_relaxed);
 }
+// The native draw, into the frame being finished (the second eye), then
+// the same movie, same frame, into the held first eye -- starting from the
+// stencil the native draw started from, which Flash clips its viewport with.
+void RedrawDisplay(void* root) {
+    if(redrawFromDepth && redrawDepthView) {
+        ComPtr<ID3D11Resource> source;redrawFromDepth->GetResource(&source);
+        redrawContext->CopyResource(redrawDepth.depth.Get(),source.Get());
+    }
+    originalDisplay(root);
+    activeContext=redrawContext;originalDestination=redrawFrom;originalDepth=redrawFromDepth;
+    activeTarget=redrawTarget;activeDepthView=redrawDepthView;
+    originalTargets(redrawContext,1,&activeTarget,activeDepthView);
+    originalDisplay(root);
+    activeContext=nullptr;originalDestination=nullptr;originalDepth=nullptr;
+    activeTarget=nullptr;activeDepthView=nullptr;
+    originalTargets(redrawContext,1,&redrawFrom,redrawFromDepth);
+    redrawn=true;
+}
 void __fastcall StereoDisplay(void* root) {
+    if(root==hudRoot && varWanted.load())RunVarOps(root);
+    if(redrawRoot && root==redrawRoot){RedrawDisplay(root);return;}
+    const bool face=root==hudRoot && activeContext && spriteInstalled && WristMovesStatusOffFace();
     if(root==wristRoot && activeContext){
         // First preserve the normal draw. Replay stays inside the ONE native
         // proxy callback and its locks; no extra Advance or player release.
-        originalDisplay(root);CaptureNativeStatus(root);return;
+        if(!(face&&DrawWithoutStatus(root)))originalDisplay(root);
+        CaptureNativeStatus(root);return;
     }
+    if(face){if(!DrawWithoutStatus(root))originalDisplay(root);return;}
     if(root!=stereoRoot || !activeContext || stereoEye>=0) {originalDisplay(root);return;}
     // Entered from the ONE native Flash callback, inside both native locks.
     // Each Display builds/destroys its own draw context. No Advance, input,
@@ -197,34 +417,44 @@ void __fastcall StereoDisplay(void* root) {
     stereoProduced=true;
 }
 
-bool Identify(void* element,std::uintptr_t base,std::uintptr_t* proxy,Movie* movie) {
+// Any Flash UI element: its name, and its player's render proxy. 0 when it is
+// not one; 1 with the proxy; 2 when the proxy's vtable is not the expected one,
+// with `*proxy` holding that vtable's RVA instead.
+int Inspect(void* element,std::uintptr_t base,std::uintptr_t* proxy,char (&name)[40]) {
     __try {
         auto e=static_cast<std::uint8_t*>(element);
-        if(!e || *reinterpret_cast<std::uintptr_t*>(e)!=base+0x1CAB358)return false;
-        const char* name=*reinterpret_cast<const char**>(e+0x30);
-        if(!name)return false;
-        unsigned which=kMovies;
-        for(unsigned i=0;i<kMovies;++i)if(std::strcmp(name,kMovieNames[i])==0){which=i;break;}
-        if(which==kMovies)return false;
+        if(!e || *reinterpret_cast<std::uintptr_t*>(e)!=base+0x1CAB358)return 0;
+        const char* text=*reinterpret_cast<const char**>(e+0x30);
+        if(!text)return 0;
+        std::size_t i=0;for(;i+1<sizeof(name)&&text[i];++i)name[i]=text[i];name[i]=0;
         auto p=*reinterpret_cast<std::uintptr_t*>(e+0x58);
-        if(!p || *reinterpret_cast<std::uintptr_t*>(p)!=base+0x1DB56D8)return false;
+        if(!p || *reinterpret_cast<std::uintptr_t*>(p)!=base+0x1DB56D8)return 0;
         const auto proxyVtable=*reinterpret_cast<std::uintptr_t*>(p+8);
-        if(proxyVtable!=base+0x1DB58B8) {
-            // Fail closed, but say what was actually there. Recorded as an RVA
-            // so it can be read straight against the module.
-            proxyMismatch[which].store(proxyVtable>base?proxyVtable-base:proxyVtable,
-                                       std::memory_order_relaxed);
-            return false;
-        }
-        *proxy=p+8;*movie=static_cast<Movie>(which);
-        identified[which].fetch_add(1,std::memory_order_relaxed);
-        return true;
-    } __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
+        if(proxyVtable!=base+0x1DB58B8){*proxy=proxyVtable>base?proxyVtable-base:proxyVtable;return 2;}
+        *proxy=p+8;
+        return 1;
+    } __except(EXCEPTION_EXECUTE_HANDLER) {return 0;}
 }
 void __fastcall ObserveElement(void* element) {
-    std::uintptr_t proxy=0;Movie movie=Movie::hud;
-    if(Identify(element,reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll")),&proxy,&movie))
-        seen[static_cast<unsigned>(movie)].Publish({proxy,MonotonicNanoseconds()});
+    std::uintptr_t proxy=0;char name[40]{};
+    const int found=Inspect(element,reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll")),&proxy,name);
+    if(found!=0) {
+        const auto now=MonotonicNanoseconds();
+        for(unsigned i=0;i<kMovies;++i) {
+            if(std::strcmp(name,kMovieNames[i])!=0)continue;
+            // Fail closed, but say what was actually there. Recorded as an RVA
+            // so it can be read straight against the module.
+            if(found==2)proxyMismatch[i].store(proxy,std::memory_order_relaxed);
+            else {identified[i].fetch_add(1,std::memory_order_relaxed);seen[i].Publish({proxy,now});}
+        }
+        if(found==1) {
+            for(unsigned i=0;i<kTextMovies;++i) {
+                if(std::strcmp(name,kTextMovieNames[i])!=0)continue;
+                textIdentified[i].fetch_add(1,std::memory_order_relaxed);seenText[i].Publish({proxy,now});
+            }
+            Remember(proxy,name);
+        }
+    }
     originalElement(element);
 }
 void STDMETHODCALLTYPE RedirectTargets(ID3D11DeviceContext* context,UINT count,
@@ -274,7 +504,8 @@ bool EnsureTexture(ID3D11Device* device,ID3D11RenderTargetView* original,
 // while it is not. Sharing one gate is what kept the inventory uncapturable.
 bool WantMovie(Movie movie) {
     switch(movie) {
-        case Movie::hud: return (enabled.load()||WantWrist()) && HudGameplayInputAllowed();
+        case Movie::hud: return (enabled.load()||WantWrist()||(spriteInstalled&&WristMovesStatusOffFace())) &&
+                                HudGameplayInputAllowed();
         case Movie::pda: return inventoryCapture.load(std::memory_order_acquire) &&
                                 HudInventoryIsOpen();
     }
@@ -286,11 +517,99 @@ void* InventoryRoot(void* proxy,std::uintptr_t base) {
         return root && *reinterpret_cast<std::uintptr_t*>(root)==base+0x1EB4B60?root:nullptr;
     } __except(EXCEPTION_EXECUTE_HANDLER) {return nullptr;}
 }
+bool EnsureDepthCopy(ID3D11Device* device,ID3D11DepthStencilView* ds,Capture& capture) {
+    ComPtr<ID3D11Resource> resource;ds->GetResource(&resource);
+    ComPtr<ID3D11Texture2D> texture;if(FAILED(resource.As(&texture)))return false;
+    D3D11_TEXTURE2D_DESC d{},previous{};texture->GetDesc(&d);if(capture.depth)capture.depth->GetDesc(&previous);
+    if(d.SampleDesc.Count!=1)return false;
+    if(!capture.depth || previous.Width!=d.Width || previous.Height!=d.Height || previous.Format!=d.Format) {
+        capture.depth.Reset();capture.depthView.Reset();
+        D3D11_DEPTH_STENCIL_VIEW_DESC view{};ds->GetDesc(&view);
+        if(FAILED(device->CreateTexture2D(&d,nullptr,&capture.depth)) ||
+           FAILED(device->CreateDepthStencilView(capture.depth.Get(),&view,&capture.depthView))) {
+            capture.depth.Reset();capture.depthView.Reset();return false;
+        }
+    }
+    return true;
+}
+struct NativeTargets {
+    ComPtr<ID3D11DeviceContext> context;ID3D11Device* device=nullptr;
+    std::array<ID3D11RenderTargetView*,8> saved{};ID3D11DepthStencilView* ds=nullptr;
+    bool single=false;
+    NativeTargets() {
+        const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"));
+        auto renderer=*reinterpret_cast<std::uintptr_t*>(base+engine::RendererLayout::singletonPointerRva);
+        device=*reinterpret_cast<ID3D11Device**>(renderer+engine::RendererLayout::device);
+        device->GetImmediateContext(&context);
+        context->OMGetRenderTargets(8,saved.data(),&ds);
+        single=saved[0]!=nullptr;for(unsigned i=1;i<8;++i)single=single && !saved[i];
+    }
+    ~NativeTargets(){for(auto p:saved)if(p)p->Release();if(ds)ds->Release();}
+    NativeTargets(const NativeTargets&)=delete;
+    NativeTargets& operator=(const NativeTargets&)=delete;
+};
+// **The text panel's capture.** Each text movie's one native callback, redirected
+// into the shared text texture. The first movie of a frame clears it; the
+// frame-boundary drain (TextLayerTexture) is what makes the next frame's first
+// movie first again. False leaves the movie to draw natively.
+bool CaptureText(void* proxy,bool release,std::uintptr_t address,std::uint64_t now) {
+    if(!enabled.load() || textFault.load() || activeContext || XrSessionStatusValue()!=1 ||
+       !HudGameplayInputAllowed())return false;
+    bool text=false;
+    for(auto& s:seenText){Identity id{};if(s.TryRead(id) && id.proxy==address && FreshSample(now,id.stamp)){text=true;break;}}
+    if(!text)return false;
+    NativeTargets native;
+    if(!native.single || !EnsureTexture(native.device,native.saved[0],native.ds,textCapture)) {
+        textRefused.fetch_add(1,std::memory_order_relaxed);return false;
+    }
+    auto* context=native.context.Get();
+    if(!textCapture.stamp || textCapture.thread!=GetCurrentThreadId()) {
+        const float clear[4]{};context->ClearRenderTargetView(textCapture.target.Get(),clear);
+    }
+    if(native.ds) {ComPtr<ID3D11Resource> source;native.ds->GetResource(&source);context->CopyResource(textCapture.depth.Get(),source.Get());}
+    originalDestination=native.saved[0];originalDepth=native.ds;activeContext=context;
+    activeTarget=textCapture.target.Get();activeDepthView=textCapture.depthView.Get();
+    originalTargets(context,1,&activeTarget,activeDepthView);
+    originalFlash(proxy,release);
+    activeContext=nullptr;originalDestination=nullptr;originalDepth=nullptr;
+    activeTarget=nullptr;activeDepthView=nullptr;
+    originalTargets(context,8,native.saved.data(),native.ds);
+    textCapture.stamp=MonotonicNanoseconds();textCapture.thread=GetCurrentThreadId();
+    textCaptured.fetch_add(1,std::memory_order_relaxed);
+    return true;
+}
+// A movie still drawing into the frame's backbuffer while a both-eyes frame
+// holds its first eye: its one native callback runs with the movie marked,
+// and StereoDisplay draws it twice -- natively, then into the held eye.
+// The stereo inventory's pattern: no extra outer callback, no extra Advance.
+// False leaves the movie to draw natively (and says why in the census).
+bool RedrawIntoHeldEye(void* proxy,bool release,std::uintptr_t address) {
+    if(!DualOverlayRedrawEnabled() || !DualOverlayWindowOpen() || activeContext || !displayInstalled)return false;
+    NativeTargets native;
+    const char* refusal=nullptr;
+    ID3D11RenderTargetView* held=native.single?HeldFirstEyeTarget(native.saved[0],&refusal):nullptr;
+    if(!native.single)refusal="multiple_targets";
+    void* root=held?InventoryRoot(proxy,reinterpret_cast<std::uintptr_t>(GetModuleHandleW(L"PreyDll.dll"))):nullptr;
+    if(held && !root)refusal="movie_root";
+    if(root && native.ds && !EnsureDepthCopy(native.device,native.ds,redrawDepth)){root=nullptr;refusal="depth_copy";}
+    if(!root) {NoteFlashOverlay(NameOf(address).c_str(),false,refusal);return false;}
+    redrawRoot=root;redrawContext=native.context.Get();redrawFrom=native.saved[0];redrawFromDepth=native.ds;
+    redrawTarget=held;redrawDepthView=native.ds?redrawDepth.depthView.Get():nullptr;redrawn=false;
+    originalFlash(proxy,release);
+    const bool drew=redrawn;
+    redrawRoot=nullptr;redrawContext=nullptr;redrawFrom=nullptr;redrawFromDepth=nullptr;
+    redrawTarget=nullptr;redrawDepthView=nullptr;redrawn=false;
+    // As the captures do: the callback ends with the targets it was entered with.
+    originalTargets(native.context.Get(),8,native.saved.data(),native.ds);
+    NoteFlashOverlay(NameOf(address).c_str(),drew,drew?nullptr:"no_display");
+    return true;
+}
 void __fastcall CaptureFlash(void* proxy,bool release) {
     const auto address=reinterpret_cast<std::uintptr_t>(proxy);
     const auto now=MonotonicNanoseconds();
     unsigned which=kMovies;
-    if((enabled.load() || inventoryCapture.load() || WantWrist()) && XrSessionStatusValue()==1 && !activeContext) {
+    if((enabled.load() || inventoryCapture.load() || WantWrist() || (spriteInstalled&&WristMovesStatusOffFace())) &&
+       XrSessionStatusValue()==1 && !activeContext) {
         for(unsigned i=0;i<kMovies;++i) {
             Identity id{};
             if(seen[i].TryRead(id) && id.proxy==address && FreshSample(now,id.stamp)) {
@@ -301,7 +620,10 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
             }
         }
     }
-    if(which==kMovies) {originalFlash(proxy,release);return;}
+    if(which==kMovies) {
+        if(CaptureText(proxy,release,address,now) || RedrawIntoHeldEye(proxy,release,address))return;
+        originalFlash(proxy,release);return;
+    }
     InventoryConsumer consumer{};
     if(which==static_cast<unsigned>(Movie::pda) &&
        (!inventoryConsumer.TryRead(consumer) || !FreshSample(now,consumer.stamp))) {
@@ -325,6 +647,7 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
         }
         if(!wristRoot)++wristRefused;
     }
+    if(ready&&which==0)hudRoot=InventoryRoot(proxy,base);
     if(ready && which==static_cast<unsigned>(Movie::pda)) {
         D3D11_TEXTURE2D_DESC d{};capture.texture->GetDesc(&d);
         ready=InventoryTextureCompatible(consumer.description,d);
@@ -348,7 +671,7 @@ void __fastcall CaptureFlash(void* proxy,bool release) {
     } else refused.fetch_add(1);
     // Exactly one outer call. The opt-in Display hook draws inside its locks.
     originalFlash(proxy,release);
-    stereoRoot=nullptr;wristRoot=nullptr;
+    stereoRoot=nullptr;wristRoot=nullptr;hudRoot=nullptr;
     if(ready) {
         activeContext=nullptr;originalDestination=nullptr;originalDepth=nullptr;
         activeTarget=nullptr;activeDepthView=nullptr;
@@ -429,6 +752,7 @@ DWORD SetHudLayerEnabled(unsigned value) {
     if(value>1)return 1;
     std::lock_guard lock(installMutex);
     if(value && !Install())return 2;
+    if(value)textFault=false; // a refused text panel tries again with the layer
     enabled.store(value!=0);return 0;
 }
 bool HudLayerEnabled(){return enabled.load();}
@@ -461,7 +785,9 @@ std::string HudLayerReport(){
         " inventoryLayerFrames="+std::to_string(InventoryLayerFrameCount())+
         " refused="+std::to_string(refused.load());
     out+=" nativeWrist={captured="+std::to_string(wristCaptured.load())+" refused="+
-        std::to_string(wristRefused.load())+" fault="+std::to_string(wristFault.load())+"}";
+        std::to_string(wristRefused.load())+" fault="+std::to_string(wristFault.load())+
+        " layout="+std::to_string(overrideApplied.load())+"/"+std::to_string(overrideRefused.load())+
+        " faceFrames="+std::to_string(faceFrames.load())+" faceRefused="+std::to_string(faceRefused.load())+"}";
     for(unsigned i=0;i<kMovies;++i) {
         out+=std::string(" ")+kMovieNames[i]+"={identified="+std::to_string(identified[i].load())+
              " captured="+std::to_string(captured[i].load());
@@ -470,6 +796,10 @@ std::string HudLayerReport(){
             static_cast<unsigned long long>(mismatch));return std::string(b);}();
         out+="}";
     }
+    out+=" text={captured="+std::to_string(textCaptured.load())+" refused="+std::to_string(textRefused.load())+
+         " fault="+std::to_string(textFault.load());
+    for(unsigned i=0;i<kTextMovies;++i)out+=std::string(" ")+kTextMovieNames[i]+"="+std::to_string(textIdentified[i].load());
+    out+="}";
     return out;
 }
 ID3D11Texture2D* HudLayerTexture(){
@@ -477,12 +807,41 @@ ID3D11Texture2D* HudLayerTexture(){
     captures[static_cast<unsigned>(Movie::hud)].stamp=0;
     return texture;
 }
+ID3D11Texture2D* TextLayerTexture(){
+    const bool fresh=textCapture.thread==GetCurrentThreadId() && FreshSample(MonotonicNanoseconds(),textCapture.stamp);
+    textCapture.stamp=0; // the next frame's first text movie clears it
+    return fresh && !textFault.load()?textCapture.texture.Get():nullptr;
+}
+void RefuseTextLayer(const char* reason){
+    if(!textFault.exchange(true))lifecycle::Log(std::string("preyvr_hud_layer text_disabled reason=")+reason);
+}
+bool EnsureOverlayHooks(){
+    std::lock_guard lock(installMutex);
+    return InstallDisplay();
+}
+bool DrawRedirected(ID3D11DeviceContext* context,ID3D11RenderTargetView* from,ID3D11DepthStencilView* fromDepth,
+                    ID3D11RenderTargetView* to,ID3D11DepthStencilView* toDepth,void(*draw)(void*),void* argument){
+    // Never inside a capture already in flight: its substitution owns the state.
+    if(!originalTargets || activeContext || !context || !from || !to)return false;
+    activeContext=context;originalDestination=from;originalDepth=fromDepth;activeTarget=to;activeDepthView=toDepth;
+    originalTargets(context,1,&to,toDepth);
+    draw(argument);
+    activeContext=nullptr;originalDestination=nullptr;originalDepth=nullptr;activeTarget=nullptr;activeDepthView=nullptr;
+    originalTargets(context,1,&from,fromDepth);
+    return true;
+}
 void RequestNativeWristCapture(bool active){
-    if(!active){wristRequest=0;return;}
+    // The face filter rides the same sprite hook, so it is installed as soon as
+    // the wrist owns the status in gameplay, not only once the card is first
+    // looked at. Not before gameplay: a refused install latches the fault for
+    // the whole XR session, and the module gates may still be settling.
+    const bool install=active||(WristMovesStatusOffFace()&&HudGameplayInputAllowed());
+    if(!active&&(wristInstallAttempted||!install)){wristRequest=0;return;}
     if(!wristInstallAttempted){
         std::lock_guard lock(installMutex);wristInstallAttempted=true;
         if(!InstallStatus()){wristFault=true;lifecycle::Log("preyvr_native_wrist install=refused");}
     }
+    if(!active){wristRequest=0;return;}
     if(!wristFault.load())wristRequest=MonotonicNanoseconds();
 }
 ID3D11Texture2D* NativeWristLayerTexture(){
@@ -490,6 +849,14 @@ ID3D11Texture2D* NativeWristLayerTexture(){
     nativeWrist.stamp=0;
     return fresh&&!wristFault.load()?nativeWrist.texture.Get():nullptr;
 }
+DWORD QueueHudVariable(const std::string& path,bool set,double value){
+    if(path.empty()||path.size()>200||(set&&!std::isfinite(value)))return 1;
+    {std::lock_guard lock(installMutex);if(!InstallDisplay())return 2;}
+    std::lock_guard lock(varMutex);
+    if(varPending.size()>=16)return 3;
+    varPending.push_back({path,set,value});varWanted=true;return 0;
+}
+std::string HudVariableReport(){std::lock_guard lock(varMutex);return varLast;}
 void ResetNativeWristCapture(){
     wristRequest=0;nativeWrist={};wristFault=false;wristInstallAttempted=false;
 }

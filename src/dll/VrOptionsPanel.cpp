@@ -26,7 +26,7 @@ std::vector<std::uint8_t> DrawVrOptions(const options::Values& values,unsigned p
  for(unsigned p=0;p<Pages;++p){
   const int span=1288/Pages,x=56+static_cast<int>(p)*span;
   fill(x,174,span-8,72,p==page?amber:RGB(27,37,45));
-  text(x+12,194,span-24,45,PageName(p),Pages>7?23:Pages>5?26:30,p==page?bg:muted,true);
+  text(x+12,194,span-24,45,PageName(p),Pages>9?17:Pages>8?21:Pages>7?23:Pages>5?26:30,p==page?bg:muted,true);
  }
  for(unsigned r=0;r<Rows;++r){
   const int id=Item(page,r);
