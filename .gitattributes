@@ -65,3 +65,11 @@ tools/re/verify_twohand_no_alias.py text eol=lf
 # Static carry exports and Windows UI build logs retain their original bytes.
 docs/evidence/physical-grab-2026-10-04/** -text whitespace=cr-at-eol
 docs/evidence/posture-slot-feedback-2026-10-04/** -text whitespace=cr-at-eol
+
+# The robustness receipt hashes these sources as stored in Git. Keep checkout
+# line endings stable so a fresh Windows checkout validates the same evidence.
+docs/INTEGRATION-ROBUSTNESS-FIXES-2026-10-23.md text eol=lf
+tests/CarryRuntimeTests.cpp text eol=lf
+tests/GrenadeRuntimeTests.cpp text eol=lf
+tests/NativeFovBlitTests.cpp text eol=lf
+receipts/20261023-robustness-fixes.json text eol=lf
