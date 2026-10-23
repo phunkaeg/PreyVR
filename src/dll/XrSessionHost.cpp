@@ -21,6 +21,7 @@
 #include "BodyEquipment.h"
 #include "SlotFeedback.h"
 #include "NativeWristTexture.h"
+#include "NativeFovBlit.h"
 #include "WristLane.h"
 #include "AimTakeover.h"
 #include "DebugOverlay.h"
@@ -179,6 +180,7 @@ struct Host {
     bool loggedSizeMismatch = false;
     std::uint32_t width = 0;
     std::uint32_t height = 0;
+    NativeFovBlit nativeFovBlit;
     bool sessionBegun = false;
     std::string runtimeName;
     unsigned long long lastKickMs = 0;
@@ -261,7 +263,8 @@ std::atomic<bool> gMonoView{false};
 // fovMutable = false lays the image across the eye's native field whatever is declared. Meta's PC runtime is one
 // (Quest 3, 2026-10-16: "always double, near and far"; reproduced headless with the mock in fovMutable=0 mode: 76%
 // of patches divergent). Declaring the native field is right on every runtime; NativeFovPlacement says where the
-// render sits inside it, as a copy at the render's own density. Off = the previous behaviour, declaring Prey's frustum.
+// render sits inside it, copying at native density when it fits and resampling
+// otherwise. Off permits the old declaration only on mutable-FOV runtimes.
 std::atomic<bool> gNativeFovPlacement{true};
 
 // Sends each eye's image to the other eye's socket.
@@ -762,6 +765,7 @@ bool CreateSessionAndSwapchain()
 
 void Teardown()
 {
+    gHost.nativeFovBlit=NativeFovBlit{};
     gResolution.Clear();
     gOptics.Clear();
     SetHudLayerPresentation(false);
@@ -1059,16 +1063,17 @@ ID3D11RenderTargetView* SliceView(std::uint32_t image, std::uint32_t slice)
 // Copies `source` (rendered through `rendered`) into one slice of the swapchain image and records what that slice
 // must declare (gHost.placedFov/placedRect). With xr.nativefov on and the runtime's field known, the slice declares
 // the native field and the render is placed inside it (NativeFovPlacement); what the render does not reach is
-// cleared to black. Otherwise, or if the native field does not fit, the whole image is copied and declared as
-// rendered -- the previous behaviour, logged once because on an immutable-fov runtime it is the double image.
-void PlaceEye(ID3D11DeviceContext* context, std::uint32_t imageIndex, std::uint32_t slice, ID3D11Texture2D* source,
+// cleared to black. A narrower render is resampled into the native field at the
+// available density. Remap failures suppress the projection, never misdeclare it.
+bool PlaceEye(ID3D11DeviceContext* context, std::uint32_t imageIndex, std::uint32_t slice, ID3D11Texture2D* source,
               const XrFovf& rendered, const XrFovf& native, bool nativeKnown)
 {
     D3D11_TEXTURE2D_DESC desc{};
     source->GetDesc(&desc);
     ID3D11Texture2D* target = gHost.images[imageIndex];
     const UINT subresource = D3D11CalcSubresource(0, slice, 1);
-    if (gNativeFovPlacement.load(std::memory_order_acquire) && nativeKnown) {
+    if (gNativeFovPlacement.load(std::memory_order_acquire) || !gHost.fovMutable) {
+        if(!nativeKnown)return false;
         const auto tangents = [](const XrFovf& f) {
             return preyvr::xr::Tangents{std::tan(f.angleLeft), std::tan(f.angleRight), std::tan(f.angleUp),
                                         std::tan(f.angleDown)};
@@ -1081,7 +1086,7 @@ void PlaceEye(ID3D11DeviceContext* context, std::uint32_t imageIndex, std::uint3
                 if (ID3D11RenderTargetView* view = SliceView(imageIndex, slice)) {
                     const float black[4] = {0, 0, 0, 1};
                     context->ClearRenderTargetView(view, black);
-                }
+                } else return false;
             }
             const D3D11_BOX box{static_cast<UINT>(p->srcX), static_cast<UINT>(p->srcY), 0,
                                 static_cast<UINT>(p->srcX + p->copyW), static_cast<UINT>(p->srcY + p->copyH), 1};
@@ -1099,18 +1104,28 @@ void PlaceEye(ID3D11DeviceContext* context, std::uint32_t imageIndex, std::uint3
                      << " fovMutable=" << (gHost.fovMutable ? 1 : 0);
                 Log(line.str());
             }
-            return;
+            return true;
+        }
+        if(auto image=gHost.nativeFovBlit.Remap(context,source,tangents(rendered),tangents(native),gHost.width,gHost.height)) {
+            context->CopySubresourceRegion(target,subresource,0,0,0,image,0,nullptr);
+            gHost.placedFov[slice]=native;
+            gHost.placedRect[slice]={{0,0},{static_cast<std::int32_t>(gHost.width),static_cast<std::int32_t>(gHost.height)}};
+            static bool loggedResample=false;
+            if(!loggedResample){loggedResample=true;Log("result=0 detail=native_fov_resample native_field_retained=1");}
+            return true;
         }
         static bool refusedLogged = false;
         if (!refusedLogged) {
             refusedLogged = true;
             Log(std::string("result=refused detail=native_fov_placement reason=does_not_fit_or_degenerate"
-                            " fallback=declare_rendered fovMutable=") + (gHost.fovMutable ? "1" : "0"));
+                            " fallback=skip_projection fovMutable=") + (gHost.fovMutable ? "1" : "0"));
         }
+        return false;
     }
     context->CopySubresourceRegion(target, subresource, 0, 0, 0, source, 0, nullptr);
     gHost.placedFov[slice] = rendered;
     gHost.placedRect[slice] = {{0, 0}, {static_cast<std::int32_t>(gHost.width), static_cast<std::int32_t>(gHost.height)}};
+    return true;
 }
 
 // Holds one image per eye and submits a complete pair every frame.
@@ -1314,8 +1329,8 @@ bool SubmitStereoPair(
         gStaleEye.store(a < b ? 0 : 1, std::memory_order_relaxed);
     }
     for (std::uint32_t slice = 0; slice < 2; ++slice) {
-        PlaceEye(context, imageIndex, slice, gHost.eyeImage[slice], gHost.eyeFov[slice], gHost.requestedFov[slice],
-                 gHost.requestedFovValid[slice]);
+        if(!PlaceEye(context, imageIndex, slice, gHost.eyeImage[slice], gHost.eyeFov[slice], gHost.requestedFov[slice],
+                 gHost.requestedFovValid[slice]))return false;
     }
     return true;
 }
@@ -2017,10 +2032,18 @@ void ServiceXrFrame(void* renderer)
                         // with the picture placed inside it, or the flat image doubles on an immutable-fov
                         // runtime exactly as the stereo one did.
                         const auto preyFov = DeclaredFovFromLiveCamera();
+                        bool placed=true;
                         for (std::uint32_t slice = 0; slice < 2; ++slice) {
-                            if (preyFov) {
-                                PlaceEye(context, imageIndex, slice, panelSource, ScaleDeclaredFov(*preyFov),
-                                         views[slice].fov, haveViews);
+                            // Quad/cylinder panels are textures, not projection
+                            // views. Their native menu band and pointer use the
+                            // ORIGINAL pixel coordinates; FOV placement would
+                            // stretch/crop them and desynchronise hit testing.
+                            if(panelActive) {
+                                context->CopySubresourceRegion(gHost.images[imageIndex],
+                                    D3D11CalcSubresource(0,slice,1),0,0,0,panelSource,0,nullptr);
+                            } else if (preyFov) {
+                                placed=PlaceEye(context, imageIndex, slice, panelSource, ScaleDeclaredFov(*preyFov),
+                                         views[slice].fov, haveViews)&&placed;
                             } else {
                                 context->CopySubresourceRegion(
                                     gHost.images[imageIndex],
@@ -2029,10 +2052,12 @@ void ServiceXrFrame(void* renderer)
                                 gHost.placedFov[slice] = views[slice].fov;
                                 gHost.placedRect[slice] = {{0, 0}, {static_cast<std::int32_t>(gHost.width),
                                                                     static_cast<std::int32_t>(gHost.height)}};
+                                placed=false; // no render FOV provenance for a world projection
                             }
                         }
+                        rendered=placed;
                     }
-                    rendered=panelActive || !gStereoSubmission.load() || stereoPair;
+                    rendered=panelActive || (gStereoSubmission.load()?stereoPair:rendered);
                     context->Release();
                 }
                 XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
@@ -2040,24 +2065,10 @@ void ServiceXrFrame(void* renderer)
                     rendered=false;NoteXrFault("eye_release",released);
                 }
 
-                // **What FOV to declare, and why it is not the runtime's.**
-                //
-                // These pixels were rendered by Prey, through Prey's frustum.
-                // Declaring `views[eye].fov` -- what the headset would like -- is
-                // a statement about the image that is not true, and the runtime
-                // cannot detect it: it reprojects to whatever is claimed, so a
-                // wrong claim shows up as wrong depth and wrong scale rather than
-                // as an error. See docs/SUBMISSION_CONTRACT.md.
-                //
-                // So when stereo submission is armed we declare the frustum the
-                // game actually drew with, read live. Both eyes get the same one,
-                // because Prey renders symmetric and rung 3 separates the eyes by
-                // translation alone.
-                //
-                // Fails closed: if the camera cannot be read we submit no layer
-                // at all rather than fall back to the runtime's FOV. A black
-                // headset is honest and diagnosable; a plausible-looking wrong
-                // image is neither.
+                // PlaceEye declares the field of the FINAL pixels. Normally
+                // those have been remapped from their render contract into the
+                // native field; a raw copy may declare rendered FOV only when
+                // the runtime permits it. Missing provenance/remap fails closed.
                 // **Each eye is submitted with the contract that rendered it.**
                 // FAIL-STR-044: the two held images come from different frames, so
                 // reading a single live pose and FOV here would relabel the older
@@ -2922,7 +2933,7 @@ DWORD SetXrNativeFov(unsigned int enabled)
 {
     gNativeFovPlacement.store(enabled != 0u, std::memory_order_release);
     Log(std::string("result=0 detail=native_fov_placement enabled=") + (enabled ? "1" : "0") +
-        " fovMutable=" + (gHost.fovMutable ? "1" : "0"));
+        " fovMutable=" + (gHost.fovMutable ? "1" : "0") + " immutable_runtime_always_remapped=1");
     return static_cast<DWORD>(gStatus.load(std::memory_order_acquire));
 }
 bool XrNativeFov() { return gNativeFovPlacement.load(std::memory_order_acquire); }

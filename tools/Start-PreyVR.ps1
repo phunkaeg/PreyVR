@@ -241,6 +241,8 @@ try {
     $info.EnvironmentVariables['PREYVR_POINTER_HAND']="$PointerHand"
     $info.EnvironmentVariables['PREYVR_REFERENCE_SPACE']=$comfort.ReferenceSpace
     $info.EnvironmentVariables['PREYVR_DUAL_STEREO']="$DualStereo"
+    if ($PSBoundParameters.ContainsKey('DebugOverlay')) {$info.EnvironmentVariables['PREYVR_DEBUG_OVERLAY']="$DebugOverlay"}
+    if ($MuzzleAim) {$info.EnvironmentVariables['PREYVR_MUZZLE_AIM']='1'}
     # Runtime overrides and simulator state remain process-scoped. The normal
     # double-click path uses the player's selected runtime (VDXR/SteamVR/etc.).
     if ($Runtime) {$info.EnvironmentVariables['XR_RUNTIME_JSON']=(Resolve-Path -LiteralPath $Runtime).Path}

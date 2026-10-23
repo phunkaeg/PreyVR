@@ -3,7 +3,7 @@
 #include <wrl/client.h>
 namespace preyvr::dll {
 // The card's texture: the status strip's aspect (the flattened meters are ~2.5:1);
-// InventorySwapchain needs at least 640x480.
+// The 480px height preserves the native strip's established fit and padding.
 inline constexpr unsigned NativeWristWidth=1216,NativeWristHeight=480;
 // Render-thread only. Same-frame alpha bounds and aspect-preserving fit entirely
 // on the GPU. No readback, guessed screen crop, or changes to native transforms.

@@ -5,6 +5,7 @@
 #include "InteractionLane.h"
 #include "CarryLane.h"
 #include "GrenadeLane.h"
+#include "preyvr/ThrowLifecycle.h"
 #include "PsiMedkit.h"
 #include "Psychoscope.h"
 
@@ -468,12 +469,15 @@ void UpdateTurnAndFireLanes()
         }
     }
 
-    static bool awaitTriggerRelease=false;
-    if (!HudGameplayInputAllowed()) { awaitTriggerRelease=true; }
-    if (haveInput && right.triggerValue<=.05f) { awaitTriggerRelease=false; }
-    const bool fireOn = gFireEnabled.load(std::memory_order_acquire) &&
-                       HudGameplayInputAllowed() && !awaitTriggerRelease;
+    static carry::FireGate fireGate;
     const bool releaseFire = gFireNeutralize.exchange(false, std::memory_order_acq_rel);
+    const auto fire=fireGate.Update(haveInput &&
+        IsPoseUsable(right.gripPose,right.gripValidity,60000000ull),
+        gFireEnabled.load() && HudGameplayInputAllowed(),releaseFire,gRecenterHeld,
+        right.triggerPressed,right.triggerValue<=.05f,inputFrame.epoch,HeadTrackingReferenceGeneration());
+    if(!fire.physical)CancelGrenadeTrigger();
+    const bool fireOn = gFireEnabled.load(std::memory_order_acquire) &&
+                       HudGameplayInputAllowed() && fire.physical;
     if (fireOn || gFireHeld || (gFirePrimed && gLastFireSent != 0)) {
         // **The real travel is posted, not a quantised press.** `xi_triggerr` is
         // an analog axis, and sending only 0 or 1000 threw away everything
@@ -481,7 +485,7 @@ void UpdateTurnAndFireLanes()
         float value = (fireOn && !releaseFire) ? right.triggerValue : 0.0f;
         if (!std::isfinite(value)) { value = 0.0f; }
         value = value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
-        const bool pressed = fireOn && !releaseFire && right.triggerPressed;
+        const bool pressed = fire.pressed;
         // Emit on a meaningful change OR on a press-state crossing, so the
         // counters still name a discrete pull while the value stays continuous.
         if (!gFirePrimed ||
@@ -529,12 +533,13 @@ void UpdateTurnAndFireLanes()
             // A grenade leaves the hand at this edge, with the hand's motion as
             // of now (GrenadeLane.h). Noted BEFORE the post: posting runs the
             // game's fire handler -- and the release -- synchronously.
-            NoteGrenadeTrigger(pressed);
+            NoteGrenadeTrigger(pressed,fire.physical);
             if (PostRawInputImmediate(input::kTriggerRButton, state, pressed ? 1000 : 0) == 0) {
                 gFireHeld = pressed;
                 (pressed ? gFirePressed : gFireReleased)
                     .fetch_add(1, std::memory_order_relaxed);
             } else {
+                CancelGrenadeTrigger(); // a refused press/release grants no throw authorization
                 // A refused RELEASE must be retried, or the weapon keeps firing.
                 if (!pressed) { gFireNeutralize.store(true, std::memory_order_release); }
                 gFireRefused.fetch_add(1, std::memory_order_relaxed);
@@ -578,7 +583,8 @@ void UpdateTurnAndFireLanes()
         useIn.tapOnly = UseTargetTapOnly();
         useIn.holstered = ArmsHolstered();
         const use::ButtonOutput useOut = gUseButton.Update(useIn);
-        if (useOut.releaseCarry) { RequestCarryRelease(); }
+        if (useOut.releaseCarry && useIn.gameplay && !gRecenterHeld &&
+            IsPoseUsable(leftHand.gripPose,leftHand.gripValidity,60000000ull)) { RequestCarryRelease(); }
         if (useOut.drawWeapon) { RequestDrawWeapon(); }
         RequestUseTargetSuppression(useOut.suppressTarget);
         NoteUseButton(useOut.down, static_cast<unsigned>(useOut.owner), useOut.pressed, useOut.released,

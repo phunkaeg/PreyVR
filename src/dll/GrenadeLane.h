@@ -23,7 +23,7 @@ struct GameplayPoseFrame;
 bool EnsureGrenadeLane();
 
 // grenade.hand 1: the grenade leaves the hand at the trigger's release with the
-// hand's velocity (default when VR starts); 0: the game's own throw, exactly.
+// hand's velocity (VR Options / World opt-in); 0: the game's own throw, exactly.
 DWORD SetGrenadeHand(unsigned enabled);
 unsigned GrenadeHandEnabled();
 
@@ -32,7 +32,8 @@ unsigned GrenadeHandEnabled();
 bool GrenadeHeldByHand(std::uintptr_t weapon);
 
 // Input lane: the right trigger's press/release edges as posted to the game.
-void NoteGrenadeTrigger(bool pressed);
+void NoteGrenadeTrigger(bool pressed, bool physicalEdge);
+void CancelGrenadeTrigger();
 // Game thread, once per gameplay frame: queued gives, the flight watch.
 void UpdateGrenadeLane(const GameplayPoseFrame& frame, bool tracking);
 

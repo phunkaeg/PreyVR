@@ -2,6 +2,11 @@
 
 Research and implementation workspace for an OpenXR VR mod for **Prey (2017)**. The intended end state is native, engine-owned 6DoF world rendering and motion controls; a flat OpenXR bridge is useful only as a reversible early milestone.
 
+**Integration update (2026-10-23):** integrates `jordi/robustness` with fixes for
+throw cancellation/history, VR shutdown, native-FOV remapping and body-slot status cards.
+New hand carry/grenade mechanics have saved opt-ins under **VR Options → World**.
+The full-body branch remains separate. See [changes and offline validation](docs/INTEGRATION-ROBUSTNESS-FIXES-2026-10-23.md).
+
 **VR options candidate (2026-09-27):** adds an in-headset settings panel, hold/toggle
 foregrip and free/snapped support-hand preferences, plus an opt-in psychoscope
 gesture. The Equipment tab also adds optional hip/chest holsters and a left-wrist

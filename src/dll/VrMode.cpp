@@ -108,6 +108,9 @@ void StopFeatures() {
     SetAnimIkControllerDrive(0); SetAnimIkMode(0);
     SetMenuNavigation(0); SetMoveLaneMode(0);
     SetTurnLaneEnabled(0); SetFireLaneEnabled(0); SetInteractionEnabled(0);
+    ApplyVrWorldOptions(false);
+    SetAnimIkFreeArms(0);
+    InvalidateCarryMotion();CancelGrenadeTrigger();
     // Leave the input drain alive to deliver the owned releases on the next frame.
     StopXrSession();
 }
@@ -254,15 +257,9 @@ void TickVrMode() {
         // World interaction from the LEFT hand: it points, its grip uses; the
         // right grip only reloads (InteractionLane.h). Not fatal: without the
         // selector hook the right grip stays the native use/reload button.
-        if(SetUseHand(1)!=0) Log("use_hand=right reason=selector_unavailable");
-        // Phase 2: what the left hand carries is IN it, held while the grip is,
-        // thrown with the hand's motion (CarryLane.h). Not fatal: without the
-        // hooks the game's own carry stays, toggled like in phase 1.
-        else if(SetCarryHand(1)!=0) Log("carry_hand=native reason=hooks_unavailable");
-        // Grenades leave the right hand at the trigger's release with its
-        // motion (GrenadeLane.h). Not fatal: without the hooks the game's own
-        // charged throw along the view stays.
-        if(SetGrenadeHand(1)!=0) Log("grenade_hand=native reason=hooks_unavailable");
+        // Hand carry and grenades are opt-ins on VR Options / WORLD. Hook
+        // refusal keeps native behaviour; restarting VR preserves preferences.
+        ApplyVrWorldOptions(true);
         // The arms stay at the controllers with no weapon drawn: holstered (the
         // right grip held) or carrying (AnimIkTakeover arms.free; arms.free 0 =
         // the game lowers them out of view, as before).
@@ -271,9 +268,6 @@ void TickVrMode() {
         // VR option chooses how much). Not fatal: without the hook the body keeps
         // the game's own facing and place, as before.
         if(EnsureBodyFollowHook()!=0) Log("body_follow=unavailable");
-        // Both hands' rays drawn in gameplay while interaction is being tested
-        // (user, 2026-10-06). The VR options' Debug overlay switch turns them off.
-        if(DebugOverlayMask()==0) SetDebugOverlay(debugdraw::kRays|debugdraw::kHits);
         wchar_t hudSetting[8]{};
         GetEnvironmentVariableW(L"PREYVR_HUD_LAYER",hudSetting,8);
         if(hudSetting[0]!=L'0' && SetHudLayerEnabled(1)!=0)Log("hud_layer=unavailable native_hud=retained");

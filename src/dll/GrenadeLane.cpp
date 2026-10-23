@@ -3,6 +3,7 @@
 #include "AimTakeover.h"
 #include "CarryLane.h"
 #include "Haptics.h"
+#include "HudBridge.h"
 #include "Logger.h"
 #include "MinHookInit.h"
 #include "SceneQuery.h"
@@ -147,10 +148,21 @@ struct TriggerRelease {
     carry::Motion motion{};
     float yaw = 0;
     bool yawValid = false;
+    std::uint64_t epoch=0,reference=0;
+    std::uintptr_t weapon=0;
 };
 std::mutex gTriggerMutex;
 TriggerRelease gTrigger;
 std::uint64_t gPressNs = 0;
+std::uint64_t gPressEpoch=0,gPressReference=0;
+std::uintptr_t gPressWeapon=0;
+bool ThrowFrame(GameplayPoseFrame& f) {
+    return HudGameplayInputAllowed() && TryGetGameplayPoseFrame(f,true) &&
+        IsPoseUsable(f.tracking.hands[1].gripPose,f.tracking.hands[1].gripValidity,60000000ull);
+}
+bool CurrentRelease(const TriggerRelease& r,const GameplayPoseFrame& f,std::uint64_t now,std::uint64_t maxAge) {
+    return r.valid && now>=r.ns && now-r.ns<maxAge && r.epoch==f.tracking.epoch && r.reference==f.referenceGeneration;
+}
 
 // --- one throw, on the thread that throws ------------------------------------------
 struct Scope {
@@ -519,6 +531,7 @@ void Steer(Scope& s, Vec3& position, Vec3& direction)
     if (!s.steer) { return; }
     Pose grip{};
     const bool haveGrip = s.haveFrame && RightGrip(s.frame, grip);
+    if(!haveGrip) {s.steer=false;return;}
     if (haveGrip) { s.grip = grip.position; }
     s.head = s.frame.cameraCentre;
     Vec3 want = position;
@@ -528,7 +541,7 @@ void Steer(Scope& s, Vec3& position, Vec3& direction)
     // arm at full stretch short of a controller held further out).
     Vec3 firing{};
     bool fallback = true;
-    const bool drawn = haveGrip && CallFiringPosition(s.weapon, firing, fallback) && !fallback &&
+    const bool drawn = mode == 0 && haveGrip && CallFiringPosition(s.weapon, firing, fallback) && !fallback &&
                        Length(Sub(position, grip.position)) < 0.20f;
     if (mode == 0 && drawn) {
         s.spawnFrom = 0;
@@ -541,7 +554,9 @@ void Steer(Scope& s, Vec3& position, Vec3& direction)
     // Never through a wall the hand has gone into: the segment from the head.
     if (s.haveFrame && s.frame.cameraCentreValid) {
         scene::Hit hit{};
-        if (QuerySegment(s.frame, s.head, want, hit) && hit.distance >= 0) {
+        // Refusal is not a miss. Keep the native spawn AND velocity on refusal.
+        if(!QuerySegment(s.frame,s.head,want,hit)) {s.steer=false;return;}
+        if (hit.distance >= 0) {
             const float l = Length(Sub(want, s.head));
             const Vec3 pulled = grenade::PullBack(s.head, want, l > 1e-4f ? hit.distance / l : 0.0f, 0.08f);
             s.pulledBack = Length(Sub(want, pulled));
@@ -691,10 +706,12 @@ void __fastcall ThrowHook(std::uintptr_t weapon)
     float remaining = 0;
     Read(weapon + kChargeDuration, s.chargeDuration);
     if (Read(weapon + kChargeRemaining, remaining) && remaining >= 0) { s.chargeElapsed = s.chargeDuration - remaining; }
-    s.haveFrame = TryGetGameplayPoseFrame(s.frame, true);
-    const bool freshRelease = s.release.valid && now - s.release.ns < 1500000000ull;
+    s.haveFrame = ThrowFrame(s.frame);
+    const bool freshRelease = s.haveFrame && s.release.weapon==weapon && CurrentRelease(s.release,s.frame,now,1500000000ull);
     if (!freshRelease) { gNoRelease.fetch_add(1); }
     s.steer = gHand.load() && s.haveFrame && freshRelease;
+    // One physical release cannot steer a later native throw with cached motion.
+    {std::lock_guard lock(gTriggerMutex);gTrigger={};}
     tScope = &s;
     original(weapon);
     tScope = nullptr;
@@ -749,7 +766,8 @@ void __fastcall UpdateHook(std::uintptr_t weaponPlus8, std::uintptr_t context)
     const std::uintptr_t weapon = weaponPlus8 - 8;
     std::uint8_t ready = 1;
     float range = 0;
-    if (!gHand.load() || gDeploy.load() || !Read(weapon + kDeployReady, ready) || ready ||
+    GameplayPoseFrame frame{};
+    if (!gHand.load() || !ThrowFrame(frame) || gDeploy.load() || !Read(weapon + kDeployReady, ready) || ready ||
         !Read(weapon + kDeployRange, range) || !(range > 0.0f) || !IsPlayerGrenade(weapon)) {
         original(weaponPlus8, context);
         return;
@@ -775,9 +793,11 @@ bool __fastcall ReleaseHook(std::uintptr_t weapon)
     }
     if (!started || deploy || !gHand.load() || !gEarly.load() || !IsPlayerGrenade(weapon)) { return started; }
     bool fresh = false;
+    GameplayPoseFrame frame{};
+    if(!ThrowFrame(frame))return started;
     {
         std::lock_guard lock(gTriggerMutex);
-        fresh = gTrigger.valid && MonotonicNanoseconds() - gTrigger.ns < 500000000ull;
+        fresh = gTrigger.weapon==weapon && CurrentRelease(gTrigger,frame,MonotonicNanoseconds(),500000000ull);
     }
     if (!fresh) { return started; }
     // The throw leaves the hand now; the wind-up animation plays on, and its
@@ -1098,37 +1118,47 @@ DWORD SetGrenadeHand(unsigned enabled)
     if (enabled > 1) { return ERROR_INVALID_PARAMETER; }
     if (enabled && !EnsureGrenadeLane()) { return ERROR_NOT_SUPPORTED; }
     gHand.store(enabled != 0);
+    if(!enabled)CancelGrenadeTrigger(); // gSkip survives: that grenade ALREADY left.
     Log("result=0 detail=hand value=" + std::to_string(enabled));
     return 0;
 }
 unsigned GrenadeHandEnabled() { return gHand.load() ? 1u : 0u; }
 bool GrenadeHeldByHand(std::uintptr_t weapon) { return gHand.load() && gInstalled && IsGrenadeWeapon(weapon); }
 
-void NoteGrenadeTrigger(bool pressed)
+void CancelGrenadeTrigger() {
+    std::lock_guard lock(gTriggerMutex);gTrigger={};gPressNs=0;
+}
+void NoteGrenadeTrigger(bool pressed,bool physicalEdge)
 {
+    GameplayPoseFrame f{};
+    if(!physicalEdge || !gHand.load() || !ThrowFrame(f)) {CancelGrenadeTrigger();return;}
+    const auto weapon=PlayerGrenade(f.player);
+    if(!weapon){CancelGrenadeTrigger();return;}
     const auto now = MonotonicNanoseconds();
     std::lock_guard lock(gTriggerMutex);
     if (pressed) {
-        gPressNs = now;
+        gTrigger={};gPressNs = now;gPressEpoch=f.tracking.epoch;gPressReference=f.referenceGeneration;gPressWeapon=weapon;
         return;
     }
     TriggerRelease r{};
+    if(!gPressNs || gPressEpoch!=f.tracking.epoch || gPressReference!=f.referenceGeneration || gPressWeapon!=weapon) {gTrigger={};gPressNs=0;return;}
     r.ns = now;
     r.pressNs = gPressNs;
-    // The release counts even without a motion estimate (tracking lost): it
-    // is still WHEN the grenade leaves; without motion it is dropped.
     EstimateHandMotion(static_cast<unsigned>(Hand::right), r.motion);
     r.valid = true;
-    GameplayPoseFrame f{};
-    if (TryGetGameplayPoseFrame(f, false) && std::isfinite(f.yaw)) {
+    r.epoch=f.tracking.epoch;r.reference=f.referenceGeneration;gPressNs=0;
+    r.weapon=weapon;
+    if (std::isfinite(f.yaw)) {
         r.yaw = f.yaw;
         r.yawValid = true;
     }
     gTrigger = r;
 }
 
-void UpdateGrenadeLane(const GameplayPoseFrame& frame, bool)
+void UpdateGrenadeLane(const GameplayPoseFrame& frame, bool tracking)
 {
+    if(!tracking || !gHand.load() || !HudGameplayInputAllowed() ||
+       !IsPoseUsable(frame.tracking.hands[1].gripPose,frame.tracking.hands[1].gripValidity,60000000ull))CancelGrenadeTrigger();
     if (!gInstallTried) { return; }
     RunGive(frame.player);
     RetryEquip(frame.player);

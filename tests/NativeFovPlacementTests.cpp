@@ -69,6 +69,18 @@ int main()
     // A native field too large for the swapchain at the render's density is refused, never squeezed.
     const Tangents huge{-T(70), T(70), T(60), -T(60)};
     Require(!PlaceInNativeFov(prey, 2016, 2160, huge, 2016, 2160), "a field that does not fit is refused");
+    // Refusal of the no-resample path must still have a valid angular remap.
+    const Tangents narrow{-T(45),T(45),T(45),-T(45)};
+    const Tangents nativeLeft{-T(54),T(44),T(55),-T(55)},nativeRight{-T(44),T(54),T(55),-T(55)};
+    for(const auto& native:{nativeLeft,nativeRight}){
+        Require(!PlaceInNativeFov(narrow,2016,2160,native,2016,2160),"narrow gameplay reproduces the copy refusal");
+        const auto uv=NativeFovUv(narrow,native);Require(uv.has_value(),"narrow field has a resampling solution");
+        for(float x:{.2f,.5f,.8f}){
+            const float actual=narrow.left+(uv->offsetX+x*uv->scaleX)*(narrow.right-narrow.left);
+            Require(std::fabs(actual-(native.left+x*(native.right-native.left)))<1e-5f,"resampled pixels preserve native directions in each eye");
+        }
+    }
+    Require(!NativeFovUv({1,-1,1,-1},prey),"resample refuses inverted frusta");
     // Degenerate input.
     Require(!PlaceInNativeFov({1, -1, 1, -1}, 2016, 2160, left, 2016, 2160), "an inverted frustum is refused");
     Require(!PlaceInNativeFov(prey, 0, 2160, left, 2016, 2160), "an empty image is refused");

@@ -146,6 +146,19 @@ void Refusals() {
     r.waitResult=XR_SUCCESS;
     r.releaseResult=XR_SUCCESS;
 }
+void SmallStatusCard() {
+    r.formats={DXGI_FORMAT_R8G8B8A8_UNORM_SRGB};
+    InventorySwapchain owner(Api());auto d=Description(1024);d.Height=224;
+    CHECK(owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({"create"});
+    CHECK(r.created.width==1024 && r.created.height==224);
+    auto source=Texture(d,0x80402010);
+    CHECK(owner.Copy(r.context.Get(),source.Get())==InventorySwapchain::Upload::ready);
+    Calls({"acquire","wait","release"});CheckPixels(r.image.Get(),0x80402010);
+    owner.Reset();Calls({"destroy"});
+    d.Width=0;CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({});
+    CHECK(owner.LastRefusal()==InventorySwapchain::Refusal::source);
+    d.Width=1024;d.Height=0;CHECK(!owner.Prepare(session,d,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB));Calls({});
+}
 void PresentationPolicy() {
     // Source resource spelling and runtime preference order do not decide the
     // copied image's interpretation: the active main/menu format does.
@@ -205,7 +218,7 @@ int main() {
         CHECK(SUCCEEDED(D3D11CreateDevice(nullptr,D3D_DRIVER_TYPE_WARP,nullptr,0,nullptr,0,
             D3D11_SDK_VERSION,&r.device,nullptr,&r.context)));
         LifecycleAndPixels();Refusals();Calls({"destroy"});
-        PresentationPolicy();
+        SmallStatusCard();PresentationPolicy();
         HudShapeAndRefusalReasons();Calls({});
         std::cout<<"inventory_swapchain PASS: real WARP copy/alpha, independent world texture, lifetime, resize, inherited linear/sRGB format, XR failures, refusal reasons\n";
         return 0;

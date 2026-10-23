@@ -2,6 +2,8 @@
 
 #include "AimTakeover.h"
 #include "Haptics.h"
+#include "HeadTrackingHook.h"
+#include "HudBridge.h"
 #include "InteractionLane.h"
 #include "Logger.h"
 #include "MinHookInit.h"
@@ -9,6 +11,7 @@
 #include "preyvr/AnimIk.h"
 #include "preyvr/EngineMap.h"
 #include "preyvr/HandCarry.h"
+#include "preyvr/ThrowLifecycle.h"
 #include "preyvr/LatestSnapshot.h"
 #include "preyvr/StereoCamera.h"
 
@@ -127,8 +130,15 @@ template <class T> T Get(const T& v)
 
 // --- the hands' motion (XR thread writes, the release reads) -------------------
 std::mutex gMotionMutex;
-carry::MotionHistory gMotion[2];
-std::uint64_t gMotionGeneration = 0;
+carry::TrackedMotionHistory gMotion;
+std::atomic<std::uint64_t> gLaneGeneration{0};
+carry::TrackingStamp Stamp(const TrackingFrame& f,std::uint64_t reference) {
+    return {f.epoch,reference,f.sequence,f.publishedNs,f.displayTime};
+}
+bool ReleaseFrame(GameplayPoseFrame& f,unsigned hand) {
+    return hand<2 && HudGameplayInputAllowed() && TryGetGameplayPoseFrame(f,true) &&
+        IsPoseUsable(f.tracking.hands[hand].gripPose,f.tracking.hands[hand].gripValidity,60000000ull);
+}
 std::atomic<unsigned long long> gMotionSamples{0}, gRuntimeVelocitySamples{0};
 
 // --- the release request (input lane -> game thread) ----------------------------
@@ -139,6 +149,8 @@ struct Pending {
     float yaw = 0;
     bool yawValid = false;
     unsigned attempts = 0;
+    std::uint64_t epoch=0, reference=0, generation=0;
+    std::uint32_t entity=0;
 };
 std::mutex gPendingMutex;
 Pending gPending;
@@ -146,6 +158,7 @@ Pending gPending;
 // --- what the hand holds (game thread) --------------------------------------------
 struct Grab {
     bool active = false;
+    std::uint64_t epoch=0, reference=0, generation=0;
     std::uint32_t entity = 0;
     carry::Kind kind = carry::Kind::Native;
     char label[64]{};
@@ -567,6 +580,9 @@ void CaptureGrab(std::uintptr_t entity)
         }
     }
     g.active = true;
+    GameplayPoseFrame frame{};
+    if(ReleaseFrame(frame,0)) {g.epoch=frame.tracking.epoch;g.reference=frame.referenceGeneration;}
+    g.generation=gLaneGeneration.load();
     g.startNs = MonotonicNanoseconds();
     gGrab = g;
     gHolding.store(gHand.load() && g.kind != carry::Kind::Native);
@@ -671,6 +687,15 @@ std::uint64_t __fastcall UpdateHook(std::uintptr_t carry, float frameTime)
 {
     const auto original = gUpdate.load(std::memory_order_acquire);
     if (!IsPlayerCarry(carry)) { return original(carry, frameTime); }
+    GameplayPoseFrame frame{};
+    const bool tracked=ReleaseFrame(frame,0);
+    if(!gHand.load() || !tracked || (gGrab.active &&
+       (gGrab.generation!=gLaneGeneration.load() || gGrab.epoch!=frame.tracking.epoch || gGrab.reference!=frame.referenceGeneration))) {
+        // Leave the native carry intact, with its camera target, until repicked.
+        // Do not manufacture a throw when ownership/tracking is withdrawn.
+        TakePending();gOverride={};ClearGrab("tracking or ownership changed");
+        return original(carry,frameTime);
+    }
     gUpdates.fetch_add(1, std::memory_order_relaxed);
     std::uint32_t id = 0;
     Read(carry + kPickedUp, id);
@@ -680,9 +705,10 @@ std::uint64_t __fastcall UpdateHook(std::uintptr_t carry, float frameTime)
     }
     Pending p = TakePending();
     if (p.active) {
-        if (!id || !gGrab.active || gGrab.entity != id) {
+        if (!id || !gGrab.active || gGrab.entity != id || p.entity!=id) {
             // Nothing (or something else) carried: nothing to let go.
-        } else if (MonotonicNanoseconds() - p.ns > 500000000ull) {
+        } else if (MonotonicNanoseconds() - p.ns > 500000000ull ||
+                   p.generation!=gLaneGeneration.load() || p.epoch!=frame.tracking.epoch || p.reference!=frame.referenceGeneration) {
             gReleasesRefused.fetch_add(1);
             Log("release refused why=stale");
         } else {
@@ -815,7 +841,7 @@ void __fastcall StopHook(std::uintptr_t carry, float impulse, std::uint8_t angul
     const auto physics = CallPhysics(entity);
     StopOverride o = gOverride;
     gOverride = {};
-    if (o.active && o.entity != id) { o = {}; }
+    if (o.active && (o.entity != id || !gHand.load())) { o = {}; }
     const float nativeImpulse = impulse;
     const bool nativeThrown = thrown != 0;
     if (o.active) {
@@ -991,7 +1017,11 @@ DWORD SetCarryHand(unsigned enabled)
     if (enabled > 1) { return ERROR_INVALID_PARAMETER; }
     if (enabled && !EnsureCarryLane()) { return ERROR_NOT_SUPPORTED; }
     gHand.store(enabled != 0);
-    if (!enabled) { gHolding.store(false); }
+    if (!enabled) {
+        gLaneGeneration.fetch_add(1);gHolding.store(false);
+        {std::lock_guard lock(gPendingMutex);gPending={};}
+        InvalidateCarryMotion();
+    }
     Log("result=0 detail=hand value=" + std::to_string(enabled));
     return 0;
 }
@@ -1010,9 +1040,10 @@ void RecordCarryMotion(const TrackingFrame& frame)
     // Kept whether or not the carry hooks installed: the grenade lane throws
     // with the right hand's history too.
     std::lock_guard lock(gMotionMutex);
+    const auto stamp=Stamp(frame,HeadTrackingReferenceGeneration());
     for (unsigned h = 0; h < 2; ++h) {
         const auto& s = frame.hands[h];
-        if (!IsPoseUsable(s.gripPose, s.gripValidity, 200000000ull)) { continue; }
+        const bool valid=IsPoseUsable(s.gripPose,s.gripValidity,60000000ull);
         carry::MotionSample m{};
         m.time = frame.displayTime;
         m.position = s.gripPose.position;
@@ -1020,32 +1051,39 @@ void RecordCarryMotion(const TrackingFrame& frame)
         m.velocityValid = s.gripVelocityValid;
         m.velocity = s.gripLinearVelocity;
         m.angular = s.gripAngularVelocity;
-        gMotion[h].Push(m);
+        gMotion.Push(h,stamp,m,valid);
+        if(!valid)continue;
         gMotionSamples.fetch_add(1, std::memory_order_relaxed);
         if (m.velocityValid) { gRuntimeVelocitySamples.fetch_add(1, std::memory_order_relaxed); }
     }
 }
+void InvalidateCarryMotion() {
+    std::lock_guard lock(gMotionMutex);gMotion.Reset();
+}
 
 bool EstimateHandMotion(unsigned hand, carry::Motion& out)
 {
-    if (hand > 1) { return false; }
+    out={};
+    GameplayPoseFrame gameplay{};TrackingFrame current{};
+    if (!ReleaseFrame(gameplay,hand) || !TryGetTrackingFrame(current) || current.epoch!=gameplay.tracking.epoch ||
+        !IsPoseUsable(current.hands[hand].gripPose,current.hands[hand].gripValidity,60000000ull))return false;
     std::lock_guard lock(gMotionMutex);
-    out = gMotion[hand].Estimate();
+    out = gMotion.Estimate(hand,Stamp(current,gameplay.referenceGeneration),MonotonicNanoseconds());
     return out.valid;
 }
 
 void RequestCarryRelease()
 {
+    GameplayPoseFrame f{};
+    if(!gHand.load() || !gHolding.load() || !ReleaseFrame(f,0))return;
     gReleasesAsked.fetch_add(1);
     Pending p{};
     p.active = true;
     p.ns = MonotonicNanoseconds();
-    {
-        std::lock_guard lock(gMotionMutex);
-        p.motion = gMotion[static_cast<unsigned>(Hand::left)].Estimate();
-    }
-    GameplayPoseFrame f{};
-    if (TryGetGameplayPoseFrame(f, false) && std::isfinite(f.yaw)) {
+    EstimateHandMotion(0,p.motion);
+    p.epoch=f.tracking.epoch;p.reference=f.referenceGeneration;p.generation=gLaneGeneration.load();
+    p.entity=gGrab.entity;
+    if (std::isfinite(f.yaw)) {
         p.yaw = f.yaw;
         p.yawValid = true;
     }
@@ -1053,9 +1091,14 @@ void RequestCarryRelease()
     gPending = p;
 }
 
-void UpdateCarryLane(const GameplayPoseFrame& frame, bool)
+void UpdateCarryLane(const GameplayPoseFrame& frame, bool tracking)
 {
     if (!gInstalled) { return; }
+    if(!gHand.load() || !tracking || !HudGameplayInputAllowed() ||
+       (gGrab.active && (gGrab.epoch!=frame.tracking.epoch || gGrab.reference!=frame.referenceGeneration ||
+                        gGrab.generation!=gLaneGeneration.load()))) {
+        TakePending();gOverride={};ClearGrab("gameplay ownership changed");return;
+    }
     const std::uintptr_t carry = PlayerCarry(frame.player);
     std::uint32_t id = 0;
     if (carry) { Read(carry + kPickedUp, id); }

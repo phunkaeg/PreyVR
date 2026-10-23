@@ -15,7 +15,9 @@ int Family(DXGI_FORMAT format) {
     }
 }
 bool Supported(const D3D11_TEXTURE2D_DESC& d) {
-    return Family(d.Format)!=0 && d.Width>=640 && d.Height>=480 &&
+    // Shared by inventory, pointer and small status cards. A layer's minimum
+    // size is not the game's minimum backbuffer size (the status card is 224px high).
+    return Family(d.Format)!=0 && d.Width>0 && d.Height>0 &&
         d.Width<=8192 && d.Height<=8192 && d.ArraySize==1 && d.MipLevels==1 &&
         d.SampleDesc.Count==1 && d.SampleDesc.Quality==0;
 }

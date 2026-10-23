@@ -25,7 +25,7 @@ struct TrackingFrame;
 // Installs the hooks once. False if the binary does not match.
 bool EnsureCarryLane();
 
-// carry.hand 1: carried objects follow the left hand (default when VR starts);
+// carry.hand 1: carried objects follow the left hand (VR Options / World opt-in);
 // 0: the game's own carry, in front of the camera (phase 1, exactly).
 DWORD SetCarryHand(unsigned enabled);
 unsigned CarryHandEnabled();
@@ -35,8 +35,9 @@ unsigned CarryHoldToHold();
 
 // XR thread, once per located frame: the hands' motion history.
 void RecordCarryMotion(const TrackingFrame& frame);
-// A hand's release motion as of its newest sample (the peak of the last
-// ~0.12 s, tracking space): what a throw leaves with. False without history.
+void InvalidateCarryMotion(); // XR teardown/focus loss; does not touch game-owned grabs
+// A hand's release motion from a fresh, same-session/reference publication (the
+// peak of the last ~0.12 s, tracking space). False after invalidation or stalling.
 bool EstimateHandMotion(unsigned hand, carry::Motion& out);
 // Game thread, once per gameplay frame (after the interaction lane).
 void UpdateCarryLane(const GameplayPoseFrame& frame, bool tracking);

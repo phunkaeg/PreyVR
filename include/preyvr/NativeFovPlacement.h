@@ -27,6 +27,10 @@ struct Placement {
     int srcX = 0, srcY = 0, dstX = 0, dstY = 0, copyW = 0, copyH = 0;
     bool complete = false;
 };
+struct UvMapping {float scaleX=0,scaleY=0,offsetX=0,offsetY=0;};
+// Maps a destination pixel's native-field UV to the render's UV, independent of
+// pixel density. Used when the native rect would exceed the destination image.
+std::optional<UvMapping> NativeFovUv(const Tangents& rendered,const Tangents& native);
 
 // Empty when the frusta are degenerate, when they do not overlap, or when the native field at the render's density
 // does not fit the swapchain image (`swapW` x `swapH`).

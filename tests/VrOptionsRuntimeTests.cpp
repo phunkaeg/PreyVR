@@ -12,6 +12,10 @@ void Check(bool ok,const char* why){if(!ok){std::cerr<<why<<'\n';std::exit(1);}}
 }
 namespace preyvr::lifecycle { void Log(std::string_view){} }
 namespace preyvr::dll {
+unsigned useEffective=0,carryEffective=0,grenadeEffective=0;
+DWORD SetUseHand(unsigned v){useEffective=v;return 0;}
+DWORD SetCarryHand(unsigned v){carryEffective=v;return 0;}
+DWORD SetGrenadeHand(unsigned v){grenadeEffective=v;return 0;}
 DWORD SetPsiTargetMode(unsigned v){applied[options::PsiTarget]=v;return 0;}unsigned PsiTargetMode(){return applied[options::PsiTarget];}
 DWORD SetMedkitSlot(unsigned v){applied[options::Medkit]=v;return 0;}unsigned MedkitSlotEnabled(){return applied[options::Medkit];}
 void SetPhysicalMelee(unsigned v){applied[options::PhysicalMelee]=v;}unsigned PhysicalMeleeEnabled(){return applied[options::PhysicalMelee];}
@@ -76,7 +80,22 @@ int main(){
  const auto sandbox=std::filesystem::path(temp)/(L"PreyVR-options-test-"+std::to_wstring(GetCurrentProcessId()));
  Check(!std::filesystem::exists(sandbox),"test sandbox must be new");
  Check(SetEnvironmentVariableW(L"LOCALAPPDATA",sandbox.c_str())!=0,"process-only settings destination");
+ SetEnvironmentVariableW(L"PREYVR_DEBUG_OVERLAY",nullptr);SetEnvironmentVariableW(L"PREYVR_MUZZLE_AIM",nullptr);
+ std::filesystem::create_directories(sandbox/L"PreyVR");
+ {std::ofstream initial(sandbox/L"PreyVR"/L"vr-options.ini");initial<<options::Serialize(options::Defaults());}
+ SetDebugOverlay(255);SetShotRay(1);
  LoadVrOptions();Check(VrOptionsReady()&&!PsychoscopeGestureEnabled(),"startup gesture off");
+ Check(DebugOverlayMask()==0&&ShotRayEnabled()==0,"saved OFF defeats old debug/muzzle lane values");
+ Check(!useEffective&&!carryEffective&&!grenadeEffective,"loading options outside VR cannot enable overrides");
+ ApplyVrWorldOptions(true);Check(useEffective&&!carryEffective&&!grenadeEffective,"only opted-in features activate");
+ Apply(options::CarryHand,1);Apply(options::GrenadeHand,1);
+ Check(carryEffective&&grenadeEffective,"world preferences reach native adapter switches");
+ ApplyVrWorldOptions(false);Check(!useEffective&&!carryEffective&&!grenadeEffective,"VR stop disables all world overrides");
+ Check(VrOptionsValues()[options::CarryHand]&&VrOptionsValues()[options::GrenadeHand],"shutdown preserves preferences");
+ ApplyVrWorldOptions(true);Check(useEffective&&carryEffective&&grenadeEffective,"VR restart reapplies preferences");
+ Apply(options::UseHand,0);Check(!useEffective&&!carryEffective,"right-hand/native mode withdraws left carry");
+ Apply(options::UseHand,1);Apply(options::CarryHand,0);Apply(options::GrenadeHand,0);
+ ApplyVrWorldOptions(false);
  SetSnapTurnDegrees(75);SetUiFitMarginPercent(95);
  Check(VrOptionsValues()[options::Turn]==75&&VrOptionsValues()[options::UiMargin]==95,"UI reflects live command-channel changes");
  currentFrame.epoch=1;currentFrame.headValidity={true,true,true,true,0};
@@ -164,15 +183,27 @@ int main(){
  // raises it to full stereo and lowers it back, then to mono.
  nativeModal=true;for(int n=0;n<4&&!VrOptionsOpen();++n){RequestVrOptions(true);tick();tick();}
  Check(VrOptionsOpen(),"options reopen");
- for(unsigned n=0;n<options::Pages&&VrOptionsPage()!=options::Pages-1;++n){r.gripPressed=true;tick();r.gripPressed=false;tick();}
- Check(VrOptionsPage()==options::Pages-1&&applied[options::Stereo]==1,"view tab reached with alternate eyes by default");
+ for(unsigned n=0;n<options::Pages&&VrOptionsPage()!=8;++n){r.gripPressed=true;tick();r.gripPressed=false;tick();}
+ Check(VrOptionsPage()==8&&applied[options::Stereo]==1,"view tab reached with alternate eyes by default");
  r.thumbstickX=1;tick();r.thumbstickX=0;tick();ServiceVrOptions();
  Check(applied[options::Stereo]==2,"3D view raised to full stereo reaches VR mode");
  r.thumbstickX=-1;tick();r.thumbstickX=0;tick();ServiceVrOptions();
  Check(applied[options::Stereo]==1,"3D view lowered to alternate eyes reaches VR mode");
  r.thumbstickX=-1;tick();r.thumbstickX=0;tick();ServiceVrOptions();
  Check(applied[options::Stereo]==0&&VrOptionsValues()[options::Stereo]==0,"3D view lowered to mono reaches VR mode");
+ r.gripPressed=true;tick();r.gripPressed=false;tick();Check(VrOptionsPage()==9,"world tab reached");
+ r.thumbstickY=-1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+ Check(VrOptionsValues()[options::CarryHand]&&!carryEffective,"last-bit setting persists while VR is off");
+ ApplyVrWorldOptions(true);Check(carryEffective,"saved menu carry preference activates with VR");
+ r.thumbstickY=-1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+ Check(grenadeEffective,"high-bit grenade edit reaches runtime");
+ ApplyVrWorldOptions(false);
  ResetVrOptionsSession();
+ // A launch override is explicit, and disappears on an ordinary subsequent load.
+ SetEnvironmentVariableW(L"PREYVR_DEBUG_OVERLAY",L"3");SetEnvironmentVariableW(L"PREYVR_MUZZLE_AIM",L"1");
+ ready=false;LoadVrOptions();Check(DebugOverlayMask()==1&&ShotRayEnabled()==1,"explicit launch overrides saved OFF");
+ SetEnvironmentVariableW(L"PREYVR_DEBUG_OVERLAY",nullptr);SetEnvironmentVariableW(L"PREYVR_MUZZLE_AIM",nullptr);
+ ready=false;LoadVrOptions();Check(DebugOverlayMask()==0&&ShotRayEnabled()==0,"normal load restores saved OFF");
  std::filesystem::remove(sandbox/L"PreyVR"/L"vr-options.ini");
  std::filesystem::remove(sandbox/L"PreyVR");std::filesystem::remove(sandbox);
  std::cout<<"Runtime menu, native-input ownership, settings application and disk roundtrip passed\n";

@@ -269,8 +269,7 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
     ControllerState rightState{};
     bool leftStart = false;
     if (!gCreated.load(std::memory_order_acquire)) {
-        gTrackingEpoch.fetch_add(1);
-        gTrackingFrame.Clear();
+        InvalidateTrackingSamples();
         return;
     }
     const auto session = static_cast<XrSession>(sessionHandle);
@@ -290,15 +289,13 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
     const XrResult syncResult = xrSyncActions(session, &sync);
     if (XR_FAILED(syncResult)) {
         ResetHaptics(session,gHaptic,{gHands[0].subactionPath,gHands[1].subactionPath});
-        gTrackingEpoch.fetch_add(1);
-        gTrackingFrame.Clear();
+        InvalidateTrackingSamples();
         return;
     }
     if (syncResult == XR_SESSION_NOT_FOCUSED) {
         ResetHaptics(session,gHaptic,{gHands[0].subactionPath,gHands[1].subactionPath});
         gSyncsNotFocused.fetch_add(1, std::memory_order_relaxed);
-        gTrackingEpoch.fetch_add(1);
-        gTrackingFrame.Clear();
+        InvalidateTrackingSamples();
         return;   // never retain a tracked snapshot after focus loss
     }
     gSyncs.fetch_add(1, std::memory_order_relaxed);
@@ -473,7 +470,7 @@ unsigned long long MenuNavigationActionCount()
     return gMenuActions.load(std::memory_order_relaxed);
 }
 
-void InvalidateTrackingSamples() { gTrackingEpoch.fetch_add(1); gTrackingFrame.Clear(); }
+void InvalidateTrackingSamples() { gTrackingEpoch.fetch_add(1); gTrackingFrame.Clear(); InvalidateCarryMotion(); }
 
 void DestroyXrInput()
 {
@@ -497,8 +494,7 @@ void DestroyXrInput()
     for (auto& count : gLocated) {
         count.store(0, std::memory_order_relaxed);
     }
-    gTrackingEpoch.fetch_add(1);
-    gTrackingFrame.Clear();
+    InvalidateTrackingSamples();
 }
 
 bool TryGetTrackingFrame(TrackingFrame& out)

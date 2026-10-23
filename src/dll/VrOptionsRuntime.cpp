@@ -1,5 +1,8 @@
 #include "VrOptionsRuntime.h"
 #include "BodyFollow.h"
+#include "InteractionLane.h"
+#include "CarryLane.h"
+#include "GrenadeLane.h"
 #include "VrMode.h"
 #include "SceneQuery.h"
 #include "PhysicalInteractions.h"
@@ -34,7 +37,10 @@ std::atomic<bool> ready{false},open{false},owned{false},saveFailed{false},scope{
 std::atomic<bool> holsters{false},wrist{true}; // wrist: options::Defaults()
 std::atomic<bool> beltHints{true};
 std::atomic<unsigned> wristSize{100};
-std::atomic<unsigned> dirty{0},page{0},row{0};
+std::atomic<std::uint64_t> dirty{0};
+std::atomic<unsigned> page{0},row{0};
+std::atomic<bool> useHand{true},carryHand{false},grenadeHand{false};
+bool worldActive=false; // command worker only
 std::atomic<int> request{0};
 // Latest explicit request wins. Busy reference locks retry for at most one
 // second, within the same tracking session; a stale request never fires later.
@@ -58,6 +64,9 @@ std::filesystem::path SettingsPath(){
 }
 void Apply(unsigned id,int v){
  switch(id){
+ case options::UseHand:useHand=v!=0;ApplyVrWorldOptions(worldActive);break;
+ case options::CarryHand:carryHand=v!=0;ApplyVrWorldOptions(worldActive);break;
+ case options::GrenadeHand:grenadeHand=v!=0;ApplyVrWorldOptions(worldActive);break;
  case options::PsiTarget:SetPsiTargetMode(v);break;
  case options::Medkit:SetMedkitSlot(v);break;
  case options::PhysicalMelee:SetPhysicalMelee(v);break;
@@ -100,6 +109,14 @@ void Save(){
  if(saveFailed.load())lifecycle::Log("preyvr_options save=failed settings_remain_active=1");
 }
 }
+void ApplyVrWorldOptions(bool active){
+ worldActive=active;
+ const auto use=SetUseHand(active&&useHand.load()?1:0);
+ const auto carry=SetCarryHand(active&&use==0&&useHand.load()&&carryHand.load()?1:0);
+ const auto grenade=SetGrenadeHand(active&&grenadeHand.load()?1:0);
+ if(use||carry||grenade)lifecycle::Log("preyvr_options world_hooks_unavailable use="+std::to_string(use)+
+    " carry="+std::to_string(carry)+" grenade="+std::to_string(grenade));
+}
 options::Values VrOptionsValues(){
  auto v=options::Defaults();
  v[options::PsiTarget]=PsiTargetMode();v[options::Medkit]=MedkitSlotEnabled();
@@ -120,10 +137,11 @@ options::Values VrOptionsValues(){
  v[options::MuzzleAim]=ShotRayEnabled();
  v[options::BodyFollow]=BodyYawFollowEnabled()?(BodyRoomScaleEnabled()?2:1):0;
  v[options::Stereo]=static_cast<int>(VrStereoModeChosen());
+ v[options::UseHand]=useHand.load();v[options::CarryHand]=carryHand.load();v[options::GrenadeHand]=grenadeHand.load();
  // Read the actual lane settings, including changes made through the command
  // channel. Pending menu edits override only their own row until applied.
  const auto pending=dirty.load();
- for(unsigned i=0;i<options::Count;++i)if(pending&(1u<<i))v[i]=values[i].load();
+ for(unsigned i=0;i<options::Count;++i)if(pending&(1ull<<i))v[i]=values[i].load();
  return v;
 }
 void LoadVrOptions(){
@@ -137,12 +155,16 @@ void LoadVrOptions(){
  }catch(...){lifecycle::Log("preyvr_options load=failed defaults_retained=1");}
  for(unsigned i=0;i<options::Count;++i){
   values[i]=v[i];
-  // A saved "off" must not undo a debug overlay the launcher or a command enabled.
-  if(i==options::DebugOverlay&&!v[i])continue;
-  // Same for shots from the muzzle: off by default, on by a launcher or a command.
-  if(i==options::MuzzleAim&&!v[i])continue;
   Apply(i,v[i]);
  }
+ // Explicit process-scoped launch overrides are distinct from a stale lane
+ // value. A saved OFF otherwise wins, including after a previous debug run.
+ wchar_t launch[16]{};
+ const auto debugLength=GetEnvironmentVariableW(L"PREYVR_DEBUG_OVERLAY",launch,16);
+ if(debugLength>0&&debugLength<16){wchar_t* end=nullptr;const auto mask=wcstoul(launch,&end,10);
+  if(end!=launch&&!*end&&mask<=255)SetDebugOverlay(static_cast<unsigned>(mask));}
+ const auto muzzleLength=GetEnvironmentVariableW(L"PREYVR_MUZZLE_AIM",launch,16);
+ if(muzzleLength==1&&(launch[0]==L'0'||launch[0]==L'1'))SetShotRay(launch[0]==L'1'?1:0);
  ready.store(true);
 }
 void ServiceVrOptions(){
@@ -164,7 +186,7 @@ void ServiceVrOptions(){
   }
  }
  const auto mask=dirty.exchange(0);
- if(mask){for(unsigned i=0;i<options::Count;++i)if(mask&(1u<<i))Apply(i,values[i].load());Save();}
+ if(mask){for(unsigned i=0;i<options::Count;++i)if(mask&(1ull<<i))Apply(i,values[i].load());Save();}
 }
 bool ProcessVrOptionsInput(const TrackingFrame& f){
  options::Input i;const auto& l=f.hands[0];const auto& r=f.hands[1];
@@ -194,7 +216,7 @@ bool ProcessVrOptionsInput(const TrackingFrame& f){
  if(change.setting>=0){
   const auto id=static_cast<unsigned>(change.setting);
   const auto before=VrOptionsValues()[id],after=options::Adjust(id,before,change.direction);
-  values[id]=after;dirty.fetch_or(1u<<id);
+  values[id]=after;dirty.fetch_or(1ull<<id);
   if(before!=after)QueueHaptic(i.trigger&&hand<2?static_cast<Hand>(hand):Hand::right,haptics::Event::MenuChange,f);
  }
  open=menu.Open();owned=menu.OwnsInput();page=menu.page;row=menu.row;

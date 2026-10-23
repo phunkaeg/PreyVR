@@ -18,8 +18,8 @@ The launcher starts Prey, loads the mod, waits for the requested render size, an
 | Left X | Open inventory | X action shown by Prey |
 | Left Y | — | Y action shown by Prey |
 | Right grip | Tap: reload (never uses what the left hand points at). Hold: holster the weapon. With the weapon holstered: draw it again | Next tab, on release |
-| Left grip | Use what the left hand points at (tap or hold, as Prey's prompt says); keep it closed to hold what you picked up, open it to drop or throw; hold a long weapon's support grip | Previous tab, on release |
-| Triggers | Right: fire (hold for automatic fire and to charge the Disruptor); with a grenade: hold it, let go during a throwing motion to throw it | Previous / next page (LT / RT) |
+| Left grip | Use what the left hand points at; hold a long weapon's support grip. Optional hand carry: hold picked-up objects, open to drop or throw | Previous tab, on release |
+| Triggers | Right: fire (hold for automatic fire and to charge the Disruptor). Optional hand grenades: release during a throwing motion to throw | Previous / next page (LT / RT) |
 | Left menu button | Tap: pause. Hold: VR options | Tap: pause / resume. Hold: VR options |
 | Both grips + left Y | Reset VR view | Reset and bring the panel in front of you |
 | F11 | Enable VR or retry setup | Enable VR or retry setup |
@@ -34,20 +34,25 @@ smoothly to one hand. A squeeze away from the weapon does nothing. Changing
 weapons, opening a menu or losing tracking requires releasing and grabbing again.
 To recenter, hold both grips, then press left Y; F12 also works.
 
-To use something, point at it with the left hand: the cyan ray ends on what Prey selected (it bends to it when
-Prey picked it from near the line) and Prey shows its usual prompt. Squeeze the left grip briefly for the
+To use something, point at it with the left hand and follow Prey's usual prompt.
+The cyan diagnostic ray is available through Debug Overlay and is off by default.
+Squeeze the left grip briefly for the
 prompt's tap action (take, carry, search, take the highlighted item of a locker) or keep it squeezed for the
-hold action (drag a body, carry a heavy object). What you pick up stays in the left hand for as long as the grip
+hold action (drag a body, carry a heavy object). Enable **VR Options → World → Hand Carry / Throw**
+for the following behaviour (off by default). What you pick up stays in the left hand for as long as the grip
 is closed: a light object flies to the hand and is held by the side you pointed at, a heavy one floats ahead and
 follows the hand, a body is dragged from it. Open the hand to drop it, or open it during a throwing motion to
 throw it with the hand's speed; the right trigger still throws it the game's way. `carry.hold 0` restores
 "squeeze again to drop".
 
-**Grenades** (EMP, Recycler, Nullwave, Lure) sit in the right hand. Hold the right trigger, throw with your
+**Hand grenades** are enabled through **VR Options → World → Hand Grenades** (off by default).
+With it enabled, grenades (EMP, Recycler, Nullwave, Lure) sit in the right hand. Hold the right trigger, throw with your
 arm and let go of the trigger: the grenade leaves at that instant with your hand's speed and direction, and comes
 down about where a real ball thrown the same way would. Let go with the hand still and it drops at your feet.
 Looking at a nearby surface no longer sticks the grenade to it. `grenade.hand 0` restores the game's own
-charged throw along the view.
+charged throw along the view. Turning the option off restores native throwing and surface deployment.
+Tracking loss, menus, recentering and VR shutdown do not count as physical throws.
+If tracking is lost during a hand carry, the object remains in native carry; pick it up again to reattach it to the hand.
 
 With no weapon drawn -- holstered, or while carrying something -- both hands stay visible at the controllers
 (open; the left one closes around what it carries). Hold the right grip to holster the weapon, squeeze it again
@@ -76,14 +81,18 @@ native menu is already open; `vr.options 1` is the diagnostic equivalent.
   your head and walks it with you around the room; TURN ONLY keeps it in place; OFF
   leaves it to the sticks. A wall stops the body, and the view dims if your head goes
   into it. Reset VR view is on the Setup tab.
-- **View:** **3D view**. FULL STEREO (default) draws both eyes from every frame:
+- **View:** **3D view**. FULL STEREO draws both eyes from every frame:
   true depth with no doubling when you move, at the highest GPU cost. ALTERNATE EYES
-  draws one eye per frame: cheaper, but moving things can shimmer or double. MONO
+  draws one eye per frame (current default): cheaper, but moving things can shimmer or double.
+  Before an explicit in-session choice, persistently low alternate-eye frame rate may switch to mono. MONO
   shows one picture, taken from the centre of your head, to both eyes: no depth
   (everything reads as far away, your hands included), but it fuses at any frame
   rate and every frame updates both eyes. Changes apply at once.
 - **Hands:** two-hand aim on/off, hold/toggle foregrip, snapped/free support hand,
   and the optional psychoscope gesture.
+- **World:** left-hand interaction (on by default), hand carry/throw and hand grenades
+  (both off by default). Carry needs left-hand interaction. These choices persist across VR restarts;
+  turning VR off withdraws their native overrides without erasing your preferences.
 - **Interface:** size, visible-area limit, panel curvature and controls guide.
 - **Equipment:** optional body holsters, wrist status, wrist-hologram size and clear
   holster assignments. Holsters default off; the wrist status defaults on.
