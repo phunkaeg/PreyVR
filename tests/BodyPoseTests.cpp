@@ -163,6 +163,32 @@ int main()
         planter.Update(natural, thigh, leg, 1.0f, 1.0f / 72.0f, true, fs, out);
         Require(Dist(out[0], natural[0]) < 1e-5f, "a walk the game animates frees the feet");
     }
+    // Unreachable planted targets must clamp the actual endpoint, keeping all
+    // rigid joint groups connected even before the first stepping frame moves.
+    for (float offset : {-1.2f, -.9f, .9f, 1.2f}) {
+        const Skeleton s = Rest();
+        Goal g{0.0f, s.head, 1.0f};
+        for (int k = 0; k < 2; ++k) { g.footSet[k] = true; g.foot[k] = s.foot[k]; g.foot[k].x += offset; }
+        const Plan p = Solve(s, g);
+        Require(p.valid, "unreachable foot yields finite clamped plan");
+        RequireLegs(s, p, "unreachable planted target stays attached");
+    }
+    {
+        Skeleton s = Rest(); Goal g{0.0f, s.head, 1.0f};
+        g.footSet[0] = true; g.foot[0] = s.thigh[0];
+        const Plan p = Solve(s, g);
+        Require(p.valid, "coincident foot/thigh has stable fallback");
+        RequireLegs(s, p, "coincident target keeps connected chain");
+        s.knee[0] = s.thigh[0];
+        Require(!Solve(s, g).valid, "degenerate leg refused");
+    }
+    for (const Vec3 target : {Vec3{0, -2, 0}, Vec3{0, 2, 0}, Vec3{0, 0, 3}, Vec3{0, 0, -2}}) {
+        Skeleton s = Rest(); Goal g{0.0f, s.head, 1.0f};
+        g.footSet[0] = true; g.foot[0] = target;
+        const Plan p = Solve(s, g);
+        Require(p.valid, "axial unreachable target solved");
+        RequireLegs(s, p, "axial target keeps leg closure");
+    }
     std::cout << "body_pose ok\n";
     return 0;
 }

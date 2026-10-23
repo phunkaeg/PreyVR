@@ -46,24 +46,30 @@ Vec3 Chain(const Skeleton& s, const Rigid& base, Vec3 b, Vec3 shift, const Limit
 }
 
 // Two-bone leg onto a planted foot; the knee keeps the animation's bend plane.
-void Leg(const Skeleton& s, int k, const Rigid& turn, const Rigid& hip, const Vec3& forward, const Goal& goal,
+bool Leg(const Skeleton& s, int k, const Rigid& turn, const Rigid& hip, const Vec3& forward, const Goal& goal,
          Plan& plan)
 {
     const Vec3 thigh0 = Apply(turn, s.thigh[k]), knee0 = Apply(turn, s.knee[k]), natural = Apply(turn, s.foot[k]);
-    const Vec3 foot = goal.footSet[k] ? goal.foot[k] : natural;
-    // The foot moves with its rotation; what the leg must reach is where it goes.
-    const Rigid footRigid = Then(turn, Shift(Sub(foot, natural)));
+    Vec3 foot = goal.footSet[k] ? goal.foot[k] : natural;
     const Vec3 a = Apply(hip, s.thigh[k]);
     const float upper = Length(Sub(s.knee[k], s.thigh[k])), lower = Length(Sub(s.foot[k], s.knee[k]));
+    if (!Finite(foot) || !Finite(a) || !std::isfinite(upper) || !std::isfinite(lower) ||
+        !(upper > 1e-3f) || !(lower > 1e-3f)) { return false; }
     Vec3 d = Sub(foot, a);
-    const float reach = Length(d);
-    if (!(reach > 1e-4f) || !(upper > 1e-3f) || !(lower > 1e-3f)) {
-        plan.thigh[k] = plan.shin[k] = hip;
-        plan.foot[k] = footRigid;
-        return;
+    float reach = Length(d);
+    if (!std::isfinite(reach)) { return false; }
+    if (reach < 1e-4f) {
+        d = Sub(natural, thigh0); reach = Length(d);
+        if (reach < 1e-4f) { d = {0, 0, -1}; reach = 1; }
     }
     const Vec3 dir = Mul(d, 1.0f / reach);
-    const float dist = std::clamp(reach, std::fabs(upper - lower) + 1e-4f, (upper + lower) * 0.9999f);
+    const float minimum = std::fabs(upper - lower) + 1e-4f, maximum = (upper + lower) * 0.9999f;
+    if (minimum > maximum) { return false; }
+    const float dist = std::clamp(reach, minimum, maximum);
+    // Clamp the actual endpoint too, not just the triangle used for the knee.
+    // Otherwise the foot separates from the rigid shin at unreachable targets.
+    foot = Add(a, Mul(dir, dist));
+    const Rigid footRigid = Then(turn, Shift(Sub(foot, natural)));
     // The way the animation bends this knee (square to its own thigh-foot line);
     // a leg the animation holds nearly straight folds forward, as knees do.
     const Vec3 animated = Sub(natural, thigh0);
@@ -73,8 +79,12 @@ void Leg(const Skeleton& s, int k, const Rigid& turn, const Rigid& hip, const Ve
     pole = Add(pole, Mul(forward, std::max(0.0f, 0.02f - Length(pole))));
     pole = Sub(pole, Mul(dir, Dot(pole, dir)));
     if (Length(pole) < 1e-4f) { pole = Sub(forward, Mul(dir, Dot(forward, dir))); }
-    const float pl = Length(pole);
-    pole = pl > 1e-6f ? Mul(pole, 1.0f / pl) : Vec3{0, 1, 0};
+    float pl = Length(pole);
+    if (pl < 1e-6f) {
+        const Vec3 axis = std::fabs(dir.z) < .9f ? Vec3{0, 0, 1} : Vec3{1, 0, 0};
+        pole = Sub(axis, Mul(dir, Dot(axis, dir))); pl = Length(pole);
+    }
+    pole = Mul(pole, 1.0f / pl);
     const float cosA = std::clamp((upper * upper + dist * dist - lower * lower) / (2.0f * upper * dist), -1.0f, 1.0f);
     const float sinA = std::sqrt(std::max(0.0f, 1.0f - cosA * cosA));
     const Vec3 knee = Add(a, Add(Mul(dir, upper * cosA), Mul(pole, upper * sinA)));
@@ -85,6 +95,7 @@ void Leg(const Skeleton& s, int k, const Rigid& turn, const Rigid& hip, const Ve
     const Quaternion q = Multiply(rs, rt);
     plan.shin[k] = Then(turn, Rigid{q, Sub(knee, Rotate(q, knee0))});
     plan.foot[k] = footRigid;
+    return true;
 }
 
 } // namespace
@@ -209,7 +220,9 @@ Plan Solve(const Skeleton& s, const Goal& goal, const Limits& limits)
     shift.z = dz;
     reached = Chain(s, base, b, shift, limits, plan);
     if (s.legs) {
-        for (int k = 0; k < 2; ++k) { Leg(s, k, turn, plan.hip, forward, goal, plan); }
+        for (int k = 0; k < 2; ++k) {
+            if (!Leg(s, k, turn, plan.hip, forward, goal, plan)) { return {}; }
+        }
     } else {
         for (int k = 0; k < 2; ++k) { plan.thigh[k] = plan.shin[k] = plan.hip; plan.foot[k] = plan.hip; }
     }

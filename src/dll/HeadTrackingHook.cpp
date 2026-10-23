@@ -676,6 +676,7 @@ DWORD SetViewHookApplying(unsigned int enabled)
         viewhook::gApplied.store(0, std::memory_order_relaxed);
     }
     viewhook::gApplying.store(on, std::memory_order_release);
+    SetBodyFollowActive(on);
     Log(std::string("result=0 detail=view_applying value=") + (on ? "1" : "0"));
     return 0;
 }

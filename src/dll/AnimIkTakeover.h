@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
 
 #include <windows.h>
 
@@ -140,7 +141,7 @@ std::string ArmReport();
 DWORD SetBodyPose(unsigned enabled);
 DWORD SetBodyFeet(unsigned enabled);
 // The player's torso yaw (OpenXR tracking yaw), if estimated in the last 0.2 s.
-bool TorsoYawNow(float& yaw);   // body.feet: planted feet (0 = the animation's)
+bool TorsoYawNow(float& yaw, std::uint64_t epoch, std::uint64_t reference);
 unsigned BodyPoseEnabled();
 std::string BodyPoseReport();
 // Settings, the measured error of each hand against the controller (palm

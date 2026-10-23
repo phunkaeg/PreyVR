@@ -23,6 +23,7 @@
 #include "preyvr/TwoHandedAim.h"
 #include "preyvr/WeaponRigAlignment.h"
 #include "preyvr/EngineMap.h"
+#include "preyvr/LatestSnapshot.h"
 #include "preyvr/StereoCamera.h"
 #include "preyvr/VrMath.h"
 
@@ -692,8 +693,18 @@ struct ArmStats {
 };
 std::mutex gArmMutex;           // the torso filter, pole smoothing and stats
 armpose::TorsoEstimator gTorso;
-std::atomic<float> gTorsoNow{0.0f};            // the torso's yaw (OpenXR), for MoveLane
-std::atomic<std::uint64_t> gTorsoNowNs{0};
+struct TorsoContext {
+    std::uintptr_t player = 0;
+    std::uint64_t epoch = 0, reference = 0, weapon = 0;
+    bool operator==(const TorsoContext&) const = default;
+};
+TorsoContext TorsoContextOf(const GameplayPoseFrame& f)
+{
+    return {f.player, f.tracking.epoch, f.referenceGeneration, f.weaponGeneration};
+}
+struct TorsoSample { TorsoContext context; float yaw = 0; std::uint64_t stamp = 0; };
+LatestSnapshot<TorsoSample> gTorsoPublication;
+TorsoContext gTorsoContext;
 std::uint64_t gTorsoNs = 0, gPoleNs[2]{};
 Vec3 gPole[2]{};
 ArmStats gArmStats;
@@ -771,6 +782,30 @@ std::atomic<bool> gFeetOn{true};
 bodypose::FootPlanter gFeet;            // under gIkMutex
 Vec3 gLastLocation{};
 bool gHaveLastLocation = false;
+struct BodyContext {
+    TorsoContext tracking;
+    std::uintptr_t character = 0;
+    std::uint64_t owner = 0;
+    bool operator==(const BodyContext&) const = default;
+};
+BodyContext gBodyContext;
+
+// Caller owns gIkMutex; lock ordering is always IK then arm state.
+void ResetBodyState()
+{
+    gBodyRig = {}; gBodyContext = {};
+    gFeet.Reset(); gHaveLastLocation = false; gLastLocation = {};
+    gBodyNs = 0; gBodyWeight = 0;
+    std::lock_guard lock(gArmMutex);
+    gTorso.Reset(); gTorsoNs = 0; gTorsoContext = {};
+    gTorsoPublication.Clear();
+    gPoleNs[0] = gPoleNs[1] = 0; gPole[0] = gPole[1] = {};
+}
+void BindBodyContext(const GameplayPoseFrame& frame, const EquippedRig& owner)
+{
+    const BodyContext context{TorsoContextOf(frame), owner.character, owner.generation};
+    if (!(context == gBodyContext)) { ResetBodyState(); gBodyContext = context; }
+}
 // The eye from the head's pivot, in the head's frame (OpenXR): the rig's
 // head_jnt sits 7.3 cm behind and 5.1 cm below its camera_jnt.
 constexpr Vec3 kEyeFromPivot{0.0f, 0.0512f, -0.0732f};
@@ -871,6 +906,9 @@ bodypose::Plan PlanBody(const GameplayPoseFrame& frame, const animik::Location& 
 {
     const BodyRig& rig = gBodyRig;
     const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
+    if (!FreshSample(now, gBodyNs, 250000000ull)) {
+        gFeet.Reset(); gHaveLastLocation = false; gBodyWeight = 0;
+    }
     const float dt = gBodyNs != 0 ? std::min(static_cast<float>(now - gBodyNs) * 1e-9f, 0.1f) : 0.0f;
     gBodyNs = now;
     const bool want = gBodyPoseOn.load(std::memory_order_relaxed) && pose.mode == 1 && pose.armMode == 1;
@@ -925,7 +963,11 @@ bodypose::Plan PlanBody(const GameplayPoseFrame& frame, const animik::Location& 
             leg[k] = (Dist3(s.knee[k], s.thigh[k]) + Dist3(s.foot[k], s.knee[k])) * location.s;
         }
         Vec3 velocity{};
-        if (gHaveLastLocation && dt > 1e-4f) { velocity = Scale3(Sub3(location.t, gLastLocation), 1.0f / dt); }
+        const bool discontinuity = gHaveLastLocation && Dist3(location.t, gLastLocation) > 0.3f;
+        if (discontinuity) { gFeet.Reset(); }
+        if (gHaveLastLocation && !discontinuity && dt > 1e-4f) {
+            velocity = Scale3(Sub3(location.t, gLastLocation), 1.0f / dt);
+        }
         gLastLocation = location.t;
         gHaveLastLocation = true;
         const float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
@@ -969,9 +1011,15 @@ float UpdateTorso(const GameplayPoseFrame& frame, const PoseSettings& pose)
     in.steering = (MoveLaneAxisMilli(0) != 0 || MoveLaneAxisMilli(1) != 0) && HeadRelativeMovementEnabled();
     float roomYaw = 0.0f;
     unsigned long long generation = 0;
-    in.haveBody = ReadHeadTrackingRoom(roomYaw, in.body, generation);   // the body's eye in the room
+    in.haveBody = ReadHeadTrackingRoom(roomYaw, in.body, generation) && generation == frame.referenceGeneration;
     std::lock_guard lock(gArmMutex);
     const std::uint64_t now = preyvr::timing::MonotonicNanoseconds();
+    const TorsoContext context = TorsoContextOf(frame);
+    if (!(context == gTorsoContext) || !FreshSample(now, gTorsoNs, 250000000ull)) {
+        gTorso.Reset(); gTorsoNs = 0; gTorsoContext = context;
+        gPoleNs[0] = gPoleNs[1] = 0;
+        gTorsoPublication.Clear();
+    }
     const float dt = gTorsoNs != 0 ? static_cast<float>(now - gTorsoNs) * 1e-9f : 0.0f;
     gTorsoNs = now;
     const float yaw = gTorso.Update(in, dt, pose.torso, pose.body);
@@ -982,8 +1030,8 @@ float UpdateTorso(const GameplayPoseFrame& frame, const PoseSettings& pose)
     const float twist = longOwner != 0 && frame.weaponGeneration == longOwner && frame.twoHand.blend > 0.0f
         ? gLongTwistDeg.load(std::memory_order_relaxed) * 0.01745329f * frame.twoHand.blend : 0.0f;
     gArmStats.torsoYawDeg = (yaw - twist) * 57.29578f;
-    gTorsoNow.store(yaw, std::memory_order_relaxed);
-    gTorsoNowNs.store(now, std::memory_order_relaxed);
+    if (in.haveBody) { gTorsoPublication.Publish({context, yaw, now}); }
+    else { gTorsoPublication.Clear(); }
     gArmStats.headYawDeg = armpose::HeadYaw(frame.tracking.head.orientation) * 57.29578f;
     return yaw - twist;
 }
@@ -1970,6 +2018,10 @@ void __fastcall ProcessAdikWithTakeover(void* character, void* params)
         gAlignGeneration = haveOwner ? owner.generation : 0;
         gAlignSequence = haveOwner ? frame.tracking.sequence : 0;
     }
+    if (stateLock.owns_lock() && (!haveFrame || !haveOwner)) { ResetBodyState(); }
+    if (haveOwner && owner.character == reinterpret_cast<std::uintptr_t>(character)) {
+        BindBodyContext(frame, owner);
+    }
     if (mode != 0 && !stateLock.owns_lock()) { gBusy.fetch_add(1); }
     if (mode != 0 && stateLock.owns_lock() && !haveOwner) { gNoOwner.fetch_add(1); }
     if (haveOwner && gCalibration.Bind(owner.generation, frame.referenceGeneration, frame.tracking.epoch)) {
@@ -2213,6 +2265,7 @@ DWORD SetAnimIkMode(unsigned int mode)
     if (mode == 2u && (WeaponRotationDriveArmed() || WeaponOffsetArmed())) { return 3; }
     std::lock_guard stateLock(gIkMutex);
     if (mode == 0) {
+        ResetBodyState();
         gCalibration = {};
         for (auto& flag : gCalibrated) { flag.store(false); }
         gAlignStatus = gAlignWeapon ? weaponrig::Status::noSample : weaponrig::Status::disabled;
@@ -2239,6 +2292,7 @@ DWORD SetAnimIkControllerDrive(unsigned int enabled)
 {
     std::lock_guard stateLock(gIkMutex);
     if (!enabled) {
+        ResetBodyState();
         gCalibration = {};
         for (auto& flag : gCalibrated) { flag.store(false); }
         gAlignStatus = gAlignWeapon ? weaponrig::Status::noSample : weaponrig::Status::disabled;
@@ -2516,6 +2570,8 @@ DWORD SetArmSetting(const std::string& what, const int* v, unsigned n)
 DWORD SetBodyFeet(unsigned enabled)
 {
     if (enabled > 1) { return 1; }
+    std::lock_guard lock(gIkMutex);
+    if (gFeetOn.load() != (enabled != 0)) { gFeet.Reset(); gHaveLastLocation = false; }
     gFeetOn.store(enabled != 0, std::memory_order_relaxed);
     return 0;
 }
@@ -2523,17 +2579,22 @@ DWORD SetBodyFeet(unsigned enabled)
 DWORD SetBodyPose(unsigned enabled)
 {
     if (enabled > 1) { return 1; }
+    std::lock_guard lock(gIkMutex);
+    if (gBodyPoseOn.load() != (enabled != 0)) { ResetBodyState(); }
     gBodyPoseOn.store(enabled != 0, std::memory_order_relaxed);
     Log(std::string("result=0 detail=body_pose value=") + (enabled ? "1" : "0"));
     return 0;
 }
 unsigned BodyPoseEnabled() { return gBodyPoseOn.load() ? 1u : 0u; }
 
-bool TorsoYawNow(float& yaw)
+bool TorsoYawNow(float& yaw, std::uint64_t epoch, std::uint64_t reference)
 {
-    const std::uint64_t at = gTorsoNowNs.load(std::memory_order_relaxed);
-    if (at == 0 || preyvr::timing::MonotonicNanoseconds() - at > 200000000ull) { return false; }
-    yaw = gTorsoNow.load(std::memory_order_relaxed);
+    TorsoSample sample{}; GameplayPoseFrame current{};
+    if (!gDrive.load() || !gTorsoPublication.TryRead(sample) ||
+        sample.context.epoch != epoch || sample.context.reference != reference || (reference & 1) ||
+        !FreshSample(preyvr::timing::MonotonicNanoseconds(), sample.stamp) ||
+        !TryGetGameplayPoseFrame(current, true) || !(sample.context == TorsoContextOf(current))) { return false; }
+    yaw = sample.yaw;
     return true;
 }
 

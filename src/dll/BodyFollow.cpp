@@ -1,6 +1,7 @@
 #include "BodyFollow.h"
 
 #include "AnimIkTakeover.h"
+#include "AimTakeover.h"
 #include "HeadTrackingHook.h"
 #include "HudBridge.h"
 #include "InputPost.h"
@@ -132,13 +133,65 @@ std::uint64_t gCrouchAskedNs = 0;
 float gStandingEye = 0; bool gHaveStandingEye = false;
 std::atomic<float> gEyeLift{0.0f};
 int gEyeStill = 0;                               // frames the game's eye height has held still
+std::atomic<int> gCrouchOwnedFlag{0};
+struct FollowContext {
+    std::uintptr_t player = 0;
+    std::uint64_t epoch = 0, reference = 0, reset = 0;
+    bool operator==(const FollowContext&) const = default;
+};
+FollowContext gFollowContext;
+std::atomic<std::uint64_t> gFollowReset{1};
+std::atomic<bool> gFollowActive{false};
+struct CrouchTap { FollowContext context; std::uint64_t stamp = 0; };
+LatestSnapshot<CrouchTap> gCrouchTap;
+struct EyeLift { FollowContext context; float metres = 0; };
+LatestSnapshot<EyeLift> gCrouchLift;
+
+void ResetFollowState()
+{
+    gCrouchOwned = gCrouchSeen = gHaveStandingEye = gHaveEye = false;
+    gCrouchAskedNs = 0; gStandingEye = 0; gEyeStill = 0;
+    gEyeLift = 0; gCrouchOwnedFlag = 0;
+    gCrouchTap.Clear(); gCrouchLift.Clear();
+    gWritten = {}; gAwaitingYaw = 0; gAwaitingGeneration = 0;
+    gMovePending = false; gHavePivotAtView = false; gLastMoveFrame = 0;
+    gCatching = gRoomMoving = gFollowing = gHavePlayYaw = false;
+    gHaveNeckBefore = false; gNeckSpeed = 0; gNeckVelocity = {};
+    gPushBackFrames = 0; gFadeTarget = 0; gFadeNs = 0;
+}
+
+void BindFollowContext(std::uint8_t* player, const TrackingFrame& frame, std::uint64_t reference)
+{
+    const FollowContext next{reinterpret_cast<std::uintptr_t>(player), frame.epoch, reference, gFollowReset.load()};
+    if (!(next == gFollowContext)) {
+        // Recenter changes tracking coordinates, not the same actor's native
+        // crouch. Keep only an acknowledged native stance and its eye baseline;
+        // clear all queued input and motion history. Otherwise recentering while
+        // physically crouched would apply the native eye drop a second time.
+        const bool sameNativeCrouch = next.player == gFollowContext.player && next.epoch == gFollowContext.epoch &&
+            next.reset == gFollowContext.reset && gCrouchOwned && gHaveStandingEye && player != nullptr &&
+            *reinterpret_cast<const int*>(player + kPlayerStance) == kStanceSneak;
+        const float standing = gStandingEye;
+        const std::uint64_t asked = gCrouchAskedNs;
+        ResetFollowState(); gFollowContext = next;
+        if (sameNativeCrouch) {
+            gCrouchOwned = gCrouchSeen = gHaveStandingEye = true;
+            gStandingEye = standing; gCrouchAskedNs = asked;
+        }
+    }
+}
+
+void AskCrouchTap()
+{
+    gCrouchTap.Publish({gFollowContext, MonotonicNanoseconds()});
+}
 
 // --- report -----------------------------------------------------------------
 std::atomic<unsigned long long> gCalls{0}, gYawWrites{0}, gYawAbsorbed{0}, gYawRejected{0}, gYawTakeover{0};
 std::atomic<unsigned long long> gYawLimited{0}, gMoves{0}, gWalks{0}, gBlocked{0}, gSlid{0}, gNoGround{0}, gAbsorbFailed{0};
 std::atomic<unsigned long long> gPushedBack{0}, gSettled{0}, gCrouchTaps{0}, gLeanHolds{0};
 std::atomic<int> gYawErrorMilli{0}, gNeckOffsetMm{0}, gGroundMm{0}, gGates{0}, gState{0};
-std::atomic<int> gStance{0}, gDropMm{0}, gCrouchOwnedFlag{0};
+std::atomic<int> gStance{0}, gDropMm{0};
 
 // --- trace (research and the mock tests) --------------------------------------
 std::atomic<std::uint64_t> gFrame{0};
@@ -328,9 +381,19 @@ void UpdateCrouch(const std::uint8_t* player, const Vec3& neck, const Vec3& orig
     const bool on = gCrouchOn.load(std::memory_order_relaxed);
     const float down = gCrouchDownMm.load() / 1000.0f, up = gCrouchUpMm.load() / 1000.0f;
     if (stance == kStanceSneak) { gCrouchSeen = true; }
+    if (!on) {
+        // Only this still-bound player may receive the cleanup press.
+        const bool stand = gCrouchOwned && stance == kStanceSneak && state == kStateGround;
+        gCrouchTap.Clear();
+        gCrouchOwned = gCrouchSeen = false;
+        gHaveStandingEye = false; gEyeStill = 0;
+        gEyeLift = 0; gCrouchLift.Clear(); gCrouchOwnedFlag = 0;
+        if (stand) { AskCrouchTap(); gCrouchTaps.fetch_add(1, std::memory_order_relaxed); }
+        return;
+    }
     if (!gCrouchOwned) {
-        if (on && stance == kStanceStand && drop > down && state == kStateGround) {
-            RequestCrouchTap();
+        if (gHaveStandingEye && stance == kStanceStand && drop > down && state == kStateGround) {
+            AskCrouchTap();
             gCrouchTaps.fetch_add(1, std::memory_order_relaxed);
             gCrouchOwned = true;
             gCrouchSeen = false;
@@ -340,7 +403,7 @@ void UpdateCrouch(const std::uint8_t* player, const Vec3& neck, const Vec3& orig
         if (stance == kStanceSneak) {
             // Stand back up -- again every half second while something overhead stops it.
             if (now - gCrouchAskedNs > 500000000ull && state == kStateGround) {
-                RequestCrouchTap();
+                AskCrouchTap();
                 gCrouchTaps.fetch_add(1, std::memory_order_relaxed);
                 gCrouchAskedNs = now;
             }
@@ -352,7 +415,7 @@ void UpdateCrouch(const std::uint8_t* player, const Vec3& neck, const Vec3& orig
     } else if (stance == kStanceStand && !gCrouchSeen && now - gCrouchAskedNs > 700000000ull &&
                state == kStateGround) {
         // Still low and the tap was not taken (input blocked that frame): once more.
-        RequestCrouchTap();
+        AskCrouchTap();
         gCrouchTaps.fetch_add(1, std::memory_order_relaxed);
         gCrouchAskedNs = now;
         gCrouchSeen = true;   // no third try; the player can press the button
@@ -372,14 +435,17 @@ void FollowAfterGame(std::uint8_t* camera, std::uint8_t* player, float frameTime
     Vec3 origin{};
     unsigned long long generation = 0;
     const bool gameplay = HudGameplayInputAllowed() && MoveLaneCinematicGate() == 0;
-    const bool head = TryGetTrackingFrame(tracking) && FreshSample(MonotonicNanoseconds(), tracking.publishedNs) &&
+    const bool head = gFollowActive.load() && TryGetTrackingFrame(tracking) && FreshSample(MonotonicNanoseconds(), tracking.publishedNs) &&
                       IsPoseUsable(tracking.head, tracking.headValidity, 200000000ull);
     const bool room = ReadHeadTrackingRoom(roomYaw, origin, generation);
     const bool turning = state == kStateGround || state == kStateJump || state == kStateFall || state == kStateSlide;
     gGates.store((gameplay ? 1 : 0) | (head ? 2 : 0) | (room ? 4 : 0) | (turning ? 8 : 0) |
                  (state == kStateGround ? 16 : 0) | (gHavePlayYaw ? 32 : 0), std::memory_order_relaxed);
     gFollowing = gameplay && head && room && turning && gYawOn.load(std::memory_order_acquire);
-    if (!gameplay || !head || !room) { gCatching = false; gRoomMoving = false; return; }
+    if (!head || !room) { ResetFollowState(); gFollowContext = {}; return; }
+    BindFollowContext(player, tracking, generation);
+    if (!gameplay) { gCrouchTap.Clear(); gCatching = false; gRoomMoving = false; return; }
+    gFollowing = turning && gYawOn.load(std::memory_order_acquire);
     if (gAwaitingGeneration != generation) { gAwaitingYaw = 0; }
     UpdateCrouch(player, body::NeckPoint(tracking.head, gNeckUpMm.load() / 1000.0f, gNeckForwardMm.load() / 1000.0f),
                  origin, state);
@@ -582,6 +648,18 @@ DWORD EnsureBodyFollowHook()
 
 void NoteGameView(const Vec3& eye, const Quaternion& rotation)
 {
+    std::uint8_t* const player = gInstalled ? CurrentPlayer() : nullptr;
+    TrackingFrame tracking{};
+    float yaw = 0;
+    Vec3 origin{};
+    unsigned long long generation = 0;
+    if (!gFollowActive.load() || player == nullptr || !TryGetTrackingFrame(tracking) ||
+        !FreshSample(MonotonicNanoseconds(), tracking.publishedNs) ||
+        !IsPoseUsable(tracking.head, tracking.headValidity, 200000000ull) ||
+        !ReadHeadTrackingRoom(yaw, origin, generation)) {
+        ResetFollowState(); gFollowContext = {}; return;
+    }
+    BindFollowContext(player, tracking, generation);
     // The game's eye sits ~1 cm ahead of the pivot in the body's frame, so a body
     // turning with the head swings it -- the camera would slide ~1 cm per 60
     // degrees of head turn. While the body follows, horizontal changes of the eye
@@ -593,25 +671,19 @@ void NoteGameView(const Vec3& eye, const Quaternion& rotation)
     // the camera stays at the player's real head and only the body crouches.
     const float rise = gHaveEye ? eye.z - gEye.z : 0.0f;
     gEyeStill = std::fabs(rise) < 0.0005f ? std::min(gEyeStill + 1, 1000) : 0;
-    if (!gCrouchOwned && gStance.load(std::memory_order_relaxed) == kStanceStand && gEyeStill > 10 &&
+    const int stance = *reinterpret_cast<const int*>(player + kPlayerStance);
+    if (!gCrouchOwned && stance == kStanceStand && gEyeStill > 10 &&
         eye.z > 1.0f && eye.z < 2.5f) {
         gStandingEye = eye.z;
         gHaveStandingEye = true;
     }
     gEyeLift.store(gCrouchOwned && gHaveStandingEye ? std::clamp(gStandingEye - eye.z, 0.0f, 1.5f) : 0.0f,
                    std::memory_order_relaxed);
+    gCrouchLift.Publish({gFollowContext, gCrouchOn.load() ? gEyeLift.load() : 0.0f});
     gEye = eye;
     gHaveEye = true;
-    std::uint8_t* const player = gInstalled ? CurrentPlayer() : nullptr;
     // This view shows the turns verified at the last PrePhysicsUpdate and the
     // move made in it: take both out of the reference now, before it composes.
-    float yaw = 0;
-    Vec3 origin{};
-    unsigned long long generation = 0;
-    if (!ReadHeadTrackingRoom(yaw, origin, generation)) {
-        gHavePlayYaw = false;
-        return;
-    }
     float absorbYaw = gAwaitingGeneration == generation ? gAwaitingYaw : 0.0f;
     const float playYaw = YawOf(rotation) - (yaw + absorbYaw);
     Vec3 shiftWorld = eyeShift;
@@ -784,11 +856,46 @@ DWORD SetPhysicalCrouch(unsigned enabled)
 {
     if (enabled > 1) { return 1; }
     gCrouchOn.store(enabled != 0, std::memory_order_release);
+    if (!enabled) { gCrouchTap.Clear(); gCrouchLift.Clear(); }
     Log(std::string("result=0 detail=crouch value=") + (enabled ? "1" : "0"));
     return 0;
 }
 unsigned PhysicalCrouchEnabled() { return gCrouchOn.load() ? 1u : 0u; }
-float CrouchEyeLift() { return gEyeLift.load(std::memory_order_relaxed); }
+float CrouchEyeLift()
+{
+    EyeLift lift{}; TrackingFrame frame{};
+    if (!gFollowActive.load() || !gCrouchOn.load() || !gCrouchLift.TryRead(lift) ||
+        reinterpret_cast<std::uintptr_t>(CurrentPlayer()) != lift.context.player ||
+        lift.context.reset != gFollowReset.load() || !TryGetTrackingFrame(frame) ||
+        frame.epoch != lift.context.epoch ||
+        lift.context.reference != HeadTrackingReferenceGeneration() ||
+        !FreshSample(MonotonicNanoseconds(), frame.publishedNs) ||
+        !IsPoseUsable(frame.head, frame.headValidity, 200000000ull)) { return 0.0f; }
+    return lift.metres;
+}
+void InvalidateBodyFollow()
+{
+    gFollowReset.fetch_add(1);
+    gCrouchTap.Clear(); gCrouchLift.Clear();
+}
+void SetBodyFollowActive(bool active)
+{
+    if (gFollowActive.exchange(active) != active) { InvalidateBodyFollow(); }
+}
+bool TakePhysicalCrouchTap(const TrackingFrame& frame, bool allowed)
+{
+    CrouchTap tap{};
+    if (!gCrouchTap.TryTake(tap)) { return false; } // blocked requests are discarded, never deferred
+    GameplayPoseFrame current{};
+    return allowed && gFollowActive.load() && FreshSample(MonotonicNanoseconds(), tap.stamp) &&
+        reinterpret_cast<std::uintptr_t>(CurrentPlayer()) == tap.context.player &&
+        FreshSample(MonotonicNanoseconds(), frame.publishedNs) &&
+        IsPoseUsable(frame.head, frame.headValidity, 200000000ull) &&
+        tap.context.reset == gFollowReset.load() && tap.context.epoch == frame.epoch &&
+        tap.context.reference == HeadTrackingReferenceGeneration() &&
+        TryGetGameplayPoseFrame(current, true) && current.player == tap.context.player &&
+        current.referenceGeneration == tap.context.reference && current.tracking.epoch == tap.context.epoch;
+}
 DWORD SetHeadInWallsFade(unsigned enabled)
 {
     if (enabled > 1) { return 1; }
