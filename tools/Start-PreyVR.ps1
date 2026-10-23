@@ -26,11 +26,9 @@ param(
     [int]$HeadRelativeMovement=1,
     # auto prefers LOCAL_FLOOR, then STAGE, with LOCAL fallback.
     [string]$ReferenceSpace='auto',
-    # **Both eyes from one game frame (1) or alternate eyes (0).** 1 is the
-    # route that removed the doubling a wearer saw in motion; 0 is the earlier
-    # path that renders one eye per frame. Kept as an escape hatch for problems
-    # specific to the both-eyes path (STEREO-DUAL-SUBMISSION-2026-10-10.md).
-    # Read once when VR starts, as PREYVR_DUAL_STEREO.
+    # 1 permits the saved 3D VIEW choice, including full stereo; 0 forces
+    # alternate eyes if full stereo was selected. It does not force full stereo
+    # over a saved alternate/mono choice. Read at VR startup as PREYVR_DUAL_STEREO.
     [int]$DualStereo=1,
     # Testing aid, not persisted: 0 off, 255 every layer of the in-game debug
     # overlay (rays, body slots, wrist test, foregrip; see dbg.draw).
@@ -214,7 +212,7 @@ try {
         'SystemShock2','SystemShock2Remastered','Swat4','Swat4X','SoF','TS4_x64','moh','moh_s','Il-2','Launcher64','carrier_command_2')
     $running=@(Get-Process -Name $fleetNames -ErrorAction SilentlyContinue)
     if ($running.Count) {throw ('Close the running game first: '+(($running | Select-Object -ExpandProperty ProcessName) -join ', '))}
-    Write-Host "Prey VR: $Width x $Height per eye; UI scale $UiScalePercent%; guide $(if($UiGuide){'on'}else{'off'}); stereo $(if($DualStereo){'both eyes per frame'}else{'alternate eyes'}); runtime: $(if($Runtime){$Runtime}else{'system OpenXR runtime'})"
+    Write-Host "Prey VR: $Width x $Height per eye; UI scale $UiScalePercent%; guide $(if($UiGuide){'on'}else{'off'}); stereo $(if($DualStereo){'saved 3D VIEW choice (full stereo allowed)'}else{'full stereo restricted to alternate eyes'}); runtime: $(if($Runtime){$Runtime}else{'system OpenXR runtime'})"
     if ($renderSize.MigrateLegacy) {Write-Host "Replacing an earlier default render size with $($renderSize.Width) x $($renderSize.Height) per eye, about the headset's own density."}
     Write-Host "Mod binaries: $BinDir"
     Write-Host "Comfort: snap $($comfort.SnapTurnDegrees) degrees (0 = smooth); head-relative $($comfort.HeadRelativeMovement); reference $($comfort.ReferenceSpace)"
