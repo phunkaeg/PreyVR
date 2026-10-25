@@ -1,0 +1,41 @@
+PreyVR          482 files   3,779,354 bytes  ~1,007,828 input tokens
+TOTAL           482 files   3,779,354 bytes  ~1,007,828 input tokens
+
+Refreshing PreyVR's project-local corpus...
+Staging PreyVR corpus:
+  markdown (recursive)         273 files
+  C++ source and headers       402 files
+  build and tooling            40 files
+
+Staged corpus totals:
+  .staging-ss2vr-b082fcb8885c497c8a9dd68b8bb627ef 0 files
+  bioshockvr     45 files
+  dishonoredvr   39 files
+  farcry2vr      45 files
+  graphify-out   1 files
+  mohvr          28 files
+  preyvr         998 files
+  sims4vr        13 files
+  sofvr          27 files
+  somavr         48 files
+  ss2vr          145 files
+  swat4vr        23 files
+
+Normalizing PreyVR code under the installed Graphify version...
+[graphify extract] --force --code-only: full AST re-scan, existing semantic layer preserved (no semantic pass this run)
+[graphify extract] --force: full re-scan, semantic cache reads skipped
+[graphify extract] scanning D:\Dev Debug\PreyVR\graphify\corpus\preyvr
+[graphify extract] --code-only: skipping 553 non-code file(s) (553 docs, 0 papers, 0 images) — no LLM extraction
+[graphify extract] found 432 code, 0 docs, 0 papers, 0 images
+[graphify extract] 1 file(s) not classified (no supported extension or shebang), skipped: regenny__PreyVR.genny
+[graphify extract] AST extraction on 432 code files...
+  AST extraction: 24/24 uncached files (100%) [24 workers]
+  warning: 3 file(s) had syntax errors and may be partially extracted: src__dll__Bootstrap.h (first error at line 7, no symbols extracted), src__dll__VrOptionsPanel.h (first error at line 5, no symbols extracted), tests__PhysicalRuntimeTests.cpp (first error at line 22, 18 symbol(s) extracted)
+[graphify] Replaced 7953 node(s) from re-extracted source file(s).
+[graphify] backed up semantic+curated graph (7 files) -> 2026-10-26/
+[graphify extract] wrote D:\Dev Debug\PreyVR\graphify\graphify-out\graph.json: 10326 nodes, 20540 edges, 632 communities
+[graphify extract] wrote D:\Dev Debug\PreyVR\graphify\graphify-out\.graphify_analysis.json
+[graphify extract] next: run `graphify cluster-only D:\Dev Debug\PreyVR\graphify` to generate GRAPH_REPORT.md and name communities
+  verified: 10,074 -> 10,326 nodes; 69 document/concept nodes across 11 source documents
+
+Selected project code graphs are current; existing semantic nodes were preserved.

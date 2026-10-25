@@ -95,4 +95,6 @@ tests/SurfaceGrab*Tests.cpp text eol=lf
 tools/re/verify_surface_grab.py text eol=lf
 docs/ZERO-G-SURFACE-GRAB-2026-10-26.md text eol=lf
 docs/evidence/surface-grab-2026-10-26/** -text whitespace=cr-at-eol
+# Preserve CMake's raw dependency diagnostic, including its trailing space.
+docs/evidence/surface-grab-2026-10-26/configure.txt -text -whitespace
 receipts/20261026-surface-grab.json -text whitespace=cr-at-eol

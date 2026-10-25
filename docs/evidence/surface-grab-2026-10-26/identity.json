@@ -1,0 +1,13 @@
+{
+  "source_commit": "9383e150c8c99d4106d216d2d2960e81ea4f53ca",
+  "integration_base": "c5aa5a8cd738b169848d2151d41ae97cd38f6cc7",
+  "supported_module_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "dll": {
+    "path": "D:\\Dev Debug\\PreyVR\\build\\surface-grab-20261026\\Release\\PreyVR.dll",
+    "bytes": 2312704,
+    "sha256": "32b19d38b09200c4830aab73bd3586221b7dbf85f73af12f14c155a6d9b24be2"
+  },
+  "observation": "Static Steam bytes and offline production-adapter/pure/transaction/GDI fixtures; no game, injection, xr-sim session or headset run",
+  "options": "Surface grab default OFF, free left hand, fixed supports first phase; requires existing native flight option. User preferences, shared XR configuration and older test packages unchanged.",
+  "baseline": "Release build; 85/85 offline tests passed; static verifier and corruption controls passed"
+}

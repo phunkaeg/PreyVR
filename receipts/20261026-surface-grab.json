@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20261026-surface-grab",
+  "recorded_at": "2026-10-25T23:33:08.988659+00:00",
+  "target": {
+    "name": "PreyVR optional zero-g fixed-surface grab and scoped push-off",
+    "identity_kind": "git_commit",
+    "identity": "9383e150c8c99d4106d216d2d2960e81ea4f53ca"
+  },
+  "question": "Can fixed-surface anchoring and physical push-off use a proved native zero-g movement seam with no teleport, scoped restoration and no launch from invalidation, according to static and offline evidence?",
+  "claim": "Steam instructions and concrete tables establish the primary animated AddMovement receiver, exact zero-g type4 caller/request prefix, synchronous velocity copy and native movement time conversion/action path. The implementation changes only 12 request velocity bytes for that current-player caller, restoring them after one native consumer invocation. Pure and actual production-adapter fixtures confirm deliberate grip acquisition, tracking-space motion rather than world differencing, bounded outward/tangential release, context/ownership cancellation and one-use acknowledged release delivery. The actual production transaction restores poisoned request bytes on normal return and SEH. This confirms static/source and synthetic harness contracts, not native gameplay acceptance.",
+  "evidence_grade": "LIVE",
+  "environment": "harness",
+  "method": "MSVC 19.50 x64 Release, Visual Studio 18 2026, CMake/CTest and Python 3.12 read-only PE verification. EGS/PDB exports supplied names and masked-prefix navigation leads; actual Steam instructions, concrete tables and numerical constants establish the target contract. Ghidra preflight found a System Shock 2 session and left it alone. verify_surface_grab.py checks complete Steam identity, native witnesses and runtime FNV gates, with corrupt concrete-callee/request-type/collider-word/hash controls. Pure numerical cases and actual production SurfaceGrabLane.cpp boundary-substitution fixture cover ownership and one-shot leases; actual InvokeMovement runs against a poisoned request under normal and injected SEH paths. Final build and 85/85 offline tests pass. Production Flight-page raster inspected. Reproduction commands are in docs/evidence/surface-grab-2026-10-26/README.md. Code graph refreshed with three explicitly reported partial-parse warnings; no semantic corpus or fleet graph rebuild. No game, injection, XR session, runtime change or headset test.",
+  "validity": "VALID",
+  "mutation": "persistent",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Full supported Steam module SHA256, x64 PE conventions, source commit and tested DLL identity pinned."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Independent native instruction/table/constants and runtime-gate correspondence verified with reached corruption controls; fixtures execute actual adapter and transaction with named native/publication/query substitutions; production GDI painter checked."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Valid fixed contact versus miss/backface/movable/removed contact; raw physical hand motion versus body/camera drift; exact native caller/entity/type versus unrelated requests; fresh versus expired leases, re-grip and changed reference/menu/player/weapon/settings; native cleanup and use/equipment priority; normal versus injected SEH restoration."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Static files and synthetic offline fixtures only, not an ordinary zero-g game scene."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "Persistent version-controlled source work. Transaction restoration was separately measured in the fixture. No target process, user settings, runtime registration or existing package was changed."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Release build, native static verifier/corruption controls and 85/85 combined offline tests pass. This is source/harness health only, not launch, actual physics, surface coverage or headset acceptance."
+  },
+  "limits": "No hook execution against Prey, native collision/flight acceptance, exhaustive fixed-surface coverage, save transitions, headset comfort or performance measurement. Single free left-hand anchor only; props/living bodies and moving-support following/bimanual anchoring excluded. A constructor-zeroed collider word is an additional conservative gate; its semantic name is not relied upon. Held anchors re-probe locally with tolerances; this is not exhaustive detection of sub-tolerance script movement. Existing inertia can remain after cancellation. Native consumer return proves submission, not that subsequent physics applied the requested motion. Optional development source/build, not a release or headset-approved artifact.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/surface-grab-2026-10-26/identity.json",
+      "sha256": "a91c0c300056f7f33e4660b94ae4afc1b70324bc85a7a91fd25bc84674f42a54",
+      "role": "Source/target/tested DLL identity"
+    },
+    {
+      "path": "docs/evidence/surface-grab-2026-10-26/native-contract.json",
+      "sha256": "7102f394429c020d643d0b9b6ef33ef0a153cf23ac695a31105774bde0f79815",
+      "role": "Static Steam witnesses, runtime gates and corruption controls"
+    },
+    {
+      "path": "docs/evidence/surface-grab-2026-10-26/configure.txt",
+      "sha256": "f8b1ec8da1294db802338e2c7525fa21d66118deda72a2b4d7e7aa4b4accad77",
+      "role": "Compiler/generator and dependency configuration"
+    },
+    {
+      "path": "docs/evidence/surface-grab-2026-10-26/build.txt",
+      "sha256": "6dba2cff4ac22928ff2868c9527d1801ff5f713f7536188254be2ce8df36d824",
+      "role": "Final Release build"
+    },
+    {
+      "path": "docs/evidence/surface-grab-2026-10-26/ctest.txt",
+      "sha256": "cfd57170e0e5ded6a582eb0c20877c302532dc21ceb9d5e3099e86b3e8bb3fb2",
+      "role": "85/85 offline test baseline"
+    },
+    {
+      "path": "docs/evidence/surface-grab-2026-10-26/raster.txt",
+      "sha256": "ac8ce017296752f5462a167010999171fd7ce110b3b7ca60c1cfb5065dd6257f",
+      "role": "Production GDI resource verification"
+    },
+    {
+      "path": "docs/evidence/surface-grab-2026-10-26/flight-options.png",
+      "sha256": "c9bf57596f5b1801bdb960ab0fb25ecdbaae7678e67109bd3078f0f9706d0302",
+      "role": "Inspected production Flight-page raster, not a headset screenshot"
+    },
+    {
+      "path": "docs/evidence/surface-grab-2026-10-26/graph.txt",
+      "sha256": "1eec28e92e259817ae80e3f0f29c9721128850e5e56cf6adcdff434f45910172",
+      "role": "Code graph refresh and explicit partial-parse limits"
+    },
+    {
+      "path": "docs/evidence/surface-grab-2026-10-26/README.md",
+      "sha256": "6fa83526c03a013c87644559ddf9264ae45128acf58544d550987f4f43e23793",
+      "role": "Reproduction and evidence boundaries"
+    },
+    {
+      "path": "include/preyvr/SurfaceGrabNative.h",
+      "sha256": "bcd28b1c9eda676d66a181a91cb46d8e1309b939b89ae31d1e0eebbdd2e45100",
+      "role": "Actual frozen native runtime contract gates"
+    },
+    {
+      "path": "src/dll/SurfaceGrabNative.cpp",
+      "sha256": "286427315c35a0f880d72ba558fb96aa177e57a35660cde8c0de7035bbfcb80b",
+      "role": "Scoped native hook, receiver and fixed-collider gates"
+    },
+    {
+      "path": "src/dll/SurfaceGrabLane.cpp",
+      "sha256": "735a65736794dc357365e9b6742daff6179ee4d7a2c8eb1f08701da079a20ee9",
+      "role": "Actual production adapter and one-shot delivery"
+    },
+    {
+      "path": "src/common/SurfaceGrab.cpp",
+      "sha256": "79dfe649b19973e36dfd67e94ce07f1785d04e35404a4c9e5295571f8548df71",
+      "role": "Physical tracking-space motion and cancellation policy"
+    },
+    {
+      "path": "include/preyvr/SurfaceGrabTransaction.h",
+      "sha256": "87bce74a20988d484328c52d53221e7a77bd723dbf682463b780c3296c528e1d",
+      "role": "Actual scoped 12-byte native request transaction"
+    },
+    {
+      "path": "tests/SurfaceGrabTests.cpp",
+      "sha256": "9e294644fc0df4fa6811d81b4ee4f18b56e25049d2e0066a750ff5332747f16e",
+      "role": "Pure numerical and context controls"
+    },
+    {
+      "path": "tests/SurfaceGrabRuntimeTests.cpp",
+      "sha256": "a9e6ed1b382be3a07b77ff2edafade6796d8b2eafa852ab857c491a5f896918f",
+      "role": "Actual adapter fixture with explicit substituted boundaries"
+    },
+    {
+      "path": "tests/SurfaceGrabTransactionTests.cpp",
+      "sha256": "22656e5c61138aab8d05997c7d32dadf8db50e2deabb651032b0cdc78e9742b1",
+      "role": "Poisoned request and SEH restoration fixture"
+    },
+    {
+      "path": "tests/FlightRuntimeTests.cpp",
+      "sha256": "49a086f561b39c0f599c5bdc0c12feaed4e6a1cb46034eaae62efdf1354eff9f",
+      "role": "Native flight cleanup and surface ownership handoff"
+    },
+    {
+      "path": "tools/re/verify_surface_grab.py",
+      "sha256": "b41c179b599e243ea814b381bfe875fdfd51fe684f00e72dbe5afba263e22e72",
+      "role": "Read-only target verifier and negative controls"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "When runtime testing is authorized, use an ordinary zero-g save and a fixed wall: compare acquisition/native-read/submission counters, verify gentle pull, no-motion release and capped push, then modal/recenter/weapon/tracking cancellation and equipment priorities. Record actual collider coverage and headset comfort separately before widening support types or adding bimanual anchors."
+}

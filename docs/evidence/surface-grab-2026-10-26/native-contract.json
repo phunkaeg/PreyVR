@@ -1,0 +1,200 @@
+{
+  "target_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "image_base": "0x180000000",
+  "environment": "static; local Steam file and EGS export leads",
+  "witnesses": {
+    "zero_g_request_type_4": {
+      "rva": "0x1270ee3",
+      "bytes": "c745b004000000"
+    },
+    "zero_g_request_xyz_stack": {
+      "rva": "0x1270f89",
+      "bytes": "8945bc0f14c2f20f1145b4"
+    },
+    "zero_g_animated_getter_and_request_call": {
+      "rva": "0x1270f94",
+      "bytes": "498b4500ff9098020000488d55b0488bc84c8b0041ff9030010000"
+    },
+    "player_animated_field": {
+      "rva": "0x157c6d0",
+      "bytes": "488b8108180000c3"
+    },
+    "animated_primary_constructor": {
+      "rva": "0x4f5941",
+      "bytes": "488d0518827e0148897108488bf948897110488901"
+    },
+    "animated_secondary_constructor": {
+      "rva": "0x4f5956",
+      "bytes": "488d0573857e0148894140"
+    },
+    "movement_type_then_velocity_loads": {
+      "rva": "0x4f5d09",
+      "bytes": "833a004c8bf2488bf10f84d7010000f30f104204f30f104a08f30f10520c"
+    },
+    "request_type_velocity_copy": {
+      "rva": "0x4f5e4d",
+      "bytes": "898678010000f2410f104604f20f11867c010000418b460c898684010000"
+    },
+    "last_request_flag_copy": {
+      "rva": "0x4f5ec0",
+      "bytes": "410fb646488886c0010000"
+    },
+    "physical_owner_entity": {
+      "rva": "0x4fc088",
+      "bytes": "4c8b7138"
+    },
+    "restriction_flag": {
+      "rva": "0x159cb0a",
+      "bytes": "80b91306000000"
+    },
+    "entity_parent": {
+      "rva": "0x904130",
+      "bytes": "488b81a00000004885c07405488b4018c3c3"
+    },
+    "status_component": {
+      "rva": "0x1587ca0",
+      "bytes": "488b81c0000000c3"
+    },
+    "native_status_owner_component": {
+      "rva": "0x127008b",
+      "bytes": "498d8d78060000"
+    },
+    "native_status_6_calls": {
+      "rva": "0x12700bf",
+      "bytes": "e8dc7b3100488bc8ba06000000e8dff82100"
+    },
+    "request_type_4_branch": {
+      "rva": "0x4fbf10",
+      "bytes": "c783d406000003000000"
+    },
+    "velocity_to_displacement": {
+      "rva": "0x4fbf5c",
+      "bytes": "f20f10837c0100008b8384010000f20f1183c40600008983cc060000"
+    },
+    "time_step_to_float": {
+      "rva": "0x4fbf78",
+      "bytes": "f20f1093d0010000488bcb660f5ad2"
+    },
+    "multiply_xyz_by_time": {
+      "rva": "0x4fbf8d",
+      "bytes": "f30f5983c4060000f30f598bc8060000f30f5993cc060000"
+    },
+    "physical_time_step": {
+      "rva": "0x4fc0ed",
+      "bytes": "f20f10bbd0010000"
+    },
+    "physical_reciprocal_time": {
+      "rva": "0x4fc8d6",
+      "bytes": "f30f101d4a227801f30f5edf"
+    },
+    "native_physical_action": {
+      "rva": "0x4fc9e1",
+      "bytes": "488d542460488b064533c0488bceff5038"
+    },
+    "fixed_collider_constructor_table": {
+      "rva": "0xb7670d",
+      "bytes": "488d0574ba2001"
+    },
+    "fixed_collider_constructor_class": {
+      "rva": "0xb76739",
+      "bytes": "488901488d81a80000004c89512044895128"
+    },
+    "fixed_collider_type": {
+      "rva": "0x1a5a880",
+      "bytes": "b801000000c3"
+    }
+  },
+  "runtime_gates": [
+    {
+      "rva": "0x4F5D00",
+      "size": 64,
+      "fnv64": "0xD4985D11A1DE1655"
+    },
+    {
+      "rva": "0x4F5E4D",
+      "size": 128,
+      "fnv64": "0xD9D4088529FDAC59"
+    },
+    {
+      "rva": "0x1270EE3",
+      "size": 7,
+      "fnv64": "0xA8AD7CE0589EB8DF"
+    },
+    {
+      "rva": "0x1270F94",
+      "size": 27,
+      "fnv64": "0xA4D95BE19D2AE13C"
+    },
+    {
+      "rva": "0x4F5941",
+      "size": 21,
+      "fnv64": "0x2794E19648452380"
+    },
+    {
+      "rva": "0x157C6D0",
+      "size": 8,
+      "fnv64": "0xA4FC63B7CFD81D34"
+    },
+    {
+      "rva": "0x904130",
+      "size": 18,
+      "fnv64": "0xEFA18111DC699EDC"
+    },
+    {
+      "rva": "0x1587CA0",
+      "size": 8,
+      "fnv64": "0x36AAA6E2F921CEF4"
+    },
+    {
+      "rva": "0x148F9B0",
+      "size": 96,
+      "fnv64": "0xE684420A5B4CED4C"
+    },
+    {
+      "rva": "0x159CB0A",
+      "size": 7,
+      "fnv64": "0xDC6FF8577515C8C5"
+    },
+    {
+      "rva": "0xB7670D",
+      "size": 69,
+      "fnv64": "0xCE1EFABF74157DA7"
+    },
+    {
+      "rva": "0x1A5A880",
+      "size": 6,
+      "fnv64": "0x31B5D0AF35A4361F"
+    },
+    {
+      "rva": "0x4FBE00",
+      "size": 64,
+      "fnv64": "0xCB5541E350FCA5E1"
+    },
+    {
+      "rva": "0x4FBF5C",
+      "size": 97,
+      "fnv64": "0x279AF1827C34D5AE"
+    },
+    {
+      "rva": "0x4FC070",
+      "size": 128,
+      "fnv64": "0xF8F3B5B2B7F28883"
+    }
+  ],
+  "negative_controls": [
+    "concrete_callee_rejected",
+    "request_type_rejected",
+    "collider_class_rejected",
+    "runtime_hash_mismatch_rejected"
+  ],
+  "contract": {
+    "native_request": "type4; RCX primary animated receiver; RDX caller-owned request; velocity12 bytes at+4",
+    "caller_return": "0x1270faf",
+    "animated_primary": "0x1cddb60",
+    "add_movement": "0x4f5d00",
+    "velocity_units": "world displacement/time: preparation multiplies by dt, physics action divides by dt",
+    "fixed_collider": "primary vtable0x1d82188; concrete GetType()=1; constructor-zeroed word+0x28=0 as an additional conservative gate",
+    "retained_pointer": "token only; fresh short scene query revalidates the held anchor"
+  },
+  "limits": "No game/native physics acceptance, XR session, surface coverage, headset feel or performance validation. Native AddMovement return is submission only. Fixed geometry first phase; moving supports and two-hand anchors excluded."
+}
