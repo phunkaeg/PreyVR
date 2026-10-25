@@ -1,0 +1,216 @@
+{
+  "target_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "image_base": "0x180000000",
+  "environment": "static",
+  "witnesses": {
+    "entity_constructor_vtable": {
+      "rva": "0x9018c2",
+      "bytes": "488d0507f34201488bf9488901"
+    },
+    "native_fsm_dispatch": {
+      "rva": "0x159ea28",
+      "bytes": "8b03ffc883f810"
+    },
+    "native_fsm_case9": {
+      "rva": "0x159eaf8",
+      "bytes": "488d8b100300000f28d6488bd3e8b611cdff"
+    },
+    "zero_g_entry_state": {
+      "rva": "0x159c45f",
+      "bytes": "c70609000000"
+    },
+    "zero_g_receiver_entity": {
+      "rva": "0x126fdd0",
+      "bytes": "4d8b7d38"
+    },
+    "zero_g_thrust_rotation_read": {
+      "rva": "0x1270640",
+      "bytes": "498b07488d542458498bcfff9050010000"
+    },
+    "rotation_hidden_result": {
+      "rva": "0x904d4b",
+      "bytes": "488bda"
+    },
+    "rotation_wxyz_result_tail": {
+      "rva": "0x905153",
+      "bytes": "f30f11730c"
+    },
+    "rotation_result_return": {
+      "rva": "0x90515d",
+      "bytes": "488bc3"
+    },
+    "input_component_from_player": {
+      "rva": "0x159cbb1",
+      "bytes": "488d88e0080000488bd3e8b027ffff"
+    },
+    "input_owner_from_receiver": {
+      "rva": "0x158f380",
+      "bytes": "488b4970"
+    },
+    "jump_receiver_to_fsm": {
+      "rva": "0x158feef",
+      "bytes": "488b5b70400fb6d7488d4b58e8c0e60000"
+    },
+    "jump_setter": {
+      "rva": "0x159e5c0",
+      "bytes": "889111060000"
+    },
+    "jump_consumer": {
+      "rva": "0x159d410",
+      "bytes": "0fb68111060000"
+    },
+    "sneak_setter": {
+      "rva": "0x159e5d0",
+      "bytes": "889110060000"
+    },
+    "sneak_consumer": {
+      "rva": "0x159d420",
+      "bytes": "0fb68110060000"
+    },
+    "zero_g_ascent_request": {
+      "rva": "0x1270480",
+      "bytes": "498bcce888cf3200"
+    },
+    "zero_g_descent_request": {
+      "rva": "0x12704e2",
+      "bytes": "498bcce836cf3200"
+    },
+    "sprint_native_setter": {
+      "rva": "0x1591124",
+      "bytes": "8891ac00000084d27432"
+    },
+    "sprint_native_consumer": {
+      "rva": "0x127024d",
+      "bytes": "4138bd8c090000"
+    },
+    "lean_cinematic_clear": {
+      "rva": "0x15910b0",
+      "bytes": "83b99400000000740966c781b50000000000"
+    },
+    "lean_left_flag": {
+      "rva": "0x15910c2",
+      "bytes": "0fb691b5000000"
+    },
+    "lean_right_flag": {
+      "rva": "0x15910dd",
+      "bytes": "0fb681b6000000"
+    },
+    "lean_sum": {
+      "rva": "0x15910f0",
+      "bytes": "f30f58c1f30f118180000000f30f11417c"
+    },
+    "brake_both_flags": {
+      "rva": "0x1591101",
+      "bytes": "84d2740c84c07408c681b100000001c3"
+    },
+    "brake_native_consumer": {
+      "rva": "0x1270366",
+      "bytes": "4138b591090000"
+    }
+  },
+  "profiles": [
+    {
+      "archive": "GameSDK/GameData.pak",
+      "archive_sha256": "7f1d96c631220b4a0566a00196c01efb8204476e429694461c6379e0b281617c",
+      "member_sha256": "69647ac32cd2cdeba86c9320342332aee2ab41374765f8f69442baa8cf0d09e5",
+      "bindings": [
+        {
+          "action": "jump",
+          "xboxpad": "xi_a",
+          "onPress": true,
+          "onRelease": true,
+          "onHold": false
+        },
+        {
+          "action": "sneak",
+          "xboxpad": "xi_b",
+          "onPress": true,
+          "onRelease": true,
+          "onHold": false
+        },
+        {
+          "action": "sprint",
+          "xboxpad": "xi_thumbl",
+          "onPress": true,
+          "onRelease": true,
+          "onHold": false
+        },
+        {
+          "action": "leanleft",
+          "xboxpad": "xi_shoulderl",
+          "onPress": true,
+          "onRelease": true,
+          "onHold": false
+        },
+        {
+          "action": "leanright",
+          "xboxpad": "xi_shoulderr",
+          "onPress": true,
+          "onRelease": true,
+          "onHold": false
+        }
+      ]
+    },
+    {
+      "archive": "GameSDK/Precache/patch.pak",
+      "archive_sha256": "c04ee92d951c0b2f49495bf1072323e9ed49a4d5224c98fe29b67d3b82d34cb0",
+      "member_sha256": "22e2b31a63c82a1cb2db279b69482156983942e3cfd17be533b22a062c9999ac",
+      "bindings": [
+        {
+          "action": "jump",
+          "xboxpad": "xi_a",
+          "onPress": true,
+          "onRelease": true,
+          "onHold": false
+        },
+        {
+          "action": "sneak",
+          "xboxpad": "xi_b",
+          "onPress": true,
+          "onRelease": true,
+          "onHold": false
+        },
+        {
+          "action": "sprint",
+          "xboxpad": "xi_thumbl",
+          "onPress": true,
+          "onRelease": true,
+          "onHold": false
+        },
+        {
+          "action": "leanleft",
+          "xboxpad": "xi_shoulderl",
+          "onPress": true,
+          "onRelease": true,
+          "onHold": false
+        },
+        {
+          "action": "leanright",
+          "xboxpad": "xi_shoulderr",
+          "onPress": true,
+          "onRelease": true,
+          "onHold": false
+        }
+      ]
+    }
+  ],
+  "controls": {
+    "corrupt_callee_rejected": true,
+    "corrupt_runtime_field_gate_rejected": true,
+    "twofish_known_answer": "PASS"
+  },
+  "contract": {
+    "state": 9,
+    "fsm_offset": "0x58",
+    "input_offset": "0x8e0",
+    "entity_offset": "0x38",
+    "thrust_getter_return": "0x1270651",
+    "entity_vtable": "0x1d30bd0",
+    "getter": "0x904d30",
+    "vtable_byte_slot": "0x150",
+    "native_quaternion": "w,x,y,z; caller supplies 16-byte return buffer in RDX",
+    "brake": "paired input flags +0xB5/+0xB6 then ProcessLeanInput at 0x15910B0; sum zero, braking true",
+    "boost": "ProcessSprintInput at 0x1591120; input +0xAC, false clears independently of gamepad onPress latch"
+  },
+  "limits": "Static target/default bindings and source gate correspondence only. No game, native input acceptance, headset comfort or performance test. EGS symbols supplied search leads; shipping RVAs and layout are Steam byte observations."
+}

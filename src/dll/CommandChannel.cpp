@@ -37,6 +37,7 @@
 #include "BodyFollow.h"
 #include "UiPointer.h"
 #include "HackingLane.h"
+#include "FlightLane.h"
 #include "FrameCaptureWin32.h"
 #include "InputPost.h"
 #include "MoveLane.h"
@@ -598,16 +599,17 @@ bool ExecuteDualCommand(const std::vector<std::string>& args, std::ostringstream
 bool ExecuteUiInput(const std::vector<std::string>& args,std::ostringstream& out)
 {
     const auto& verb=args[0];
-    if(verb!="ui.poke"&&verb!="ui.poke.distance"&&verb!="ui.poke.tip"&&verb!="ui.hacking")return false;
+    if(verb!="ui.poke"&&verb!="ui.poke.distance"&&verb!="ui.poke.tip"&&verb!="ui.hacking"&&verb!="flight.controls")return false;
     DWORD result=0;int value=0;
     if(args.size()>2||(args.size()==2&&(!ParseInt(args[1],value)||value<0)))result=ERROR_INVALID_PARAMETER;
     else if(args.size()==2) {
         if(verb=="ui.poke")result=SetUiPokeEnabled(static_cast<unsigned>(value));
         else if(verb=="ui.poke.distance")result=SetUiPokeDistanceCm(static_cast<unsigned>(value));
         else if(verb=="ui.poke.tip")result=SetUiPokeTipMm(static_cast<unsigned>(value));
+        else if(verb=="flight.controls")result=SetNativeFlightControls(static_cast<unsigned>(value));
         else result=SetHackingControls(static_cast<unsigned>(value));
     }
-    out<<verb<<" result="<<result<<' '<<(verb=="ui.hacking"?HackingInputReport():UiPointerReport());
+    out<<verb<<" result="<<result<<' '<<(verb=="flight.controls"?NativeFlightReport():verb=="ui.hacking"?HackingInputReport():UiPointerReport());
     return true;
 }
 

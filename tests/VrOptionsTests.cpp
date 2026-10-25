@@ -50,6 +50,7 @@ void MenuChecks(){
 }
 void SettingsChecks(){
  auto v=Defaults(),parsed=v;
+ Check(v[NativeFlight]==0&&Item(9,3)==NativeFlight,"native flight defaults off on World tab");
  v[Psychoscope]=1;v[GripToggle]=1;v[UiMargin]=87;
  Check(Parse(Serialize(v),parsed)&&parsed==v,"settings roundtrip");
  const auto original=parsed;

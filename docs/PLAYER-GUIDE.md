@@ -98,7 +98,7 @@ native menu is already open; `vr.options 1` is the diagnostic equivalent.
 - **Hands:** two-hand aim on/off, hold/toggle foregrip, snapped/free support hand,
   and the optional psychoscope gesture.
 - **World:** left-hand interaction (on by default), hand carry/throw and hand grenades
-  (both off by default). Carry needs left-hand interaction. These choices persist across VR restarts;
+  (both off by default), and optional **Zero-G Flight (Experimental)**. Carry needs left-hand interaction. These choices persist across VR restarts;
   turning VR off withdraws their native overrides without erasing your preferences.
 - **Interface:** size, visible-area limit, panel curvature and controls guide.
 - **Input:** optional **Touch Panels** and **Controller Hacking**, both off by
@@ -150,6 +150,16 @@ before opening VR options. Pointer clicks are suppressed while hacking owns
 the controls, so they do not change its prompt mode or compete with the stick.
 This implementation has offline/static checks; native puzzle and headset
 acceptance remain. See [touch and hacking test steps](UI-TOUCH-HACKING-2026-10-25.md).
+
+**Zero-g flight:** enable Zero-G Flight on the World tab (off by default).
+Release controls on entry, then use the left stick for thrust, right **A/B**
+for ascent/descent, **A+B together** for native braking, and hold **left Y** to
+request boost. With Head Relative movement, thrust follows your full view,
+including looking up/down; Body Relative keeps the native entity basis.
+The game retains inertia, collision and speed limits. Menus and recenter cancel
+requests; release controls before restarting them. This first phase has static
+and offline checks only. Surface grabbing is separate work. See
+[native flight details and test checklist](NATIVE-ZERO-G-2026-10-25.md).
 
 **Holsters:** with a weapon equipped, bring the right controller to your right
 hip or across to your left chest, release grip, then squeeze. An empty slot stores

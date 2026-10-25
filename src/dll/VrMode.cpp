@@ -28,6 +28,7 @@
 #include "DebugOverlay.h"
 #include "BodyFollow.h"
 #include "HackingLane.h"
+#include "FlightLane.h"
 #include "preyvr/DebugOverlayScene.h"
 #include "preyvr/LatestSnapshot.h"
 #include "MinHookInit.h"
@@ -133,6 +134,7 @@ void ApplyStereoMode() {
 }
 void StopFeatures() {
     SetHackingInputActive(false);
+    SetNativeFlightActive(false);
     SetHudLayerEnabled(0);
     // Contract first, so no both-eyes record is published after its submissions stop.
     SetDualStereoContract(0); SetDualSceneMode(0,0); SetDualOverlayRedraw(0);
@@ -315,6 +317,7 @@ void TickVrMode() {
         if(XrSubmittedFrameCount()<firstFrame+3 || XrResolutionChain(14)!=0)return;
         phase=Phase::active;
         SetHackingInputActive(true);
+        SetNativeFlightActive(true);
         nextStatusReport=GetTickCount64()+kStatusReportMs;
         Log("state=active panel=automatic recenter=F12_or_grips_and_left_Y");
     }

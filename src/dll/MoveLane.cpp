@@ -2,6 +2,7 @@
 #include "AnimIkTakeover.h"
 #include "BodyFollow.h"
 #include "HackingLane.h"
+#include "FlightLane.h"
 #include "ArmsLane.h"
 #include "AimTakeover.h"
 #include "BodyEquipment.h"
@@ -320,7 +321,9 @@ void UpdateMoveLane()
     const auto movementReference=HeadTrackingReferenceGeneration();
     TrackingFrame movementFrame{};
     const bool gameplay = GameplayLaneInputAllowed();
-    const bool read = TryGetTrackingFrame(movementFrame) && FreshSample(MonotonicNanoseconds(),movementFrame.publishedNs);
+    const auto flightMode=NativeFlightMovementMode();
+    const bool read = (flightMode?ReadNativeFlightTracking(movementFrame):TryGetTrackingFrame(movementFrame)) &&
+        FreshSample(MonotonicNanoseconds(),movementFrame.publishedNs);
     // A sample missed for a moment -- a contended read, a frame-long hitch -- holds
     // what the game was last told instead of releasing the stick: a release there
     // was a stutter in every walk. Past 300 ms it is a real loss and releases.
@@ -329,6 +332,7 @@ void UpdateMoveLane()
     if(read) lastReadMs=nowMs;
     else if(active && !neutralize && gameplay && gMoveMayBeHeld && nowMs-lastReadMs<300) { gHeld.fetch_add(1,std::memory_order_relaxed); return; }
     bool haveInput = active && !neutralize && gameplay && read;
+    if(flightMode==1)haveInput=false;
     if(haveInput) state=movementFrame.hands[0];
     // After a menu, a stick still held from it must not walk the player: wait for
     // it to come back to the centre, or for half a second of play.
@@ -340,7 +344,9 @@ void UpdateMoveLane()
         if ((std::fabs(state.thumbstickX)<=.15f && std::fabs(state.thumbstickY)<=.15f) || nowMs-gameplaySinceMs>=500) awaitNeutral=false;
         else haveInput=false;
     }
-    if(haveInput && gHeadRelative.load()) {
+    // Zero-g rotates acceleration at its scoped native quaternion read. Do
+    // not also rotate these axes by head yaw: that would apply heading twice.
+    if(haveInput && !flightMode && gHeadRelative.load()) {
         const auto yaw=stereo::RecenterYawFromHeadPose(movementFrame.head);
         if(!yaw || !IsPoseUsable(movementFrame.head,movementFrame.headValidity,200000000ull)) haveInput=false;
         else {
@@ -348,7 +354,7 @@ void UpdateMoveLane()
                 *yaw-HeadTrackingReferenceYaw(),gStrafeScale.load(),gBackwardScale.load());
             state.thumbstickX=v.x;state.thumbstickY=v.y;
         }
-    } else if(haveInput) {
+    } else if(haveInput && !flightMode) {
         // Body relative: the stick walks the way the torso faces (the arms' and the
         // visible body's estimate), so the player can look around while walking.
         float torso=0.0f;
@@ -615,9 +621,11 @@ void UpdateTurnAndFireLanes()
         for (int slot = 0; slot < kActionCount; ++slot) {
             // Slot 0's grip arbitration lives in the use button above.
             if (slot != kActionInteract && !GameplayLaneInputAllowed() && sources[slot]) blocked[slot]=true;
+            const bool flightFace=(slot==kActionJump||slot==kActionCrouch)&&NativeFlightOwnsFaces();
+            if(flightFace&&sources[slot])blocked[slot]=true;
             if (!sources[slot]) blocked[slot]=false;
             ActionBinding& binding = gActions[slot];
-            const bool wanted = actionsOn && !releaseActions && sources[slot] && !blocked[slot];
+            const bool wanted = actionsOn && !releaseActions && !flightFace && sources[slot] && !blocked[slot];
             if (wanted == binding.held) { continue; }
             const int keyId = binding.keyId.load(std::memory_order_acquire);
             const unsigned int state = wanted ? static_cast<unsigned int>(input::kStatePressed)
@@ -757,11 +765,12 @@ unsigned long long MoveLaneInputObject() { return gInputObject.load(std::memory_
 
 int MoveLaneAxisMilli(unsigned int axis) { return axis < 2 ? gAxisMilli[axis].load(std::memory_order_relaxed) : 0; }
 bool GameplayInputReleasedForHacking() {
-    if(gMoveMayBeHeld)return false;
+    if(gMoveMayBeHeld||NativeFlightCleanupPending())return false;
     for(const auto& action:gActions)if(action.held)return false;
     return true;
 }
 int MoveLaneCinematicGate() { return gCinematic.load(std::memory_order_relaxed); }
+bool GameplayFacesReleasedForFlight(){return !gActions[kActionJump].held&&!gActions[kActionCrouch].held;}
 unsigned long long MoveLaneRecenterCount() { return gRecenters.load(std::memory_order_relaxed); }
 
 DWORD SetSnapTurnDegrees(unsigned degrees) {

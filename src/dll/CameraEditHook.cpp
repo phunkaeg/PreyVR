@@ -9,6 +9,7 @@
 #include "AimTakeover.h"
 #include "MoveLane.h"
 #include "HackingLane.h"
+#include "FlightLane.h"
 
 #include "HeadTrackingHook.h"
 
@@ -1027,8 +1028,10 @@ void __fastcall RenderWithCameraEdit(void* system)
     // Same thread and same frame as the drain: the lane produces at most two
     // axis events per frame and the drain consumes one, so producing anywhere
     // else would race the queue it feeds.
+    PrepareNativeFlightInput();
     UpdateMoveLane();
     UpdateTurnAndFireLanes();
+    DrainNativeFlightInput();
     UpdateHackingInput(); // native action-map events, after gameplay releases
 
     if ((!gArmed.load(std::memory_order_acquire) && !stereoArmed &&

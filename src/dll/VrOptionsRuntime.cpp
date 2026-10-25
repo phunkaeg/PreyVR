@@ -2,6 +2,7 @@
 #include "BodyFollow.h"
 #include "AnimIkTakeover.h"
 #include "HackingLane.h"
+#include "FlightLane.h"
 #include "InteractionLane.h"
 #include "CarryLane.h"
 #include "GrenadeLane.h"
@@ -108,6 +109,7 @@ void Apply(unsigned id,int v){
  case options::UiPokeDistance:SetUiPokeDistanceCm(static_cast<unsigned>(v));break;
  case options::UiPokeTip:SetUiPokeTipMm(static_cast<unsigned>(v));break;
  case options::HackingControls:SetHackingControls(v!=0);break;
+ case options::NativeFlight:SetNativeFlightControls(v!=0);break;
  }
 }
 void Save(){
@@ -156,6 +158,7 @@ options::Values VrOptionsValues(){
  v[options::UiPokeDistance]=static_cast<int>(UiPokeDistanceCm());
  v[options::UiPokeTip]=static_cast<int>(UiPokeTipMm());
  v[options::HackingControls]=static_cast<int>(HackingControlsEnabled());
+ v[options::NativeFlight]=static_cast<int>(NativeFlightControlsEnabled());
  v[options::UseHand]=useHand.load();v[options::CarryHand]=carryHand.load();v[options::GrenadeHand]=grenadeHand.load();
  // Read the actual lane settings, including changes made through the command
  // channel. Pending menu edits override only their own row until applied.

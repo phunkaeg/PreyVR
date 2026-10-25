@@ -1,6 +1,7 @@
 #include "InputPost.h"
 #include "VrOptionsRuntime.h"
 #include "HackingLane.h"
+#include "FlightLane.h"
 
 #include "CameraEditHook.h"
 #include "InputPathProbe.h"
@@ -153,7 +154,7 @@ void DrainQueuedInput()
         if(!gQueue.Pop(event.data(),&scope))return;
         std::memcpy(&key,event.data()+input::kOffsetKeyId,sizeof(key));
         std::memcpy(&state,event.data()+input::kOffsetState,sizeof(state));
-        if(menuDispatch.Allow(scope,HudMenuEpoch(),!VrOptionsInputOwned()&&!HackingInputOwnsControls()&&HudMenuStateKnown()&&HudMenuIsOpen(),key,state)) {
+        if(menuDispatch.Allow(scope,HudMenuEpoch(),!VrOptionsInputOwned()&&!HackingInputOwnsControls()&&!NativeFlightCleanupPending()&&HudMenuStateKnown()&&HudMenuIsOpen(),key,state)) {
             accepted=true;break;
         }
         gMenuDiscarded.fetch_add(1,std::memory_order_relaxed);
@@ -205,7 +206,7 @@ DWORD PostMenuAction(unsigned int action, unsigned long long menuEpoch)
     // Both or neither. A press queued without its release would leave the engine
     // believing the button is held for as long as the queue stays short.
     const auto scope=menuEpoch;
-    if(scope && (scope!=HudMenuEpoch() || !HudMenuStateKnown() || !HudMenuIsOpen() || HackingInputOwnsControls()))return 4;
+    if(scope && (scope!=HudMenuEpoch() || !HudMenuStateKnown() || !HudMenuIsOpen() || HackingInputOwnsControls() || NativeFlightCleanupPending()))return 4;
     if (!gEnabled.load(std::memory_order_acquire) || !gQueue.PushPair(buffer.data(),scope)) {
         return 4;
     }

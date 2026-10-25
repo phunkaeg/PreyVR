@@ -14,6 +14,8 @@ void Check(bool ok,const char* why){if(!ok){std::cerr<<why<<'\n';std::exit(1);}}
 }
 namespace preyvr::lifecycle { void Log(std::string_view){} }
 namespace preyvr::dll {
+DWORD SetNativeFlightControls(unsigned v){applied[options::NativeFlight]=v;return 0;}
+unsigned NativeFlightControlsEnabled(){return applied[options::NativeFlight];}
 unsigned useEffective=0,carryEffective=0,grenadeEffective=0;
 DWORD SetUseHand(unsigned v){useEffective=v;return 0;}
 DWORD SetCarryHand(unsigned v){carryEffective=v;return 0;}
@@ -226,6 +228,8 @@ int main(){
  ApplyVrWorldOptions(true);Check(carryEffective,"saved menu carry preference activates with VR");
  r.thumbstickY=-1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
  Check(grenadeEffective,"high-bit grenade edit reaches runtime");
+ r.thumbstickY=-1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+ Check(NativeFlightControlsEnabled()==1,"flight opt-in reaches native adapter through high-bit mailbox");
  ApplyVrWorldOptions(false);
  r.gripPressed=true;tick();r.gripPressed=false;tick();Check(VrOptionsPage()==10,"input tab reached");
  r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
@@ -243,6 +247,7 @@ int main(){
  ready=false;LoadVrOptions();Check(DebugOverlayMask()==1&&ShotRayEnabled()==1,"explicit launch overrides saved OFF");
  SetEnvironmentVariableW(L"PREYVR_DEBUG_OVERLAY",nullptr);SetEnvironmentVariableW(L"PREYVR_MUZZLE_AIM",nullptr);
  ready=false;LoadVrOptions();Check(DebugOverlayMask()==0&&ShotRayEnabled()==0,"normal load restores saved OFF");
+ Check(NativeFlightControlsEnabled()==1,"flight preference roundtrips to disk");
  std::filesystem::remove(sandbox/L"PreyVR"/L"vr-options.ini");
  std::filesystem::remove(sandbox/L"PreyVR");std::filesystem::remove(sandbox);
  std::cout<<"Runtime menu, native-input ownership, settings application and disk roundtrip passed\n";
