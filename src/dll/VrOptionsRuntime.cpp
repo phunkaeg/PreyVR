@@ -3,6 +3,7 @@
 #include "AnimIkTakeover.h"
 #include "HackingLane.h"
 #include "FlightLane.h"
+#include "SurfaceGrabLane.h"
 #include "InteractionLane.h"
 #include "CarryLane.h"
 #include "GrenadeLane.h"
@@ -110,6 +111,10 @@ void Apply(unsigned id,int v){
  case options::UiPokeTip:SetUiPokeTipMm(static_cast<unsigned>(v));break;
  case options::HackingControls:SetHackingControls(v!=0);break;
  case options::NativeFlight:SetNativeFlightControls(v!=0);break;
+ case options::SurfaceGrab:SetSurfaceGrabEnabled(v!=0);break;
+ case options::SurfaceReach:SetSurfaceGrabReach(v);break;
+ case options::SurfaceStrength:SetSurfacePushStrength(v);break;
+ case options::SurfaceLimit:SetSurfacePushLimit(v);break;
  }
 }
 void Save(){
@@ -159,6 +164,10 @@ options::Values VrOptionsValues(){
  v[options::UiPokeTip]=static_cast<int>(UiPokeTipMm());
  v[options::HackingControls]=static_cast<int>(HackingControlsEnabled());
  v[options::NativeFlight]=static_cast<int>(NativeFlightControlsEnabled());
+ v[options::SurfaceGrab]=static_cast<int>(SurfaceGrabEnabled());
+ v[options::SurfaceReach]=static_cast<int>(SurfaceGrabReach());
+ v[options::SurfaceStrength]=static_cast<int>(SurfacePushStrength());
+ v[options::SurfaceLimit]=static_cast<int>(SurfacePushLimit());
  v[options::UseHand]=useHand.load();v[options::CarryHand]=carryHand.load();v[options::GrenadeHand]=grenadeHand.load();
  // Read the actual lane settings, including changes made through the command
  // channel. Pending menu edits override only their own row until applied.

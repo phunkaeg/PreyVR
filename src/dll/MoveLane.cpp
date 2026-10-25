@@ -3,6 +3,7 @@
 #include "BodyFollow.h"
 #include "HackingLane.h"
 #include "FlightLane.h"
+#include "SurfaceGrabLane.h"
 #include "ArmsLane.h"
 #include "AimTakeover.h"
 #include "BodyEquipment.h"
@@ -445,9 +446,9 @@ void UpdateTurnAndFireLanes()
     }
 
     static bool turnBlocked=false;
-    if (!GameplayLaneInputAllowed()) turnBlocked=true;
+    if (!GameplayLaneInputAllowed() || SurfaceGrabOwnsMotion()) turnBlocked=true;
     else if (haveInput && std::fabs(right.thumbstickX)<=.15f && std::fabs(right.thumbstickY)<=.15f) turnBlocked=false;
-    const bool turnOn = gTurnEnabled.load(std::memory_order_acquire) && GameplayLaneInputAllowed() && !turnBlocked;
+    const bool turnOn = gTurnEnabled.load(std::memory_order_acquire) && GameplayLaneInputAllowed() && !SurfaceGrabOwnsMotion() && !turnBlocked;
     const bool releaseTurn = gTurnNeutralize.exchange(false, std::memory_order_acq_rel);
     static comfort::SnapLatch snap;
     static unsigned previousMode=~0u;
@@ -585,7 +586,7 @@ void UpdateTurnAndFireLanes()
         useIn.leftHand = UseHandLeft() != 0;
         useIn.leftGrip = haveLeftHand && leftHand.gripPressed;
         useIn.rightGrip = haveInput && right.gripPressed;
-        useIn.leftBusy = gRecenterHeld || MedkitZoneHasLeftHand() || SupportGripNear() || TwoHandedAimHeld() ||
+        useIn.leftBusy = gRecenterHeld || SurfaceGrabOwnsLeftGrip() || MedkitZoneHasLeftHand() || SupportGripNear() || TwoHandedAimHeld() ||
                          PsychoscopeZoneHasLeftHand();
         // A paired squeeze is a hold, not use/reload.
         // While something is carried the button drops it: the left grip lets
@@ -771,6 +772,7 @@ bool GameplayInputReleasedForHacking() {
 }
 int MoveLaneCinematicGate() { return gCinematic.load(std::memory_order_relaxed); }
 bool GameplayFacesReleasedForFlight(){return !gActions[kActionJump].held&&!gActions[kActionCrouch].held;}
+bool GameplayGripReleasedForSurface(){return !gActions[kActionInteract].held;}
 unsigned long long MoveLaneRecenterCount() { return gRecenters.load(std::memory_order_relaxed); }
 
 DWORD SetSnapTurnDegrees(unsigned degrees) {

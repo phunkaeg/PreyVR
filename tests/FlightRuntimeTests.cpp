@@ -12,6 +12,7 @@ bool tracking=true,poseValid=true,gameplay=true,optionsOwned=false,hacking=false
 bool headRelative=true,nativeBoost=false,nativeBrake=false,failBoostPress=false,refuseBoostCleanup=false;
 DWORD ownerError=0;
 bool refuseAltitudeRelease=false;
+bool surfaceOwned=false;
 std::uintptr_t posePlayerOverride=0;
 std::uint64_t reference=2,menu=1;
 struct Event{int key;unsigned state;};std::vector<Event> events;
@@ -23,7 +24,7 @@ void Reset(){
     flightError=0;nativeState=0;flightPresses=flightReleases=flightRefused=rotationReads=0;
     flightOwnerError=ERROR_NOT_READY;flightPoseValid=flightReady=false;
     rotationSample.Clear();prepared={};flightControls={};flightOutput={};contextSerial=boundSettings=boundMenu=0;
-    boostOwner=brakeOwner=0;setterDebt=0;flightQuarantine=boundHeadRelative=false;
+    boostOwner=brakeOwner=0;setterDebt=0;flightQuarantine=boundHeadRelative=boundSurface=surfaceOwned=false;
     frame={};frame.epoch=1;frame.headValidity={true,true,true,true,0};owner={0x1000,0x2000,0x18e0,9};
     tracking=poseValid=gameplay=oldFacesReleased=headRelative=true;optionsOwned=hacking=nativeBoost=nativeBrake=false;
     failBoostPress=refuseBoostCleanup=refuseAltitudeRelease=false;posePlayerOverride=0;ownerError=0;reference=2;menu=1;events.clear();
@@ -32,6 +33,8 @@ void Enable(){Check(SetNativeFlightControls(1)==0,"enable native flight");SetNat
 unsigned Count(int key,unsigned state){unsigned count=0;for(auto e:events)if(e.key==key&&e.state==state)++count;return count;}
 }
 namespace preyvr::dll {
+void PrepareSurfaceGrab(const FlightOwner&,const GameplayPoseFrame&,const TrackingFrame&,bool){}
+bool SurfaceGrabOwnsMotion(){return surfaceOwned;}
 DWORD EnsureNativeFlightHook(){return 0;}
 DWORD ReadNativeFlightOwner(FlightOwner& out){out=owner;return ownerError;}
 DWORD SetNativeFlightBoost(std::uintptr_t player,bool pressed){
@@ -113,5 +116,9 @@ int main(){try{
     Reset();Enable();frame.hands[0].menuCancel=true;Step();owner.cinematic=1;Step();
     Check(!nativeBoost&&NativeFlightMovementMode()==1,"live native cinematic gate overrides a stale analog observation");
     Check(!ApplyNativeFlightRotation(owner.entity,0x1270651,rotation),"cinematics retain original native rotation result");
+    Reset();Enable();frame.hands[0].menuCancel=true;Step();Check(nativeBoost,"boost positive control before surface handoff");
+    surfaceOwned=true;Step();Check(!nativeBoost&&NativeFlightMovementMode()==1,"surface anchor releases boost and suppresses stick thrust");
+    surfaceOwned=false;Step();Check(!nativeBoost&&NativeFlightMovementMode()==1,"held flight source cannot reacquire on push release");
+    frame.hands[0].menuCancel=false;Step();Check(NativeFlightMovementMode()==2,"neutral rearms flight after anchor handoff");
     std::cout<<"flight_runtime: native boundaries, scoped basis, modal/context handoff and setter debt passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

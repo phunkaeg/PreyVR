@@ -131,6 +131,7 @@ int MoveLaneAxisMilli(unsigned int axis);
 // gameplay axis/button release is still awaiting native delivery.
 bool GameplayInputReleasedForHacking();
 bool GameplayFacesReleasedForFlight();
+bool GameplayGripReleasedForSurface();
 // The cinematic gate the handlers test at `+0x94`. Non-zero means the engine
 // is discarding movement input, so a still player is the game's decision and
 // not this lane failing.

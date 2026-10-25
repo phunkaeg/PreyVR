@@ -103,6 +103,7 @@ add_library(preyvr_core STATIC
     src/common/UiPoke.cpp
     src/common/HackingInput.cpp
     src/common/NativeFlight.cpp
+    src/common/SurfaceGrab.cpp
     src/common/MotionController.cpp
     src/common/TwoHandedAim.cpp
     src/common/VrOptions.cpp
@@ -180,6 +181,8 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/HackingLane.cpp
         src/dll/FlightLane.cpp
         src/dll/FlightNative.cpp
+        src/dll/SurfaceGrabLane.cpp
+        src/dll/SurfaceGrabNative.cpp
         src/dll/InventoryPointerCapture.cpp
         src/dll/CameraEditHook.cpp
         src/dll/ConsoleBridgeWin32.cpp
@@ -552,6 +555,10 @@ if(PREYVR_BUILD_TESTS)
     target_link_libraries(preyvr_native_flight_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_native_flight_tests)
     add_test(NAME native_flight COMMAND preyvr_native_flight_tests)
+    add_executable(preyvr_surface_grab_tests tests/SurfaceGrabTests.cpp)
+    target_link_libraries(preyvr_surface_grab_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_surface_grab_tests)
+    add_test(NAME surface_grab COMMAND preyvr_surface_grab_tests)
     target_link_libraries(preyvr_ui_panel_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_ui_panel_tests)
     add_test(NAME ui_panel COMMAND preyvr_ui_panel_tests)
@@ -634,6 +641,14 @@ if(PREYVR_BUILD_TESTS)
         target_link_libraries(preyvr_flight_runtime_tests PRIVATE preyvr_core)
         preyvr_enable_warnings(preyvr_flight_runtime_tests)
         add_test(NAME flight_runtime COMMAND preyvr_flight_runtime_tests)
+        foreach(surface_test Runtime Transaction)
+            string(TOLOWER "${surface_test}" surface_lower)
+            add_executable(preyvr_surface_grab_${surface_lower}_tests tests/SurfaceGrab${surface_test}Tests.cpp)
+            target_compile_definitions(preyvr_surface_grab_${surface_lower}_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+            target_link_libraries(preyvr_surface_grab_${surface_lower}_tests PRIVATE preyvr_core)
+            preyvr_enable_warnings(preyvr_surface_grab_${surface_lower}_tests)
+            add_test(NAME surface_grab_${surface_lower} COMMAND preyvr_surface_grab_${surface_lower}_tests)
+        endforeach()
         target_include_directories(preyvr_hud_modal_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
         target_compile_definitions(preyvr_hud_modal_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
         target_link_libraries(preyvr_hud_modal_tests PRIVATE preyvr_core psapi)

@@ -16,6 +16,14 @@ namespace preyvr::lifecycle { void Log(std::string_view){} }
 namespace preyvr::dll {
 DWORD SetNativeFlightControls(unsigned v){applied[options::NativeFlight]=v;return 0;}
 unsigned NativeFlightControlsEnabled(){return applied[options::NativeFlight];}
+DWORD SetSurfaceGrabEnabled(unsigned v){applied[options::SurfaceGrab]=v;return 0;}
+unsigned SurfaceGrabEnabled(){return applied[options::SurfaceGrab];}
+DWORD SetSurfaceGrabReach(unsigned v){applied[options::SurfaceReach]=v;return 0;}
+unsigned SurfaceGrabReach(){return applied[options::SurfaceReach];}
+DWORD SetSurfacePushStrength(unsigned v){applied[options::SurfaceStrength]=v;return 0;}
+unsigned SurfacePushStrength(){return applied[options::SurfaceStrength];}
+DWORD SetSurfacePushLimit(unsigned v){applied[options::SurfaceLimit]=v;return 0;}
+unsigned SurfacePushLimit(){return applied[options::SurfaceLimit];}
 unsigned useEffective=0,carryEffective=0,grenadeEffective=0;
 DWORD SetUseHand(unsigned v){useEffective=v;return 0;}
 DWORD SetCarryHand(unsigned v){carryEffective=v;return 0;}
@@ -241,6 +249,10 @@ int main(){
  tick();pointerForTest.pressed=true;tick();pointerForTest.pressed=false;tick();ServiceVrOptions();
  Check(UiPokeEnabled()==0,"poke contact selects settings through shared menu path");
  pointerForTest={};
+ r.gripPressed=true;tick();r.gripPressed=false;tick();Check(VrOptionsPage()==11,"flight tab reached");
+ r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();Check(SurfaceGrabEnabled()==1,"surface opt-in reaches adapter");
+ for(int edit=0;edit<3;++edit){r.thumbstickY=-1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();}
+ Check(SurfaceGrabReach()==11&&SurfacePushStrength()==110&&SurfacePushLimit()==175,"surface tuning reaches high-bit settings and persistence");
  ResetVrOptionsSession();
  // A launch override is explicit, and disappears on an ordinary subsequent load.
  SetEnvironmentVariableW(L"PREYVR_DEBUG_OVERLAY",L"3");SetEnvironmentVariableW(L"PREYVR_MUZZLE_AIM",L"1");
@@ -248,6 +260,7 @@ int main(){
  SetEnvironmentVariableW(L"PREYVR_DEBUG_OVERLAY",nullptr);SetEnvironmentVariableW(L"PREYVR_MUZZLE_AIM",nullptr);
  ready=false;LoadVrOptions();Check(DebugOverlayMask()==0&&ShotRayEnabled()==0,"normal load restores saved OFF");
  Check(NativeFlightControlsEnabled()==1,"flight preference roundtrips to disk");
+ Check(SurfaceGrabEnabled()==1&&SurfaceGrabReach()==11&&SurfacePushStrength()==110&&SurfacePushLimit()==175,"surface settings roundtrip to disk");
  std::filesystem::remove(sandbox/L"PreyVR"/L"vr-options.ini");
  std::filesystem::remove(sandbox/L"PreyVR");std::filesystem::remove(sandbox);
  std::cout<<"Runtime menu, native-input ownership, settings application and disk roundtrip passed\n";

@@ -45,7 +45,11 @@ constexpr Spec specs[]={
  {"ui_poke_distance",L"TOUCH PANEL DISTANCE",L"Distance of menus and VR options in touch mode. Reset the view to bring the panel in front of you.",65,45,90,5},
  {"ui_poke_tip",L"TOUCHPOINT REACH",L"Virtual fingertip distance along the controller aim pose. Adjust to your controller; the marker shows the touchpoint.",80,30,150,10},
  {"hacking_controls",L"CONTROLLER HACKING",L"Experimental: left stick moves in the hacking screen; use the native face-button prompts. Native puzzle rules and timers remain.",0,0,1,1},
- {"native_flight",L"ZERO-G FLIGHT (EXPERIMENTAL)",L"Zero-g: left stick thrusts; A/B rise/descend, A+B brake, hold left Y boosts. Head-relative movement steers thrust with your view.",0,0,1,1}
+ {"native_flight",L"ZERO-G FLIGHT (EXPERIMENTAL)",L"Zero-g: left stick thrusts; A/B rise/descend, A+B brake, hold left Y boosts. Head-relative movement steers thrust with your view.",0,0,1,1},
+ {"surface_grab",L"ZERO-G SURFACE GRAB (EXPERIMENTAL)",L"Requires World > Zero-G Flight. Squeeze the free left grip near a fixed surface; move your hand to pull, then release to push off.",0,0,1,1},
+ {"surface_reach_cm",L"SURFACE GRAB REACH",L"Maximum distance from the left grip to fixed geometry. Props and living bodies cannot anchor you.",10,5,18,1},
+ {"surface_push_strength",L"PUSH-OFF STRENGTH",L"Scales physical hand release speed. Zero allows grabbing without adding a push on release.",100,0,150,10},
+ {"surface_push_limit_cm_s",L"PUSH-OFF SPEED LIMIT",L"Maximum release speed requested from the game. Native flight collision handling remains active.",150,50,300,25}
 };
 }
 const Spec& Describe(unsigned id){return specs[id<Count?id:0];}
@@ -79,13 +83,15 @@ bool Parse(std::string_view text,Values& result){
  result=parsed;return true;
 }
 int Item(unsigned page,unsigned row){
- constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim},{Stereo,PhysicalCrouch,WallFade,BodyPose},{UseHand,CarryHand,GrenadeHand,NativeFlight},{UiPoke,UiPokeDistance,UiPokeTip,HackingControls}};
+ constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim},{Stereo,PhysicalCrouch,WallFade,BodyPose},{UseHand,CarryHand,GrenadeHand,NativeFlight},{UiPoke,UiPokeDistance,UiPokeTip,HackingControls},{SurfaceGrab,SurfaceReach,SurfaceStrength,SurfaceLimit}};
  return page<Pages&&row<Rows?items[page][row]:-2;
 }
-const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP",L"VIEW",L"WORLD",L"INPUT"};return names[p%Pages];}
+const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP",L"VIEW",L"WORLD",L"INPUT",L"FLIGHT"};return names[p%Pages];}
 std::wstring Display(unsigned id,int v){
  if(id==PsiTarget)return v==1?L"HEAD":v==2?L"LEFT CONTROLLER":L"ORIGINAL";
- if(id==SwingSpeed)return std::to_wstring(v)+L" CM/S";
+ if(id==SwingSpeed||id==SurfaceLimit)return std::to_wstring(v)+L" CM/S";
+ if(id==SurfaceReach)return std::to_wstring(v)+L" CM";
+ if(id==SurfaceStrength)return std::to_wstring(v)+L"%";
  if(id==ContactStrength)return std::to_wstring(v)+L"%";
  if(id==Turn)return v?std::to_wstring(v)+L" DEGREES":L"SMOOTH";
  if(id==HeadRelative)return v?L"HEAD RELATIVE":L"BODY RELATIVE";

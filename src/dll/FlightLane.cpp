@@ -1,5 +1,6 @@
 #include "FlightLane.h"
 #include "FlightNative.h"
+#include "SurfaceGrabLane.h"
 #include "AimTakeover.h"
 #include "HeadTrackingHook.h"
 #include "HudBridge.h"
@@ -42,6 +43,7 @@ std::uintptr_t boostOwner=0,brakeOwner=0;
 std::uint8_t setterDebt=0;
 bool flightQuarantine=false;
 bool boundHeadRelative=false;
+bool boundSurface=false;
 bool Current(const Prepared& p) {
     TrackingFrame latest{};
     return flightEnabled.load()&&flightActive.load()&&p.valid&&
@@ -66,6 +68,8 @@ DWORD SetNativeFlightControls(unsigned value) {
     if(flightEnabled.exchange(value)!=value)flightGeneration.fetch_add(1);return 0;
 }
 unsigned NativeFlightControlsEnabled(){return flightEnabled.load();}
+bool NativeFlightSessionActive(){return flightActive.load();}
+std::uint64_t NativeFlightContextGeneration(){return flightGeneration.load();}
 void SetNativeFlightActive(bool value){if(flightActive.exchange(value)!=value)flightGeneration.fetch_add(1);}
 bool NativeFlightOwnsFaces(){return facesOwned.load();}
 bool NativeFlightCleanupPending(){return flightCleanup.load();}
@@ -99,7 +103,11 @@ void PrepareNativeFlightInput() {
     const auto direction=poseGood?flight::Steering(pose.yaw,f.head,f.headValidity):std::nullopt;
     prepared.valid=direction.has_value();if(direction)prepared.direction=*direction;
     prepared.steer=headRelative;
-    const bool allowed=prepared.valid&&Current(prepared)&&!prepared.owner.cinematic&&!recenter&&!setterDebt&&!flightQuarantine&&
+    const bool baseAllowed=prepared.valid&&Current(prepared)&&!prepared.owner.cinematic&&!recenter;
+    PrepareSurfaceGrab(prepared.owner,pose,f,baseAllowed);
+    const bool surface=SurfaceGrabOwnsMotion();
+    if(surface!=boundSurface){boundSurface=surface;++contextSerial;}
+    const bool allowed=baseAllowed&&!surface&&!setterDebt&&!flightQuarantine&&
         MoveLaneCinematicGate()==0&&GameplayFacesReleasedForFlight();
     flight::Input in{};in.valid=prepared.valid;in.active=allowed;
     in.up=f.hands[1].menuAccept;in.down=f.hands[1].menuCancel;in.boost=f.hands[0].menuCancel;

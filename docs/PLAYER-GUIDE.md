@@ -158,8 +158,18 @@ request boost. With Head Relative movement, thrust follows your full view,
 including looking up/down; Body Relative keeps the native entity basis.
 The game retains inertia, collision and speed limits. Menus and recenter cancel
 requests; release controls before restarting them. This first phase has static
-and offline checks only. Surface grabbing is separate work. See
+and offline checks only. See
 [native flight details and test checklist](NATIVE-ZERO-G-2026-10-25.md).
+
+**Zero-g surface grabbing:** also enable **Flight → Zero-G Surface Grab**
+(off by default). Bring your free left controller within about 10 cm of a fixed
+wall, release grip, then squeeze to anchor. Move the held hand to pull yourself;
+release during a push against the wall to push away. Push strength and maximum
+speed are adjustable on the Flight tab. Ordinary thrust and stick turning pause
+while anchored; return the controls to neutral after releasing. Carry, use and
+two-hand aiming take priority. Tracking loss, menus, recenter and equipment
+changes cancel the anchor without adding a push. This first version has static
+and offline tests only: [surface grabbing and test steps](ZERO-G-SURFACE-GRAB-2026-10-26.md).
 
 **Holsters:** with a weapon equipped, bring the right controller to your right
 hip or across to your left chest, release grip, then squeeze. An empty slot stores

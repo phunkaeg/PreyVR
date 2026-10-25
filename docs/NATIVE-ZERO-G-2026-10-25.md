@@ -4,6 +4,10 @@ This first phase adds native flight controls. Surface grabs and push-off are not
 implemented here. Source/static and offline fixture evidence are separate from
 native acceptance: **no game, xr-sim session or headset run was performed**.
 
+The optional follow-up [surface-grab implementation](ZERO-G-SURFACE-GRAB-2026-10-26.md)
+uses this flight mode as a prerequisite. Its scoped velocity requests and limits
+are described separately; the native-controls-only behavior below is unchanged.
+
 ## Enable and use
 
 Enable **VR Options → World → Zero-G Flight (Experimental)**. It is off by

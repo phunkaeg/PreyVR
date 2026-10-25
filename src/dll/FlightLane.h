@@ -1,10 +1,13 @@
 #pragma once
 #include <windows.h>
+#include <cstdint>
 #include <string>
 namespace preyvr::dll {
 struct TrackingFrame;
 DWORD SetNativeFlightControls(unsigned enabled);
 unsigned NativeFlightControlsEnabled();
+bool NativeFlightSessionActive();
+std::uint64_t NativeFlightContextGeneration();
 void SetNativeFlightActive(bool active);
 void PrepareNativeFlightInput();
 void DrainNativeFlightInput();
