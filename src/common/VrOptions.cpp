@@ -40,7 +40,11 @@ constexpr Spec specs[]={
  {"grenade_hand",L"HAND GRENADES",L"Experimental: throw from the right hand on a tracked trigger release. Off keeps the game's charged throw and surface deployment.",0,0,1,1},
  {"physical_crouch",L"PHYSICAL CROUCH",L"Crouch for real to crouch in the game; stand up to stand. The crouch button still works.",1,0,1,1},
  {"wall_fade",L"HEAD IN WALLS",L"When your head goes into a wall or an object, darken the view, or let you see through it.",1,0,1,1},
- {"body_pose",L"BODY POSING",L"Pose the torso and legs from your head and hands. Off keeps native body animation; controller-driven arms remain active.",1,0,1,1}
+ {"body_pose",L"BODY POSING",L"Pose the torso and legs from your head and hands. Off keeps native body animation; controller-driven arms remain active.",1,0,1,1},
+ {"ui_poke",L"TOUCH PANELS",L"Experimental controller-tip poking brings menus within reach. Approach from the front and withdraw to release; rays remain available.",0,0,1,1},
+ {"ui_poke_distance",L"TOUCH PANEL DISTANCE",L"Distance of menus and VR options in touch mode. Reset the view to bring the panel in front of you.",65,45,90,5},
+ {"ui_poke_tip",L"TOUCHPOINT REACH",L"Virtual fingertip distance along the controller aim pose. Adjust to your controller; the marker shows the touchpoint.",80,30,150,10},
+ {"hacking_controls",L"CONTROLLER HACKING",L"Experimental: left stick moves in the hacking screen; use the native face-button prompts. Native puzzle rules and timers remain.",0,0,1,1}
 };
 }
 const Spec& Describe(unsigned id){return specs[id<Count?id:0];}
@@ -74,10 +78,10 @@ bool Parse(std::string_view text,Values& result){
  result=parsed;return true;
 }
 int Item(unsigned page,unsigned row){
- constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim},{Stereo,PhysicalCrouch,WallFade,BodyPose},{UseHand,CarryHand,GrenadeHand,-2}};
+ constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim},{Stereo,PhysicalCrouch,WallFade,BodyPose},{UseHand,CarryHand,GrenadeHand,-2},{UiPoke,UiPokeDistance,UiPokeTip,HackingControls}};
  return page<Pages&&row<Rows?items[page][row]:-2;
 }
-const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP",L"VIEW",L"WORLD"};return names[p%Pages];}
+const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP",L"VIEW",L"WORLD",L"INPUT"};return names[p%Pages];}
 std::wstring Display(unsigned id,int v){
  if(id==PsiTarget)return v==1?L"HEAD":v==2?L"LEFT CONTROLLER":L"ORIGINAL";
  if(id==SwingSpeed)return std::to_wstring(v)+L" CM/S";
@@ -87,6 +91,8 @@ std::wstring Display(unsigned id,int v){
  if(id==BodyFollow)return v==2?L"TURN AND WALK":v==1?L"TURN ONLY":L"OFF";
  if(id==Stereo)return v==2?L"FULL STEREO":v==1?L"ALTERNATE EYES":L"MONO";
  if(id==WallFade)return v?L"DARKEN":L"SEE THROUGH";
+ if(id==UiPokeDistance)return std::to_wstring(v)+L" CM";
+ if(id==UiPokeTip)return std::to_wstring(v)+L" MM";
  if(id==GripToggle)return v?L"TOGGLE":L"HOLD";
  if(id==SupportSnap)return v?L"SNAPPED":L"FREE";
  if(id==UiCurve)return v?std::to_wstring(v)+L" DEGREES":L"FLAT";

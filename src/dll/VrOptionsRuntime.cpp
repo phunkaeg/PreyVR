@@ -1,6 +1,7 @@
 #include "VrOptionsRuntime.h"
 #include "BodyFollow.h"
 #include "AnimIkTakeover.h"
+#include "HackingLane.h"
 #include "InteractionLane.h"
 #include "CarryLane.h"
 #include "GrenadeLane.h"
@@ -56,6 +57,9 @@ void QueueViewRequest(int action,std::uint64_t epoch){
  viewResult=-2;
 }
 std::optional<ui::Surface> pointerSurface;
+UiPointerTracker optionsPointerTracker;
+UiPointerVisual optionsPointerVisual;
+std::uint64_t optionsPointerSequence=0;
 std::uint64_t surfaceReference=0;
 long long previousTime=0;
 std::filesystem::path SettingsPath(){
@@ -100,6 +104,10 @@ void Apply(unsigned id,int v){
  case options::PhysicalCrouch:SetPhysicalCrouch(v!=0);break;
  case options::WallFade:SetHeadInWallsFade(v!=0);break;
  case options::BodyPose:SetBodyPose(v!=0);break;
+ case options::UiPoke:SetUiPokeEnabled(v!=0);break;
+ case options::UiPokeDistance:SetUiPokeDistanceCm(static_cast<unsigned>(v));break;
+ case options::UiPokeTip:SetUiPokeTipMm(static_cast<unsigned>(v));break;
+ case options::HackingControls:SetHackingControls(v!=0);break;
  }
 }
 void Save(){
@@ -144,6 +152,10 @@ options::Values VrOptionsValues(){
  v[options::PhysicalCrouch]=static_cast<int>(PhysicalCrouchEnabled());
  v[options::WallFade]=static_cast<int>(HeadInWallsFadeEnabled());
  v[options::BodyPose]=static_cast<int>(BodyPoseEnabled());
+ v[options::UiPoke]=static_cast<int>(UiPokeEnabled());
+ v[options::UiPokeDistance]=static_cast<int>(UiPokeDistanceCm());
+ v[options::UiPokeTip]=static_cast<int>(UiPokeTipMm());
+ v[options::HackingControls]=static_cast<int>(HackingControlsEnabled());
  v[options::UseHand]=useHand.load();v[options::CarryHand]=carryHand.load();v[options::GrenadeHand]=grenadeHand.load();
  // Read the actual lane settings, including changes made through the command
  // channel. Pending menu edits override only their own row until applied.
@@ -198,18 +210,23 @@ void ServiceVrOptions(){
 bool ProcessVrOptionsInput(const TrackingFrame& f){
  options::Input i;const auto& l=f.hands[0];const auto& r=f.hands[1];
  i.valid=ready.load()&&FreshSample(MonotonicNanoseconds(),f.publishedNs)&&IsPoseUsable(f.head,f.headValidity,200000000);
- i.modal=HudMenuStateKnown()&&HudMenuIsOpen();i.epoch=f.epoch;
+ // Hacking is active gameplay inside a screen: request a native pause before
+ // opening settings, so the puzzle cannot keep running behind this panel.
+ i.modal=HudMenuStateKnown()&&HudMenuIsOpen()&&!HudHackingIsOpen();i.epoch=f.epoch;
  i.start=l.menuStart||r.menuStart;i.accept=r.menuAccept;i.cancel=r.menuCancel;
  i.previous=l.gripPressed;i.next=r.gripPressed;i.x=r.thumbstickX;i.y=r.thumbstickY;
- const auto hand=UiPointerHand();i.trigger=hand<2?f.hands[hand].triggerPressed:false;
+ const auto hand=UiPointerHand();
  i.dt=previousTime&&f.displayTime>previousTime?static_cast<float>(f.displayTime-previousTime)*1e-9f:0;
  previousTime=f.displayTime;
  // Intersect the current controller sample with the anchored panel; never use
  // a previous frame's hover location to decide a new trigger press.
- if(pointerSurface&&surfaceReference==HeadTrackingReferenceGeneration()&&hand<2&&
-    IsPoseUsable(f.hands[hand].aimPose,f.hands[hand].aimValidity,200000000)){
-  const auto hit=ui::Intersect(*pointerSurface,f.hands[hand].aimPose);
-  if(hit&&hit->inside){i.hover=options::Hit(hit->u,hit->v);i.decrease=hit->u<.70f;}
+ optionsPointerVisual=EvaluateUiPointer(pointerSurface?&*pointerSurface:nullptr,f,hand,
+     HeadTrackingReferenceGeneration(),surfaceReference,optionsPointerTracker);
+ optionsPointerSequence=f.sequence;
+ i.trigger=optionsPointerVisual.active&&optionsPointerVisual.pressed;
+ if(optionsPointerVisual.hit&&optionsPointerVisual.hit->inside){
+  const auto& hit=*optionsPointerVisual.hit;
+  i.hover=options::Hit(hit.u,hit.v);i.decrease=hit.u<.70f;
  }
  const auto wanted=request.exchange(0);
  if(wanted>0&&i.modal)menu.RequestOpen();else if(wanted<0)menu.Close();
@@ -231,16 +248,13 @@ bool ProcessVrOptionsInput(const TrackingFrame& f){
  return wasOwned||menu.OwnsInput(); // closing frame belongs to this menu too
 }
 UiPointerVisual OptionsPointer(const ui::Surface& surface){
- UiPointerVisual visual;TrackingFrame f{};const auto hand=UiPointerHand();
- if(!open.load()||hand>=2||!TryGetTrackingFrame(f)||!FreshSample(MonotonicNanoseconds(),f.publishedNs))return visual;
- const auto& state=f.hands[hand];
- if(!IsPoseUsable(state.aimPose,state.aimValidity,200000000))return visual;
- visual.active=true;visual.aim=state.aimPose;visual.pressed=state.triggerPressed;
- visual.hit=ui::Intersect(surface,state.aimPose);
- return visual;
+ (void)surface;TrackingFrame f{};
+ if(!open.load()||!TryGetTrackingFrame(f)||!FreshSample(MonotonicNanoseconds(),f.publishedNs)||
+    f.sequence!=optionsPointerSequence||surfaceReference!=HeadTrackingReferenceGeneration())return {};
+ return optionsPointerVisual;
 }
 void SetVrOptionsSurface(const ui::Surface* surface,std::uint64_t reference){
- if(surface)pointerSurface=*surface;else pointerSurface.reset();
+ if(surface)pointerSurface=*surface;else {pointerSurface.reset();optionsPointerTracker={};optionsPointerVisual={};}
  surfaceReference=reference;
 }
 bool VrOptionsOpen(){return open.load();}

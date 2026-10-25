@@ -175,5 +175,11 @@ int main() {
         if(m>.3f)Require(ui::CornersVisible(*pm,tight,1.f),"and passes every looser one");
     }
 
+    for(float distance:{.45f,.65f,.9f}) {
+        auto reachable=ui::FitPanel({},tight,16.f/9,distance,1.f,.72f);
+        Require(reachable&&ui::CornersVisible(*reachable,tight,.72f),"reachable panel obeys optical fit");
+        Require(std::abs(reachable->pose.position.z+distance)<1e-5f,"touch panel stays at requested distance");
+    }
+    Require(!ui::FitPanel({},tight,16.f/9,.2f),"uncomfortably close panels refused");
     std::cout<<"UI panel geometry passed\n";
 }

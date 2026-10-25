@@ -134,6 +134,8 @@ using IsVisibleFn = bool(__fastcall*)(void*);
 // `hud.call` is queued -- so the predicate is a value, not a call.
 std::atomic<bool> gMenuOpen{false};
 std::atomic<bool> gInventoryOpen{false};
+std::atomic<bool> gHackingOpen{false};
+std::atomic<std::uint64_t> gVisibleModalMask{0};
 std::atomic<unsigned long long> gMenuEpoch{1};
 std::atomic<unsigned long long> gMenuStateSamples{0};
 std::atomic<std::uint64_t> gMenuStamp{0};
@@ -495,10 +497,10 @@ void RunHudProbe(float screenX, float screenY)
 
 void DrainQueuedHudCalls()
 {
-    // Sampled here because this already runs on the main thread every frame, and
-    // the navigator that consumes it must not enter Scaleform from the frame
-    // service.
-    HudRefreshMenuOpenState();
+    // Sample after any queued UI call, including early returns. Consumers run
+    // after this drain; an old content epoch must not admit a queued click into
+    // a replacement screen. The XR service never enters Scaleform to poll it.
+    struct RefreshOnExit { ~RefreshOnExit(){HudRefreshMenuOpenState();} } refresh;
 
     PendingHudCall call;
     {
@@ -541,7 +543,33 @@ constexpr const char* kMenuElements[] = {
     "LoadingScreen",             // target string RVA 0x1CB49E0
     "DanielleDialog",            // native modal dispatcher 0x1632857
     "DanielleDialogInGame",
+    // Steam Open: 0x1626418 loads string RVA 0x1E63F28, then uses the
+    // same UI getter (+0x60). The game owns its normal draw and simulation.
+    "DanielleHacking2",
 };
+static_assert(std::size(kMenuElements) == 10);
+constexpr std::uint64_t kPdaModal = 1ull << 4;
+constexpr std::uint64_t kExternalInventoryModal = 1ull << 5;
+constexpr std::uint64_t kHackingModal = 1ull << 9;
+
+void PublishModalSample(std::uint64_t visible, bool exclusiveKnown)
+{
+    // A PDA-to-hacking or hacking-to-pause transition stays modal but changes
+    // its input owner. Old queued presses must not reach the replacement screen.
+    if (gVisibleModalMask.exchange(visible, std::memory_order_acq_rel) != visible) {
+        gMenuEpoch.fetch_add(1, std::memory_order_acq_rel);
+    }
+    gMenuOpen.store(visible != 0, std::memory_order_release);
+    gInventoryOpen.store(exclusiveKnown && (visible & kPdaModal) != 0 &&
+                        (visible & ~kPdaModal) == 0, std::memory_order_release);
+    // Native hacking can sit over PDA/interaction backing content. A pause,
+    // loading screen, shell or dialog takes priority over its still-visible movie.
+    constexpr std::uint64_t backing = kHackingModal | kPdaModal | kExternalInventoryModal;
+    gHackingOpen.store(exclusiveKnown && (visible & kHackingModal) != 0 &&
+                      (visible & ~backing) == 0, std::memory_order_release);
+    gMenuStamp.store(MonotonicNanoseconds(), std::memory_order_release);
+    gMenuStateSamples.fetch_add(1, std::memory_order_relaxed);
+}
 
 void* ResolveNamedElement(std::uintptr_t base, const char* name)
 {
@@ -576,10 +604,11 @@ DWORD HudRefreshMenuOpenState()
     if (preyDll == nullptr) { return 4; }
     const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
 
-    bool anyVisible = false;
     bool anyAnswered = false;
-    bool pdaVisible = false, otherVisible = false, exclusiveKnown = true;
-    for (const char* const name : kMenuElements) {
+    bool exclusiveKnown = true;
+    std::uint64_t visibleMask = 0;
+    for (unsigned index = 0; index < std::size(kMenuElements); ++index) {
+        const char* const name = kMenuElements[index];
         void* const element = ResolveNamedElement(base, name);
         if (element == nullptr) { continue; }
         const std::uintptr_t isVisible = ReadVtableSlot(element, kIsVisibleSlot);
@@ -594,11 +623,7 @@ DWORD HudRefreshMenuOpenState()
         const bool visible = CallIsVisible(isVisible, element, &ok);
         if (!ok) { exclusiveKnown=false; continue; }
         anyAnswered = true;
-        if (visible) {
-            anyVisible = true;
-            if (std::strcmp(name,"DaniellePDA")==0) pdaVisible=true;
-            else otherVisible=true;
-        }
+        if (visible) { visibleMask |= 1ull << index; }
     }
 
     // **An unanswered poll must not read as "no menu".** If nothing resolved, the
@@ -606,10 +631,7 @@ DWORD HudRefreshMenuOpenState()
     // load screen or an early frame would look exactly like gameplay and re-arm
     // the D-pad taps this predicate exists to suppress.
     if (!anyAnswered) { return 7; }
-    if(gMenuOpen.exchange(anyVisible,std::memory_order_acq_rel)!=anyVisible)gMenuEpoch.fetch_add(1);
-    gInventoryOpen.store(exclusiveKnown && pdaVisible && !otherVisible, std::memory_order_release);
-    gMenuStamp.store(MonotonicNanoseconds(), std::memory_order_release);
-    gMenuStateSamples.fetch_add(1, std::memory_order_relaxed);
+    PublishModalSample(visibleMask, exclusiveKnown);
     return 0;
 }
 
@@ -649,6 +671,7 @@ bool HudMenuIsOpen() { return gMenuOpen.load(std::memory_order_acquire); }
 unsigned long long HudMenuEpoch() { return gMenuEpoch.load(std::memory_order_acquire); }
 bool HudMenuStateKnown() { return FreshSample(MonotonicNanoseconds(), gMenuStamp.load()); }
 bool HudInventoryIsOpen() { return HudMenuStateKnown() && gInventoryOpen.load(std::memory_order_acquire); }
+bool HudHackingIsOpen() { return HudMenuStateKnown() && gHackingOpen.load(std::memory_order_acquire); }
 // **Gameplay keeps the last KNOWN menu state; it is not blocked by an old one.**
 // The sample is refreshed once per rendered frame, so at 19 fps, or through a
 // hitch, it was older than FreshSample's 200 ms for a quarter of the play time

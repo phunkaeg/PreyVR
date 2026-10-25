@@ -100,6 +100,8 @@ add_library(preyvr_core STATIC
     src/common/MenuNavigator.cpp
     src/common/InventoryDepth.cpp
     src/common/UiPanel.cpp
+    src/common/UiPoke.cpp
+    src/common/HackingInput.cpp
     src/common/MotionController.cpp
     src/common/TwoHandedAim.cpp
     src/common/VrOptions.cpp
@@ -174,6 +176,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/InventorySwapchain.cpp
         src/dll/NativeFovBlit.cpp
         src/dll/UiPointer.cpp
+        src/dll/HackingLane.cpp
         src/dll/InventoryPointerCapture.cpp
         src/dll/CameraEditHook.cpp
         src/dll/ConsoleBridgeWin32.cpp
@@ -534,6 +537,14 @@ if(PREYVR_BUILD_TESTS)
     add_test(NAME inventory_depth COMMAND preyvr_inventory_depth_tests)
 
     add_executable(preyvr_ui_panel_tests tests/UiPanelTests.cpp)
+    add_executable(preyvr_ui_poke_tests tests/UiPokeTests.cpp)
+    target_link_libraries(preyvr_ui_poke_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_ui_poke_tests)
+    add_test(NAME ui_poke COMMAND preyvr_ui_poke_tests)
+    add_executable(preyvr_hacking_input_tests tests/HackingInputTests.cpp)
+    target_link_libraries(preyvr_hacking_input_tests PRIVATE preyvr_core)
+    preyvr_enable_warnings(preyvr_hacking_input_tests)
+    add_test(NAME hacking_input COMMAND preyvr_hacking_input_tests)
     target_link_libraries(preyvr_ui_panel_tests PRIVATE preyvr_core)
     preyvr_enable_warnings(preyvr_ui_panel_tests)
     add_test(NAME ui_panel COMMAND preyvr_ui_panel_tests)
@@ -605,6 +616,17 @@ if(PREYVR_BUILD_TESTS)
         preyvr_enable_warnings(preyvr_physical_runtime_tests)
         add_test(NAME physical_runtime COMMAND preyvr_physical_runtime_tests)
         add_executable(preyvr_ui_pointer_tests tests/UiPointerTests.cpp)
+        add_executable(preyvr_hud_modal_tests tests/HudModalTests.cpp)
+        add_executable(preyvr_hacking_runtime_tests tests/HackingRuntimeTests.cpp)
+        target_compile_definitions(preyvr_hacking_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        target_link_libraries(preyvr_hacking_runtime_tests PRIVATE preyvr_core)
+        preyvr_enable_warnings(preyvr_hacking_runtime_tests)
+        add_test(NAME hacking_runtime COMMAND preyvr_hacking_runtime_tests)
+        target_include_directories(preyvr_hud_modal_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
+        target_compile_definitions(preyvr_hud_modal_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        target_link_libraries(preyvr_hud_modal_tests PRIVATE preyvr_core psapi)
+        preyvr_enable_warnings(preyvr_hud_modal_tests)
+        add_test(NAME hud_modal COMMAND preyvr_hud_modal_tests)
         target_include_directories(preyvr_ui_pointer_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
         target_compile_definitions(preyvr_ui_pointer_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
         target_link_libraries(preyvr_ui_pointer_tests PRIVATE preyvr_core)

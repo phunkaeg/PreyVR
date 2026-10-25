@@ -1,0 +1,2272 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 5c84ed5..33235ff 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -100,6 +100,8 @@ add_library(preyvr_core STATIC
+     src/common/MenuNavigator.cpp
+     src/common/InventoryDepth.cpp
+     src/common/UiPanel.cpp
++    src/common/UiPoke.cpp
++    src/common/HackingInput.cpp
+     src/common/MotionController.cpp
+     src/common/TwoHandedAim.cpp
+     src/common/VrOptions.cpp
+@@ -174,6 +176,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
+         src/dll/InventorySwapchain.cpp
+         src/dll/NativeFovBlit.cpp
+         src/dll/UiPointer.cpp
++        src/dll/HackingLane.cpp
+         src/dll/InventoryPointerCapture.cpp
+         src/dll/CameraEditHook.cpp
+         src/dll/ConsoleBridgeWin32.cpp
+@@ -534,6 +537,14 @@ if(PREYVR_BUILD_TESTS)
+     add_test(NAME inventory_depth COMMAND preyvr_inventory_depth_tests)
+ 
+     add_executable(preyvr_ui_panel_tests tests/UiPanelTests.cpp)
++    add_executable(preyvr_ui_poke_tests tests/UiPokeTests.cpp)
++    target_link_libraries(preyvr_ui_poke_tests PRIVATE preyvr_core)
++    preyvr_enable_warnings(preyvr_ui_poke_tests)
++    add_test(NAME ui_poke COMMAND preyvr_ui_poke_tests)
++    add_executable(preyvr_hacking_input_tests tests/HackingInputTests.cpp)
++    target_link_libraries(preyvr_hacking_input_tests PRIVATE preyvr_core)
++    preyvr_enable_warnings(preyvr_hacking_input_tests)
++    add_test(NAME hacking_input COMMAND preyvr_hacking_input_tests)
+     target_link_libraries(preyvr_ui_panel_tests PRIVATE preyvr_core)
+     preyvr_enable_warnings(preyvr_ui_panel_tests)
+     add_test(NAME ui_panel COMMAND preyvr_ui_panel_tests)
+@@ -605,6 +616,17 @@ if(PREYVR_BUILD_TESTS)
+         preyvr_enable_warnings(preyvr_physical_runtime_tests)
+         add_test(NAME physical_runtime COMMAND preyvr_physical_runtime_tests)
+         add_executable(preyvr_ui_pointer_tests tests/UiPointerTests.cpp)
++        add_executable(preyvr_hud_modal_tests tests/HudModalTests.cpp)
++        add_executable(preyvr_hacking_runtime_tests tests/HackingRuntimeTests.cpp)
++        target_compile_definitions(preyvr_hacking_runtime_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
++        target_link_libraries(preyvr_hacking_runtime_tests PRIVATE preyvr_core)
++        preyvr_enable_warnings(preyvr_hacking_runtime_tests)
++        add_test(NAME hacking_runtime COMMAND preyvr_hacking_runtime_tests)
++        target_include_directories(preyvr_hud_modal_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
++        target_compile_definitions(preyvr_hud_modal_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
++        target_link_libraries(preyvr_hud_modal_tests PRIVATE preyvr_core psapi)
++        preyvr_enable_warnings(preyvr_hud_modal_tests)
++        add_test(NAME hud_modal COMMAND preyvr_hud_modal_tests)
+         target_include_directories(preyvr_ui_pointer_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle")
+         target_compile_definitions(preyvr_ui_pointer_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+         target_link_libraries(preyvr_ui_pointer_tests PRIVATE preyvr_core)
+diff --git a/include/preyvr/HackingInput.h b/include/preyvr/HackingInput.h
+new file mode 100644
+index 0000000..a06e0fb
+--- /dev/null
++++ b/include/preyvr/HackingInput.h
+@@ -0,0 +1,61 @@
++#pragma once
++
++#include <cstdint>
++
++namespace preyvr::hacking {
++
++inline constexpr std::uint8_t AxisX = 1, AxisY = 2;
++inline constexpr std::uint8_t ButtonA = 1, ButtonB = 2, ButtonX = 4, ButtonY = 8;
++
++struct Settings {
++    float deadzone = .15f, changeEpsilon = .002f;
++    std::uint64_t maxAgeNs = 200000000ull, maxGapNs = 200000000ull;
++};
++
++struct Input {
++    // active must mean the exact native hacking modal, not any visible menu.
++    bool valid = false, active = false;
++    float stickX = 0, stickY = 0;
++    bool a = false, b = false, x = false, y = false;
++    std::uint64_t nowNs = 0, stampNs = 0, sequence = 0;
++    // generation identifies the player, movie/content and input/settings owner.
++    std::uint64_t epoch = 0, reference = 0, generation = 0;
++};
++
++struct Output {
++    float x = 0, y = 0;
++    std::uint8_t axisMask = 0, pressMask = 0, releaseMask = 0;
++    std::uint64_t proposal = 0;
++    bool ready = false;
++};
++
++// Single-thread owned; no native calls, dynamic storage or clock access.
++// Update proposes native pad state but does not assume delivery. After posting,
++// copy that Output, remove refused channels from its masks, then Commit it.
++// Commit uses only proposed values and accepts partial success. Unacknowledged
++// channels retry on the next Update, even for the same source publication.
++// Accepted button edges never repeat. Out-of-order acknowledgements are ignored.
++//
++// A context change/suspend first releases old owned controls. Neutral input and
++// acknowledged zero axes are required before a new context can acquire input.
++// Start/options remain outside this router.
++class InputState {
++public:
++    Output Update(const Input& input, const Settings& settings = {});
++    Output Suspend();
++    void Commit(const Output& accepted);
++    // Interlock for other native input lanes: pending initial zero writes do
++    // not own controls, but any delivered nonzero axis/held button does.
++    bool OwnsControls() const;
++private:
++    Output Propose(float x, float y, std::uint8_t buttons);
++    bool CleanupPending() const;
++    Input previous_{};
++    Output pending_{};
++    std::uint64_t serial_ = 0;
++    float sentX_ = 0, sentY_ = 0, epsilon_ = .002f;
++    std::uint8_t sentButtons_ = 0, primeMask_ = 0;
++    bool havePrevious_ = false, ready_ = false;
++};
++
++} // namespace preyvr::hacking
+diff --git a/include/preyvr/UiPanel.h b/include/preyvr/UiPanel.h
+index 5f83000..b33cfe3 100644
+--- a/include/preyvr/UiPanel.h
++++ b/include/preyvr/UiPanel.h
+@@ -31,6 +31,8 @@ inline constexpr float kDefaultFitMargin=.72f;
+ std::optional<Panel> FitPanel(const Pose& head, const std::array<Eye,2>& eyes,
+                              float aspect, float distance=2.0f, float scale=1.0f,
+                              float margin=kDefaultFitMargin);
++// Explicit touch-mode callers may fit panels as near as 0.4 m. The default
++// remains 2 m; optical corner checks also apply to reachable panels.
+ bool CornersVisible(const Panel& panel, const std::array<Eye,2>& eyes,
+                     float margin=kDefaultFitMargin);
+ // angle=0 is a plane; otherwise width is arc length. The panel pose always
+diff --git a/include/preyvr/UiPoke.h b/include/preyvr/UiPoke.h
+new file mode 100644
+index 0000000..48d1669
+--- /dev/null
++++ b/include/preyvr/UiPoke.h
+@@ -0,0 +1,67 @@
++#pragma once
++
++#include "preyvr/UiPanel.h"
++#include <cstdint>
++#include <optional>
++
++namespace preyvr::ui {
++
++struct PokePoint {
++    float u = 0, v = 0;
++    // Metres toward the viewer/front face. Positive is in front of the panel;
++    // negative is through it. The visible cylinder faces toward its axis.
++    float frontDistance = 0;
++    Vec3 point{}, normal{};
++    bool inside = false;
++};
++
++// Nearest point on the extended flat/cylindrical surface. UV is intentionally
++// unclipped, allowing callers to cancel an outside drag without edge clamping.
++std::optional<PokePoint> ProjectPoke(const Surface& surface, Vec3 fingertip);
++
++struct PokeSettings {
++    float frontHover = .08f;
++    float armDistance = .015f;
++    float releaseDistance = .015f;
++    float pressDistance = -.002f;
++    float maxPenetration = .06f;
++    float maxFingerJump = .15f;
++    float maxSurfaceMove = .01f;
++    float maxSurfaceTurn = .035f; // radians; quaternion sign does not matter
++    std::uint64_t maxAgeNs = 200000000ull;
++    std::uint64_t maxGapNs = 200000000ull;
++};
++
++struct PokeInput {
++    bool valid = false;
++    Surface surface{};
++    Vec3 tip{};
++    std::uint64_t nowNs = 0, stampNs = 0, sequence = 0;
++    // epoch/reference identify tracking coordinates; generation identifies the
++    // owning hand, panel/content, input mode and settings. Bump it whenever any
++    // of those ownership meanings changes, even if the surface pose is identical.
++    std::uint64_t epoch = 0, reference = 0, generation = 0;
++};
++
++struct PokeOutput {
++    // active is near-touch ownership: inside the panel and within the bounded
++    // hover/penetration interval. Callers can suppress the ray while active.
++    bool active = false, inside = false, pressed = false;
++    std::optional<PokePoint> contact;
++};
++
++// A press needs a fresh front hover followed by physical fingertip crossing.
++// Returns button state, not edges: feed active/inside/pressed to PointerButtons.
++// Reset/cancellation returns up; the finger must withdraw before another press.
++// An identical duplicate publication retains its previous state until stale.
++class Poke {
++public:
++    PokeOutput Update(const PokeInput& input, const PokeSettings& settings = {});
++    void Reset();
++private:
++    PokeInput previous_{};
++    PokeOutput output_{};
++    bool havePrevious_ = false, armed_ = false, down_ = false;
++};
++
++} // namespace preyvr::ui
+diff --git a/include/preyvr/VrOptions.h b/include/preyvr/VrOptions.h
+index 1cd6d46..e073d13 100644
+--- a/include/preyvr/VrOptions.h
++++ b/include/preyvr/VrOptions.h
+@@ -9,7 +9,8 @@ enum Setting : unsigned { Turn, HeadRelative, TurnSpeed, TwoHand, GripToggle,
+     SupportSnap, Psychoscope, UiScale, UiMargin, UiCurve, UiGuide, Holsters, Wrist, WristSize,
+     SceneReticle, ReticleFallback, Haptics, HapticStrength, PhysicalMelee, PhysicalContacts, SwingSpeed, ContactStrength,
+     PsiTarget, Medkit, BeltHints, DebugOverlay, MuzzleAim, BodyFollow, Stereo,
+-    UseHand, CarryHand, GrenadeHand, PhysicalCrouch, WallFade, BodyPose, Count };
++    UseHand, CarryHand, GrenadeHand, PhysicalCrouch, WallFade, BodyPose,
++    UiPoke,UiPokeDistance,UiPokeTip,HackingControls,Count };
+ static_assert(Count<=64); // runtime dirty mailbox is a 64-bit mask
+ struct Spec { const char* key; const wchar_t* label; const wchar_t* help; int initial,min,max,step; };
+ const Spec& Describe(unsigned id);
+@@ -20,7 +21,7 @@ std::string Serialize(const Values&);
+ // Transactional parse: malformed/unknown fields refuse the whole file.
+ bool Parse(std::string_view text,Values& result);
+ std::wstring Display(unsigned id,int value);
+-constexpr unsigned Width=1400,Height=1100,Pages=10,Rows=4;
++constexpr unsigned Width=1400,Height=1100,Pages=11,Rows=4;
+ constexpr int CloseHit=Rows+Pages;
+ // -1 = recenter, -2 = empty, -3 = clear holsters, -4 = calibrate posture.
+ int Item(unsigned page,unsigned row);
+diff --git a/src/common/HackingInput.cpp b/src/common/HackingInput.cpp
+new file mode 100644
+index 0000000..e617eec
+--- /dev/null
++++ b/src/common/HackingInput.cpp
+@@ -0,0 +1,110 @@
++#include "preyvr/HackingInput.h"
++
++#include "preyvr/Locomotion.h"
++#include <algorithm>
++#include <cmath>
++
++namespace preyvr::hacking {
++namespace {
++bool Valid(const Settings& s)
++{
++    return std::isfinite(s.deadzone) && s.deadzone >= 0 && s.deadzone < 1 &&
++        std::isfinite(s.changeEpsilon) && s.changeEpsilon >= 0 && s.changeEpsilon < 1 &&
++        s.maxAgeNs > 0 && s.maxGapNs > 0;
++}
++bool SameContext(const Input& a, const Input& b)
++{
++    return a.epoch == b.epoch && a.reference == b.reference && a.generation == b.generation;
++}
++std::uint8_t Buttons(const Input& i)
++{
++    return static_cast<std::uint8_t>((i.a?ButtonA:0) | (i.b?ButtonB:0) | (i.x?ButtonX:0) | (i.y?ButtonY:0));
++}
++}
++
++bool InputState::CleanupPending() const
++{
++    return primeMask_ != 0 || sentButtons_ != 0 || sentX_ != 0 || sentY_ != 0;
++}
++bool InputState::OwnsControls() const
++{
++    return sentButtons_ != 0 || sentX_ != 0 || sentY_ != 0;
++}
++
++Output InputState::Propose(float x, float y, std::uint8_t buttons)
++{
++    Output out{};
++    out.x = x; out.y = y; out.ready = ready_;
++    if (++serial_ == 0) { ++serial_; }
++    out.proposal = serial_;
++    if ((primeMask_ & AxisX) || (x == 0 && sentX_ != 0) || std::fabs(x-sentX_) > epsilon_) { out.axisMask |= AxisX; }
++    if ((primeMask_ & AxisY) || (y == 0 && sentY_ != 0) || std::fabs(y-sentY_) > epsilon_) { out.axisMask |= AxisY; }
++    out.pressMask = static_cast<std::uint8_t>(buttons & ~sentButtons_);
++    out.releaseMask = static_cast<std::uint8_t>(sentButtons_ & ~buttons);
++    pending_ = out;
++    return out;
++}
++
++Output InputState::Suspend()
++{
++    ready_ = havePrevious_ = false;
++    previous_ = {};
++    // Only release channels actually delivered. A failed initial zero does not
++    // create native ownership; the next active context primes both axes anew.
++    primeMask_ = 0;
++    return Propose(0,0,0);
++}
++
++Output InputState::Update(const Input& i, const Settings& s)
++{
++    if (!Valid(s) || !i.valid || !i.active || !std::isfinite(i.stickX) || !std::isfinite(i.stickY) ||
++        i.sequence == 0 || i.stampNs == 0 || i.nowNs < i.stampNs || i.nowNs-i.stampNs > s.maxAgeNs) {
++        return Suspend();
++    }
++    epsilon_ = s.changeEpsilon;
++    if (havePrevious_ && !SameContext(i,previous_)) {
++        ready_ = false; primeMask_ = AxisX|AxisY; havePrevious_ = false;
++    }
++    if (havePrevious_) {
++        if (i.nowNs < previous_.nowNs || i.sequence < previous_.sequence || i.stampNs < previous_.stampNs ||
++            (i.sequence == previous_.sequence && i.stampNs != previous_.stampNs) ||
++            (i.sequence != previous_.sequence && i.stampNs == previous_.stampNs)) {
++            return Suspend();
++        }
++        if (i.sequence == previous_.sequence &&
++            (i.stickX != previous_.stickX || i.stickY != previous_.stickY || Buttons(i) != Buttons(previous_))) {
++            return Suspend(); // duplicate publications cannot mutate their controls
++        }
++        if (i.stampNs-previous_.stampNs > s.maxGapNs) {
++            ready_ = false; primeMask_ = AxisX|AxisY; havePrevious_ = false;
++        }
++    }
++    if (!havePrevious_) { ready_ = false; primeMask_ = AxisX|AxisY; }
++    const float rawX = std::clamp(i.stickX,-1.0f,1.0f), rawY = std::clamp(i.stickY,-1.0f,1.0f);
++    const auto buttons = Buttons(i);
++    const bool neutral = buttons == 0 && std::hypot(rawX,rawY) <= s.deadzone;
++    // Cleanup may be partially acknowledged. A neutral source is not permission
++    // to press into a new movie while old native controls are still held.
++    if (!ready_ && !CleanupPending() && neutral) { ready_ = true; }
++    previous_ = i; havePrevious_ = true;
++    if (!ready_) { return Propose(0,0,0); }
++    float x = 0, y = 0;
++    if (!locomotion::ShapeStick(rawX,rawY,s.deadzone,&x,&y)) { return Suspend(); }
++    return Propose(x,y,buttons);
++}
++
++void InputState::Commit(const Output& accepted)
++{
++    if (accepted.proposal == 0 || accepted.proposal != pending_.proposal) { return; }
++    const auto axes = static_cast<std::uint8_t>(accepted.axisMask & pending_.axisMask);
++    const auto presses = static_cast<std::uint8_t>(accepted.pressMask & pending_.pressMask);
++    const auto releases = static_cast<std::uint8_t>(accepted.releaseMask & pending_.releaseMask);
++    if (axes & AxisX) { sentX_ = pending_.x; primeMask_ &= static_cast<std::uint8_t>(~AxisX); }
++    if (axes & AxisY) { sentY_ = pending_.y; primeMask_ &= static_cast<std::uint8_t>(~AxisY); }
++    sentButtons_ = static_cast<std::uint8_t>((sentButtons_ | presses) & ~releases);
++    pending_.axisMask &= static_cast<std::uint8_t>(~axes);
++    pending_.pressMask &= static_cast<std::uint8_t>(~presses);
++    pending_.releaseMask &= static_cast<std::uint8_t>(~releases);
++}
++
++} // namespace preyvr::hacking
+diff --git a/src/common/UiPanel.cpp b/src/common/UiPanel.cpp
+index 915365b..ce593fc 100644
+--- a/src/common/UiPanel.cpp
++++ b/src/common/UiPanel.cpp
+@@ -111,7 +111,7 @@ std::optional<Panel> FitPanel(const Pose& head, const std::array<Eye,2>& eyes,
+                              float aspect, float distance, float scale, float margin) {
+     if (!Valid(head) || !Valid(eyes[0]) || !Valid(eyes[1]) ||
+         !std::isfinite(aspect) || aspect < .25f || aspect > 5 ||
+-        !std::isfinite(distance) || distance < 1 || distance > 4 ||
++        !std::isfinite(distance) || distance < .4f || distance > 4 ||
+         !std::isfinite(scale) || !std::isfinite(margin)) return {};
+     ClampMargin(margin);
+     // **Above 1 is allowed on purpose.** The 60/40 caps are a comfort default,
+diff --git a/src/common/UiPoke.cpp b/src/common/UiPoke.cpp
+new file mode 100644
+index 0000000..585ec7c
+--- /dev/null
++++ b/src/common/UiPoke.cpp
+@@ -0,0 +1,141 @@
++#include "preyvr/UiPoke.h"
++
++#include "preyvr/StereoCamera.h"
++#include <algorithm>
++#include <cmath>
++
++namespace preyvr::ui {
++namespace {
++bool Finite(Vec3 p) { return std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z); }
++Vec3 Sub(Vec3 a, Vec3 b) { return {a.x-b.x, a.y-b.y, a.z-b.z}; }
++float Length(Vec3 p) { return std::sqrt(p.x*p.x + p.y*p.y + p.z*p.z); }
++bool Valid(const Surface& s)
++{
++    return IsPoseUsable(s.panel.pose, {true,true,true,true,0}, 1) &&
++        std::isfinite(s.panel.width) && std::isfinite(s.panel.height) &&
++        s.panel.width > 0 && s.panel.height > 0 &&
++        std::isfinite(s.angle) && s.angle >= 0 && s.angle <= 1.2f;
++}
++bool Valid(const PokeSettings& s)
++{
++    return std::isfinite(s.frontHover) && std::isfinite(s.armDistance) &&
++        std::isfinite(s.releaseDistance) && std::isfinite(s.pressDistance) &&
++        std::isfinite(s.maxPenetration) && std::isfinite(s.maxFingerJump) &&
++        std::isfinite(s.maxSurfaceMove) && std::isfinite(s.maxSurfaceTurn) &&
++        s.frontHover >= s.armDistance && s.armDistance >= s.releaseDistance &&
++        s.releaseDistance > 0 && s.pressDistance <= 0 &&
++        s.maxPenetration > -s.pressDistance && s.maxFingerJump > 0 &&
++        s.maxSurfaceMove > 0 && s.maxSurfaceTurn > 0 &&
++        s.maxAgeNs > 0 && s.maxGapNs > 0;
++}
++float Turn(const Quaternion& a, const Quaternion& b)
++{
++    const Quaternion x = Normalize(a), y = Normalize(b);
++    const float dot = std::fabs(x.x*y.x+x.y*y.y+x.z*y.z+x.w*y.w);
++    return 2.0f*std::acos(std::clamp(dot, 0.0f, 1.0f));
++}
++bool SurfaceChanged(const Surface& a, const Surface& b, const PokeSettings& s)
++{
++    // Presentation changes invalidate the capture rather than scaling an old
++    // click into a new widget. Sub-threshold pose motion is handled again by
++    // the physical crossing test below.
++    return std::fabs(a.panel.width-b.panel.width) > .0001f ||
++        std::fabs(a.panel.height-b.panel.height) > .0001f ||
++        std::fabs(a.angle-b.angle) > .0001f ||
++        Length(Sub(a.panel.pose.position,b.panel.pose.position)) > s.maxSurfaceMove ||
++        Turn(a.panel.pose.orientation,b.panel.pose.orientation) > s.maxSurfaceTurn;
++}
++bool SameContext(const PokeInput& a, const PokeInput& b)
++{
++    return a.epoch == b.epoch && a.reference == b.reference && a.generation == b.generation;
++}
++}
++
++std::optional<PokePoint> ProjectPoke(const Surface& s, Vec3 fingertip)
++{
++    if (!Valid(s) || !Finite(fingertip)) { return {}; }
++    const Vec3 local = Rotate(stereo::Conjugate(s.panel.pose.orientation),
++                              Sub(fingertip,s.panel.pose.position));
++    if (!Finite(local)) { return {}; }
++    float u = 0, front = local.z;
++    Vec3 normal{0,0,1};
++    if (s.angle == 0) {
++        u = .5f + local.x/s.panel.width;
++    } else {
++        // Work relative to the visible centre in double precision. Subtracting
++        // two large float radii loses the sign for nearly-flat cylinders.
++        const double r = static_cast<double>(s.panel.width)/s.angle;
++        const double x = local.x, z = local.z;
++        const double rho = std::hypot(x,r-z);
++        if (!std::isfinite(rho) || rho < 1e-8) { return {}; }
++        const double theta = std::atan2(x,r-z);
++        u = static_cast<float>(.5 + theta/s.angle);
++        front = static_cast<float>((2*r*z-z*z-x*x)/(r+rho));
++        normal = {static_cast<float>(-std::sin(theta)),0,static_cast<float>(std::cos(theta))};
++    }
++    const float v = .5f - local.y/s.panel.height;
++    const Vec3 point = SurfacePoint(s,u,v).position;
++    normal = Rotate(s.panel.pose.orientation,normal);
++    if (!std::isfinite(u) || !std::isfinite(v) || !std::isfinite(front) || !Finite(point) || !Finite(normal)) { return {}; }
++    return PokePoint{u,v,front,point,normal,u>=0&&u<=1&&v>=0&&v<=1};
++}
++
++void Poke::Reset()
++{
++    previous_ = {}; output_ = {};
++    havePrevious_ = armed_ = down_ = false;
++}
++
++PokeOutput Poke::Update(const PokeInput& i, const PokeSettings& s)
++{
++    const auto contact = ProjectPoke(i.surface,i.tip);
++    if (!Valid(s) || !i.valid || !contact || i.stampNs == 0 || i.sequence == 0 ||
++        i.nowNs < i.stampNs || i.nowNs-i.stampNs > s.maxAgeNs) {
++        Reset(); return output_;
++    }
++    if (havePrevious_ && !SameContext(i,previous_)) { Reset(); }
++    if (havePrevious_ && i.nowNs < previous_.nowNs) { Reset(); return output_; }
++    if (havePrevious_ && i.sequence == previous_.sequence && i.stampNs == previous_.stampNs) {
++        if (Length(Sub(i.tip,previous_.tip)) < 1e-6f && !SurfaceChanged(i.surface,previous_.surface,s)) {
++            previous_.nowNs = i.nowNs;
++            return output_;
++        }
++        Reset(); return output_; // a changed publication cannot reuse an old sequence
++    }
++    if (havePrevious_ && (i.sequence <= previous_.sequence || i.stampNs <= previous_.stampNs)) {
++        Reset(); return output_;
++    }
++    if (havePrevious_ && (i.stampNs-previous_.stampNs > s.maxGapNs ||
++        Length(Sub(i.tip,previous_.tip)) > s.maxFingerJump || SurfaceChanged(i.surface,previous_.surface,s))) {
++        Reset();
++    }
++
++    const bool inside = contact->inside;
++    const bool near = inside && contact->frontDistance <= s.frontHover &&
++        contact->frontDistance >= -s.maxPenetration;
++    if (!near) { armed_ = down_ = false; }
++    else if (!havePrevious_) { armed_ = contact->frontDistance >= s.armDistance; }
++    else if (down_) {
++        if (contact->frontDistance >= s.releaseDistance) {
++            down_ = false;
++            armed_ = contact->frontDistance >= s.armDistance;
++        }
++    } else {
++        if (contact->frontDistance >= s.armDistance) { armed_ = true; }
++        if (armed_ && contact->frontDistance <= s.pressDistance) {
++            const auto old = ProjectPoke(previous_.surface,previous_.tip);
++            const auto oldOnCurrent = ProjectPoke(i.surface,previous_.tip);
++            // Both surfaces must say the old finger was in front. A panel
++            // moving over a stationary fingertip cannot create this crossing.
++            down_ = old && oldOnCurrent && old->inside && oldOnCurrent->inside &&
++                old->frontDistance > s.pressDistance && oldOnCurrent->frontDistance > s.pressDistance &&
++                Length(Sub(i.tip,previous_.tip)) >= .001f;
++            armed_ = false;
++        }
++    }
++    output_ = {near,inside,down_,contact};
++    previous_ = i; havePrevious_ = true;
++    return output_;
++}
++
++} // namespace preyvr::ui
+diff --git a/src/common/VrOptions.cpp b/src/common/VrOptions.cpp
+index e38b354..6739356 100644
+--- a/src/common/VrOptions.cpp
++++ b/src/common/VrOptions.cpp
+@@ -40,7 +40,11 @@ constexpr Spec specs[]={
+  {"grenade_hand",L"HAND GRENADES",L"Experimental: throw from the right hand on a tracked trigger release. Off keeps the game's charged throw and surface deployment.",0,0,1,1},
+  {"physical_crouch",L"PHYSICAL CROUCH",L"Crouch for real to crouch in the game; stand up to stand. The crouch button still works.",1,0,1,1},
+  {"wall_fade",L"HEAD IN WALLS",L"When your head goes into a wall or an object, darken the view, or let you see through it.",1,0,1,1},
+- {"body_pose",L"BODY POSING",L"Pose the torso and legs from your head and hands. Off keeps native body animation; controller-driven arms remain active.",1,0,1,1}
++ {"body_pose",L"BODY POSING",L"Pose the torso and legs from your head and hands. Off keeps native body animation; controller-driven arms remain active.",1,0,1,1},
++ {"ui_poke",L"TOUCH PANELS",L"Experimental controller-tip poking brings menus within reach. Approach from the front and withdraw to release; rays remain available.",0,0,1,1},
++ {"ui_poke_distance",L"TOUCH PANEL DISTANCE",L"Distance of menus and VR options in touch mode. Reset the view to bring the panel in front of you.",65,45,90,5},
++ {"ui_poke_tip",L"TOUCHPOINT REACH",L"Virtual fingertip distance along the controller aim pose. Adjust to your controller; the marker shows the touchpoint.",80,30,150,10},
++ {"hacking_controls",L"CONTROLLER HACKING",L"Experimental: left stick moves in the hacking screen; use the native face-button prompts. Native puzzle rules and timers remain.",0,0,1,1}
+ };
+ }
+ const Spec& Describe(unsigned id){return specs[id<Count?id:0];}
+@@ -74,10 +78,10 @@ bool Parse(std::string_view text,Values& result){
+  result=parsed;return true;
+ }
+ int Item(unsigned page,unsigned row){
+- constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim},{Stereo,PhysicalCrouch,WallFade,BodyPose},{UseHand,CarryHand,GrenadeHand,-2}};
++ constexpr int items[Pages][Rows]={{Turn,HeadRelative,TurnSpeed,BodyFollow},{TwoHand,GripToggle,SupportSnap,Psychoscope},{UiScale,UiMargin,UiCurve,UiGuide},{Holsters,Wrist,WristSize,-3},{SceneReticle,ReticleFallback,Haptics,HapticStrength},{PhysicalMelee,PhysicalContacts,SwingSpeed,ContactStrength},{PsiTarget,Medkit,BeltHints,-2},{-4,-1,DebugOverlay,MuzzleAim},{Stereo,PhysicalCrouch,WallFade,BodyPose},{UseHand,CarryHand,GrenadeHand,-2},{UiPoke,UiPokeDistance,UiPokeTip,HackingControls}};
+  return page<Pages&&row<Rows?items[page][row]:-2;
+ }
+-const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP",L"VIEW",L"WORLD"};return names[p%Pages];}
++const wchar_t* PageName(unsigned p){constexpr const wchar_t* names[]={L"COMFORT",L"HANDS",L"INTERFACE",L"EQUIPMENT",L"FEEDBACK",L"PHYSICAL",L"ABILITIES",L"SETUP",L"VIEW",L"WORLD",L"INPUT"};return names[p%Pages];}
+ std::wstring Display(unsigned id,int v){
+  if(id==PsiTarget)return v==1?L"HEAD":v==2?L"LEFT CONTROLLER":L"ORIGINAL";
+  if(id==SwingSpeed)return std::to_wstring(v)+L" CM/S";
+@@ -87,6 +91,8 @@ std::wstring Display(unsigned id,int v){
+  if(id==BodyFollow)return v==2?L"TURN AND WALK":v==1?L"TURN ONLY":L"OFF";
+  if(id==Stereo)return v==2?L"FULL STEREO":v==1?L"ALTERNATE EYES":L"MONO";
+  if(id==WallFade)return v?L"DARKEN":L"SEE THROUGH";
++ if(id==UiPokeDistance)return std::to_wstring(v)+L" CM";
++ if(id==UiPokeTip)return std::to_wstring(v)+L" MM";
+  if(id==GripToggle)return v?L"TOGGLE":L"HOLD";
+  if(id==SupportSnap)return v?L"SNAPPED":L"FREE";
+  if(id==UiCurve)return v?std::to_wstring(v)+L" DEGREES":L"FLAT";
+diff --git a/src/dll/CameraEditHook.cpp b/src/dll/CameraEditHook.cpp
+index de717d4..abecc47 100644
+--- a/src/dll/CameraEditHook.cpp
++++ b/src/dll/CameraEditHook.cpp
+@@ -8,6 +8,7 @@
+ #include "UiPointer.h"
+ #include "AimTakeover.h"
+ #include "MoveLane.h"
++#include "HackingLane.h"
+ 
+ #include "HeadTrackingHook.h"
+ 
+@@ -1020,14 +1021,15 @@ void __fastcall RenderWithCameraEdit(void* system)
+     // case menu navigation needs. Deliberately ahead of the armed check below:
+     // driving a menu must not require stereo or head tracking to be enabled
+     // first, and the early return would otherwise skip it.
+-    DrainQueuedInput();
+     DrainQueuedHudCalls();
++    DrainQueuedInput(); // modal content is sampled before validating queued taps
+     DrainUiPointer();
+     // Same thread and same frame as the drain: the lane produces at most two
+     // axis events per frame and the drain consumes one, so producing anywhere
+     // else would race the queue it feeds.
+     UpdateMoveLane();
+     UpdateTurnAndFireLanes();
++    UpdateHackingInput(); // native action-map events, after gameplay releases
+ 
+     if ((!gArmed.load(std::memory_order_acquire) && !stereoArmed &&
+          !gHeadRotationArmed.load(std::memory_order_acquire)) || system == nullptr) {
+diff --git a/src/dll/CommandChannel.cpp b/src/dll/CommandChannel.cpp
+index f01baee..dbc5d5b 100644
+--- a/src/dll/CommandChannel.cpp
++++ b/src/dll/CommandChannel.cpp
+@@ -36,6 +36,7 @@
+ #include "WristLane.h"
+ #include "BodyFollow.h"
+ #include "UiPointer.h"
++#include "HackingLane.h"
+ #include "FrameCaptureWin32.h"
+ #include "InputPost.h"
+ #include "MoveLane.h"
+@@ -594,6 +595,22 @@ bool ExecuteDualCommand(const std::vector<std::string>& args, std::ostringstream
+     return true;
+ }
+ 
++bool ExecuteUiInput(const std::vector<std::string>& args,std::ostringstream& out)
++{
++    const auto& verb=args[0];
++    if(verb!="ui.poke"&&verb!="ui.poke.distance"&&verb!="ui.poke.tip"&&verb!="ui.hacking")return false;
++    DWORD result=0;int value=0;
++    if(args.size()>2||(args.size()==2&&(!ParseInt(args[1],value)||value<0)))result=ERROR_INVALID_PARAMETER;
++    else if(args.size()==2) {
++        if(verb=="ui.poke")result=SetUiPokeEnabled(static_cast<unsigned>(value));
++        else if(verb=="ui.poke.distance")result=SetUiPokeDistanceCm(static_cast<unsigned>(value));
++        else if(verb=="ui.poke.tip")result=SetUiPokeTipMm(static_cast<unsigned>(value));
++        else result=SetHackingControls(static_cast<unsigned>(value));
++    }
++    out<<verb<<" result="<<result<<' '<<(verb=="ui.hacking"?HackingInputReport():UiPointerReport());
++    return true;
++}
++
+ // One verb, one operation. Deliberately not a name-to-export lookup: that would
+ // be a call-anything primitive whose argument is a text file.
+ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
+@@ -609,7 +626,7 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
+ 
+     if (ExecutePose(args, out) || ExecuteCarryCommand(args, out) || ExecuteGrenadeCommand(args, out) || ExecuteArmsCommand(args, out) ||
+         ExecuteWristCommand(args, out) || ExecuteBodyCommand(args, out) || ExecuteDualCommand(args, out) ||
+-        ExecuteStereoCommand(args, out)) {
++        ExecuteStereoCommand(args, out) || ExecuteUiInput(args,out)) {
+         return;
+     }
+     if (verb == "vr.options") {
+diff --git a/src/dll/HackingLane.cpp b/src/dll/HackingLane.cpp
+new file mode 100644
+index 0000000..ef4c188
+--- /dev/null
++++ b/src/dll/HackingLane.cpp
+@@ -0,0 +1,105 @@
++#include "HackingLane.h"
++#include "HeadTrackingHook.h"
++#include "HudBridge.h"
++#include "InputPost.h"
++#include "MoveLane.h"
++#include "VrOptionsRuntime.h"
++#include "XrInput.h"
++#include "preyvr/HackingInput.h"
++#include "preyvr/InputEvent.h"
++#include "preyvr/LatestSnapshot.h"
++#include <atomic>
++#include <cmath>
++#include <sstream>
++
++namespace preyvr::dll {
++namespace {
++std::atomic<unsigned> enabled{0};
++std::atomic<bool> active{false};
++std::atomic<std::uint64_t> generation{1};
++std::atomic<unsigned long long> axes{0},presses{0},releases{0},refused{0};
++std::atomic<int> xMilli{0},yMilli{0};
++std::atomic<bool> cleanupOwned{false};
++std::atomic<bool> ready{false},handoffBlocked{false};
++hacking::InputState inputState; // engine input-drain thread only
++std::uint64_t boundGeneration=0,boundMenu=0;
++std::uint64_t inGeneration=0;
++}
++DWORD SetHackingControls(unsigned value) {
++    if(value>1)return ERROR_INVALID_PARAMETER;
++    if(enabled.exchange(value)!=value)InvalidateHackingInput();return 0;
++}
++unsigned HackingControlsEnabled(){return enabled.load();}
++bool HackingInputOwnsControls(){return cleanupOwned.load()||(active.load()&&enabled.load()&&HudHackingIsOpen());}
++void InvalidateHackingInput(){generation.fetch_add(1);}
++void SetHackingInputActive(bool value){if(active.exchange(value)!=value)InvalidateHackingInput();}
++void UpdateHackingInput() {
++    // Exact installed defaultprofile bindings, verified from base and patch:
++    // hack_moveprompt_x/y <- xi_thumblx/y; finals <- xi_x/y/a/b (onPress).
++    // Go through the existing engine action map. Calling ArkHackingUI's final
++    // handler directly on release would bypass its onPress filter.
++    TrackingFrame frame{};
++    hacking::Input in{};in.nowNs=MonotonicNanoseconds();
++    const auto reference=HeadTrackingReferenceGeneration(),menu=HudMenuEpoch(),settings=generation.load();
++    const bool read=TryGetTrackingFrame(frame);
++    in.valid=read&&FreshSample(in.nowNs,frame.publishedNs)&&
++        IsPoseUsable(frame.head,frame.headValidity,200000000ull)&&!(reference&1);
++    const bool visible=HudHackingIsOpen();
++    const bool currentModal=!visible||HudRefreshMenuOpenState()==0;
++    const bool gameplayReleased=GameplayInputReleasedForHacking();
++    handoffBlocked.store(!gameplayReleased);
++    in.active=active.load()&&enabled.load()&&currentModal&&HudHackingIsOpen()&&!VrOptionsInputOwned()&&gameplayReleased;
++    in.stampNs=frame.publishedNs;in.sequence=frame.sequence;in.epoch=frame.epoch;in.reference=reference;
++    // A serial identifies the whole menu/settings context; do not hash IDs.
++    if(settings!=boundGeneration||menu!=boundMenu) {
++        boundGeneration=settings;boundMenu=menu;++inGeneration;
++    }
++    in.generation=inGeneration;
++    in.stickX=frame.hands[0].thumbstickX;in.stickY=frame.hands[0].thumbstickY;
++    in.a=frame.hands[1].menuAccept;in.b=frame.hands[1].menuCancel;
++    in.x=frame.hands[0].menuAccept;in.y=frame.hands[0].menuCancel;
++    auto out=inputState.Update(in);
++    const auto owns=[&]{
++        TrackingFrame latest{};
++        return active.load()&&enabled.load()&&settings==generation.load()&&
++            menu==HudMenuEpoch()&&reference==HeadTrackingReferenceGeneration()&&HudHackingIsOpen()&&!VrOptionsInputOwned()&&
++            TryGetTrackingFrame(latest)&&latest.epoch==frame.epoch&&
++            FreshSample(MonotonicNanoseconds(),latest.publishedNs)&&
++            IsPoseUsable(latest.head,latest.headValidity,200000000ull);
++    };
++    const auto post=[&](int key,unsigned state,int value){
++        if(PostRawInputImmediate(key,state,value)==0)return true;
++        refused.fetch_add(1);return false;
++    };
++    for(unsigned axis=0;axis<2;++axis) {
++        const auto bit=static_cast<std::uint8_t>(1u<<axis);
++        if(!(out.axisMask&bit))continue;
++        const int value=static_cast<int>(std::lround((axis?out.y:out.x)*1000.f));
++        if((value==0||owns())&&post(axis?input::kThumbLY:input::kThumbLX,input::kStateChanged,value)) {
++            axes.fetch_add(1);(axis?yMilli:xMilli).store(value);
++        } else out.axisMask=static_cast<std::uint8_t>(out.axisMask&~bit);
++    }
++    constexpr int keys[]={input::kButtonA,input::kButtonB,input::kButtonX,input::kButtonY};
++    for(unsigned button=0;button<4;++button) {
++        const auto bit=static_cast<std::uint8_t>(1u<<button);
++        if(out.releaseMask&bit) {
++            if(post(keys[button],input::kStateReleased,0))releases.fetch_add(1);
++            else out.releaseMask=static_cast<std::uint8_t>(out.releaseMask&~bit);
++        }
++        if(out.pressMask&bit) {
++            // Recheck volatile ownership before every new press. Cleanup releases
++            // remain legal after the modal disappears, just like a real pad.
++            if(in.active&&in.valid&&HudRefreshMenuOpenState()==0&&owns()&&
++               post(keys[button],input::kStatePressed,1000))presses.fetch_add(1);
++            else out.pressMask=static_cast<std::uint8_t>(out.pressMask&~bit);
++        }
++    }
++    inputState.Commit(out);
++    ready.store(out.ready);
++    cleanupOwned.store(inputState.OwnsControls());
++}
++std::string HackingInputReport(){std::ostringstream s;s<<"enabled="<<enabled.load()<<" active="<<active.load()
++    <<" ready="<<ready.load()<<" cleanup="<<cleanupOwned.load()<<" handoffBlocked="<<handoffBlocked.load()
++    <<" visible="<<HudHackingIsOpen()<<" axes="<<axes.load()<<" presses="<<presses.load()
++    <<" releases="<<releases.load()<<" refused="<<refused.load()<<" stick="<<xMilli.load()<<','<<yMilli.load();return s.str();}
++}
+diff --git a/src/dll/HackingLane.h b/src/dll/HackingLane.h
+new file mode 100644
+index 0000000..1b6dc14
+--- /dev/null
++++ b/src/dll/HackingLane.h
+@@ -0,0 +1,13 @@
++#pragma once
++#include <windows.h>
++#include <string>
++namespace preyvr::dll {
++DWORD SetHackingControls(unsigned enabled);
++unsigned HackingControlsEnabled();
++bool HackingInputOwnsControls();
++// Main engine input-drain thread only; uses the existing native input pipeline.
++void UpdateHackingInput();
++void InvalidateHackingInput();
++void SetHackingInputActive(bool active);
++std::string HackingInputReport();
++}
+diff --git a/src/dll/HudBridge.cpp b/src/dll/HudBridge.cpp
+index 3999227..10f1545 100644
+--- a/src/dll/HudBridge.cpp
++++ b/src/dll/HudBridge.cpp
+@@ -134,6 +134,8 @@ using IsVisibleFn = bool(__fastcall*)(void*);
+ // `hud.call` is queued -- so the predicate is a value, not a call.
+ std::atomic<bool> gMenuOpen{false};
+ std::atomic<bool> gInventoryOpen{false};
++std::atomic<bool> gHackingOpen{false};
++std::atomic<std::uint64_t> gVisibleModalMask{0};
+ std::atomic<unsigned long long> gMenuEpoch{1};
+ std::atomic<unsigned long long> gMenuStateSamples{0};
+ std::atomic<std::uint64_t> gMenuStamp{0};
+@@ -495,10 +497,10 @@ void RunHudProbe(float screenX, float screenY)
+ 
+ void DrainQueuedHudCalls()
+ {
+-    // Sampled here because this already runs on the main thread every frame, and
+-    // the navigator that consumes it must not enter Scaleform from the frame
+-    // service.
+-    HudRefreshMenuOpenState();
++    // Sample after any queued UI call, including early returns. Consumers run
++    // after this drain; an old content epoch must not admit a queued click into
++    // a replacement screen. The XR service never enters Scaleform to poll it.
++    struct RefreshOnExit { ~RefreshOnExit(){HudRefreshMenuOpenState();} } refresh;
+ 
+     PendingHudCall call;
+     {
+@@ -541,7 +543,33 @@ constexpr const char* kMenuElements[] = {
+     "LoadingScreen",             // target string RVA 0x1CB49E0
+     "DanielleDialog",            // native modal dispatcher 0x1632857
+     "DanielleDialogInGame",
++    // Steam Open: 0x1626418 loads string RVA 0x1E63F28, then uses the
++    // same UI getter (+0x60). The game owns its normal draw and simulation.
++    "DanielleHacking2",
+ };
++static_assert(std::size(kMenuElements) == 10);
++constexpr std::uint64_t kPdaModal = 1ull << 4;
++constexpr std::uint64_t kExternalInventoryModal = 1ull << 5;
++constexpr std::uint64_t kHackingModal = 1ull << 9;
++
++void PublishModalSample(std::uint64_t visible, bool exclusiveKnown)
++{
++    // A PDA-to-hacking or hacking-to-pause transition stays modal but changes
++    // its input owner. Old queued presses must not reach the replacement screen.
++    if (gVisibleModalMask.exchange(visible, std::memory_order_acq_rel) != visible) {
++        gMenuEpoch.fetch_add(1, std::memory_order_acq_rel);
++    }
++    gMenuOpen.store(visible != 0, std::memory_order_release);
++    gInventoryOpen.store(exclusiveKnown && (visible & kPdaModal) != 0 &&
++                        (visible & ~kPdaModal) == 0, std::memory_order_release);
++    // Native hacking can sit over PDA/interaction backing content. A pause,
++    // loading screen, shell or dialog takes priority over its still-visible movie.
++    constexpr std::uint64_t backing = kHackingModal | kPdaModal | kExternalInventoryModal;
++    gHackingOpen.store(exclusiveKnown && (visible & kHackingModal) != 0 &&
++                      (visible & ~backing) == 0, std::memory_order_release);
++    gMenuStamp.store(MonotonicNanoseconds(), std::memory_order_release);
++    gMenuStateSamples.fetch_add(1, std::memory_order_relaxed);
++}
+ 
+ void* ResolveNamedElement(std::uintptr_t base, const char* name)
+ {
+@@ -576,10 +604,11 @@ DWORD HudRefreshMenuOpenState()
+     if (preyDll == nullptr) { return 4; }
+     const auto base = reinterpret_cast<std::uintptr_t>(preyDll);
+ 
+-    bool anyVisible = false;
+     bool anyAnswered = false;
+-    bool pdaVisible = false, otherVisible = false, exclusiveKnown = true;
+-    for (const char* const name : kMenuElements) {
++    bool exclusiveKnown = true;
++    std::uint64_t visibleMask = 0;
++    for (unsigned index = 0; index < std::size(kMenuElements); ++index) {
++        const char* const name = kMenuElements[index];
+         void* const element = ResolveNamedElement(base, name);
+         if (element == nullptr) { continue; }
+         const std::uintptr_t isVisible = ReadVtableSlot(element, kIsVisibleSlot);
+@@ -594,11 +623,7 @@ DWORD HudRefreshMenuOpenState()
+         const bool visible = CallIsVisible(isVisible, element, &ok);
+         if (!ok) { exclusiveKnown=false; continue; }
+         anyAnswered = true;
+-        if (visible) {
+-            anyVisible = true;
+-            if (std::strcmp(name,"DaniellePDA")==0) pdaVisible=true;
+-            else otherVisible=true;
+-        }
++        if (visible) { visibleMask |= 1ull << index; }
+     }
+ 
+     // **An unanswered poll must not read as "no menu".** If nothing resolved, the
+@@ -606,10 +631,7 @@ DWORD HudRefreshMenuOpenState()
+     // load screen or an early frame would look exactly like gameplay and re-arm
+     // the D-pad taps this predicate exists to suppress.
+     if (!anyAnswered) { return 7; }
+-    if(gMenuOpen.exchange(anyVisible,std::memory_order_acq_rel)!=anyVisible)gMenuEpoch.fetch_add(1);
+-    gInventoryOpen.store(exclusiveKnown && pdaVisible && !otherVisible, std::memory_order_release);
+-    gMenuStamp.store(MonotonicNanoseconds(), std::memory_order_release);
+-    gMenuStateSamples.fetch_add(1, std::memory_order_relaxed);
++    PublishModalSample(visibleMask, exclusiveKnown);
+     return 0;
+ }
+ 
+@@ -649,6 +671,7 @@ bool HudMenuIsOpen() { return gMenuOpen.load(std::memory_order_acquire); }
+ unsigned long long HudMenuEpoch() { return gMenuEpoch.load(std::memory_order_acquire); }
+ bool HudMenuStateKnown() { return FreshSample(MonotonicNanoseconds(), gMenuStamp.load()); }
+ bool HudInventoryIsOpen() { return HudMenuStateKnown() && gInventoryOpen.load(std::memory_order_acquire); }
++bool HudHackingIsOpen() { return HudMenuStateKnown() && gHackingOpen.load(std::memory_order_acquire); }
+ // **Gameplay keeps the last KNOWN menu state; it is not blocked by an old one.**
+ // The sample is refreshed once per rendered frame, so at 19 fps, or through a
+ // hitch, it was older than FreshSample's 200 ms for a quarter of the play time
+diff --git a/src/dll/HudBridge.h b/src/dll/HudBridge.h
+index 4b88e40..e0c6bd5 100644
+--- a/src/dll/HudBridge.h
++++ b/src/dll/HudBridge.h
+@@ -188,6 +188,9 @@ bool HudMenuIsOpen();
+ bool HudMenuStateKnown();
+ // PDA is visible without another known modal screen/dialog covering it.
+ bool HudInventoryIsOpen();
++// Hacking is visible, with no pause/loading/dialog covering its native movie.
++// Uses the same fresh, concrete-element visibility sampling as inventory.
++bool HudHackingIsOpen();
+ unsigned long long HudMenuEpoch();
+ bool HudGameplayInputAllowed();
+ unsigned long long HudMenuStateSampleCount();
+diff --git a/src/dll/InputPost.cpp b/src/dll/InputPost.cpp
+index f76463d..b0fd73a 100644
+--- a/src/dll/InputPost.cpp
++++ b/src/dll/InputPost.cpp
+@@ -1,5 +1,6 @@
+ #include "InputPost.h"
+ #include "VrOptionsRuntime.h"
++#include "HackingLane.h"
+ 
+ #include "CameraEditHook.h"
+ #include "InputPathProbe.h"
+@@ -152,7 +153,7 @@ void DrainQueuedInput()
+         if(!gQueue.Pop(event.data(),&scope))return;
+         std::memcpy(&key,event.data()+input::kOffsetKeyId,sizeof(key));
+         std::memcpy(&state,event.data()+input::kOffsetState,sizeof(state));
+-        if(menuDispatch.Allow(scope,HudMenuEpoch(),!VrOptionsInputOwned()&&HudMenuStateKnown()&&HudMenuIsOpen(),key,state)) {
++        if(menuDispatch.Allow(scope,HudMenuEpoch(),!VrOptionsInputOwned()&&!HackingInputOwnsControls()&&HudMenuStateKnown()&&HudMenuIsOpen(),key,state)) {
+             accepted=true;break;
+         }
+         gMenuDiscarded.fetch_add(1,std::memory_order_relaxed);
+@@ -169,6 +170,7 @@ void DrainQueuedInput()
+     }
+     gPosted.fetch_add(1, std::memory_order_relaxed);
+     menuDispatch.Delivered(scope,key,state);
++    HudRefreshMenuOpenState(); // a delivered confirm/pause may replace the screen
+ }
+ 
+ DWORD SetInputPostForce(unsigned int force)
+@@ -203,7 +205,7 @@ DWORD PostMenuAction(unsigned int action, unsigned long long menuEpoch)
+     // Both or neither. A press queued without its release would leave the engine
+     // believing the button is held for as long as the queue stays short.
+     const auto scope=menuEpoch;
+-    if(scope && (scope!=HudMenuEpoch() || !HudMenuStateKnown() || !HudMenuIsOpen()))return 4;
++    if(scope && (scope!=HudMenuEpoch() || !HudMenuStateKnown() || !HudMenuIsOpen() || HackingInputOwnsControls()))return 4;
+     if (!gEnabled.load(std::memory_order_acquire) || !gQueue.PushPair(buffer.data(),scope)) {
+         return 4;
+     }
+diff --git a/src/dll/MoveLane.cpp b/src/dll/MoveLane.cpp
+index f21f100..48a0991 100644
+--- a/src/dll/MoveLane.cpp
++++ b/src/dll/MoveLane.cpp
+@@ -1,6 +1,7 @@
+ #include "MoveLane.h"
+ #include "AnimIkTakeover.h"
+ #include "BodyFollow.h"
++#include "HackingLane.h"
+ #include "ArmsLane.h"
+ #include "AimTakeover.h"
+ #include "BodyEquipment.h"
+@@ -40,6 +41,7 @@ std::atomic<bool> gHeadRelative{true};
+ std::atomic<float> gStrafeScale{1.f},gBackwardScale{1.f};
+ 
+ void Log(const std::string& line) { lifecycle::Log("preyvr_move " + line); }
++bool GameplayLaneInputAllowed(){return HudGameplayInputAllowed()&&!HackingInputOwnsControls();}
+ 
+ // R-089. The player-side analog handlers. RCX is the input object: the X
+ // handler stores to `+0x5C`, the Y handler to `+0x60`, and both discard the
+@@ -317,7 +319,7 @@ void UpdateMoveLane()
+     const bool neutralize = gMoveNeutralize.exchange(false, std::memory_order_acq_rel);
+     const auto movementReference=HeadTrackingReferenceGeneration();
+     TrackingFrame movementFrame{};
+-    const bool gameplay = HudGameplayInputAllowed();
++    const bool gameplay = GameplayLaneInputAllowed();
+     const bool read = TryGetTrackingFrame(movementFrame) && FreshSample(MonotonicNanoseconds(),movementFrame.publishedNs);
+     // A sample missed for a moment -- a contended read, a frame-long hitch -- holds
+     // what the game was last told instead of releasing the stick: a release there
+@@ -437,9 +439,9 @@ void UpdateTurnAndFireLanes()
+     }
+ 
+     static bool turnBlocked=false;
+-    if (!HudGameplayInputAllowed()) turnBlocked=true;
++    if (!GameplayLaneInputAllowed()) turnBlocked=true;
+     else if (haveInput && std::fabs(right.thumbstickX)<=.15f && std::fabs(right.thumbstickY)<=.15f) turnBlocked=false;
+-    const bool turnOn = gTurnEnabled.load(std::memory_order_acquire) && HudGameplayInputAllowed() && !turnBlocked;
++    const bool turnOn = gTurnEnabled.load(std::memory_order_acquire) && GameplayLaneInputAllowed() && !turnBlocked;
+     const bool releaseTurn = gTurnNeutralize.exchange(false, std::memory_order_acq_rel);
+     static comfort::SnapLatch snap;
+     static unsigned previousMode=~0u;
+@@ -484,11 +486,11 @@ void UpdateTurnAndFireLanes()
+     const bool releaseFire = gFireNeutralize.exchange(false, std::memory_order_acq_rel);
+     const auto fire=fireGate.Update(haveInput &&
+         IsPoseUsable(right.gripPose,right.gripValidity,60000000ull),
+-        gFireEnabled.load() && HudGameplayInputAllowed(),releaseFire,gRecenterHeld,
++        gFireEnabled.load() && GameplayLaneInputAllowed(),releaseFire,gRecenterHeld,
+         right.triggerPressed,right.triggerValue<=.05f,inputFrame.epoch,HeadTrackingReferenceGeneration());
+     if(!fire.physical)CancelGrenadeTrigger();
+     const bool fireOn = gFireEnabled.load(std::memory_order_acquire) &&
+-                       HudGameplayInputAllowed() && fire.physical;
++                       GameplayLaneInputAllowed() && fire.physical;
+     if (fireOn || gFireHeld || (gFirePrimed && gLastFireSent != 0)) {
+         // **The real travel is posted, not a quantised press.** `xi_triggerr` is
+         // an analog axis, and sending only 0 or 1000 threw away everything
+@@ -564,7 +566,7 @@ void UpdateTurnAndFireLanes()
+     // button that both confirms a menu choice and jumps is the same class of
+     // double-binding as the right stick that also changed weapons.
+     const bool actionsOn = gActionsEnabled.load(std::memory_order_acquire) &&
+-                           HudGameplayInputAllowed();
++                           GameplayLaneInputAllowed();
+     const bool releaseActions = gActionsNeutralize.exchange(false, std::memory_order_acq_rel);
+     {
+         const bool haveLeftHand = haveInput;
+@@ -601,7 +603,7 @@ void UpdateTurnAndFireLanes()
+         NoteUseButton(useOut.down, static_cast<unsigned>(useOut.owner), useOut.pressed, useOut.released,
+                       (useOut.noTarget ? 1u : 0u) | (useOut.gaveUp ? 2u : 0u) | (useOut.busy ? 4u : 0u));
+         const bool crouchTap = TakePhysicalCrouchTap(inputFrame,
+-            haveInput && actionsOn && !releaseActions && HudGameplayInputAllowed() && MoveLaneCinematicGate() == 0);
++            haveInput && actionsOn && !releaseActions && GameplayLaneInputAllowed() && MoveLaneCinematicGate() == 0);
+         const bool sources[kActionCount] = {
+             useOut.down,                              // use/reload, decided above
+             haveLeftHand && leftHand.menuAccept,      // inventory <- left X
+@@ -612,7 +614,7 @@ void UpdateTurnAndFireLanes()
+         static bool blocked[kActionCount]{};
+         for (int slot = 0; slot < kActionCount; ++slot) {
+             // Slot 0's grip arbitration lives in the use button above.
+-            if (slot != kActionInteract && !HudGameplayInputAllowed() && sources[slot]) blocked[slot]=true;
++            if (slot != kActionInteract && !GameplayLaneInputAllowed() && sources[slot]) blocked[slot]=true;
+             if (!sources[slot]) blocked[slot]=false;
+             ActionBinding& binding = gActions[slot];
+             const bool wanted = actionsOn && !releaseActions && sources[slot] && !blocked[slot];
+@@ -754,6 +756,11 @@ unsigned long long MoveLaneDropped() { return gDropped.load(std::memory_order_re
+ unsigned long long MoveLaneInputObject() { return gInputObject.load(std::memory_order_relaxed); }
+ 
+ int MoveLaneAxisMilli(unsigned int axis) { return axis < 2 ? gAxisMilli[axis].load(std::memory_order_relaxed) : 0; }
++bool GameplayInputReleasedForHacking() {
++    if(gMoveMayBeHeld)return false;
++    for(const auto& action:gActions)if(action.held)return false;
++    return true;
++}
+ int MoveLaneCinematicGate() { return gCinematic.load(std::memory_order_relaxed); }
+ unsigned long long MoveLaneRecenterCount() { return gRecenters.load(std::memory_order_relaxed); }
+ 
+diff --git a/src/dll/MoveLane.h b/src/dll/MoveLane.h
+index 0a5a846..7295c1d 100644
+--- a/src/dll/MoveLane.h
++++ b/src/dll/MoveLane.h
+@@ -127,7 +127,9 @@ unsigned long long MoveLaneHeld();
+ // a value we posted that never lands here did not move the player.
+ unsigned long long MoveLaneInputObject();
+ int MoveLaneAxisMilli(unsigned int axis);
+-// The physical crouch's toggle: the crouch button pressed for a few frames.
++// Drain-thread-only handoff: do not let hacking acquire shared keys while a
++// gameplay axis/button release is still awaiting native delivery.
++bool GameplayInputReleasedForHacking();
+ // The cinematic gate the handlers test at `+0x94`. Non-zero means the engine
+ // is discarding movement input, so a still player is the game's decision and
+ // not this lane failing.
+diff --git a/src/dll/UiPointer.cpp b/src/dll/UiPointer.cpp
+index 389b5fa..604db2e 100644
+--- a/src/dll/UiPointer.cpp
++++ b/src/dll/UiPointer.cpp
+@@ -3,6 +3,7 @@
+ #include "HudBridge.h"
+ #include "InputPost.h"
+ #include "InventoryPointerCapture.h"
++#include "HeadTrackingHook.h"
+ #include "preyvr/InputEvent.h"
+ #include "XrInput.h"
+ #include "Logger.h"
+@@ -17,16 +18,21 @@ struct Sample {
+     bool active=false,inside=false,pressed=false;
+     int x=-100,y=-100;
+     std::uint64_t stamp=0,epoch=0,reference=0,generation=0;
++    std::uint64_t surface=0,menu=0;
+ };
+ LatestSnapshot<Sample> gSample;
+ std::atomic<std::uint64_t> gClearGeneration{0};
+ Sample gRetainedSample; // main-thread fallback only while the last sample is fresh
+ std::atomic<unsigned> gHand{1};
++std::atomic<unsigned> gPokeEnabled{0},gPokeDistanceCm{65},gPokeTipMm{80};
++std::atomic<std::uint64_t> gPokeSettings{1};
++UiPointerTracker gNativeTracker;
+ std::atomic<bool> gFault{false};
+ std::atomic<unsigned long long> gMoves{0},gPresses{0},gReleases{0},gRefused{0};
+ std::atomic<int> gX{-100},gY{-100};
+ ui::PointerButtons gButtons; // main thread only
+ std::uint64_t gEpoch=0,gReference=0;
++std::uint64_t gSurface=0;
+ int gLastX=-100,gLastY=-100;
+ bool gWasActive=false;
+ bool gNativeDown=false;
+@@ -67,18 +73,72 @@ bool Send(int event,int x,int y) {
+ unsigned UiPointerHand(){return gFault.load()?2:gHand.load();}
+ DWORD SetUiPointerHand(unsigned hand){if(hand>2)return ERROR_INVALID_PARAMETER;gHand.store(hand);ClearUiPointer();return 0;}
+ void ClearUiPointer(){gClearGeneration.fetch_add(1);gSample.Clear();}
++unsigned UiPokeEnabled(){return gPokeEnabled.load();}
++unsigned UiPokeDistanceCm(){return gPokeDistanceCm.load();}
++unsigned UiPokeTipMm(){return gPokeTipMm.load();}
++std::uint64_t UiPokeSettingsGeneration(){return gPokeSettings.load();}
++DWORD SetUiPokeEnabled(unsigned enabled){
++    if(enabled>1)return ERROR_INVALID_PARAMETER;
++    if(gPokeEnabled.exchange(enabled)!=enabled){gPokeSettings.fetch_add(1);ClearUiPointer();}return 0;
++}
++DWORD SetUiPokeDistanceCm(unsigned cm){
++    if(cm<45||cm>90)return ERROR_INVALID_PARAMETER;
++    if(gPokeDistanceCm.exchange(cm)!=cm){gPokeSettings.fetch_add(1);ClearUiPointer();}return 0;
++}
++DWORD SetUiPokeTipMm(unsigned mm){
++    if(mm<30||mm>150)return ERROR_INVALID_PARAMETER;
++    if(gPokeTipMm.exchange(mm)!=mm){gPokeSettings.fetch_add(1);ClearUiPointer();}return 0;
++}
++UiPointerVisual EvaluateUiPointer(const ui::Surface* surface,const TrackingFrame& frame,
++    unsigned hand,std::uint64_t reference,std::uint64_t generation,UiPointerTracker& tracker) {
++    UiPointerVisual visual;
++    const auto settings=gPokeSettings.load(),clear=gClearGeneration.load(),menu=HudMenuEpoch();
++    const auto now=MonotonicNanoseconds();
++    if(!surface||hand>=2||!FreshSample(now,frame.publishedNs)||
++       (reference&1)||reference!=HeadTrackingReferenceGeneration()) {tracker={};return visual;}
++    const auto& state=frame.hands[hand];
++    if(!IsPoseUsable(state.aimPose,state.aimValidity,200000000ull)){tracker={};return visual;}
++    if(tracker.settings!=settings||tracker.clear!=clear||tracker.menu!=menu||tracker.hand!=hand) {
++        tracker={};tracker.settings=settings;tracker.clear=clear;tracker.menu=menu;
++        tracker.hand=hand;
++        tracker.rayBlocked=state.triggerPressed;
++    }
++    visual.aim=state.aimPose;
++    if(gPokeEnabled.load()) {
++        // Controller-derived fingertip proxy, not optical hand tracking. Its
++        // aim-local reach is adjustable, and the surface marker shows its hit.
++        const Vec3 tip=Compose(state.aimPose,Pose{{},{0,0,-static_cast<float>(gPokeTipMm.load())*.001f}}).position;
++        ui::PokeInput input{true,*surface,tip,now,frame.publishedNs,frame.sequence,frame.epoch,reference,generation};
++        const auto touch=tracker.poke.Update(input);
++        if(touch.active) {
++            tracker.rayBlocked=true;tracker.wasTouch=true;
++            visual.active=true;visual.touch=true;visual.pressed=touch.pressed;
++            if(touch.contact) {
++                const auto& p=*touch.contact;
++                visual.hit=ui::RayHit{p.u,p.v,std::max(p.frontDistance,0.f),p.point,p.inside};
++            }
++            return visual;
++        }
++    } else tracker.poke.Reset();
++    if(tracker.wasTouch) {tracker.wasTouch=false;return visual;} // drain release before changing source
++    if(!state.triggerPressed)tracker.rayBlocked=false;
++    visual.active=true;visual.pressed=state.triggerPressed&&!tracker.rayBlocked;
++    visual.hit=ui::Intersect(*surface,state.aimPose);
++    return visual;
++}
+ UiPointerVisual PublishUiPointer(const ui::Surface* surface,unsigned width,unsigned height,unsigned long long reference,unsigned top) {
+     UiPointerVisual visual;
+-    Sample sample;sample.stamp=MonotonicNanoseconds();sample.reference=reference;sample.generation=gClearGeneration.load();
++    Sample sample;sample.stamp=MonotonicNanoseconds();sample.reference=HeadTrackingReferenceGeneration();
++    sample.surface=reference;sample.menu=HudMenuEpoch();sample.generation=gClearGeneration.load();
+     TrackingFrame frame;
+     const auto hand=UiPointerHand();
+-    if(surface&&hand<2&&width>0&&width<=8192&&height>0&&height<=8192&&TryGetTrackingFrame(frame)) {
+-        const auto& state=frame.hands[hand];
+-        if(IsPoseUsable(state.aimPose,state.aimValidity,200000000)) {
+-            sample.active=true;sample.pressed=state.triggerPressed;sample.epoch=frame.epoch*4+hand;
+-            visual.active=true;
+-            visual.aim=state.aimPose;visual.pressed=sample.pressed;
+-            visual.hit=ui::Intersect(*surface,state.aimPose);
++    if(surface&&!HudHackingIsOpen()&&hand<2&&width>0&&width<=8192&&height>0&&height<=8192&&TryGetTrackingFrame(frame)) {
++        // Retaining a render publication must not extend the tracking pose's
++        // age budget if the XR producer stalls immediately afterwards.
++        sample.stamp=frame.publishedNs;
++        visual=EvaluateUiPointer(surface,frame,hand,sample.reference,reference,gNativeTracker);
++        if(visual.active) {
++            sample.active=true;sample.pressed=visual.pressed;sample.epoch=frame.epoch*4+hand+(visual.touch?2:0);
+             if(visual.hit) {
+                 sample.inside=visual.hit->inside;
+                 // Off-screen drag coordinates remain off-screen. Bound integer conversion.
+@@ -86,7 +146,7 @@ UiPointerVisual PublishUiPointer(const ui::Surface* surface,unsigned width,unsig
+                 sample.y=static_cast<int>(top)+static_cast<int>(std::clamp(visual.hit->v,-2.f,3.f)*static_cast<float>(height));
+             }
+         }
+-    }
++    } else gNativeTracker={};
+     gSample.Publish(sample);
+     return visual;
+ }
+@@ -103,19 +163,20 @@ void DrainPointerSample(const Sample* incoming,std::uint64_t now) {
+     // sample through contention, while explicit clears invalidate it immediately.
+     const auto s=gRetainedSample;
+     bool active=s.generation==gClearGeneration.load()&&FreshSample(now,s.stamp)&&s.active&&
+-        !VrOptionsInputOwned()&&UiPointerHand()<2&&HudMenuStateKnown()&&HudMenuIsOpen();
++        s.reference==HeadTrackingReferenceGeneration()&&s.menu==HudMenuEpoch()&&
++        !VrOptionsInputOwned()&&!HudHackingIsOpen()&&UiPointerHand()<2&&HudMenuStateKnown()&&HudMenuIsOpen();
+     if(gFault.load())return;
+     bool cancelled=false;
+-    if(active&&(gEpoch!=s.epoch||gReference!=s.reference)) {
++    if(active&&(gEpoch!=s.epoch||gReference!=s.reference||gSurface!=s.surface)) {
+         if(gButtons.Update(false,false,false)==-1) {
+             if(!CancelInventory(cancelled)||!Send(2,gLastX,gLastY))return;
+             gWasActive=false;
+-            gEpoch=s.epoch;gReference=s.reference;
++            gEpoch=s.epoch;gReference=s.reference;gSurface=s.surface;
+             return; // allow queued release to advance before changing hover
+         }
+         gWasActive=false;
+     }
+-    gEpoch=s.epoch;gReference=s.reference;
++    gEpoch=s.epoch;gReference=s.reference;gSurface=s.surface;
+     int edge=gButtons.Update(active,s.inside,s.pressed);
+     const int x=active?s.x:-100,y=active?s.y:-100;
+     const bool outsideCapture=gNativeDown&&(!active||!s.inside);
+@@ -144,5 +205,6 @@ void DrainUiPointer() {
+ }
+ std::string UiPointerReport(){std::ostringstream s;s<<"hand="<<UiPointerHand()<<" moves="<<gMoves.load()
+     <<" presses="<<gPresses.load()<<" releases="<<gReleases.load()<<" refused="<<gRefused.load()
+-    <<" pixel="<<gX.load()<<','<<gY.load();return s.str();}
++    <<" pixel="<<gX.load()<<','<<gY.load()<<" poke="<<UiPokeEnabled()<<" distanceCm="<<UiPokeDistanceCm()
++    <<" tipMm="<<UiPokeTipMm();return s.str();}
+ }
+diff --git a/src/dll/UiPointer.h b/src/dll/UiPointer.h
+index 12abc51..9491e36 100644
+--- a/src/dll/UiPointer.h
++++ b/src/dll/UiPointer.h
+@@ -1,14 +1,26 @@
+ #pragma once
+ #include "preyvr/UiPanel.h"
++#include "preyvr/UiPoke.h"
+ #include <windows.h>
+ #include <string>
+ namespace preyvr::dll {
++struct TrackingFrame;
+ struct UiPointerVisual {
+     Pose aim{};
+     std::optional<ui::RayHit> hit;
+     bool pressed=false;
+     bool active=false;
++    bool touch=false;
+ };
++// XR-thread-owned gesture state, separate for the native and VR options panels.
++struct UiPointerTracker {
++    ui::Poke poke;
++    std::uint64_t settings=0,clear=0,menu=0;
++    unsigned hand=2;
++    bool rayBlocked=false,wasTouch=false;
++};
++UiPointerVisual EvaluateUiPointer(const ui::Surface* surface,const TrackingFrame& frame,
++    unsigned hand,std::uint64_t reference,std::uint64_t generation,UiPointerTracker& tracker);
+ // Frame-service producer; main-thread consumer. No native UI call on the XR thread.
+ // The surface shows the frame's rows top..top+height (the menu's band): the
+ // pointer is reported in whole-frame pixels.
+@@ -18,5 +30,12 @@ void DrainUiPointer();
+ void ClearUiPointer();
+ DWORD SetUiPointerHand(unsigned hand); // 0 left, 1 right, 2 disabled
+ unsigned UiPointerHand();
++DWORD SetUiPokeEnabled(unsigned enabled);
++unsigned UiPokeEnabled();
++DWORD SetUiPokeDistanceCm(unsigned cm);
++unsigned UiPokeDistanceCm();
++DWORD SetUiPokeTipMm(unsigned mm);
++unsigned UiPokeTipMm();
++std::uint64_t UiPokeSettingsGeneration();
+ std::string UiPointerReport();
+ }
+diff --git a/src/dll/VrMode.cpp b/src/dll/VrMode.cpp
+index b12b106..b6c3e7c 100644
+--- a/src/dll/VrMode.cpp
++++ b/src/dll/VrMode.cpp
+@@ -27,6 +27,7 @@
+ #include "GrenadeLane.h"
+ #include "DebugOverlay.h"
+ #include "BodyFollow.h"
++#include "HackingLane.h"
+ #include "preyvr/DebugOverlayScene.h"
+ #include "preyvr/LatestSnapshot.h"
+ #include "MinHookInit.h"
+@@ -131,6 +132,7 @@ void ApplyStereoMode() {
+     Log(std::string("stereo_mode=")+names[active]+" chosen="+names[stereoChosen]);
+ }
+ void StopFeatures() {
++    SetHackingInputActive(false);
+     SetHudLayerEnabled(0);
+     // Contract first, so no both-eyes record is published after its submissions stop.
+     SetDualStereoContract(0); SetDualSceneMode(0,0); SetDualOverlayRedraw(0);
+@@ -312,6 +314,7 @@ void TickVrMode() {
+         if(GetTickCount64()>deadline) { Fail("no_rendered_frames"); return; }
+         if(XrSubmittedFrameCount()<firstFrame+3 || XrResolutionChain(14)!=0)return;
+         phase=Phase::active;
++        SetHackingInputActive(true);
+         nextStatusReport=GetTickCount64()+kStatusReportMs;
+         Log("state=active panel=automatic recenter=F12_or_grips_and_left_Y");
+     }
+diff --git a/src/dll/VrOptionsPanel.cpp b/src/dll/VrOptionsPanel.cpp
+index 63bbd8b..ae6752d 100644
+--- a/src/dll/VrOptionsPanel.cpp
++++ b/src/dll/VrOptionsPanel.cpp
+@@ -26,7 +26,7 @@ std::vector<std::uint8_t> DrawVrOptions(const options::Values& values,unsigned p
+  for(unsigned p=0;p<Pages;++p){
+   const int span=1288/Pages,x=56+static_cast<int>(p)*span;
+   fill(x,174,span-8,72,p==page?amber:RGB(27,37,45));
+-  text(x+12,194,span-24,45,PageName(p),Pages>9?17:Pages>8?21:Pages>7?23:Pages>5?26:30,p==page?bg:muted,true);
++  text(x+8,194,span-16,45,PageName(p),Pages>9?17:Pages>8?21:Pages>7?23:Pages>5?26:30,p==page?bg:muted,true);
+  }
+  for(unsigned r=0;r<Rows;++r){
+   const int id=Item(page,r);
+@@ -46,7 +46,7 @@ std::vector<std::uint8_t> DrawVrOptions(const options::Values& values,unsigned p
+       L"Look straight ahead and select to reset the view and controller reference together.":
+       Describe(selectedId).help,29,ink);
+  text(80,914,1250,52,saveFailed?L"SETTINGS ACTIVE / COULD NOT SAVE TO DISK":
+-      page==7&&!setupMessage.empty()?std::wstring(setupMessage):L"POINT + TRIGGER   /   STICK: SELECT & ADJUST   /   GRIPS: TABS",24,saveFailed||page==7?amber:muted);
++      page==7&&!setupMessage.empty()?std::wstring(setupMessage):values[UiPoke]?L"POKE OR POINT + TRIGGER   /   STICK: ADJUST   /   GRIPS: TABS":L"POINT + TRIGGER   /   STICK: SELECT & ADJUST   /   GRIPS: TABS",24,saveFailed||page==7?amber:muted);
+  fill(56,980,1288,80,RGB(36,47,54));
+  text(85,1001,1150,54,L"B  /  BACK TO GAME MENU",29,ink,true);
+  GdiFlush();std::vector<std::uint8_t> result(Width*Height*4);
+diff --git a/src/dll/VrOptionsRuntime.cpp b/src/dll/VrOptionsRuntime.cpp
+index 9bae715..25ec59c 100644
+--- a/src/dll/VrOptionsRuntime.cpp
++++ b/src/dll/VrOptionsRuntime.cpp
+@@ -1,6 +1,7 @@
+ #include "VrOptionsRuntime.h"
+ #include "BodyFollow.h"
+ #include "AnimIkTakeover.h"
++#include "HackingLane.h"
+ #include "InteractionLane.h"
+ #include "CarryLane.h"
+ #include "GrenadeLane.h"
+@@ -56,6 +57,9 @@ void QueueViewRequest(int action,std::uint64_t epoch){
+  viewResult=-2;
+ }
+ std::optional<ui::Surface> pointerSurface;
++UiPointerTracker optionsPointerTracker;
++UiPointerVisual optionsPointerVisual;
++std::uint64_t optionsPointerSequence=0;
+ std::uint64_t surfaceReference=0;
+ long long previousTime=0;
+ std::filesystem::path SettingsPath(){
+@@ -100,6 +104,10 @@ void Apply(unsigned id,int v){
+  case options::PhysicalCrouch:SetPhysicalCrouch(v!=0);break;
+  case options::WallFade:SetHeadInWallsFade(v!=0);break;
+  case options::BodyPose:SetBodyPose(v!=0);break;
++ case options::UiPoke:SetUiPokeEnabled(v!=0);break;
++ case options::UiPokeDistance:SetUiPokeDistanceCm(static_cast<unsigned>(v));break;
++ case options::UiPokeTip:SetUiPokeTipMm(static_cast<unsigned>(v));break;
++ case options::HackingControls:SetHackingControls(v!=0);break;
+  }
+ }
+ void Save(){
+@@ -144,6 +152,10 @@ options::Values VrOptionsValues(){
+  v[options::PhysicalCrouch]=static_cast<int>(PhysicalCrouchEnabled());
+  v[options::WallFade]=static_cast<int>(HeadInWallsFadeEnabled());
+  v[options::BodyPose]=static_cast<int>(BodyPoseEnabled());
++ v[options::UiPoke]=static_cast<int>(UiPokeEnabled());
++ v[options::UiPokeDistance]=static_cast<int>(UiPokeDistanceCm());
++ v[options::UiPokeTip]=static_cast<int>(UiPokeTipMm());
++ v[options::HackingControls]=static_cast<int>(HackingControlsEnabled());
+  v[options::UseHand]=useHand.load();v[options::CarryHand]=carryHand.load();v[options::GrenadeHand]=grenadeHand.load();
+  // Read the actual lane settings, including changes made through the command
+  // channel. Pending menu edits override only their own row until applied.
+@@ -198,18 +210,23 @@ void ServiceVrOptions(){
+ bool ProcessVrOptionsInput(const TrackingFrame& f){
+  options::Input i;const auto& l=f.hands[0];const auto& r=f.hands[1];
+  i.valid=ready.load()&&FreshSample(MonotonicNanoseconds(),f.publishedNs)&&IsPoseUsable(f.head,f.headValidity,200000000);
+- i.modal=HudMenuStateKnown()&&HudMenuIsOpen();i.epoch=f.epoch;
++ // Hacking is active gameplay inside a screen: request a native pause before
++ // opening settings, so the puzzle cannot keep running behind this panel.
++ i.modal=HudMenuStateKnown()&&HudMenuIsOpen()&&!HudHackingIsOpen();i.epoch=f.epoch;
+  i.start=l.menuStart||r.menuStart;i.accept=r.menuAccept;i.cancel=r.menuCancel;
+  i.previous=l.gripPressed;i.next=r.gripPressed;i.x=r.thumbstickX;i.y=r.thumbstickY;
+- const auto hand=UiPointerHand();i.trigger=hand<2?f.hands[hand].triggerPressed:false;
++ const auto hand=UiPointerHand();
+  i.dt=previousTime&&f.displayTime>previousTime?static_cast<float>(f.displayTime-previousTime)*1e-9f:0;
+  previousTime=f.displayTime;
+  // Intersect the current controller sample with the anchored panel; never use
+  // a previous frame's hover location to decide a new trigger press.
+- if(pointerSurface&&surfaceReference==HeadTrackingReferenceGeneration()&&hand<2&&
+-    IsPoseUsable(f.hands[hand].aimPose,f.hands[hand].aimValidity,200000000)){
+-  const auto hit=ui::Intersect(*pointerSurface,f.hands[hand].aimPose);
+-  if(hit&&hit->inside){i.hover=options::Hit(hit->u,hit->v);i.decrease=hit->u<.70f;}
++ optionsPointerVisual=EvaluateUiPointer(pointerSurface?&*pointerSurface:nullptr,f,hand,
++     HeadTrackingReferenceGeneration(),surfaceReference,optionsPointerTracker);
++ optionsPointerSequence=f.sequence;
++ i.trigger=optionsPointerVisual.active&&optionsPointerVisual.pressed;
++ if(optionsPointerVisual.hit&&optionsPointerVisual.hit->inside){
++  const auto& hit=*optionsPointerVisual.hit;
++  i.hover=options::Hit(hit.u,hit.v);i.decrease=hit.u<.70f;
+  }
+  const auto wanted=request.exchange(0);
+  if(wanted>0&&i.modal)menu.RequestOpen();else if(wanted<0)menu.Close();
+@@ -231,16 +248,13 @@ bool ProcessVrOptionsInput(const TrackingFrame& f){
+  return wasOwned||menu.OwnsInput(); // closing frame belongs to this menu too
+ }
+ UiPointerVisual OptionsPointer(const ui::Surface& surface){
+- UiPointerVisual visual;TrackingFrame f{};const auto hand=UiPointerHand();
+- if(!open.load()||hand>=2||!TryGetTrackingFrame(f)||!FreshSample(MonotonicNanoseconds(),f.publishedNs))return visual;
+- const auto& state=f.hands[hand];
+- if(!IsPoseUsable(state.aimPose,state.aimValidity,200000000))return visual;
+- visual.active=true;visual.aim=state.aimPose;visual.pressed=state.triggerPressed;
+- visual.hit=ui::Intersect(surface,state.aimPose);
+- return visual;
++ (void)surface;TrackingFrame f{};
++ if(!open.load()||!TryGetTrackingFrame(f)||!FreshSample(MonotonicNanoseconds(),f.publishedNs)||
++    f.sequence!=optionsPointerSequence||surfaceReference!=HeadTrackingReferenceGeneration())return {};
++ return optionsPointerVisual;
+ }
+ void SetVrOptionsSurface(const ui::Surface* surface,std::uint64_t reference){
+- if(surface)pointerSurface=*surface;else pointerSurface.reset();
++ if(surface)pointerSurface=*surface;else {pointerSurface.reset();optionsPointerTracker={};optionsPointerVisual={};}
+  surfaceReference=reference;
+ }
+ bool VrOptionsOpen(){return open.load();}
+diff --git a/src/dll/XrInput.cpp b/src/dll/XrInput.cpp
+index 7e0a394..6c235bb 100644
+--- a/src/dll/XrInput.cpp
++++ b/src/dll/XrInput.cpp
+@@ -3,6 +3,7 @@
+ #include "HapticsXr.h"
+ #include "VrOptionsRuntime.h"
+ #include "UiPointer.h"
++#include "HackingLane.h"
+ #include "preyvr/LatestSnapshot.h"
+ 
+ #include "InputPost.h"
+@@ -390,6 +391,10 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
+         return;
+     }
+ 
++    if(HackingInputOwnsControls()) {
++        gNavigator.Reset();gLastDisplayTime.store(predictedDisplayTime);
++        return; // hacking's native bindings own left stick and all face buttons
++    }
+     // --- controller-driven menus ---------------------------------------------
+     //
+     // The delta comes from the runtime's own predicted display times rather than
+@@ -401,6 +406,8 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
+         // service and must not enter Scaleform to ask.
+         if (gResetNavigator.exchange(false)) { gNavigator.Reset(); }
+         const auto menuEpoch=HudMenuEpoch();
++        static unsigned long long navigatorEpoch=0;
++        if(navigatorEpoch!=menuEpoch){gNavigator.Reset();navigatorEpoch=menuEpoch;}
+         const bool modal = !gMenuNavGate.load(std::memory_order_acquire) ||
+                            (HudMenuStateKnown() && HudMenuIsOpen());
+         if (!modal) { gMenuSuppressed.fetch_add(1, std::memory_order_relaxed); }
+diff --git a/src/dll/XrSessionHost.cpp b/src/dll/XrSessionHost.cpp
+index be2ddd4..13c5fb2 100644
+--- a/src/dll/XrSessionHost.cpp
++++ b/src/dll/XrSessionHost.cpp
+@@ -134,6 +134,7 @@ struct Host {
+     DXGI_FORMAT optionsFormat=DXGI_FORMAT_UNKNOWN;
+     std::optional<ui::Panel> optionsPanel;
+     std::uint64_t optionsReference=0;
++    std::uint64_t pokeSettings=0;
+     options::Values optionsPainted{};
+     unsigned optionsPage=~0u,optionsRow=~0u;
+     bool optionsReady=false,optionsSaveFailed=false;
+@@ -1783,6 +1784,10 @@ void ServiceXrFrame(void* renderer)
+         gHost.panelSettingsGeneration=panelSettingsGeneration;
+     }
+     const auto panelMode=gUiPanelMode.load();
++    if(gHost.pokeSettings!=UiPokeSettingsGeneration()) {
++        gHost.pokeSettings=UiPokeSettingsGeneration();
++        gHost.menuPanel.reset();gHost.guidePanel.reset();gHost.optionsPanel.reset();
++    }
+     // A delayed main-thread poll is unknown, not proof that a menu closed.
+     // Preserve its presentation through a stall; pointer/gameplay input still
+     // requires a fresh modal sample. Otherwise a busy frame flashes projection
+@@ -1838,7 +1843,8 @@ void ServiceXrFrame(void* renderer)
+         // the card and its gap used to reserve goes back to the menu instead of
+         // being left empty -- which is the whole point of switching it off.
+         const float stackAspect=wantGuide?1/(1/aspect+guideRatio+gapRatio):aspect;
+-        auto layout=ui::FitPanel(inputHead,optical,stackAspect,2.0f,
++        const float menuDistance=UiPokeEnabled()?static_cast<float>(UiPokeDistanceCm())*.01f:2.0f;
++        auto layout=ui::FitPanel(inputHead,optical,stackAspect,menuDistance,
+             static_cast<float>(gUiScalePercent.load(std::memory_order_relaxed))*.01f,margin);
+         if(layout) {
+             gHost.menuPanel.reset();gHost.guidePanel.reset();
+@@ -2170,7 +2176,8 @@ void ServiceXrFrame(void* renderer)
+             }
+             // Independent fit keeps the settings escape hatch readable even if
+             // the wearer makes the game's UI very large or small.
+-            gHost.optionsPanel=ui::FitPanel(inputHead,optical,static_cast<float>(options::Width)/options::Height,1.5f,1.f,.68f);
++            const float optionDistance=UiPokeEnabled()?static_cast<float>(UiPokeDistanceCm())*.01f:1.5f;
++            gHost.optionsPanel=ui::FitPanel(inputHead,optical,static_cast<float>(options::Width)/options::Height,optionDistance,1.f,.68f);
+             gHost.optionsReference=reference;
+         }
+         if(!gHost.optionsTexture) {
+@@ -2247,7 +2254,7 @@ void ServiceXrFrame(void* renderer)
+         const float size=pointer.pressed?.020f:.013f;
+         pointerLayer(cursorLayer,point,size,size);
+     }
+-    if(pointer.active) {
++    if(pointer.active&&!pointer.touch) {
+         const float length=cursorActive?pointer.hit->distance:.65f;
+         const auto y=Rotate(pointer.aim.orientation,{0,0,-1});
+         const Vec3 centre{pointer.aim.position.x+y.x*length*.5f,pointer.aim.position.y+y.y*length*.5f,
+diff --git a/tests/HackingInputTests.cpp b/tests/HackingInputTests.cpp
+new file mode 100644
+index 0000000..326de8d
+--- /dev/null
++++ b/tests/HackingInputTests.cpp
+@@ -0,0 +1,132 @@
++#include "preyvr/HackingInput.h"
++
++#include <cmath>
++#include <cstdlib>
++#include <iostream>
++#include <type_traits>
++
++using namespace preyvr::hacking;
++namespace {
++void Check(bool value,const char* why) { if (!value) { std::cerr << why << '\n'; std::exit(1); } }
++bool Near(float a,float b,float tolerance=.0001f) { return std::fabs(a-b) < tolerance; }
++bool Empty(const Output& o) { return o.axisMask==0 && o.pressMask==0 && o.releaseMask==0; }
++struct Driver {
++    InputState state;
++    Input i{true,true,0,0,false,false,false,false,1000000000ull,1000000000ull,1,1,2,1};
++    Output Next(bool commit = true)
++    {
++        i.nowNs += 10000000ull; i.stampNs = i.nowNs; ++i.sequence;
++        auto out = state.Update(i); if (commit) { state.Commit(out); } return out;
++    }
++    void Ready()
++    {
++        const auto first = Next(); Check(first.axisMask==(AxisX|AxisY)&&!first.ready, "entry primes neutral axes first");
++        Check(Next().ready, "neutral source after acknowledged zeros arms");
++    }
++};
++void Basic()
++{
++    Driver d; d.Ready();
++    d.i.stickX = .575f;
++    auto o = d.Next();
++    Check(o.ready&&o.axisMask==AxisX&&Near(o.x,.5f)&&Near(o.y,0), "actual analog travel is preserved after deadzone");
++    d.i.stickX = .83f; o = d.Next(); Check(Near(o.x,.8f)&&o.axisMask==AxisX, "two deflections remain distinguishable");
++    d.i.stickX = d.i.stickY = 1; o = d.Next();
++    Check(Near(std::hypot(o.x,o.y),1)&&Near(o.x,o.y), "square-gated diagonal is radially bounded");
++    d.i.stickX = .01f; d.i.stickY = -.01f; o = d.Next();
++    Check(o.axisMask==(AxisX|AxisY)&&o.x==0&&o.y==0, "return to deadzone emits hard zero");
++    d.i.a = true; d.i.y = true; o = d.Next();
++    Check(o.pressMask==(ButtonA|ButtonY)&&o.releaseMask==0, "face buttons press as native held state");
++    Check(Empty(d.state.Update(d.i)), "accepted duplicate source emits no repeated press");
++    Check(Empty(d.Next()), "held button remains down without repeated edge");
++    d.i.a = false; o = d.Next(); Check(o.releaseMask==ButtonA&&!o.pressMask, "button release independent of other held button");
++    d.i.y = false; o = d.Next(); Check(o.releaseMask==ButtonY, "remaining held button releases");
++    d.i.stickX = 100; d.i.stickY = -100; o = d.Next();
++    Check(std::isfinite(o.x)&&std::isfinite(o.y)&&std::hypot(o.x,o.y)<=1.00001f, "finite overrange readings remain bounded");
++    d.i.stickX = NAN; o = d.Next(); Check(o.x==0&&o.y==0&&!o.ready, "nonfinite reading releases rather than freezing native axes");
++}
++void EntryAndTransitions()
++{
++    Driver d; d.i.active = false; d.i.a = true; d.i.stickX = 1;
++    Check(Empty(d.Next()), "ordinary pause/menu is not hacking input");
++    d.i.active = true;
++    auto o = d.Next(); Check(!o.ready&&!o.pressMask&&o.x==0, "held controls on hacking entry are quarantined");
++    Check(!d.Next().ready, "held entry remains blocked");
++    d.i.a = false; d.i.stickX = 0; Check(d.Next().ready, "neutral releases entry quarantine");
++    d.i.b = true; d.i.stickY = -.8f; d.Next();
++    d.i.active = false; o = d.Next(false);
++    Check(o.releaseMask==ButtonB&&(o.axisMask&AxisY)&&o.y==0, "leaving hacking releases owned channels");
++    d.i.active = true; ++d.i.generation; d.i.b = false; d.i.stickY = 0;
++    auto blocked = d.Next(false); Check(!blocked.ready&&blocked.releaseMask==ButtonB, "new movie cannot arm before old release accepted");
++    d.state.Commit(blocked); Check(d.Next().ready, "new neutral movie acquires after cleanup");
++    for (int context = 0; context < 3; ++context) {
++        Driver one; one.Ready(); one.i.x = true; one.i.stickX = .7f; one.Next();
++        if(context==0)++one.i.epoch; if(context==1)one.i.reference+=2; if(context==2)++one.i.generation;
++        o = one.Next(); Check(!o.ready&&o.releaseMask==ButtonX&&o.x==0, "context change releases old ownership");
++        Check(!one.Next().ready, "new context held controls remain blocked");
++        one.i.x = false; one.i.stickX = 0; Check(one.Next().ready, "fresh neutral rearms changed context");
++    }
++}
++void Delivery()
++{
++    Driver d; d.Ready(); d.i.a = d.i.b = true; d.i.stickX = .6f; d.i.stickY = .3f;
++    auto o = d.Next(false);
++    auto partial = o; partial.pressMask = ButtonA; partial.axisMask = AxisX;
++    d.state.Commit(partial);
++    Check(d.state.OwnsControls(), "delivered nonzero axis/button owns native controls");
++    auto retry = d.state.Update(d.i);
++    Check(retry.pressMask==ButtonB&&retry.axisMask==AxisY, "only refused press/axis retries on duplicate source");
++    d.state.Commit(retry); Check(Empty(d.state.Update(d.i)), "accepted channels do not repeat");
++
++    d.i.active = false; auto release = d.Next(false);
++    partial = release; partial.releaseMask = ButtonA; partial.axisMask = AxisY;
++    d.state.Commit(partial);
++    retry = d.state.Update(d.i);
++    Check(retry.releaseMask==ButtonB&&retry.axisMask==AxisX&&retry.x==0, "partial cleanup retains refused release and zero");
++    Check(d.state.OwnsControls(), "partial failed cleanup keeps native interlock owned");
++    d.state.Commit(release); // out of order: a newer proposal already exists
++    auto afterOld = d.state.Update(d.i);
++    Check(afterOld.releaseMask==ButtonB&&afterOld.axisMask==AxisX, "old acknowledgement cannot erase newer cleanup");
++    d.state.Commit(afterOld); Check(Empty(d.state.Update(d.i)), "all accepted cleanup clears ownership");
++    Check(!d.state.OwnsControls(), "fully acknowledged cleanup frees native interlock");
++
++    Driver refused; refused.Ready(); refused.i.a = true;
++    auto proposal = refused.Next(false); Check(proposal.pressMask==ButtonA, "press proposal positive control");
++    auto none = proposal; none.pressMask = 0; refused.state.Commit(none);
++    Check(refused.state.Update(refused.i).pressMask==ButtonA, "unaccepted press stays retryable");
++    refused.i.active = false;
++    Check(refused.Next().releaseMask==0, "never-delivered press does not invent owned release");
++
++    InputState prime; Driver source;
++    auto init = prime.Update(source.i);
++    Check(!prime.OwnsControls(), "unacknowledged initial zeros do not own native controls");
++    partial = init; partial.axisMask = AxisX; prime.Commit(partial);
++    auto priming = prime.Update(source.i);
++    Check(!priming.ready&&priming.axisMask==AxisY, "unaccepted initial zero blocks acquisition");
++    prime.Commit(priming); Check(prime.Update(source.i).ready, "partial initial cleanup completes before acquisition");
++}
++void Expiry()
++{
++    Driver d; d.Ready(); d.i.a = true; d.i.stickX = .8f; d.Next();
++    d.i.nowNs += 201000000ull;
++    auto expired = d.state.Update(d.i);
++    Check(!expired.ready&&expired.releaseMask==ButtonA&&(expired.axisMask&AxisX), "same-sequence publication expires and releases");
++    auto again = d.state.Update(d.i);
++    Check(again.releaseMask==ButtonA&&again.axisMask==expired.axisMask, "expired release retries until acknowledged");
++    d.state.Commit(again); d.i.a = false; d.i.stickX = 0; d.Next(); Check(d.Next().ready, "fresh neutral recovers after expiry cleanup");
++
++    Driver gap; gap.Ready(); gap.i.x = true; gap.Next(); gap.i.nowNs += 300000000ull;
++    auto broken = gap.Next(); Check(!broken.ready&&broken.releaseMask==ButtonX, "fresh sample after long gap still resets owned input");
++    Driver regression; regression.Ready(); regression.i.b = true; regression.Next();
++    --regression.i.sequence;
++    Check(regression.state.Update(regression.i).releaseMask==ButtonB, "out-of-order source cannot hold accepted button");
++    Driver loss; loss.Ready(); loss.i.y = true; loss.Next(); loss.i.valid = false;
++    Check(loss.Next().releaseMask==ButtonY, "tracking loss releases accepted button");
++}
++}
++int main()
++{
++    static_assert(std::is_trivially_copyable_v<InputState>);
++    Basic(); EntryAndTransitions(); Delivery(); Expiry();
++    std::cout << "hacking_input: analog, modal/context ownership, delivery acknowledgement and expiry controls passed\n";
++}
+diff --git a/tests/HackingRuntimeTests.cpp b/tests/HackingRuntimeTests.cpp
+new file mode 100644
+index 0000000..3490576
+--- /dev/null
++++ b/tests/HackingRuntimeTests.cpp
+@@ -0,0 +1,106 @@
++// Actual native-input adapter; the engine call boundary is observable/stubbed.
++#include "../src/dll/HackingLane.cpp"
++#include <iostream>
++#include <vector>
++#include <stdexcept>
++namespace {
++using namespace preyvr;using namespace preyvr::dll;
++struct Event {int key;unsigned state;int value;};
++std::vector<Event> events;
++TrackingFrame frame{};
++bool tracking=true,hackingVisible=true,optionsOwned=false,failZeroX=false;
++bool gameplayReleased=true;
++bool closeOnFirstFacePress=false;
++std::uint64_t refGen=2,menuGen=1;
++void Check(bool ok,const char* why){if(!ok)throw std::runtime_error(why);}
++void Step(){
++ // The production source publishes once per XR frame. This fixture can run
++ // several steps within one QPC tick; wait for a new real timestamp rather
++ // than accidentally modelling a corrupt new-sequence/equal-stamp frame.
++ auto stamp=MonotonicNanoseconds();
++ while(stamp<=frame.publishedNs)stamp=MonotonicNanoseconds();
++ ++frame.sequence;frame.publishedNs=stamp;UpdateHackingInput();
++}
++void Reset(){
++ inputState={};enabled=0;active=false;generation=1;cleanupOwned=false;
++ boundGeneration=boundMenu=inGeneration=0;axes=presses=releases=refused=0;xMilli=yMilli=0;
++ events.clear();tracking=hackingVisible=gameplayReleased=true;optionsOwned=failZeroX=false;refGen=2;menuGen=1;
++ closeOnFirstFacePress=false;
++ frame={};frame.epoch=1;frame.headValidity={true,true,true,true,0};
++}
++void Ready(){SetHackingControls(1);SetHackingInputActive(true);Step();Step();events.clear();}
++unsigned Count(int key,unsigned state){unsigned n=0;for(const auto& e:events)if(e.key==key&&e.state==state)++n;return n;}
++}
++namespace preyvr::dll {
++unsigned long long HeadTrackingReferenceGeneration(){return refGen;}
++unsigned long long HudMenuEpoch(){return menuGen;}
++bool HudHackingIsOpen(){return hackingVisible;}
++DWORD HudRefreshMenuOpenState(){return 0;}
++bool GameplayInputReleasedForHacking(){return gameplayReleased;}
++bool VrOptionsInputOwned(){return optionsOwned;}
++bool TryGetTrackingFrame(TrackingFrame& f){f=frame;return tracking;}
++DWORD PostRawInputImmediate(int key,unsigned state,int value){
++ Check(input::KeyNameFor(key)!=nullptr,"only proven native pad keys");
++ events.push_back({key,state,value});
++ if(failZeroX&&key==input::kThumbLX&&value==0)return ERROR_BUSY;
++ if(closeOnFirstFacePress&&state==input::kStatePressed&&
++    (key==input::kButtonA||key==input::kButtonB||key==input::kButtonX||key==input::kButtonY)) {
++  closeOnFirstFacePress=false;hackingVisible=false;++menuGen;
++ }
++ return 0;
++}
++}
++int main(){try{
++ using namespace preyvr;using namespace preyvr::dll;
++ Reset();Step();Check(events.empty(),"disabled adapter posts nothing");Ready();
++ frame.hands[0].thumbstickX=.65f;Step();
++ Check(xMilli>0&&xMilli<650&&HackingInputOwnsControls(),"left stick preserves shaped analog travel");
++ frame.hands[0].menuAccept=true;Step();Step();
++ Check(Count(input::kButtonX,input::kStatePressed)==1,"left X sends one native press");
++ frame.hands[0].menuAccept=false;Step();
++ Check(Count(input::kButtonX,input::kStateReleased)==1,"left X native release does not become another press");
++ frame.hands[1].menuAccept=true;Step();
++ Check(Count(input::kButtonA,input::kStatePressed)==1,"right A uses its own native key");
++ events.clear();hackingVisible=false;++menuGen;failZeroX=true;Step();
++ Check(HackingInputOwnsControls()&&cleanupOwned,"failed cleanup keeps gameplay handoff interlocked");
++ Check(Count(input::kButtonA,input::kStateReleased)==1,"button cleanup independent of failed axis cleanup");
++ events.clear();failZeroX=false;Step();
++ Check(!HackingInputOwnsControls()&&!cleanupOwned&&xMilli==0,"successful cleanup releases gameplay handoff");
++ Check(Count(input::kButtonA,input::kStateReleased)==0,"acknowledged release never repeats");
++
++ Reset();Ready();frame.hands[0].thumbstickY=.7f;frame.hands[1].menuCancel=true;Step();
++ ++frame.epoch;refGen+=2;events.clear();Step();
++ Check(yMilli==0&&Count(input::kButtonB,input::kStateReleased)==1,"reference/epoch change cleans old input");
++ events.clear();Step();Check(Count(input::kButtonB,input::kStatePressed)==0,"held re-entry cannot answer a puzzle");
++ frame.hands[0].thumbstickY=0;frame.hands[1].menuCancel=false;Step();
++ frame.hands[1].menuCancel=true;Step();Check(Count(input::kButtonB,input::kStatePressed)==1,"neutral rearms native B");
++ optionsOwned=true;events.clear();Step();Check(Count(input::kButtonB,input::kStateReleased)==1,"VR options take input ownership");
++ optionsOwned=false;frame.hands[1].menuCancel=false;Step();Step();
++ frame.hands[0].thumbstickX=.8f;Step();SetHackingInputActive(false);events.clear();Step();
++ Check(xMilli==0&&!cleanupOwned,"VR shutdown releases held axis");
++
++ Reset();Ready();frame.hands[0].thumbstickX=.6f;Step();tracking=false;events.clear();Step();
++ Check(xMilli==0&&!cleanupOwned,"tracking loss releases on the native drain thread");
++ Reset();SetHackingControls(1);SetHackingInputActive(true);gameplayReleased=false;
++ frame.hands[0].thumbstickX=.8f;frame.hands[1].menuAccept=true;Step();Step();
++ Check(events.empty(),"refused gameplay cleanup blocks hacking acquisition");
++ gameplayReleased=true;Step();
++ Check(xMilli==0&&Count(input::kButtonA,input::kStatePressed)==0,"handoff still requires neutral controls");
++ frame.hands[0].thumbstickX=0;frame.hands[1].menuAccept=false;Step();Step();
++ frame.hands[0].thumbstickX=.8f;frame.hands[1].menuAccept=true;Step();
++ if(!(xMilli>0&&Count(input::kButtonA,input::kStatePressed)==1)) {
++  std::cerr<<"handoff diagnostics "<<HackingInputReport()<<" seq="<<frame.sequence
++      <<" stamp="<<frame.publishedNs<<" now="<<MonotonicNanoseconds()<<'\n';
++  for(const auto& e:events)std::cerr<<" event key="<<e.key<<" state="<<e.state<<" value="<<e.value<<'\n';
++ }
++ Check(xMilli>0&&Count(input::kButtonA,input::kStatePressed)==1,"acknowledged handoff and neutral permit hacking");
++ Reset();Ready();events.clear();closeOnFirstFacePress=true;
++ frame.hands[1].menuAccept=true;frame.hands[1].menuCancel=true;Step();
++ Check(Count(input::kButtonA,input::kStatePressed)==1&&Count(input::kButtonB,input::kStatePressed)==0,
++       "modal closed by first face press refuses a simultaneous second press");
++ Check(cleanupOwned,"delivered closing press retains cleanup ownership");
++ Step();Check(Count(input::kButtonA,input::kStateReleased)==1&&!cleanupOwned,
++       "closing press is released once after modal exit");
++ std::cout<<"hacking_runtime ok: native bindings, analog/button state, cleanup, ownership and lifecycle\n";
++ return 0;
++}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+diff --git a/tests/HudModalTests.cpp b/tests/HudModalTests.cpp
+new file mode 100644
+index 0000000..15110eb
+--- /dev/null
++++ b/tests/HudModalTests.cpp
+@@ -0,0 +1,60 @@
++// Production modal-state publication with synthetic visibility results. This
++// does not fake the concrete Steam UI vtables or run a Prey process.
++#include "../src/dll/HudBridge.cpp"
++#include <cstdlib>
++#include <iostream>
++
++namespace {
++bool optionsOwn = false;
++void Check(bool value, const char* why)
++{
++    if (!value) { std::cerr << "FAIL: " << why << '\n'; std::exit(1); }
++}
++}
++namespace preyvr::lifecycle { void Log(std::string_view) {} }
++namespace preyvr::dll {
++bool VrOptionsInputOwned() { return optionsOwn; }
++DWORD XrResolutionChain(unsigned field) { return field == 4 ? 2016u : 2160u; }
++DWORD EnsureRenderHookInstalled() { return 1; }
++DWORD EnsureInventoryPointerCapture() { return 1; }
++void BeginInventoryPointerEvent(int) {}
++void EndInventoryPointerEvent(int) {}
++}
++
++int main()
++{
++    using namespace preyvr;
++    using namespace preyvr::dll;
++    PublishModalSample(0, true);
++    Check(!HudMenuIsOpen() && HudGameplayInputAllowed(), "known empty sample admits gameplay");
++    const auto firstEpoch = HudMenuEpoch();
++    PublishModalSample(kPdaModal, true);
++    Check(HudMenuIsOpen() && HudInventoryIsOpen() && !HudHackingIsOpen(), "PDA positive control");
++    const auto pdaEpoch = HudMenuEpoch();
++    Check(pdaEpoch == firstEpoch + 1, "opening modal changes epoch");
++    PublishModalSample(kPdaModal, true);
++    Check(HudMenuEpoch() == pdaEpoch, "unchanged content preserves epoch");
++    PublishModalSample(kHackingModal, true);
++    Check(HudMenuIsOpen() && !HudInventoryIsOpen() && HudHackingIsOpen(), "hacking is modal and not inventory");
++    Check(HudMenuEpoch() == pdaEpoch + 1, "PDA to hacking invalidates input despite staying modal");
++    PublishModalSample(kHackingModal | kPdaModal, true);
++    Check(HudHackingIsOpen() && !HudInventoryIsOpen(), "hacking can own its PDA backing");
++    const auto hackingEpoch = HudMenuEpoch();
++    PublishModalSample(kHackingModal | 1ull, true); // pause overlay
++    Check(HudMenuIsOpen() && !HudHackingIsOpen(), "pause covers still-visible hacking");
++    Check(HudMenuEpoch() == hackingEpoch + 1, "overlay transition invalidates old hacking input");
++    PublishModalSample(kHackingModal | (1ull << 7), true); // native dialog
++    Check(!HudHackingIsOpen(), "dialog owns input over hacking");
++    PublishModalSample(kHackingModal, false);
++    Check(HudMenuIsOpen() && !HudHackingIsOpen() && !HudInventoryIsOpen(), "unverified sibling visibility refuses exclusive consumers");
++    PublishModalSample(kHackingModal, true);
++    gMenuStamp.store(MonotonicNanoseconds() - 300000000ull);
++    Check(!HudMenuStateKnown() && !HudHackingIsOpen(), "stale hacking sample refuses input");
++    const auto epochBeforeFailedPoll = HudMenuEpoch();
++    Check(HudRefreshMenuOpenState() == 4 && HudMenuIsOpen() && HudMenuEpoch() == epochBeforeFailedPoll,
++          "missing target poll retains previous modal state");
++    PublishModalSample(0, true);
++    optionsOwn = true;
++    Check(!HudGameplayInputAllowed(), "VR options retain independent input ownership");
++    std::cout << "hud_modal ok: content epochs, hacking ownership, coverings, freshness and failed-poll control\n";
++}
+diff --git a/tests/UiPanelTests.cpp b/tests/UiPanelTests.cpp
+index 2f3fa0c..ea8b3e6 100644
+--- a/tests/UiPanelTests.cpp
++++ b/tests/UiPanelTests.cpp
+@@ -175,5 +175,11 @@ int main() {
+         if(m>.3f)Require(ui::CornersVisible(*pm,tight,1.f),"and passes every looser one");
+     }
+ 
++    for(float distance:{.45f,.65f,.9f}) {
++        auto reachable=ui::FitPanel({},tight,16.f/9,distance,1.f,.72f);
++        Require(reachable&&ui::CornersVisible(*reachable,tight,.72f),"reachable panel obeys optical fit");
++        Require(std::abs(reachable->pose.position.z+distance)<1e-5f,"touch panel stays at requested distance");
++    }
++    Require(!ui::FitPanel({},tight,16.f/9,.2f),"uncomfortably close panels refused");
+     std::cout<<"UI panel geometry passed\n";
+ }
+diff --git a/tests/UiPointerTests.cpp b/tests/UiPointerTests.cpp
+index 927b6e8..fcc1b42 100644
+--- a/tests/UiPointerTests.cpp
++++ b/tests/UiPointerTests.cpp
+@@ -8,6 +8,9 @@ struct Event {int kind,x,y;};
+ std::vector<Event> events;
+ bool menuKnown=true,menuOpen=true;
+ bool optionsOwned=false;
++bool hackingOpen=false,trackingRead=false;
++std::uint64_t trackingReference=2,menuEpoch=0;
++preyvr::dll::TrackingFrame trackingFrame{};
+ DWORD modeError=0,cursorError=0,cancelError=0;
+ void Require(bool ok,const char* why){if(!ok){std::cerr<<why<<'\n';std::exit(1);}}
+ }
+@@ -15,8 +18,11 @@ namespace preyvr::lifecycle {void Log(std::string_view){}}
+ namespace preyvr::dll {
+ bool HudMenuStateKnown(){return menuKnown;}
+ bool HudMenuIsOpen(){return menuOpen;}
++bool HudHackingIsOpen(){return hackingOpen;}
++unsigned long long HudMenuEpoch(){return menuEpoch;}
++unsigned long long HeadTrackingReferenceGeneration(){return trackingReference;}
+ bool VrOptionsInputOwned(){return optionsOwned;}
+-bool TryGetTrackingFrame(TrackingFrame&){return false;}
++bool TryGetTrackingFrame(TrackingFrame& f){f=trackingFrame;return trackingRead;}
+ DWORD PostRawInputImmediate(int key,unsigned state,int value){
+     Require(key==input::kMouseX&&state==input::kStateChanged&&value==0,"mode event contract");
+     events.push_back({-2,0,0});return modeError;
+@@ -30,9 +36,11 @@ constexpr std::uint64_t now=1000000000;
+ void Reset(){
+     gSample.Clear();gClearGeneration=0;gRetainedSample={};gHand=1;gFault=false;
+     gButtons={};gEpoch=gReference=0;gLastX=gLastY=-100;gWasActive=gNativeDown=false;
++    gSurface=0;gNativeTracker={};gPokeEnabled=0;gPokeSettings=1;gPokeTipMm=80;
++    hackingOpen=trackingRead=false;trackingReference=2;menuEpoch=0;trackingFrame={};
+     menuKnown=menuOpen=true;optionsOwned=false;modeError=cursorError=cancelError=0;events.clear();
+ }
+-Sample Neutral(){return {true,true,false,330,555,now,4,1,0};}
++Sample Neutral(){return {true,true,false,330,555,now,4,2,0};}
+ Sample Press(){auto s=Neutral();DrainPointerSample(&s,now);s.pressed=true;DrainPointerSample(&s,now);Require(gNativeDown,"native button pressed");events.clear();return s;}
+ void CheckCancelOrder(){
+     Require(events.size()==2&&events[0].kind==-3&&events[1].kind==2,"cancel before release, no move while held");
+@@ -74,5 +82,32 @@ void TestFault(){
+     Require(events.size()==3&&events[0].kind==-2&&events[1].kind==-3&&events[2].kind==2,"fault cleanup order");
+     events.clear();DrainPointerSample(&s,now);Require(events.empty(),"fault does not retry native calls");
+ }
++void TestPokeProducer(){
++    Reset();SetUiPokeEnabled(1);trackingRead=true;
++    auto& f=trackingFrame;f.epoch=1;f.sequence=1;f.publishedNs=preyvr::MonotonicNanoseconds();
++    f.hands[1].aimValidity={true,true,true,true,0};
++    const preyvr::ui::Surface surface{{preyvr::Pose{{},{0,0,-.65f}},.6f,.4f},0};
++    const auto step=[&](float aimZ){
++        f.hands[1].aimPose.position={0,0,aimZ};++f.sequence;f.publishedNs=preyvr::MonotonicNanoseconds();
++        auto visual=PublishUiPointer(&surface,1000,600,7,200);DrainUiPointer();return visual;
++    };
++    auto hover=step(-.50f);Require(hover.touch&&!hover.pressed,"front hover claims touch instead of trigger ray");
++    auto press=step(-.576f);Require(press.touch&&press.pressed&&gNativeDown,"crossing posts native press without trigger");
++    Require(gLastX==500&&gLastY==500,"touch keeps cropped native movie pixel mapping");
++    events.clear();auto release=step(-.54f);
++    Require(release.touch&&!release.pressed&&!gNativeDown,"withdrawal posts native release");
++    Require(events.size()==1&&events[0].kind==2,"normal poke release does not cancel placement");
++    step(-.576f);Require(gNativeDown,"fresh second crossing presses");
++    ++menuEpoch;events.clear();DrainUiPointer();
++    Require(!gNativeDown&&events.size()==2&&events[0].kind==-3,"new modal contents cancel old capture");
++    hackingOpen=true;auto hidden=step(-.54f);
++    Require(!hidden.active,"hacking refuses mouse pointer mode changes");
++    Reset();SetUiPokeEnabled(1);trackingRead=true;
++    f.epoch=1;f.hands[1].aimValidity={true,true,true,true,0};step(-.50f);step(-.576f);
++    f.hands[1].triggerPressed=true;step(-.54f);step(-.40f);
++    auto ray=step(-.40f);Require(ray.active&&!ray.touch&&!ray.pressed,"held trigger cannot click after poke handoff");
++    f.hands[1].triggerPressed=false;step(-.40f);f.hands[1].triggerPressed=true;ray=step(-.40f);
++    Require(ray.pressed,"neutral rearms distant trigger ray");
+ }
+-int main(){TestContentionAndExpiry();TestClearAndReference();TestExitAndNormalRelease();TestFault();std::cout<<"ui_pointer_dispatch passed\n";}
++}
++int main(){TestContentionAndExpiry();TestClearAndReference();TestExitAndNormalRelease();TestFault();TestPokeProducer();std::cout<<"ui_pointer_dispatch passed\n";}
+diff --git a/tests/UiPokeTests.cpp b/tests/UiPokeTests.cpp
+new file mode 100644
+index 0000000..65f9632
+--- /dev/null
++++ b/tests/UiPokeTests.cpp
+@@ -0,0 +1,134 @@
++#include "preyvr/UiPoke.h"
++
++#include <cmath>
++#include <cstdlib>
++#include <iostream>
++#include <limits>
++
++using namespace preyvr;
++using namespace preyvr::ui;
++namespace {
++void Check(bool value,const char* why) { if (!value) { std::cerr << why << '\n'; std::exit(1); } }
++bool Near(float a,float b,float tolerance=.0001f) { return std::fabs(a-b) < tolerance; }
++float Dist(Vec3 a,Vec3 b) { return std::sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)+(a.z-b.z)*(a.z-b.z)); }
++const Surface flat{{Pose{{},{0,0,-.6f}},.8f,.5f},0};
++struct Driver {
++    Poke poke;
++    PokeInput i{true,flat,{0,0,-.57f},1000000000ull,1000000000ull,1,1,2,0};
++    PokeOutput At(float u,float v,float front)
++    {
++        const auto p = SurfacePoint(i.surface,u,v);
++        const Vec3 n = Rotate(p.orientation,{0,0,1});
++        i.tip = {p.position.x+n.x*front,p.position.y+n.y*front,p.position.z+n.z*front};
++        i.nowNs += 10000000ull; i.stampNs = i.nowNs; ++i.sequence;
++        return poke.Update(i);
++    }
++};
++void Projection()
++{
++    for (float curve : {0.f,.6f,1.2f}) {
++        Surface s = flat; s.angle = curve;
++        for (float u : {.02f,.25f,.5f,.75f,.98f}) for (float v : {.02f,.5f,.98f}) {
++            const Pose p = SurfacePoint(s,u,v);
++            const Vec3 n = Rotate(p.orientation,{0,0,1});
++            for (float d : {-.02f,0.f,.03f}) {
++                const auto h = ProjectPoke(s,{p.position.x+n.x*d,p.position.y+n.y*d,p.position.z+n.z*d});
++                Check(h&&h->inside&&Near(h->u,u)&&Near(h->v,v)&&Near(h->frontDistance,d), "surface projection agrees with independent UV/front offsets");
++                Check(Dist(h->point,p.position)<.0002f&&Dist(h->normal,n)<.0001f, "surface point and normal agree");
++                const Pose room{Normalize({.1f,.3f,.05f,.9f}),{1.5f,.7f,-.3f}};
++                Surface placed = s; placed.panel.pose = Compose(room,s.panel.pose);
++                const Pose finger = Compose(room,Pose{{},{p.position.x+n.x*d,p.position.y+n.y*d,p.position.z+n.z*d}});
++                const auto shifted = ProjectPoke(placed,finger.position);
++                Check(shifted&&Near(shifted->u,u)&&Near(shifted->v,v)&&Near(shifted->frontDistance,d), "projection invariant under rigid room transform");
++            }
++        }
++    }
++    auto h = ProjectPoke(flat,{.5f,0,-.6f});
++    Check(h&&!h->inside&&h->u>1, "outside UV is not clamped");
++    Surface invalid = flat; invalid.panel.width = 0;
++    Check(!ProjectPoke(invalid,{}), "degenerate surface refused");
++    invalid = flat; invalid.angle = 1.3f;
++    Check(!ProjectPoke(invalid,{}), "unsupported curvature refused");
++    Check(!ProjectPoke(flat,{NAN,0,0}), "nonfinite finger refused");
++}
++void Gesture()
++{
++    for (float curve : {0.f,.6f}) {
++        Driver d; d.i.surface.angle = curve;
++        auto o = d.At(.5f,.5f,.03f);
++        Check(o.active&&o.inside&&!o.pressed, "front hover is neutral active sample");
++        o = d.At(.5f,.5f,-.004f); Check(o.active&&o.pressed, "fresh front crossing presses");
++        PointerButtons buttons; buttons.Update(true,true,false);
++        Check(buttons.Update(o.active,o.inside,o.pressed)==1, "poke state feeds pointer press");
++        const auto duplicate = d.poke.Update(d.i);
++        Check(duplicate.pressed&&buttons.Update(duplicate.active,duplicate.inside,duplicate.pressed)==0, "duplicate held sample retains without repeat edge");
++        o = d.At(.57f,.5f,-.005f); Check(o.active&&o.pressed&&o.contact->u>.56f, "pressed lateral motion drags");
++        o = d.At(.57f,.5f,.005f); Check(o.pressed, "shallow withdrawal does not chatter");
++        o = d.At(.57f,.5f,.02f); Check(o.active&&!o.pressed, "withdrawal threshold releases");
++        Check(buttons.Update(o.active,o.inside,o.pressed)==-1, "poke state feeds pointer release");
++        Check(d.At(.57f,.5f,-.004f).pressed, "withdrawal rearms next press");
++    }
++    Driver back;
++    Check(!back.At(.5f,.5f,-.004f).pressed&&!back.At(.5f,.5f,-.01f).pressed, "entry from behind cannot press");
++    Check(!back.At(.5f,.5f,.02f).pressed&&back.At(.5f,.5f,-.004f).pressed, "back entry needs deliberate withdrawal");
++    Driver outside; outside.At(.95f,.5f,.03f); outside.At(.95f,.5f,-.004f);
++    auto o = outside.At(1.05f,.5f,-.005f);
++    Check(!o.active&&!o.inside&&!o.pressed&&o.contact&&o.contact->u>1, "leaving panel releases without edge clamping");
++    Check(!outside.At(.95f,.5f,-.005f).pressed, "reentering while penetrated cannot press");
++    Driver far; Check(!far.At(.5f,.5f,.2f).active, "far finger leaves ray available");
++    far.At(.5f,.5f,.03f); far.At(.5f,.5f,-.004f);
++    Check(!far.At(.5f,.5f,-.08f).active, "excessive penetration cancels");
++    Check(!far.At(.5f,.5f,-.003f).pressed, "overpenetration needs withdrawal before rearm");
++}
++void Discontinuities()
++{
++    for (int change = 0; change < 3; ++change) {
++        Driver d; d.At(.5f,.5f,.03f); d.At(.5f,.5f,-.004f);
++        if(change==0)++d.i.epoch; if(change==1)d.i.reference+=2; if(change==2)++d.i.generation;
++        Check(!d.At(.5f,.5f,-.005f).pressed, "context change releases held poke");
++        Check(!d.At(.5f,.5f,-.006f).pressed, "context change requires withdrawal");
++    }
++    Driver lost; lost.At(.5f,.5f,.03f); lost.At(.5f,.5f,-.004f);
++    lost.i.valid = false; Check(!lost.poke.Update(lost.i).active, "tracking loss cancels");
++    lost.i.valid = true; Check(!lost.At(.5f,.5f,-.005f).pressed, "tracking recovery behind surface cannot press");
++    Driver stale; stale.At(.5f,.5f,.03f); stale.At(.5f,.5f,-.004f);
++    stale.i.nowNs += 201000000ull;
++    Check(!stale.poke.Update(stale.i).active, "even duplicate publication expires");
++    Driver jump; jump.At(.5f,.5f,.03f);
++    Check(!jump.At(.5f,.5f,-.13f).pressed, "large finger discontinuity does not click");
++    Driver gap; gap.At(.5f,.5f,.03f); gap.i.nowNs += 300000000ull;
++    Check(!gap.At(.5f,.5f,-.004f).pressed, "large sample gap cannot bridge a press");
++    Driver clock; clock.At(.5f,.5f,.03f); clock.At(.5f,.5f,-.004f); clock.i.nowNs = clock.i.stampNs-1;
++    Check(!clock.poke.Update(clock.i).active, "future timestamp refused");
++}
++void MovingSurface()
++{
++    Driver d; d.At(.5f,.5f,.025f);
++    // Move the panel over the fixed finger in small per-frame steps, so the
++    // pose discontinuity threshold alone cannot explain refusal.
++    const Vec3 fixed = d.i.tip;
++    for (int n=0;n<5;++n) {
++        d.i.surface.panel.pose.position.z += .007f;
++        d.i.tip = fixed; d.i.nowNs += 10000000ull; d.i.stampNs=d.i.nowNs; ++d.i.sequence;
++        Check(!d.poke.Update(d.i).pressed, "moving panel over stationary finger cannot click");
++    }
++    for (int change=0;change<4;++change) {
++        Driver held; held.At(.5f,.5f,.03f); held.At(.5f,.5f,-.004f);
++        if(change==0)held.i.surface.panel.width+=.02f;
++        if(change==1)held.i.surface.panel.height+=.02f;
++        if(change==2)held.i.surface.angle=.3f;
++        if(change==3)held.i.surface.panel.pose.orientation=Normalize({0,.1f,0,1});
++        held.i.nowNs+=10000000ull;held.i.stampNs=held.i.nowNs;++held.i.sequence;
++        Check(!held.poke.Update(held.i).pressed, "presentation resize/curve/rotation cancels capture");
++    }
++    Driver sign; sign.At(.5f,.5f,.03f); sign.At(.5f,.5f,-.004f);
++    sign.i.surface.panel.pose.orientation={0,0,0,-1};
++    sign.i.nowNs+=10000000ull;sign.i.stampNs=sign.i.nowNs;++sign.i.sequence;
++    Check(sign.poke.Update(sign.i).pressed, "quaternion sign equivalence does not cancel capture");
++}
++}
++int main()
++{
++    Projection(); Gesture(); Discontinuities(); MovingSurface();
++    std::cout << "ui_poke: geometry, crossing, capture, lifecycle and moving-surface controls passed\n";
++}
+diff --git a/tests/VrOptionsRuntimeTests.cpp b/tests/VrOptionsRuntimeTests.cpp
+index f263b2d..7a54cf5 100644
+--- a/tests/VrOptionsRuntimeTests.cpp
++++ b/tests/VrOptionsRuntimeTests.cpp
+@@ -8,6 +8,8 @@ bool nativeModal=true;unsigned pauseTaps=0,recenters=0,calibrations=0,clears=0,h
+ DWORD viewResultForTest=0;
+ bool supersedeViewForTest=false;
+ preyvr::dll::TrackingFrame currentFrame{};
++preyvr::dll::UiPointerVisual pointerForTest{};
++bool hackingForTest=false;
+ void Check(bool ok,const char* why){if(!ok){std::cerr<<why<<'\n';std::exit(1);}}
+ }
+ namespace preyvr::lifecycle { void Log(std::string_view){} }
+@@ -48,6 +50,14 @@ DWORD SetHeadInWallsFade(unsigned v){applied[options::WallFade]=static_cast<int>
+ unsigned HeadInWallsFadeEnabled(){return static_cast<unsigned>(applied[options::WallFade]);}
+ DWORD SetBodyPose(unsigned v){applied[options::BodyPose]=static_cast<int>(v);return 0;}
+ unsigned BodyPoseEnabled(){return static_cast<unsigned>(applied[options::BodyPose]);}
++DWORD SetUiPokeEnabled(unsigned v){applied[options::UiPoke]=static_cast<int>(v);return 0;}
++unsigned UiPokeEnabled(){return static_cast<unsigned>(applied[options::UiPoke]);}
++DWORD SetUiPokeDistanceCm(unsigned v){applied[options::UiPokeDistance]=static_cast<int>(v);return 0;}
++unsigned UiPokeDistanceCm(){return static_cast<unsigned>(applied[options::UiPokeDistance]);}
++DWORD SetUiPokeTipMm(unsigned v){applied[options::UiPokeTip]=static_cast<int>(v);return 0;}
++unsigned UiPokeTipMm(){return static_cast<unsigned>(applied[options::UiPokeTip]);}
++DWORD SetHackingControls(unsigned v){applied[options::HackingControls]=static_cast<int>(v);return 0;}
++unsigned HackingControlsEnabled(){return static_cast<unsigned>(applied[options::HackingControls]);}
+ unsigned DebugOverlayMask(){return applied[options::DebugOverlay];}
+ DWORD SetSnapTurnDegrees(unsigned v){applied[options::Turn]=v;return 0;}
+ unsigned SnapTurnDegrees(){return applied[options::Turn];}
+@@ -70,9 +80,14 @@ unsigned UiCurveDegrees(){return applied[options::UiCurve];}
+ DWORD SetUiGuideEnabled(unsigned v){applied[options::UiGuide]=v;return 0;}
+ DWORD UiGuideEnabled(){return applied[options::UiGuide];}
+ bool HudMenuIsOpen(){return nativeModal;}
++bool HudHackingIsOpen(){return hackingForTest;}
+ bool HudMenuStateKnown(){return true;}
+ bool TryGetTrackingFrame(TrackingFrame& f){f=currentFrame;return true;}
+ unsigned UiPointerHand(){return 1;}
++UiPointerVisual EvaluateUiPointer(const ui::Surface* surface,const TrackingFrame& frame,unsigned hand,std::uint64_t reference,std::uint64_t,UiPointerTracker&){
++ Check(&frame==&currentFrame&&hand==1&&reference==2,"options evaluates the current controller frame");
++ return surface?pointerForTest:UiPointerVisual{};
++}
+ unsigned long long HeadTrackingReferenceGeneration(){return 2;}
+ DWORD RecenterHeadTracking(bool height){if(height)++calibrations;else ++recenters;
+  if(supersedeViewForTest){supersedeViewForTest=false;QueueViewRequest(2,currentFrame.epoch);}
+@@ -212,6 +227,16 @@ int main(){
+  r.thumbstickY=-1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+  Check(grenadeEffective,"high-bit grenade edit reaches runtime");
+  ApplyVrWorldOptions(false);
++ r.gripPressed=true;tick();r.gripPressed=false;tick();Check(VrOptionsPage()==10,"input tab reached");
++ r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
++ Check(UiPokeEnabled()==1,"poke opt-in reaches adapter");
++ for(int edit=0;edit<3;++edit){r.thumbstickY=-1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();}
++ Check(UiPokeDistanceCm()==70&&UiPokeTipMm()==90&&HackingControlsEnabled()==1,"new input rows persist through high-bit mailbox");
++ const ui::Surface touchSurface{{Pose{{},{0,0,-.65f}},.6f,.4f},0};SetVrOptionsSurface(&touchSurface,2);
++ pointerForTest.active=pointerForTest.touch=true;pointerForTest.hit=ui::RayHit{.8f,.31f,0,{},true};
++ tick();pointerForTest.pressed=true;tick();pointerForTest.pressed=false;tick();ServiceVrOptions();
++ Check(UiPokeEnabled()==0,"poke contact selects settings through shared menu path");
++ pointerForTest={};
+  ResetVrOptionsSession();
+  // A launch override is explicit, and disappears on an ordinary subsequent load.
+  SetEnvironmentVariableW(L"PREYVR_DEBUG_OVERLAY",L"3");SetEnvironmentVariableW(L"PREYVR_MUZZLE_AIM",L"1");
+diff --git a/tools/re/verify_hacking_input.py b/tools/re/verify_hacking_input.py
+new file mode 100644
+index 0000000..18f56eb
+--- /dev/null
++++ b/tools/re/verify_hacking_input.py
+@@ -0,0 +1,211 @@
++"""Verify installed Steam hacking input assets and native witnesses offline.
++
++Reads only the supported game. Emits derived binding metadata, never movie/XML
++assets or key material. Requires the existing extractor dependencies via --deps.
++No game process, DLL loading, network or runtime configuration is involved.
++"""
++from __future__ import annotations
++
++import argparse
++import copy
++import hashlib
++import json
++from pathlib import Path
++import struct
++import sys
++
++from extract_native_hud import (Pak, TARGET_SHA256, KEY_FILE_OFFSET, KEY_BYTES,
++                                cipher_self_test, decode_xml, read_at, require, sha256_file)
++
++BINDINGS = {
++    "hack_moveprompt_x": "xi_thumblx", "hack_moveprompt_y": "xi_thumbly",
++    "hack_final1": "xi_x", "hack_final2": "xi_y",
++    "hack_final3": "xi_a", "hack_final4": "xi_b",
++}
++KEYBOARD_ONLY = {
++    "hack_moveup": "w", "hack_movedown": "s",
++    "hack_moveleft": "a", "hack_moveright": "d",
++}
++TOKEN_PRODUCERS = [
++    (0x1709C6C, 0xA30, "hack_moveprompt_y"),
++    (0x1709C7F, 0xA38, "hack_moveprompt_x"),
++    (0x1709C92, 0xA40, "hack_moveup"),
++    (0x1709CA5, 0xA48, "hack_movedown"),
++    (0x1709CB8, 0xA50, "hack_moveleft"),
++    (0x1709CCB, 0xA58, "hack_moveright"),
++    (0x1709CDE, 0xA60, "hack_final1"),
++    (0x1709CF1, 0xA68, "hack_final2"),
++    (0x1709D04, 0xA70, "hack_final3"),
++    (0x1709D17, 0xA78, "hack_final4"),
++]
++WITNESSES = {
++    "hacking_movie_native_lookup": (0x1626418, "488d1509db8300488b01ff5060"),
++    "analog_x_token_and_store": (0x1626D39, "488b05f8fa5e01488b16483b90380a0000750af30f117348"),
++    "analog_y_token_and_store": (0x1626D56, "483b90300a000075110f57350a7e6500f30f11734ce9a7040000"),
++    "keyboard_left_token_and_activation": (0x1626D70, "483b90500a000075494080e70140387b58"),
++    "keyboard_right_token_and_activation": (0x1626DC2, "483b90580a000075494080e70140387b59"),
++    "keyboard_up_token_and_activation": (0x1626E14, "483b90400a000075494080e70140387b5a"),
++    "keyboard_down_token_and_activation": (0x1626E66, "483b90480a000075494080e70140387b5b"),
++    "game_receiver_to_hacking_receiver": (0x119C71A, "488b8938010000418bd80f29742420488bfa0f28f3e89ca54800"),
++    "final_branch_state_and_correct_token": (0x1626EB8, "807b5c000f845503000083bbf0000000050f8548030000483b53600f85d6000000"),
++}
++
++
++def image_reader(data):
++    pe = struct.unpack_from("<I", data, 0x3C)[0]
++    require(data[:2] == b"MZ" and data[pe:pe + 4] == b"PE\0\0", "invalid PE")
++    require(struct.unpack_from("<H", data, pe + 4)[0] == 0x8664, "not x64")
++    optional = pe + 24
++    require(struct.unpack_from("<H", data, optional)[0] == 0x20B, "not PE32+")
++    sections = []
++    for index in range(struct.unpack_from("<H", data, pe + 6)[0]):
++        at = optional + struct.unpack_from("<H", data, pe + 20)[0] + index * 40
++        rva, size, raw = struct.unpack_from("<III", data, at + 12)
++        sections.append((rva, size, raw))
++
++    def read(rva, size):
++        for begin, count, raw in sections:
++            if begin <= rva and rva + size <= begin + count:
++                result = data[raw + rva - begin:raw + rva - begin + size]
++                require(len(result) == size, "truncated PE read")
++                return result
++        raise ValueError("RVA outside file-backed section")
++    return read
++
++
++def verify_witnesses(data):
++    read = image_reader(data)
++    for name, (rva, expected) in WITNESSES.items():
++        require(read(rva, len(bytes.fromhex(expected))) == bytes.fromhex(expected), "native witness mismatch: " + name)
++    movie = b"DanielleHacking2\0"
++    require(read(0x1E63F28, len(movie)) == movie, "wrong hacking movie string")
++    # Independent producer: CCryName assignments identify the same token offsets
++    # used by ProcessInput. These are observations, not a new callable ABI.
++    for at, slot, name in TOKEN_PRODUCERS:
++        code = read(at, 14)
++        require(code[:3] == b"\x48\x8d\x15" and code[7:10] == b"\x48\x8d\x8b", "token producer opcode mismatch")
++        string_rva = at + 7 + struct.unpack_from("<i", code, 3)[0]
++        require(struct.unpack_from("<I", code, 10)[0] == slot, "token slot mismatch")
++        require(read(string_rva, len(name) + 1) == name.encode() + b"\0", "token name mismatch")
++
++
++def verify_action_map(action_map):
++    nodes = action_map.findall("action")
++    actions = {a.get("name"): a for a in nodes}
++    expected = set(BINDINGS) | set(KEYBOARD_ONLY)
++    require(len(nodes) == len(actions) == len(expected) and set(actions) == expected,
++            "unexpected/duplicate/missing hacking action")
++    require(all(len(a) == 0 for a in nodes), "unexpected nested hacking binding")
++    derived = {}
++    for action, button in BINDINGS.items():
++        require(actions[action].get("xboxpad") == button, "binding mismatch: " + action)
++        if action.startswith("hack_final"):
++            require(actions[action].get("onPress") == "1" and actions[action].get("onRelease") is None,
++                    "final-answer activation mismatch")
++        derived[action] = dict(key=button, on_press=actions[action].get("onPress") == "1",
++                               on_release=actions[action].get("onRelease") == "1")
++    keyboard = {}
++    for action, key in KEYBOARD_ONLY.items():
++        require(actions[action].attrib == dict(name=action, onPress="1", onRelease="1", keyboard=key),
++                "keyboard-only directional binding mismatch: " + action)
++        keyboard[action] = dict(key=key, on_press=True, on_release=True)
++    return dict(action_count=len(nodes), actions=sorted(actions), xbox_binding_count=len(derived),
++                bindings=derived, keyboard_only_actions=keyboard)
++
++
++def inspect(game):
++    from Crypto.PublicKey import RSA
++    module = game / "Binaries/Danielle/x64/Release/PreyDll.dll"
++    data = module.read_bytes()
++    require(hashlib.sha256(data).hexdigest() == TARGET_SHA256, "unsupported Steam module")
++    verify_witnesses(data)
++    corrupt = bytearray(data)
++    # Header/source identity is unchanged in this negative control; mutate the
++    # concrete witness byte so the semantic gate itself must reject it.
++    target = WITNESSES["hacking_movie_native_lookup"][0]
++    pe = struct.unpack_from("<I", data, 0x3C)[0]
++    table = pe + 24 + struct.unpack_from("<H", data, pe + 20)[0]
++    for n in range(struct.unpack_from("<H", data, pe + 6)[0]):
++        at = table + n * 40
++        rva, size, raw = struct.unpack_from("<III", data, at + 12)
++        if rva <= target < rva + size:
++            corrupt[raw + target - rva] ^= 1
++            break
++    rejected = False
++    try:
++        verify_witnesses(corrupt)
++    except ValueError:
++        rejected = True
++    require(rejected, "negative witness control was accepted")
++    with module.open("rb") as stream:
++        key = RSA.import_key(read_at(stream, KEY_FILE_OFFSET, KEY_BYTES))
++    cipher_self_test()
++    report = {"target_sha256": TARGET_SHA256, "environment": "offline",
++              "method": "Steam bytes plus bounded read-only PAK extraction and CryXmlB decoding",
++              "controls": {"native_witness_corruption_rejected": True, "twofish_known_answer": "PASS"},
++              "native_witnesses": {name: {"rva": hex(rva), "bytes": raw} for name, (rva, raw) in WITNESSES.items()},
++              "native_token_producers": [dict(rva=hex(at), slot=hex(slot), action=name)
++                                         for at, slot, name in TOKEN_PRODUCERS],
++              "profiles": [], "movie": None}
++    for relative in ("GameSDK/GameData.pak", "GameSDK/Precache/patch.pak"):
++        pak = Pak(game / relative, key)
++        archive_hash = sha256_file(game / relative)
++        name = "libs/config/defaultprofile.xml"
++        payload = pak.read(name)
++        root = decode_xml(payload)
++        require(root.tag == "profile" and root.get("version") == "73", "unexpected profile")
++        maps = [m for m in root.iter("actionmap") if m.get("name") == "hacking"]
++        require(len(maps) == 1, "missing/ambiguous hacking map")
++        derived = verify_action_map(maps[0])
++        # Completeness controls exercise the full-map gate, not just the six
++        # selected pad bindings: a removed keyboard action or extra pad binding
++        # must be rejected instead of disappearing from the derived report.
++        for change in ("missing_direction", "extra_pad_action"):
++            mutated = copy.deepcopy(maps[0])
++            if change == "missing_direction":
++                mutated.remove(next(a for a in mutated if a.get("name") == "hack_moveup"))
++            else:
++                extra = copy.deepcopy(mutated.find("action"))
++                extra.set("name", "unexpected_hack_jump")
++                extra.set("xboxpad", "xi_a")
++                mutated.append(extra)
++            rejected = False
++            try:
++                verify_action_map(mutated)
++            except ValueError:
++                rejected = True
++            require(rejected, "full action-map negative control was accepted: " + change)
++        report["controls"]["full_action_map_mutations_rejected"] = ["missing_direction", "extra_pad_action"]
++        entry = pak.entries[name]
++        report["profiles"].append(dict(archive=relative, archive_sha256=archive_hash,
++            member=name, sha256=hashlib.sha256(payload).hexdigest(), crc32=f"{entry['crc32']:08x}",
++            bytes=len(payload), **derived))
++        movie_name = "libs/ui/uielements/daniellehacking2.xml"
++        if movie_name in pak.entries:
++            raw = pak.read(movie_name)
++            ui = decode_xml(raw)
++            require(ui.tag == "UIElements" and ui.get("name") == "DanielleHacking2", "wrong movie definition")
++            report["movie"] = dict(archive=relative, member=movie_name,
++                sha256=hashlib.sha256(raw).hexdigest(), bytes=len(raw), name="DanielleHacking2",
++                source=ui.find("UIElement/GFx").get("file"),
++                constraints=ui.find("UIElement/GFx/Constraints/Align").attrib)
++    require(report["movie"] is not None, "missing hacking movie definition")
++    report["effective_profile"] = report["profiles"][-1]["archive"]
++    report["limits"] = "Default installed profile only; a custom user rebind may differ. No native input acceptance or rendering/headset test. Assets and key material are not emitted."
++    return report
++
++
++if __name__ == "__main__":
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--game", type=Path, default=Path("D:/SteamLibrary/steamapps/common/Prey"))
++    parser.add_argument("--deps", type=Path)
++    parser.add_argument("--out", type=Path)
++    args = parser.parse_args()
++    if args.deps:
++        sys.path.insert(0, str(args.deps.resolve()))
++    result = inspect(args.game.resolve())
++    rendered = json.dumps(result, indent=2) + "\n"
++    if args.out:
++        args.out.parent.mkdir(parents=True, exist_ok=True)
++        args.out.write_text(rendered, encoding="utf-8")
++    print(rendered)

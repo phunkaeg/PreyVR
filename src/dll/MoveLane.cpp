@@ -1,6 +1,7 @@
 #include "MoveLane.h"
 #include "AnimIkTakeover.h"
 #include "BodyFollow.h"
+#include "HackingLane.h"
 #include "ArmsLane.h"
 #include "AimTakeover.h"
 #include "BodyEquipment.h"
@@ -40,6 +41,7 @@ std::atomic<bool> gHeadRelative{true};
 std::atomic<float> gStrafeScale{1.f},gBackwardScale{1.f};
 
 void Log(const std::string& line) { lifecycle::Log("preyvr_move " + line); }
+bool GameplayLaneInputAllowed(){return HudGameplayInputAllowed()&&!HackingInputOwnsControls();}
 
 // R-089. The player-side analog handlers. RCX is the input object: the X
 // handler stores to `+0x5C`, the Y handler to `+0x60`, and both discard the
@@ -317,7 +319,7 @@ void UpdateMoveLane()
     const bool neutralize = gMoveNeutralize.exchange(false, std::memory_order_acq_rel);
     const auto movementReference=HeadTrackingReferenceGeneration();
     TrackingFrame movementFrame{};
-    const bool gameplay = HudGameplayInputAllowed();
+    const bool gameplay = GameplayLaneInputAllowed();
     const bool read = TryGetTrackingFrame(movementFrame) && FreshSample(MonotonicNanoseconds(),movementFrame.publishedNs);
     // A sample missed for a moment -- a contended read, a frame-long hitch -- holds
     // what the game was last told instead of releasing the stick: a release there
@@ -437,9 +439,9 @@ void UpdateTurnAndFireLanes()
     }
 
     static bool turnBlocked=false;
-    if (!HudGameplayInputAllowed()) turnBlocked=true;
+    if (!GameplayLaneInputAllowed()) turnBlocked=true;
     else if (haveInput && std::fabs(right.thumbstickX)<=.15f && std::fabs(right.thumbstickY)<=.15f) turnBlocked=false;
-    const bool turnOn = gTurnEnabled.load(std::memory_order_acquire) && HudGameplayInputAllowed() && !turnBlocked;
+    const bool turnOn = gTurnEnabled.load(std::memory_order_acquire) && GameplayLaneInputAllowed() && !turnBlocked;
     const bool releaseTurn = gTurnNeutralize.exchange(false, std::memory_order_acq_rel);
     static comfort::SnapLatch snap;
     static unsigned previousMode=~0u;
@@ -484,11 +486,11 @@ void UpdateTurnAndFireLanes()
     const bool releaseFire = gFireNeutralize.exchange(false, std::memory_order_acq_rel);
     const auto fire=fireGate.Update(haveInput &&
         IsPoseUsable(right.gripPose,right.gripValidity,60000000ull),
-        gFireEnabled.load() && HudGameplayInputAllowed(),releaseFire,gRecenterHeld,
+        gFireEnabled.load() && GameplayLaneInputAllowed(),releaseFire,gRecenterHeld,
         right.triggerPressed,right.triggerValue<=.05f,inputFrame.epoch,HeadTrackingReferenceGeneration());
     if(!fire.physical)CancelGrenadeTrigger();
     const bool fireOn = gFireEnabled.load(std::memory_order_acquire) &&
-                       HudGameplayInputAllowed() && fire.physical;
+                       GameplayLaneInputAllowed() && fire.physical;
     if (fireOn || gFireHeld || (gFirePrimed && gLastFireSent != 0)) {
         // **The real travel is posted, not a quantised press.** `xi_triggerr` is
         // an analog axis, and sending only 0 or 1000 threw away everything
@@ -564,7 +566,7 @@ void UpdateTurnAndFireLanes()
     // button that both confirms a menu choice and jumps is the same class of
     // double-binding as the right stick that also changed weapons.
     const bool actionsOn = gActionsEnabled.load(std::memory_order_acquire) &&
-                           HudGameplayInputAllowed();
+                           GameplayLaneInputAllowed();
     const bool releaseActions = gActionsNeutralize.exchange(false, std::memory_order_acq_rel);
     {
         const bool haveLeftHand = haveInput;
@@ -601,7 +603,7 @@ void UpdateTurnAndFireLanes()
         NoteUseButton(useOut.down, static_cast<unsigned>(useOut.owner), useOut.pressed, useOut.released,
                       (useOut.noTarget ? 1u : 0u) | (useOut.gaveUp ? 2u : 0u) | (useOut.busy ? 4u : 0u));
         const bool crouchTap = TakePhysicalCrouchTap(inputFrame,
-            haveInput && actionsOn && !releaseActions && HudGameplayInputAllowed() && MoveLaneCinematicGate() == 0);
+            haveInput && actionsOn && !releaseActions && GameplayLaneInputAllowed() && MoveLaneCinematicGate() == 0);
         const bool sources[kActionCount] = {
             useOut.down,                              // use/reload, decided above
             haveLeftHand && leftHand.menuAccept,      // inventory <- left X
@@ -612,7 +614,7 @@ void UpdateTurnAndFireLanes()
         static bool blocked[kActionCount]{};
         for (int slot = 0; slot < kActionCount; ++slot) {
             // Slot 0's grip arbitration lives in the use button above.
-            if (slot != kActionInteract && !HudGameplayInputAllowed() && sources[slot]) blocked[slot]=true;
+            if (slot != kActionInteract && !GameplayLaneInputAllowed() && sources[slot]) blocked[slot]=true;
             if (!sources[slot]) blocked[slot]=false;
             ActionBinding& binding = gActions[slot];
             const bool wanted = actionsOn && !releaseActions && sources[slot] && !blocked[slot];
@@ -754,6 +756,11 @@ unsigned long long MoveLaneDropped() { return gDropped.load(std::memory_order_re
 unsigned long long MoveLaneInputObject() { return gInputObject.load(std::memory_order_relaxed); }
 
 int MoveLaneAxisMilli(unsigned int axis) { return axis < 2 ? gAxisMilli[axis].load(std::memory_order_relaxed) : 0; }
+bool GameplayInputReleasedForHacking() {
+    if(gMoveMayBeHeld)return false;
+    for(const auto& action:gActions)if(action.held)return false;
+    return true;
+}
 int MoveLaneCinematicGate() { return gCinematic.load(std::memory_order_relaxed); }
 unsigned long long MoveLaneRecenterCount() { return gRecenters.load(std::memory_order_relaxed); }
 

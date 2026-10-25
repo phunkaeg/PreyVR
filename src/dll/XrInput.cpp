@@ -3,6 +3,7 @@
 #include "HapticsXr.h"
 #include "VrOptionsRuntime.h"
 #include "UiPointer.h"
+#include "HackingLane.h"
 #include "preyvr/LatestSnapshot.h"
 
 #include "InputPost.h"
@@ -390,6 +391,10 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
         return;
     }
 
+    if(HackingInputOwnsControls()) {
+        gNavigator.Reset();gLastDisplayTime.store(predictedDisplayTime);
+        return; // hacking's native bindings own left stick and all face buttons
+    }
     // --- controller-driven menus ---------------------------------------------
     //
     // The delta comes from the runtime's own predicted display times rather than
@@ -401,6 +406,8 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
         // service and must not enter Scaleform to ask.
         if (gResetNavigator.exchange(false)) { gNavigator.Reset(); }
         const auto menuEpoch=HudMenuEpoch();
+        static unsigned long long navigatorEpoch=0;
+        if(navigatorEpoch!=menuEpoch){gNavigator.Reset();navigatorEpoch=menuEpoch;}
         const bool modal = !gMenuNavGate.load(std::memory_order_acquire) ||
                            (HudMenuStateKnown() && HudMenuIsOpen());
         if (!modal) { gMenuSuppressed.fetch_add(1, std::memory_order_relaxed); }

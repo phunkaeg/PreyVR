@@ -1,0 +1,4 @@
+* -text whitespace=cr-at-eol
+# Frozen compiler output and unified-diff context keep their original spaces.
+configure.txt whitespace=-blank-at-eol,cr-at-eol
+source.patch whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

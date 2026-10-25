@@ -188,6 +188,9 @@ bool HudMenuIsOpen();
 bool HudMenuStateKnown();
 // PDA is visible without another known modal screen/dialog covering it.
 bool HudInventoryIsOpen();
+// Hacking is visible, with no pause/loading/dialog covering its native movie.
+// Uses the same fresh, concrete-element visibility sampling as inventory.
+bool HudHackingIsOpen();
 unsigned long long HudMenuEpoch();
 bool HudGameplayInputAllowed();
 unsigned long long HudMenuStateSampleCount();

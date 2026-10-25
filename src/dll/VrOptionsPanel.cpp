@@ -26,7 +26,7 @@ std::vector<std::uint8_t> DrawVrOptions(const options::Values& values,unsigned p
  for(unsigned p=0;p<Pages;++p){
   const int span=1288/Pages,x=56+static_cast<int>(p)*span;
   fill(x,174,span-8,72,p==page?amber:RGB(27,37,45));
-  text(x+12,194,span-24,45,PageName(p),Pages>9?17:Pages>8?21:Pages>7?23:Pages>5?26:30,p==page?bg:muted,true);
+  text(x+8,194,span-16,45,PageName(p),Pages>9?17:Pages>8?21:Pages>7?23:Pages>5?26:30,p==page?bg:muted,true);
  }
  for(unsigned r=0;r<Rows;++r){
   const int id=Item(page,r);
@@ -46,7 +46,7 @@ std::vector<std::uint8_t> DrawVrOptions(const options::Values& values,unsigned p
       L"Look straight ahead and select to reset the view and controller reference together.":
       Describe(selectedId).help,29,ink);
  text(80,914,1250,52,saveFailed?L"SETTINGS ACTIVE / COULD NOT SAVE TO DISK":
-      page==7&&!setupMessage.empty()?std::wstring(setupMessage):L"POINT + TRIGGER   /   STICK: SELECT & ADJUST   /   GRIPS: TABS",24,saveFailed||page==7?amber:muted);
+      page==7&&!setupMessage.empty()?std::wstring(setupMessage):values[UiPoke]?L"POKE OR POINT + TRIGGER   /   STICK: ADJUST   /   GRIPS: TABS":L"POINT + TRIGGER   /   STICK: SELECT & ADJUST   /   GRIPS: TABS",24,saveFailed||page==7?amber:muted);
  fill(56,980,1288,80,RGB(36,47,54));
  text(85,1001,1150,54,L"B  /  BACK TO GAME MENU",29,ink,true);
  GdiFlush();std::vector<std::uint8_t> result(Width*Height*4);

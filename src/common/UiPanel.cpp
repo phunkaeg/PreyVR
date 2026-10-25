@@ -111,7 +111,7 @@ std::optional<Panel> FitPanel(const Pose& head, const std::array<Eye,2>& eyes,
                              float aspect, float distance, float scale, float margin) {
     if (!Valid(head) || !Valid(eyes[0]) || !Valid(eyes[1]) ||
         !std::isfinite(aspect) || aspect < .25f || aspect > 5 ||
-        !std::isfinite(distance) || distance < 1 || distance > 4 ||
+        !std::isfinite(distance) || distance < .4f || distance > 4 ||
         !std::isfinite(scale) || !std::isfinite(margin)) return {};
     ClampMargin(margin);
     // **Above 1 is allowed on purpose.** The 60/40 caps are a comfort default,

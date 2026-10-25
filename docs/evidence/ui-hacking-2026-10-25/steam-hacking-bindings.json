@@ -1,0 +1,274 @@
+{
+  "target_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "environment": "offline",
+  "method": "Steam bytes plus bounded read-only PAK extraction and CryXmlB decoding",
+  "controls": {
+    "native_witness_corruption_rejected": true,
+    "twofish_known_answer": "PASS",
+    "full_action_map_mutations_rejected": [
+      "missing_direction",
+      "extra_pad_action"
+    ]
+  },
+  "native_witnesses": {
+    "hacking_movie_native_lookup": {
+      "rva": "0x1626418",
+      "bytes": "488d1509db8300488b01ff5060"
+    },
+    "analog_x_token_and_store": {
+      "rva": "0x1626d39",
+      "bytes": "488b05f8fa5e01488b16483b90380a0000750af30f117348"
+    },
+    "analog_y_token_and_store": {
+      "rva": "0x1626d56",
+      "bytes": "483b90300a000075110f57350a7e6500f30f11734ce9a7040000"
+    },
+    "keyboard_left_token_and_activation": {
+      "rva": "0x1626d70",
+      "bytes": "483b90500a000075494080e70140387b58"
+    },
+    "keyboard_right_token_and_activation": {
+      "rva": "0x1626dc2",
+      "bytes": "483b90580a000075494080e70140387b59"
+    },
+    "keyboard_up_token_and_activation": {
+      "rva": "0x1626e14",
+      "bytes": "483b90400a000075494080e70140387b5a"
+    },
+    "keyboard_down_token_and_activation": {
+      "rva": "0x1626e66",
+      "bytes": "483b90480a000075494080e70140387b5b"
+    },
+    "game_receiver_to_hacking_receiver": {
+      "rva": "0x119c71a",
+      "bytes": "488b8938010000418bd80f29742420488bfa0f28f3e89ca54800"
+    },
+    "final_branch_state_and_correct_token": {
+      "rva": "0x1626eb8",
+      "bytes": "807b5c000f845503000083bbf0000000050f8548030000483b53600f85d6000000"
+    }
+  },
+  "native_token_producers": [
+    {
+      "rva": "0x1709c6c",
+      "slot": "0xa30",
+      "action": "hack_moveprompt_y"
+    },
+    {
+      "rva": "0x1709c7f",
+      "slot": "0xa38",
+      "action": "hack_moveprompt_x"
+    },
+    {
+      "rva": "0x1709c92",
+      "slot": "0xa40",
+      "action": "hack_moveup"
+    },
+    {
+      "rva": "0x1709ca5",
+      "slot": "0xa48",
+      "action": "hack_movedown"
+    },
+    {
+      "rva": "0x1709cb8",
+      "slot": "0xa50",
+      "action": "hack_moveleft"
+    },
+    {
+      "rva": "0x1709ccb",
+      "slot": "0xa58",
+      "action": "hack_moveright"
+    },
+    {
+      "rva": "0x1709cde",
+      "slot": "0xa60",
+      "action": "hack_final1"
+    },
+    {
+      "rva": "0x1709cf1",
+      "slot": "0xa68",
+      "action": "hack_final2"
+    },
+    {
+      "rva": "0x1709d04",
+      "slot": "0xa70",
+      "action": "hack_final3"
+    },
+    {
+      "rva": "0x1709d17",
+      "slot": "0xa78",
+      "action": "hack_final4"
+    }
+  ],
+  "profiles": [
+    {
+      "archive": "GameSDK/GameData.pak",
+      "archive_sha256": "7f1d96c631220b4a0566a00196c01efb8204476e429694461c6379e0b281617c",
+      "member": "libs/config/defaultprofile.xml",
+      "sha256": "69647ac32cd2cdeba86c9320342332aee2ab41374765f8f69442baa8cf0d09e5",
+      "crc32": "77fb21f1",
+      "bytes": 46335,
+      "action_count": 10,
+      "actions": [
+        "hack_final1",
+        "hack_final2",
+        "hack_final3",
+        "hack_final4",
+        "hack_movedown",
+        "hack_moveleft",
+        "hack_moveprompt_x",
+        "hack_moveprompt_y",
+        "hack_moveright",
+        "hack_moveup"
+      ],
+      "xbox_binding_count": 6,
+      "bindings": {
+        "hack_moveprompt_x": {
+          "key": "xi_thumblx",
+          "on_press": false,
+          "on_release": false
+        },
+        "hack_moveprompt_y": {
+          "key": "xi_thumbly",
+          "on_press": false,
+          "on_release": false
+        },
+        "hack_final1": {
+          "key": "xi_x",
+          "on_press": true,
+          "on_release": false
+        },
+        "hack_final2": {
+          "key": "xi_y",
+          "on_press": true,
+          "on_release": false
+        },
+        "hack_final3": {
+          "key": "xi_a",
+          "on_press": true,
+          "on_release": false
+        },
+        "hack_final4": {
+          "key": "xi_b",
+          "on_press": true,
+          "on_release": false
+        }
+      },
+      "keyboard_only_actions": {
+        "hack_moveup": {
+          "key": "w",
+          "on_press": true,
+          "on_release": true
+        },
+        "hack_movedown": {
+          "key": "s",
+          "on_press": true,
+          "on_release": true
+        },
+        "hack_moveleft": {
+          "key": "a",
+          "on_press": true,
+          "on_release": true
+        },
+        "hack_moveright": {
+          "key": "d",
+          "on_press": true,
+          "on_release": true
+        }
+      }
+    },
+    {
+      "archive": "GameSDK/Precache/patch.pak",
+      "archive_sha256": "c04ee92d951c0b2f49495bf1072323e9ed49a4d5224c98fe29b67d3b82d34cb0",
+      "member": "libs/config/defaultprofile.xml",
+      "sha256": "22e2b31a63c82a1cb2db279b69482156983942e3cfd17be533b22a062c9999ac",
+      "crc32": "5774f986",
+      "bytes": 46386,
+      "action_count": 10,
+      "actions": [
+        "hack_final1",
+        "hack_final2",
+        "hack_final3",
+        "hack_final4",
+        "hack_movedown",
+        "hack_moveleft",
+        "hack_moveprompt_x",
+        "hack_moveprompt_y",
+        "hack_moveright",
+        "hack_moveup"
+      ],
+      "xbox_binding_count": 6,
+      "bindings": {
+        "hack_moveprompt_x": {
+          "key": "xi_thumblx",
+          "on_press": false,
+          "on_release": false
+        },
+        "hack_moveprompt_y": {
+          "key": "xi_thumbly",
+          "on_press": false,
+          "on_release": false
+        },
+        "hack_final1": {
+          "key": "xi_x",
+          "on_press": true,
+          "on_release": false
+        },
+        "hack_final2": {
+          "key": "xi_y",
+          "on_press": true,
+          "on_release": false
+        },
+        "hack_final3": {
+          "key": "xi_a",
+          "on_press": true,
+          "on_release": false
+        },
+        "hack_final4": {
+          "key": "xi_b",
+          "on_press": true,
+          "on_release": false
+        }
+      },
+      "keyboard_only_actions": {
+        "hack_moveup": {
+          "key": "w",
+          "on_press": true,
+          "on_release": true
+        },
+        "hack_movedown": {
+          "key": "s",
+          "on_press": true,
+          "on_release": true
+        },
+        "hack_moveleft": {
+          "key": "a",
+          "on_press": true,
+          "on_release": true
+        },
+        "hack_moveright": {
+          "key": "d",
+          "on_press": true,
+          "on_release": true
+        }
+      }
+    }
+  ],
+  "movie": {
+    "archive": "GameSDK/GameData.pak",
+    "member": "libs/ui/uielements/daniellehacking2.xml",
+    "sha256": "6e781683606ca514c135d29558154931785847aa556f33a6c3fa0972e986d691",
+    "bytes": 5674,
+    "name": "DanielleHacking2",
+    "source": "GFX/danielle_hacking_2.gfx",
+    "constraints": {
+      "mode": "dynamic",
+      "valign": "center",
+      "halign": "center",
+      "scale": "1",
+      "max": "0"
+    }
+  },
+  "effective_profile": "GameSDK/Precache/patch.pak",
+  "limits": "Default installed profile only; a custom user rebind may differ. No native input acceptance or rendering/headset test. Assets and key material are not emitted."
+}

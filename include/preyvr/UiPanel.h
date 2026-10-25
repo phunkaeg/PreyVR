@@ -31,6 +31,8 @@ inline constexpr float kDefaultFitMargin=.72f;
 std::optional<Panel> FitPanel(const Pose& head, const std::array<Eye,2>& eyes,
                              float aspect, float distance=2.0f, float scale=1.0f,
                              float margin=kDefaultFitMargin);
+// Explicit touch-mode callers may fit panels as near as 0.4 m. The default
+// remains 2 m; optical corner checks also apply to reachable panels.
 bool CornersVisible(const Panel& panel, const std::array<Eye,2>& eyes,
                     float margin=kDefaultFitMargin);
 // angle=0 is a plane; otherwise width is arc length. The panel pose always

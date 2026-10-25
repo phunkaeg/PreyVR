@@ -8,6 +8,8 @@ bool nativeModal=true;unsigned pauseTaps=0,recenters=0,calibrations=0,clears=0,h
 DWORD viewResultForTest=0;
 bool supersedeViewForTest=false;
 preyvr::dll::TrackingFrame currentFrame{};
+preyvr::dll::UiPointerVisual pointerForTest{};
+bool hackingForTest=false;
 void Check(bool ok,const char* why){if(!ok){std::cerr<<why<<'\n';std::exit(1);}}
 }
 namespace preyvr::lifecycle { void Log(std::string_view){} }
@@ -48,6 +50,14 @@ DWORD SetHeadInWallsFade(unsigned v){applied[options::WallFade]=static_cast<int>
 unsigned HeadInWallsFadeEnabled(){return static_cast<unsigned>(applied[options::WallFade]);}
 DWORD SetBodyPose(unsigned v){applied[options::BodyPose]=static_cast<int>(v);return 0;}
 unsigned BodyPoseEnabled(){return static_cast<unsigned>(applied[options::BodyPose]);}
+DWORD SetUiPokeEnabled(unsigned v){applied[options::UiPoke]=static_cast<int>(v);return 0;}
+unsigned UiPokeEnabled(){return static_cast<unsigned>(applied[options::UiPoke]);}
+DWORD SetUiPokeDistanceCm(unsigned v){applied[options::UiPokeDistance]=static_cast<int>(v);return 0;}
+unsigned UiPokeDistanceCm(){return static_cast<unsigned>(applied[options::UiPokeDistance]);}
+DWORD SetUiPokeTipMm(unsigned v){applied[options::UiPokeTip]=static_cast<int>(v);return 0;}
+unsigned UiPokeTipMm(){return static_cast<unsigned>(applied[options::UiPokeTip]);}
+DWORD SetHackingControls(unsigned v){applied[options::HackingControls]=static_cast<int>(v);return 0;}
+unsigned HackingControlsEnabled(){return static_cast<unsigned>(applied[options::HackingControls]);}
 unsigned DebugOverlayMask(){return applied[options::DebugOverlay];}
 DWORD SetSnapTurnDegrees(unsigned v){applied[options::Turn]=v;return 0;}
 unsigned SnapTurnDegrees(){return applied[options::Turn];}
@@ -70,9 +80,14 @@ unsigned UiCurveDegrees(){return applied[options::UiCurve];}
 DWORD SetUiGuideEnabled(unsigned v){applied[options::UiGuide]=v;return 0;}
 DWORD UiGuideEnabled(){return applied[options::UiGuide];}
 bool HudMenuIsOpen(){return nativeModal;}
+bool HudHackingIsOpen(){return hackingForTest;}
 bool HudMenuStateKnown(){return true;}
 bool TryGetTrackingFrame(TrackingFrame& f){f=currentFrame;return true;}
 unsigned UiPointerHand(){return 1;}
+UiPointerVisual EvaluateUiPointer(const ui::Surface* surface,const TrackingFrame& frame,unsigned hand,std::uint64_t reference,std::uint64_t,UiPointerTracker&){
+ Check(&frame==&currentFrame&&hand==1&&reference==2,"options evaluates the current controller frame");
+ return surface?pointerForTest:UiPointerVisual{};
+}
 unsigned long long HeadTrackingReferenceGeneration(){return 2;}
 DWORD RecenterHeadTracking(bool height){if(height)++calibrations;else ++recenters;
  if(supersedeViewForTest){supersedeViewForTest=false;QueueViewRequest(2,currentFrame.epoch);}
@@ -212,6 +227,16 @@ int main(){
  r.thumbstickY=-1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
  Check(grenadeEffective,"high-bit grenade edit reaches runtime");
  ApplyVrWorldOptions(false);
+ r.gripPressed=true;tick();r.gripPressed=false;tick();Check(VrOptionsPage()==10,"input tab reached");
+ r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();
+ Check(UiPokeEnabled()==1,"poke opt-in reaches adapter");
+ for(int edit=0;edit<3;++edit){r.thumbstickY=-1;tick();r.thumbstickY=0;tick();r.menuAccept=true;tick();r.menuAccept=false;tick();ServiceVrOptions();}
+ Check(UiPokeDistanceCm()==70&&UiPokeTipMm()==90&&HackingControlsEnabled()==1,"new input rows persist through high-bit mailbox");
+ const ui::Surface touchSurface{{Pose{{},{0,0,-.65f}},.6f,.4f},0};SetVrOptionsSurface(&touchSurface,2);
+ pointerForTest.active=pointerForTest.touch=true;pointerForTest.hit=ui::RayHit{.8f,.31f,0,{},true};
+ tick();pointerForTest.pressed=true;tick();pointerForTest.pressed=false;tick();ServiceVrOptions();
+ Check(UiPokeEnabled()==0,"poke contact selects settings through shared menu path");
+ pointerForTest={};
  ResetVrOptionsSession();
  // A launch override is explicit, and disappears on an ordinary subsequent load.
  SetEnvironmentVariableW(L"PREYVR_DEBUG_OVERLAY",L"3");SetEnvironmentVariableW(L"PREYVR_MUZZLE_AIM",L"1");

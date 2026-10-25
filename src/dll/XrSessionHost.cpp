@@ -134,6 +134,7 @@ struct Host {
     DXGI_FORMAT optionsFormat=DXGI_FORMAT_UNKNOWN;
     std::optional<ui::Panel> optionsPanel;
     std::uint64_t optionsReference=0;
+    std::uint64_t pokeSettings=0;
     options::Values optionsPainted{};
     unsigned optionsPage=~0u,optionsRow=~0u;
     bool optionsReady=false,optionsSaveFailed=false;
@@ -1783,6 +1784,10 @@ void ServiceXrFrame(void* renderer)
         gHost.panelSettingsGeneration=panelSettingsGeneration;
     }
     const auto panelMode=gUiPanelMode.load();
+    if(gHost.pokeSettings!=UiPokeSettingsGeneration()) {
+        gHost.pokeSettings=UiPokeSettingsGeneration();
+        gHost.menuPanel.reset();gHost.guidePanel.reset();gHost.optionsPanel.reset();
+    }
     // A delayed main-thread poll is unknown, not proof that a menu closed.
     // Preserve its presentation through a stall; pointer/gameplay input still
     // requires a fresh modal sample. Otherwise a busy frame flashes projection
@@ -1838,7 +1843,8 @@ void ServiceXrFrame(void* renderer)
         // the card and its gap used to reserve goes back to the menu instead of
         // being left empty -- which is the whole point of switching it off.
         const float stackAspect=wantGuide?1/(1/aspect+guideRatio+gapRatio):aspect;
-        auto layout=ui::FitPanel(inputHead,optical,stackAspect,2.0f,
+        const float menuDistance=UiPokeEnabled()?static_cast<float>(UiPokeDistanceCm())*.01f:2.0f;
+        auto layout=ui::FitPanel(inputHead,optical,stackAspect,menuDistance,
             static_cast<float>(gUiScalePercent.load(std::memory_order_relaxed))*.01f,margin);
         if(layout) {
             gHost.menuPanel.reset();gHost.guidePanel.reset();
@@ -2170,7 +2176,8 @@ void ServiceXrFrame(void* renderer)
             }
             // Independent fit keeps the settings escape hatch readable even if
             // the wearer makes the game's UI very large or small.
-            gHost.optionsPanel=ui::FitPanel(inputHead,optical,static_cast<float>(options::Width)/options::Height,1.5f,1.f,.68f);
+            const float optionDistance=UiPokeEnabled()?static_cast<float>(UiPokeDistanceCm())*.01f:1.5f;
+            gHost.optionsPanel=ui::FitPanel(inputHead,optical,static_cast<float>(options::Width)/options::Height,optionDistance,1.f,.68f);
             gHost.optionsReference=reference;
         }
         if(!gHost.optionsTexture) {
@@ -2247,7 +2254,7 @@ void ServiceXrFrame(void* renderer)
         const float size=pointer.pressed?.020f:.013f;
         pointerLayer(cursorLayer,point,size,size);
     }
-    if(pointer.active) {
+    if(pointer.active&&!pointer.touch) {
         const float length=cursorActive?pointer.hit->distance:.65f;
         const auto y=Rotate(pointer.aim.orientation,{0,0,-1});
         const Vec3 centre{pointer.aim.position.x+y.x*length*.5f,pointer.aim.position.y+y.y*length*.5f,

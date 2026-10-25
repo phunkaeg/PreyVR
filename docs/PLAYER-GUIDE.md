@@ -101,6 +101,13 @@ native menu is already open; `vr.options 1` is the diagnostic equivalent.
   (both off by default). Carry needs left-hand interaction. These choices persist across VR restarts;
   turning VR off withdraws their native overrides without erasing your preferences.
 - **Interface:** size, visible-area limit, panel curvature and controls guide.
+- **Input:** optional **Touch Panels** and **Controller Hacking**, both off by
+  default. Touch Panels brings menus within reach (65 cm initially). Approach
+  with the pointer controller, push the touchpoint through the panel, then pull
+  back to release. Adjust **Touch Panel Distance** and **Touchpoint Reach** to
+  suit your reach. The point is estimated from the controller aim pose; this
+  does not require optical finger tracking. Ray-and-trigger interaction still
+  works when the controller is away from the panel.
 - **Equipment:** optional body holsters, wrist status, wrist-hologram size and clear
   holster assignments. Holsters default off; the wrist status defaults on.
 - **Abilities:** psychic targeting (Original / Head / Left Controller) and the
@@ -133,6 +140,16 @@ inventory or full health does not force a heal. The slot uses an estimated body
 position and currently has no visible medkit prop. This feature and psychic
 targeting have offline/static checks; native and headset acceptance remain.
 See [implementation and acceptance checks](PSI-MEDKIT-2026-09-30.md).
+
+**Hacking:** enable Controller Hacking on the Input tab. In a hacking puzzle,
+use the **left stick** to move, then press the face button shown by Prey:
+**X/Y on the left controller, A/B on the right**. Release the stick and buttons
+on entry before starting. The native puzzle keeps its movement, collisions,
+timers and difficulty. The menu button still pauses; holding it requests pause
+before opening VR options. Pointer clicks are suppressed while hacking owns
+the controls, so they do not change its prompt mode or compete with the stick.
+This implementation has offline/static checks; native puzzle and headset
+acceptance remain. See [touch and hacking test steps](UI-TOUCH-HACKING-2026-10-25.md).
 
 **Holsters:** with a weapon equipped, bring the right controller to your right
 hip or across to your left chest, release grip, then squeeze. An empty slot stores

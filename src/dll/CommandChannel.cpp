@@ -36,6 +36,7 @@
 #include "WristLane.h"
 #include "BodyFollow.h"
 #include "UiPointer.h"
+#include "HackingLane.h"
 #include "FrameCaptureWin32.h"
 #include "InputPost.h"
 #include "MoveLane.h"
@@ -594,6 +595,22 @@ bool ExecuteDualCommand(const std::vector<std::string>& args, std::ostringstream
     return true;
 }
 
+bool ExecuteUiInput(const std::vector<std::string>& args,std::ostringstream& out)
+{
+    const auto& verb=args[0];
+    if(verb!="ui.poke"&&verb!="ui.poke.distance"&&verb!="ui.poke.tip"&&verb!="ui.hacking")return false;
+    DWORD result=0;int value=0;
+    if(args.size()>2||(args.size()==2&&(!ParseInt(args[1],value)||value<0)))result=ERROR_INVALID_PARAMETER;
+    else if(args.size()==2) {
+        if(verb=="ui.poke")result=SetUiPokeEnabled(static_cast<unsigned>(value));
+        else if(verb=="ui.poke.distance")result=SetUiPokeDistanceCm(static_cast<unsigned>(value));
+        else if(verb=="ui.poke.tip")result=SetUiPokeTipMm(static_cast<unsigned>(value));
+        else result=SetHackingControls(static_cast<unsigned>(value));
+    }
+    out<<verb<<" result="<<result<<' '<<(verb=="ui.hacking"?HackingInputReport():UiPointerReport());
+    return true;
+}
+
 // One verb, one operation. Deliberately not a name-to-export lookup: that would
 // be a call-anything primitive whose argument is a text file.
 void Execute(const std::vector<std::string>& args, std::ostringstream& out)
@@ -609,7 +626,7 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
 
     if (ExecutePose(args, out) || ExecuteCarryCommand(args, out) || ExecuteGrenadeCommand(args, out) || ExecuteArmsCommand(args, out) ||
         ExecuteWristCommand(args, out) || ExecuteBodyCommand(args, out) || ExecuteDualCommand(args, out) ||
-        ExecuteStereoCommand(args, out)) {
+        ExecuteStereoCommand(args, out) || ExecuteUiInput(args,out)) {
         return;
     }
     if (verb == "vr.options") {
