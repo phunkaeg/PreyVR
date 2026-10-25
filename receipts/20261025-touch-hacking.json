@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20261025-touch-hacking",
+  "recorded_at": "2026-10-25T05:51:14.498233+00:00",
+  "target": {
+    "name": "PreyVR touch panels and native hacking input integration, supported Steam x64 target",
+    "identity_kind": "git_commit",
+    "identity": "da68e7745080b2c02735663b2d24a19fac15b923"
+  },
+  "question": "Can touch-panel presses and controller hacking use the existing UI/input seams while preserving tracking, modal-content and delivered-input ownership in source and offline fixtures?",
+  "claim": "The supported Steam bytes and installed base/patch profiles identify DanielleHacking2 and exactly ten hacking actions, covering six Xbox bindings and four keyboard-only directions. The integrated adapter routes left stick and X/Y/A/B through normal native input, preserving native action-map filtering. Offline fixtures confirm bounded flat/cylinder poke crossing, rejection of stale/context/panel-motion discontinuities, ray/touch handoff, menu-content invalidation and bidirectional gameplay/hacking cleanup interlocks. Both optional features are saved, off by default and exposed on the Input options page. This confirms static/source and fixture contracts only.",
+  "evidence_grade": "LIVE",
+  "environment": "harness",
+  "method": "MSVC x64 Release 19.50.35729.0 with Visual Studio 18 2026 and CMake/CTest, Python 3.12 read-only supported-module/PAK verification. Actual native adapters and production options painter run with explicit external input/tracking/HUD substitutions; pure geometry/input state machines also run. Controls include corrupting a native witness, removing or adding an action-map entry, stale/context-changed samples, stationary finger vs moving panel, refused vs acknowledged cleanup, and a first face press closing the modal before a simultaneous second press. Source.patch and REPRODUCE.md retain source changes and commands. The initial harness failure was equal-QPC-timestamp fixture publications; the fixture now waits for a strictly newer real timestamp. Final combined suite passes 80/80. No game launch, process attachment, xr-sim session or headset test.",
+  "validity": "VALID",
+  "mutation": "persistent",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Full source commit, previous integration base and fetched collaborator tips are frozen. Native verifier requires Steam module SHA256 7D6E322F61B28331095A400F0BA5F09BD9A39C57BF993602285DD6ACB05311A7. Tested DLL, package and archive identities are recorded."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Native witness and bounded PAK decoder checks include deliberately corrupted-byte and action-map mutations, CRCs and Twofish known-answer validation. Fixtures compile actual adapters with documented boundary substitutions; GDI uses the actual production painter. Package checker matches all local and ZIP manifest files plus the tested DLL."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "Valid hover/crossing versus behind-entry, stale source, moved/resized surface and changed context; successful versus refused native cleanup; simultaneous faces with modal exit; complete base/patch maps versus missing/extra-action mutations. Previous offline baseline retained in the 80-test combined suite."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Offline synthetic native-boundary/graphics fixtures and static game files, not a running Prey scene."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "Persistent version-controlled source edits and a separate new local test package. No game, user VR preferences or shared runtime configuration changed. Launcher DryRun refused because another fleet game was running; it was left alone."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Final Release build and 80/80 offline tests pass; actual production options raster inspected and package/ZIP hashes match. This is source/harness health. Native/headset acceptance is not measured, and the launcher dry run was blocked by the fleet guard."
+  },
+  "limits": "No native puzzle input acceptance, pause timing, rendering/framing, inventory drag/drop, physical-controller alignment, comfort or performance measured. Default profiles do not prove custom user remaps. Touch is a selected-controller aim-tip proxy, not optical finger tracking or a new native pointing animation. Brief pokes can be refused if the game misses neutral hover. Internal stereoscopic UI-layer depth and world-behind-inventory rendering are unchanged. A successful native post does not prove the puzzle consumed it. Windows PowerShell 5.1 launcher DryRun refused while SystemShock2Remastered was running; no game was stopped or launched. A local test package is prepared, not a released or headset-approved build.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/identity.json",
+      "sha256": "017f484dda245984e5073c6f4aafe9a8ba4dc319a8cca2a4c13107afd6a54f47",
+      "role": "Exact source, supported native module, tested DLL, local archive and fetched collaborator identities"
+    },
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/steam-hacking-bindings.json",
+      "sha256": "68b4f5fc82d805d9343e2db45a2159bb7ef8153e2826d31b9a10ce45109b7fb4",
+      "role": "Native byte/token witnesses, complete base/patch binding coverage and mutation controls"
+    },
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/README.md",
+      "sha256": "2a34742e4f1f259ea40788e51874ffee88465f6932ea8e84d86cf858a1acd756",
+      "role": "Static producer/consumer evidence, context limits and source integration contract"
+    },
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/source.patch",
+      "sha256": "c81cffc722c25e82f079344c59f37a5199c387c0e8ba2a29121e9d023761f9a5",
+      "role": "Production changes and regression fixtures against the pinned integration base"
+    },
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/configure.txt",
+      "sha256": "238e51e2d5580ab82c1e876eb0c3ebd26bbe8f1b3e25c177a8e8b20a6ea1149d",
+      "role": "Actual compiler, dependency paths and build configuration"
+    },
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/build.txt",
+      "sha256": "71ae1e3d9ff568e06439f44002e5b19282cf9418cdaf69f62501380067429f11",
+      "role": "Final combined Release build after fixture and UI corrections"
+    },
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/ctest.txt",
+      "sha256": "212ec95445c065bc7d46eb13836d2b81ad8ce9cf3cf70913ec2b50e566b4dc89",
+      "role": "80-test combined offline baseline"
+    },
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/input-page.png",
+      "sha256": "5ac66dd760d9f529d6551fe5080679d2016c2450876762f000be422671ba33cf",
+      "role": "Inspected production Input-page raster"
+    },
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/options-raster.txt",
+      "sha256": "ac8ce017296752f5462a167010999171fd7ce110b3b7ca60c1cfb5065dd6257f",
+      "role": "Actual GDI painter dimensions, opaque pixels and resource ownership check"
+    },
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/REPRODUCE.md",
+      "sha256": "acf1c642c8fe2c7f997d31518debe5ad5a2b9ae8cf28e7d0cc97f0e473c73774",
+      "role": "Reproduction commands and evidence boundaries"
+    },
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/package-manifest.json",
+      "sha256": "437fe2de755fef95a628082f4957dea34d3edbadc431eccd9f3c93082f7d2f98",
+      "role": "Separate local development package file identities and launch profile"
+    },
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/package-check.txt",
+      "sha256": "5fb2dd5e41257d472a9ee9d6474fe229b33db9d35a9fcb06ce3e17ff9742b229",
+      "role": "Every packaged and archived manifest file matches; DLL matches tested Release"
+    },
+    {
+      "path": "docs/evidence/ui-hacking-2026-10-25/preflight-refused-othergame.txt",
+      "sha256": "3aed3eb7d5f57ba19b100441990be2a27a9309976fa486bd97e02e6547722215",
+      "role": "Launcher fleet guard refusal; no game run or launch acceptance claimed"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Consolidate and push collab/integration, then perform the short player acceptance checklist once the fleet runtime is free. Validate actual native hacking controls and pause/resume, reachable flat/curved touch panels, inventory capture, tracking loss and return to gameplay. Candidate for scoped UI/input ownership playbook review; no bottleneck clearance or headset approval."
+}

@@ -1,0 +1,6 @@
+PASS: every manifest file matches local package and archive bytes.
+PASS: packaged DLL matches the tested Release DLL.
+DLL SHA256: 
+7F094FD50B385C3F16DCD2C843180A41B13100A9E8BC49BB6E6F48D2D6D1C125
+Windows PowerShell 5.1 DryRun refused: SystemShock2Remastered is running.
+No game was launched or closed; existing fleet ownership was respected.

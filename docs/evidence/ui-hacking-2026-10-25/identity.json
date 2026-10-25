@@ -1,0 +1,25 @@
+{
+  "observation": "Static/native-asset and offline adapter/graphics fixtures only; no game launch or attachment",
+  "integrationBase": "00e04ca7d7fd13bb7d84a48fa5a46043809cb10b",
+  "dll": {
+    "bytes": 2279424,
+    "path": "D:\\Dev Debug\\PreyVR\\build\\ui-touch-hacking-20261025\\Release\\PreyVR.dll",
+    "sha256": "7f094fd50b385c3f16dcd2c843180a41b13100a9e8bc49bb6e6f48d2d6d1c125"
+  },
+  "settings": "Both new features default off. Local package retains previous 2016x2160 launch profile and saved stereo choice; shared runtime unchanged.",
+  "archive": {
+    "sha256": "29551ff145a74e2b86f743b8e7fbe04859b00fce587b876a621dded468e4c44f",
+    "path": "D:/Dev Debug/PreyVR/build/packages/PreyVR-touch-hacking-test-20261025.zip"
+  },
+  "targetSha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "collaboratorRemoteTips": [
+    "origin/collab/integration 00e04ca7d7fd13bb7d84a48fa5a46043809cb10b 2026-10-23 17:42:37 +1100",
+    "origin/jordi/polishing 1b985d1c4b16aeb2912fa8ba651170148b7133e4 2026-10-16 18:18:26 +0200",
+    "origin/jordi/robustness b07a056c047741257a1443ee53fe4a7724e032b5 2026-10-17 23:58:58 +0200",
+    "origin/jordi/robustness-body 16a69ed3d9fa98803ce9562953122335bcd699d9 2026-10-17 23:58:58 +0200",
+    "origin/jordi/stereo-dual-test 4e473a97adf97e6d4c7a8ff8ea1d8dcbb9de5de5 2026-10-17 14:58:30 +0200"
+  ],
+  "sourceCommit": "da68e7745080b2c02735663b2d24a19fac15b923",
+  "recorded": "2026-10-25T05:53:24.4680500Z",
+  "launcherPreflight": "Refused by fleet guard because SystemShock2Remastered was running; no game stopped or launched"
+}
