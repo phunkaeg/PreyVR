@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "project": "PreyVR",
+  "run_id": "20261025-native-flight",
+  "recorded_at": "2026-10-25T09:51:30.380997+00:00",
+  "target": {
+    "name": "PreyVR native zero-g flight controls and scoped Steam acceleration basis",
+    "identity_kind": "git_commit",
+    "identity": "62b4792ded0e90879f6861207155e61b8438156a"
+  },
+  "question": "Can the supported Steam zero-g movement path accept headset-aligned native flight requests through a proved rotation/input contract with scoped cleanup in source and offline fixtures?",
+  "claim": "Steam instructions prove state 9 dispatch to native ZeroG update, the complete player/FSM/input/entity receiver flow, ascent/descent signs, concrete CEntity world-rotation getter at slot +0x150 and the boost/brake input producers and consumers. The implementation limits its quaternion override to the single acceleration read and retains the original getter for every other caller. Production-adapter fixtures confirm coherent head-relative 3D steering, held-entry neutral quarantine, exact caller/entity/context gating, native-request cleanup and debt after a possible setter write, modal/ground/hacking handoff, replacement-player refusal and live cinematic gating. This confirms static/source and harness contracts, not native gameplay acceptance.",
+  "evidence_grade": "LIVE",
+  "environment": "harness",
+  "method": "MSVC 19.50 x64 Release with Visual Studio 18 2026, CMake/CTest and Python 3.12 offline PE/PAK checks. Local EGS/PDB exports supplied search candidates; masked prefixes located Steam bodies, then actual Steam instructions, dispatch data, constructor/vtable, numerical constants and installed base/patch profiles established the contract. No fixed EGS-to-Steam address delta was used. Ghidra preflight found no running instance. The verifier checks actual C++ gate arrays and rejects corrupted concrete-callee and field-gate controls. Pure state/basis tests plus the actual production adapter run with explicit native/tracking/HUD boundary substitutions; the native bridge is not called on fake memory. Final Release build and 82/82 combined offline tests pass. Production World-page raster inspected. Every package/ZIP manifest file matches the tested binaries. Reproduction commands and exact source/DLL identities are frozen. No game, injection, xr-sim session, launcher run or headset test.",
+  "validity": "VALID",
+  "mutation": "persistent",
+  "gates": {
+    "identity": {
+      "status": "PASS",
+      "reason": "Pinned complete source commit, integration base and tested DLL/package hashes. Native verifier requires Steam PreyDll.dll SHA256 7D6E322F61B28331095A400F0BA5F09BD9A39C57BF993602285DD6ACB05311A7, x64 PE and explicit image-base/RVA conventions."
+    },
+    "instrument": {
+      "status": "PASS",
+      "reason": "Target instruction/dispatch/vtable/constant checks, corrupt callee/field negative controls and bounded PAK reader KAT/CRC validation. Adapter fixtures execute production code with named substituted boundaries; GDI raster uses the production painter. Package checker compares all directory/ZIP files and the tested DLL."
+    },
+    "control": {
+      "status": "PASS",
+      "reason": "State 9 versus gravity shaft/unknown owner; valid versus unrelated getter caller/entity and changed epoch/reference; neutral versus held entry; accepted versus refused altitude cleanup; setter failure after write with refused rollback; matching versus mismatched player pose; fresh focus versus cleared tracking; live cinematic flag versus stale analog observation. Numerical pitch/yaw and native w-first quaternion checks are independent expected outputs."
+    },
+    "scene": {
+      "status": "NA",
+      "reason": "Static files and synthetic native-boundary/graphics fixtures, not a running Prey zero-g scene."
+    },
+    "restore": {
+      "status": "NA",
+      "reason": "Persistent version-controlled changes and a separate new local test package. No game process, user VR preference or shared runtime configuration was changed. Older test packages were retained."
+    }
+  },
+  "fact_verdict": "CONFIRM",
+  "baseline": {
+    "verdict": "PASS",
+    "reason": "Final integrated Release build, static contract verifier and 82/82 offline tests pass. Packaged and archived file hashes match. This baseline concerns source/harness health; native launch, input acceptance, rendering, comfort and performance remain unmeasured."
+  },
+  "limits": "No actual hook execution, native flight acceptance, save-transition behavior, stance/camera-height behavior, headset alignment/comfort or performance measured. Shipping profile bindings are not proof of custom user remaps. Ordinary zero-g state 9 is supported; gravity shafts and other movement states retain their existing paths. Controller-directed flight and physical surface anchoring/push-off are not implemented. Native input/physics still owns acceleration, speed limits, inertia and collision; helper return success is not proof that the next simulation accepted a request. Steering refuses stale or mismatched metadata. Local package is a development test build, not a release or headset-approved build.",
+  "artifacts": [
+    {
+      "path": "docs/evidence/native-flight-2026-10-25/identity.json",
+      "sha256": "bad06931bcad489ed279c2123ef45c63014d15a482a050f712fcdf471cd22e6a",
+      "role": "Pinned source, integration base, supported game module, tested DLL and local archive identities"
+    },
+    {
+      "path": "docs/evidence/native-flight-2026-10-25/native-contract.json",
+      "sha256": "94bc02c71beb4cb63ec2f8bfdd4e9f758ab668285f8a4f79f517a0d69a81b682",
+      "role": "Steam byte/table/receiver/vertical-sign/native-gate and installed binding proofs with negative controls"
+    },
+    {
+      "path": "docs/evidence/native-flight-2026-10-25/configure.txt",
+      "sha256": "055e2230bdeea606f40642db694eef374ea709ed9343f736cc4d80f755554496",
+      "role": "Exact compiler, generator and configured dependencies"
+    },
+    {
+      "path": "docs/evidence/native-flight-2026-10-25/build.txt",
+      "sha256": "94784a44c45b907961e29d8a8c240c1da5d5138370ace384154b78aacb919888",
+      "role": "Final combined Release build"
+    },
+    {
+      "path": "docs/evidence/native-flight-2026-10-25/ctest.txt",
+      "sha256": "ee963374af8c820746572918d72045cebbdb0730eb09edd93990bf07115ab948",
+      "role": "82-test combined offline baseline"
+    },
+    {
+      "path": "src/dll/FlightNative.cpp",
+      "sha256": "39fa6a47c7e95c472f2944b5601f1c2596cce95b5003c8acabcb069e4e57df97",
+      "role": "Actual native runtime gates, concrete getter detour, receiver checks and boost/brake adapters"
+    },
+    {
+      "path": "src/dll/FlightLane.cpp",
+      "sha256": "c95f7d96fec9c85e4c5dd0486febc57ebf9e8eaaace22749fb4381e50d493dde",
+      "role": "Actual scoped production adapter, handoff and cleanup-debt implementation exercised by fixture"
+    },
+    {
+      "path": "src/common/NativeFlight.cpp",
+      "sha256": "d11db35b432f2ef5731f63aec675f61a3d22f75d1ce0f26c7760c324ccc9b9d6",
+      "role": "Native flight control proposals/acknowledgements and quaternion basis conversion"
+    },
+    {
+      "path": "tests/FlightRuntimeTests.cpp",
+      "sha256": "e285ea22b8eb33d76e9d31f478e0842021c02b2947bc8eff32ff1456deb3051d",
+      "role": "Actual adapter fixture with substituted native/publication boundaries and failure controls"
+    },
+    {
+      "path": "tests/NativeFlightTests.cpp",
+      "sha256": "b0f0b2ea882afe83651b69c8febd1b0990de1d8d1d59006fbeea439e779f0236",
+      "role": "Pure temporal state, delivery acknowledgement and numerical 3D basis controls"
+    },
+    {
+      "path": "tools/re/verify_native_flight.py",
+      "sha256": "e1dabeb8f9234a99d3620fb209d2d2fb63cb7442820cdb438c526cb4abba28d5",
+      "role": "Reproducible read-only Steam proof and corruption controls"
+    },
+    {
+      "path": "docs/evidence/native-flight-2026-10-25/world-page.png",
+      "sha256": "5ac595cfc98926ec81bd14e04285d3fef3ae7ea274949a568a7c86bc4ae8300f",
+      "role": "Inspected actual World options page with default-off flight row"
+    },
+    {
+      "path": "docs/evidence/native-flight-2026-10-25/REPRODUCE.md",
+      "sha256": "22fd23500390c26a94df995ec86ee35cd7e107607fc7b4c875fc28f9dc81b16c",
+      "role": "Commands, boundary substitutions and proof limits"
+    },
+    {
+      "path": "docs/evidence/native-flight-2026-10-25/package-manifest.json",
+      "sha256": "982a129971ea07a81ba5bc51d28e21501ae8e16e9627bebb6b98bfa2ec705a3a",
+      "role": "Separate local development package file identities"
+    },
+    {
+      "path": "docs/evidence/native-flight-2026-10-25/package-check.txt",
+      "sha256": "40571db4be85ec601751d51de34aee1bffb4db8a9076ba5a0b4455c9180456cf",
+      "role": "All local/ZIP manifest entries and tested DLL agree"
+    },
+    {
+      "path": "docs/NATIVE-ZERO-G-2026-10-25.md",
+      "sha256": "cec185e5cc8681f36d465bf7f527eafcf9eac1d4cb3d6ef8a10016e73919f300",
+      "role": "Producer/consumer investigation, input mapping and next native/headset acceptance checklist"
+    }
+  ],
+  "routes": [],
+  "do_not_repeat": [],
+  "next_action": "Push the consolidated integration source, then test ordinary EVA/GUTS flight in the game: head/body basis, A/B ascent/descent and braking, Y boost/release, menus, recenter, tracking loss, landing, save replacement and crouched entry. Establish native/headset acceptance before adding surface grab/push-off. Candidate for scoped native-input/consumer-basis playbook review; no bottleneck clearance or runtime promotion."
+}

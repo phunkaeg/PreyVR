@@ -1,0 +1,4 @@
+PASS: every manifest file matches local package and ZIP bytes.
+PASS: packaged DLL matches the tested Release DLL.
+DLL SHA256: 8A8FAE3E90B9EE6FE9816C1B0EB6D8EA89C98B2EAAADB33A87F947F93F1505A0
+No game or launcher dry run was started for this static task.

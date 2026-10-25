@@ -1,0 +1,17 @@
+{
+  "package": {
+    "archiveSha256": "f1f589e4fb4b828190054ea652a5203feb1df8d8ec592095aec36d39f27f2bbd",
+    "path": "D:/Dev Debug/PreyVR/build/packages/PreyVR-native-flight-test-20261025"
+  },
+  "observation": "Static Steam instructions/assets and offline production-adapter/pure/graphics fixtures; no Prey process, xr-sim session or headset test",
+  "supportedPreyDll": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "settings": "Flight default OFF. New local package retains the prior 2016x2160 launch seed and saved stereo preference; user settings and shared XR configuration unchanged.",
+  "recorded": "2026-10-25T09:56:54.8775002Z",
+  "integrationBase": "f6a22851a89125a80931e804134f3f2c173c2035",
+  "sourceCommit": "62b4792ded0e90879f6861207155e61b8438156a",
+  "dll": {
+    "path": "D:\\Dev Debug\\PreyVR\\build\\native-flight-20261025\\Release\\PreyVR.dll",
+    "sha256": "8a8fae3e90b9ee6fe9816c1b0eb6d8ea89c98b2eaaadb33a87f947f93f1505a0",
+    "bytes": 2293248
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "files": [
+    {
+      "bytes": 655360,
+      "path": "openxr_loader.dll",
+      "sha256": "cd5b35fed75714c68a0910e9f94fc2140cf2d564493185f147890c5647f0f1c5"
+    },
+    {
+      "bytes": 277504,
+      "path": "preyvr_injector.exe",
+      "sha256": "73fa2207d260e588a39c960273f4d0d563a426493d28ff87148845d48c37ec5c"
+    },
+    {
+      "bytes": 2293248,
+      "path": "PreyVR.dll",
+      "sha256": "8a8fae3e90b9ee6fe9816c1b0eb6d8ea89c98b2eaaadb33a87f947f93f1505a0"
+    },
+    {
+      "bytes": 368,
+      "path": "PreyVR.json",
+      "sha256": "4b9ee6888b1cc4d833b597e4a723512b480a17797521699ad6ac8198b2a37854"
+    },
+    {
+      "bytes": 21670,
+      "path": "README.md",
+      "sha256": "01ca8fe3f16f74742c1eebdfe0694448c4caf7e0463cfc2f3bb852e4603d8753"
+    },
+    {
+      "bytes": 6214,
+      "path": "Send-PreyVR.ps1",
+      "sha256": "0099bc22f1669fa3702b4ad9ad61f0fbaa0978e26374a1eaae3cea2579f9e0e5"
+    },
+    {
+      "bytes": 93,
+      "path": "Start Prey VR.cmd",
+      "sha256": "2fb0e50199b90dc8abd3b1c9afc0cb6054985b5573ee5356e47c63c54aab064e"
+    },
+    {
+      "bytes": 19620,
+      "path": "Start-PreyVR.ps1",
+      "sha256": "73521beb93e6973d2e0b7650c2fd43b8442450dec7865ecf8f7ef8f53b70d684"
+    },
+    {
+      "bytes": 96,
+      "path": "Tune Prey VR.cmd",
+      "sha256": "8e62909d3ee890909ce4bebdcc181a5bf2e081c07bd713edf567523295757063"
+    },
+    {
+      "bytes": 9389,
+      "path": "VALIDATION.md",
+      "sha256": "cec185e5cc8681f36d465bf7f527eafcf9eac1d4cb3d6ef8a10016e73919f300"
+    },
+    {
+      "bytes": 4446,
+      "path": "licenses/MinHook.txt",
+      "sha256": "4f21f857550d7be854da6ea5f2da4e6775ca4e3fbb535e4f3d961c47d0bf3335"
+    },
+    {
+      "bytes": 11560,
+      "path": "licenses/OpenXR.txt",
+      "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+    }
+  ],
+  "built": "2026-10-25T09:54:56.7539235Z",
+  "supportedPreyDll": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "sourceCommit": "62b4792ded0e90879f6861207155e61b8438156a"
+}
