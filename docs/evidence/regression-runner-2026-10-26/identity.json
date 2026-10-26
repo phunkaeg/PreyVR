@@ -1,0 +1,34 @@
+{
+  "recorded_at": "2026-10-26T01:36:30.711700+00:00",
+  "source_commit": "90aa2730e44d2464fc239345ae7c92049eba1451",
+  "integration_base": "bbeb33e8cad6e3550081988d40a85180c68bd068",
+  "environment": "harness; source and offline fixtures only",
+  "game_run": false,
+  "xrsim_session_run": false,
+  "headset_test": false,
+  "supported_game_module_sha256": "7d6e322f61b28331095a400f0ba5f09bd9a39c57bf993602285dd6acb05311a7",
+  "dll": {
+    "path": "D:\\Dev Debug\\PreyVR\\build\\regression-runner-20261026\\Release\\PreyVR.dll",
+    "bytes": 2323968,
+    "sha256": "056f4001acc0c5091a867219d193c4623dd74364826006193e04c19d67098988"
+  },
+  "baseline": "Release build; 87/87 CTest targets; final 4/4 focused targets; 17 runner unit cases; default plan and actual serializer JSON checks pass",
+  "implementation": "Attach-only runner, four state-aware scenarios, per-eye phase captures and baseline comparisons, nonce/PID/build/session checks, one-shot release acknowledgement and actual camera-motion requirements, cleanup/disarm and preference readback",
+  "limits": "No real process preflight, live native command/capture, UI content acceptance, measured wall fixture, physical collision coverage, stereo quality, comfort or performance acceptance. Default wall coordinates are a template. Native acquisition/dispatch counts are not complete gameplay acceptance. Reported optics and XR-time bracketing are not proof of the rendered camera matrices. No game, shared runtime, user preferences or older test package changed.",
+  "graph": {
+    "nodes": 10407,
+    "links": 20666,
+    "partial_parse_warnings": 3,
+    "python_not_staged": true
+  },
+  "artifacts": {
+    "configure.txt": "5cea3104803abe42480bce073b30db4a4a8ffd3c47ebe511cfafc98c16780c88",
+    "build.txt": "a24223b55a27cd7d233bb8d8cab75a40ba964066f07c83ef3f6d2743bb48bb20",
+    "ctest.txt": "9b788c468b471ba4649dbe39dccb591a90b91e9a6f986af29148701d1f4a1589",
+    "focused.txt": "27ecb7445875fed4c05f9d99b3d324b3e8aa515383fd9c7799cdcf8bb980873e",
+    "runner-tests.txt": "b3239747bc0fa05b9d5fb3ee86e7a17a8033c2960f1b0186fbd19c8ad42ea1d7",
+    "plan.json": "d4f091f12ad5831383d67ab98ed514ee6114e4da25c0f49ebb8290500c5d169b",
+    "probe-fixture.json": "6fc288cacb1bff4a48d0c703c41c4456c2f3c9937bcbb01817bdce57cfdd8198",
+    "graph.txt": "f26ae3ba4545b2c5c6132a2426fa61d62507a37b50e9f84b764242f8abfa1b22"
+  }
+}

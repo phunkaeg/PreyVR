@@ -1,0 +1,22 @@
+test_baseline_preserves_artifact_hashes_and_checks_fixture (__main__.RunnerTests.test_baseline_preserves_artifact_hashes_and_checks_fixture) ... ok
+test_cleanup_disarms_push_authority_before_releasing_input (__main__.RunnerTests.test_cleanup_disarms_push_authority_before_releasing_input) ... ok
+test_cleanup_failure_overrides_green_scenarios (__main__.RunnerTests.test_cleanup_failure_overrides_green_scenarios) ... ok
+test_counts_alone_cannot_pass_zero_g_motion (__main__.RunnerTests.test_counts_alone_cannot_pass_zero_g_motion) ... ok
+test_dead_session_or_wrong_identity_never_drives_input (__main__.RunnerTests.test_dead_session_or_wrong_identity_never_drives_input) ... ok
+test_empty_stale_or_black_capture_is_failure (__main__.RunnerTests.test_empty_stale_or_black_capture_is_failure) ... ok
+test_failed_candidate_still_gets_partial_before_after_review (__main__.RunnerTests.test_failed_candidate_still_gets_partial_before_after_review) ... ok
+test_fixture_rejects_nonfinite_huge_motion_and_duplicate_scenarios (__main__.RunnerTests.test_fixture_rejects_nonfinite_huge_motion_and_duplicate_scenarios) ... ok
+test_held_submissions_cannot_stand_in_for_delivered_push (__main__.RunnerTests.test_held_submissions_cannot_stand_in_for_delivered_push) ... ok
+test_lease_does_not_overwrite_another_owner (__main__.RunnerTests.test_lease_does_not_overwrite_another_owner) ... ok
+test_no_region_wall_or_native_flight_cannot_pass (__main__.RunnerTests.test_no_region_wall_or_native_flight_cannot_pass) ... ok
+test_plan_has_no_backend_or_live_command (__main__.RunnerTests.test_plan_has_no_backend_or_live_command) ... ok
+test_png_validator_rejects_truncation_and_bad_crc (__main__.RunnerTests.test_png_validator_rejects_truncation_and_bad_crc) ... ok
+test_powershell_entry_and_bridge_parse_offline (__main__.RunnerTests.test_powershell_entry_and_bridge_parse_offline) ... ok
+test_toggle_grip_detaches_with_second_squeeze (__main__.RunnerTests.test_toggle_grip_detaches_with_second_squeeze) ... ok
+test_unprepared_initial_menu_is_blocked_without_closing_it (__main__.RunnerTests.test_unprepared_initial_menu_is_blocked_without_closing_it) ... ok
+test_whole_flow_captures_both_eyes_and_restores_settings (__main__.RunnerTests.test_whole_flow_captures_both_eyes_and_restores_settings) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 2.918s
+
+OK

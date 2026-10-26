@@ -1,0 +1,13 @@
+Test project D:/Dev Debug/PreyVR/build/regression-runner-20261026
+    Start 12: two_handed_aim
+1/4 Test #12: two_handed_aim ...................   Passed    0.05 sec
+    Start 63: regression_probe
+2/4 Test #63: regression_probe .................   Passed    0.07 sec
+    Start 64: surface_grab_runtime
+3/4 Test #64: surface_grab_runtime .............   Passed    0.63 sec
+    Start 82: regression_runner
+4/4 Test #82: regression_runner ................   Passed    3.67 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Total Test time (real) =   4.43 sec

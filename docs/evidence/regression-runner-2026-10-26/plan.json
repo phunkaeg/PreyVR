@@ -1,0 +1,49 @@
+{
+  "mode": "PLAN_ONLY",
+  "launches_game": false,
+  "writes_commands": false,
+  "fixture": "prepared-long-weapon-zero-g-wall",
+  "scenarios": [
+    {
+      "name": "menu",
+      "prerequisite": "fresh gameplay",
+      "captures": [
+        "before navigation",
+        "after down",
+        "after up",
+        "closed"
+      ]
+    },
+    {
+      "name": "inventory",
+      "prerequisite": "fresh gameplay",
+      "captures": [
+        "before open",
+        "panel open",
+        "after tab",
+        "closed"
+      ]
+    },
+    {
+      "name": "two_hand",
+      "prerequisite": "fresh gameplay; two_hand also requires supported long-weapon geometry",
+      "captures": [
+        "before squeeze",
+        "attached",
+        "detached"
+      ]
+    },
+    {
+      "name": "zero_g",
+      "prerequisite": "fresh gameplay; zero_g also requires ordinary state9 and fixed geometry within reach",
+      "captures": [
+        "before grab",
+        "anchored",
+        "after pull",
+        "before push",
+        "after push",
+        "menu cancelled"
+      ]
+    }
+  ]
+}
