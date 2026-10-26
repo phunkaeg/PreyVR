@@ -1,5 +1,10 @@
 # Headless testing
 
+For scripted **in-game** xr-sim visual regressions, see
+[the attach-only regression runner](REGRESSION-RUNNER.md). Its default mode is
+plan-only; offline fixtures cover its orchestration and captures without
+launching Prey. Running scenarios against Prey is a separate authorized step.
+
 The default engineering loop must finish without launching Prey, loading OpenXR, or wearing a headset:
 
 ```powershell

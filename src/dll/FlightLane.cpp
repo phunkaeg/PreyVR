@@ -70,6 +70,8 @@ DWORD SetNativeFlightControls(unsigned value) {
 unsigned NativeFlightControlsEnabled(){return flightEnabled.load();}
 bool NativeFlightSessionActive(){return flightActive.load();}
 std::uint64_t NativeFlightContextGeneration(){return flightGeneration.load();}
+int NativeFlightObservedState(){return nativeState.load();}
+DWORD NativeFlightObservedOwnerError(){return flightOwnerError.load();}
 void SetNativeFlightActive(bool value){if(flightActive.exchange(value)!=value)flightGeneration.fetch_add(1);}
 bool NativeFlightOwnsFaces(){return facesOwned.load();}
 bool NativeFlightCleanupPending(){return flightCleanup.load();}

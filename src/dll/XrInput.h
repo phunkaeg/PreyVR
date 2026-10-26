@@ -75,6 +75,7 @@ void UpdateXrInput(void* sessionHandle, void* spaceHandle, long long predictedDi
 // input into the engine, so it is enabled deliberately like every other write
 // this mod performs.
 void SetMenuNavigation(unsigned int enabled);
+bool MenuNavigationEnabled();
 unsigned long long MenuNavigationActionCount();
 // Suppresses navigator output unless a menu is actually open. On by default:
 // without it the right stick changes weapons during play, because the taps the

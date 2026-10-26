@@ -1,5 +1,6 @@
 #pragma once
 #include "preyvr/VrMath.h"
+#include <optional>
 
 namespace preyvr::twohand {
 // Engine axes, metres. Endpoints are relative to the primary wrist in the
@@ -21,6 +22,9 @@ struct Output {
     bool held = false;
     bool snapSupport = true;
 };
+// Read-only harness placement hint: midpoint of the native support region,
+// converted from engine world into raw OpenXR tracking coordinates.
+std::optional<Vec3> GripTargetXr(const Input&,Vec3 cameraCentre,Vec3 headXr,float playYaw);
 class Solver {
 public:
     Output Update(const Input& input);

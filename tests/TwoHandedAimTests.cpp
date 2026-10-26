@@ -96,5 +96,12 @@ int main() {
         Input g=Base();g.region=far;g.support.position={qbeam.x,qbeam.y-.12f,qbeam.z};Solver s2;auto o=Hold(s2,g);
         Check(o.held&&Near(o.socket,g.support.position)&&Near(Rotate(o.orientation,{0,1,0}),{0,1,0}),"behind-foregrip grab holds without an aim jump");
     }
+    {
+        Input i=Base();i.primary={10,20,30};i.visualPrimaryOffset={0,.1f,0};i.region={{0,.3f,0},{0,.5f,0},.1f};
+        auto p=GripTargetXr(i,{10,20,30},{1,2,3},1.57079632679f);
+        Check(p&&Near(*p,{1.5f,2,3}),"foregrip hint inverts translated 90-degree world basis into raw XR once");
+        i.usable=false;Check(!GripTargetXr(i,{10,20,30},{1,2,3},0),"unusable native region has no harness target");
+        i.usable=true;i.primary.x=std::numeric_limits<float>::quiet_NaN();Check(!GripTargetXr(i,{},{},0),"nonfinite placement hint refused");
+    }
     std::cout<<"Two-handed aim geometry, lifecycle and barrel integration passed\n";
 }

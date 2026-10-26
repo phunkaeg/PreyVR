@@ -194,6 +194,7 @@ bool HudHackingIsOpen();
 unsigned long long HudMenuEpoch();
 bool HudGameplayInputAllowed();
 unsigned long long HudMenuStateSampleCount();
+unsigned long long HudVisibleModalMask(); // diagnostic only; require HudMenuStateKnown()
 
 unsigned long long HudElementPointer();
 unsigned long long HudCallCount();

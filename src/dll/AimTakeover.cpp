@@ -526,6 +526,14 @@ unsigned long long AimSamplePublishedCount()
 bool EnsureGameplayPoseObservation() { return Install(); }
 
 void PublishSupportGripGeometry(const SupportGripGeometry& geometry) { gSupportGeometry.Publish(geometry); }
+bool TryGetSupportGripTargetXr(Vec3& target) {
+    GameplayPoseFrame frame{};twohand::Input input{};
+    if(!TryGetGameplayPoseFrame(frame)||!frame.cameraCentreValid||
+       !FreshSample(MonotonicNanoseconds(),frame.publishedNs,100000000ull)||!gSupportInput.TryRead(input)||!input.usable||
+       input.owner!=frame.weaponGeneration||input.reference!=frame.referenceGeneration||input.epoch!=frame.tracking.epoch)return false;
+    const auto point=twohand::GripTargetXr(input,frame.cameraCentre,frame.tracking.head.position,frame.yaw);
+    if(!point)return false;target=*point;return true;
+}
 DWORD SetTwoHandedAim(unsigned int enabled) {
     if(enabled>1) return 1;
     gTwoHandEnabled.store(enabled!=0);++gTwoHandReset;

@@ -8,6 +8,8 @@ DWORD SetNativeFlightControls(unsigned enabled);
 unsigned NativeFlightControlsEnabled();
 bool NativeFlightSessionActive();
 std::uint64_t NativeFlightContextGeneration();
+int NativeFlightObservedState();
+DWORD NativeFlightObservedOwnerError();
 void SetNativeFlightActive(bool active);
 void PrepareNativeFlightInput();
 void DrainNativeFlightInput();

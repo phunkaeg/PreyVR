@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "name": "prepared-long-weapon-zero-g-wall",
+  "description": "Load an ordinary zero-g save with a supported long weapon and the free left hand near a fixed wall. Coordinates are a starting template, not a verified save fixture.",
+  "head": [0, 1.65, 0],
+  "left": [-0.2, 1.35, -0.35],
+  "right": [0.2, 1.35, -0.35],
+  "headYpr": [0, 0, 0],
+  "rightYpr": [0, 0, 0],
+  "zeroG": {
+    "leftAtWall": [-0.2, 1.35, -0.35],
+    "stroke": [0, 0, -0.08],
+    "durationMs": 200,
+    "minCameraMotion": 0.005,
+    "note": "Set leftAtWall within 10 cm of known fixed geometry. Stroke must point into that wall in raw XR coordinates; the expected body motion is opposite it. Actual capture and native submission are required."
+  }
+}

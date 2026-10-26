@@ -476,6 +476,7 @@ unsigned long long MenuNavigationActionCount()
 {
     return gMenuActions.load(std::memory_order_relaxed);
 }
+bool MenuNavigationEnabled(){return gMenuNavigation.load(std::memory_order_acquire);}
 
 void InvalidateTrackingSamples() { gTrackingEpoch.fetch_add(1); gTrackingFrame.Clear(); InvalidateCarryMotion(); }
 

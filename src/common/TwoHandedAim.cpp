@@ -1,4 +1,5 @@
 #include "preyvr/TwoHandedAim.h"
+#include "preyvr/StereoCamera.h"
 #include <algorithm>
 #include <cmath>
 
@@ -35,6 +36,14 @@ bool ValidInput(const Input& i) {
         Finite(i.visualPrimaryOffset)&&Valid(i.aim.orientation)&&Valid(i.support.orientation)&&
         std::isfinite(i.squeeze)&&i.squeeze>=0&&i.squeeze<=1&&std::isfinite(i.dt)&&i.dt>0&&i.dt<=.2f;
 }
+}
+std::optional<Vec3> GripTargetXr(const Input& input,Vec3 cameraCentre,Vec3 headXr,float yaw) {
+    if(!input.usable||!Finite(cameraCentre)||!Finite(headXr)||!std::isfinite(yaw)||!Finite(input.primary)||
+       !Finite(input.visualPrimaryOffset)||!Finite(input.region.start)||!Finite(input.region.end)||!Valid(input.aim.orientation))return {};
+    const auto world=Add(Add(input.primary,input.visualPrimaryOffset),Rotate(input.aim.orientation,Mul(Add(input.region.start,input.region.end),.5f)));
+    const auto local=Add(Rotate(stereo::YawQuaternion(-yaw),Sub(world,cameraCentre)),stereo::ToEngineSpace(headXr));
+    const Vec3 target{local.x,local.z,-local.y};const auto delta=Sub(target,headXr);
+    return Finite(target)&&Dot(delta,delta)<4.f?std::optional<Vec3>{target}:std::nullopt;
 }
 bool ClosestGrip(const Input& i,Vec3& point) {
     if(!ValidInput(i)||!Finite(i.region.start)||!Finite(i.region.end)||

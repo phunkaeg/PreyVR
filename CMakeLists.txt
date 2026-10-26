@@ -183,6 +183,7 @@ if(PREYVR_BUILD_SMOKE_DLL AND WIN32)
         src/dll/FlightNative.cpp
         src/dll/SurfaceGrabLane.cpp
         src/dll/SurfaceGrabNative.cpp
+        src/dll/RegressionProbe.cpp
         src/dll/InventoryPointerCapture.cpp
         src/dll/CameraEditHook.cpp
         src/dll/ConsoleBridgeWin32.cpp
@@ -641,6 +642,11 @@ if(PREYVR_BUILD_TESTS)
         target_link_libraries(preyvr_flight_runtime_tests PRIVATE preyvr_core)
         preyvr_enable_warnings(preyvr_flight_runtime_tests)
         add_test(NAME flight_runtime COMMAND preyvr_flight_runtime_tests)
+        add_executable(preyvr_regression_probe_tests tests/RegressionProbeTests.cpp)
+        target_compile_definitions(preyvr_regression_probe_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+        target_link_libraries(preyvr_regression_probe_tests PRIVATE preyvr_core)
+        preyvr_enable_warnings(preyvr_regression_probe_tests)
+        add_test(NAME regression_probe COMMAND preyvr_regression_probe_tests)
         foreach(surface_test Runtime Transaction)
             string(TOLOWER "${surface_test}" surface_lower)
             add_executable(preyvr_surface_grab_${surface_lower}_tests tests/SurfaceGrab${surface_test}Tests.cpp)
@@ -756,6 +762,12 @@ if(PREYVR_BUILD_TESTS)
         )
     endif()
 
+    find_package(Python3 3.10 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME regression_runner COMMAND "${Python3_EXECUTABLE}" -E -B "${CMAKE_CURRENT_SOURCE_DIR}/tests/RegressionRunnerTests.py")
+    else()
+        message(STATUS "Python 3.10+ unavailable: regression_runner offline tests not registered")
+    endif()
     find_program(PREYVR_POWERSHELL_EXECUTABLE NAMES pwsh powershell)
     if(PREYVR_POWERSHELL_EXECUTABLE)
         add_test(NAME launcher_resolution COMMAND "${PREYVR_POWERSHELL_EXECUTABLE}"

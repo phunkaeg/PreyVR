@@ -148,6 +148,7 @@ void FinishSurfaceGrabVelocity(std::uint64_t token,bool success){
     if(!success){fault=true;++refused;lastError=ERROR_FUNCTION_FAILED;return;}
     ++submitted;if(reserved.load()==token)deliveredRelease=token;
 }
+SurfaceGrabCounters ReadSurfaceGrabCounters(){return {captures.load(),pushes.load(),submitted.load(),cancelled.load(),refused.load(),owns.load(),fault.load(),ownerError.load(),deliveredRelease.load()};}
 std::string SurfaceGrabReport(){std::ostringstream s;s<<"enabled="<<enabled.load()<<" owns="<<owns.load()<<" fault="<<fault.load()<<" error="<<lastError.load()
     <<" reachCm="<<reach.load()<<" strength="<<strength.load()<<" limitCm="<<limit.load()<<" captures="<<captures.load()<<" pushes="<<pushes.load()
     <<" submitted="<<submitted.load()<<" nativeReads="<<nativeReads.load()<<" ownerError="<<ownerError.load()<<" queries="<<queries.load()<<" colliderRejected="<<rejectedCollider.load()<<" cancelled="<<cancelled.load()<<" refused="<<refused.load();return s.str();}

@@ -668,6 +668,7 @@ DWORD HudDispatchPointer(int event,int x,int y)
 }
 
 bool HudMenuIsOpen() { return gMenuOpen.load(std::memory_order_acquire); }
+unsigned long long HudVisibleModalMask() { return gVisibleModalMask.load(std::memory_order_acquire); }
 unsigned long long HudMenuEpoch() { return gMenuEpoch.load(std::memory_order_acquire); }
 bool HudMenuStateKnown() { return FreshSample(MonotonicNanoseconds(), gMenuStamp.load()); }
 bool HudInventoryIsOpen() { return HudMenuStateKnown() && gInventoryOpen.load(std::memory_order_acquire); }

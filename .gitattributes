@@ -98,3 +98,11 @@ docs/evidence/surface-grab-2026-10-26/** -text whitespace=cr-at-eol
 # Preserve CMake's raw dependency diagnostic, including its trailing space.
 docs/evidence/surface-grab-2026-10-26/configure.txt -text -whitespace
 receipts/20261026-surface-grab.json -text whitespace=cr-at-eol
+tools/Invoke-PreyVRRegression.ps1 text eol=lf
+tools/regression/** text eol=lf
+src/dll/RegressionProbe.* text eol=lf
+tests/Regression*.* text eol=lf
+docs/REGRESSION-RUNNER.md text eol=lf
+docs/HEADLESS_TESTING.md text eol=lf
+docs/evidence/regression-runner-2026-10-26/** -text whitespace=cr-at-eol
+docs/evidence/regression-runner-2026-10-26/configure.txt -text -whitespace

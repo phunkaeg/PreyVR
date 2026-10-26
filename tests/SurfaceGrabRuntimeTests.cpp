@@ -74,7 +74,9 @@ int main(){try{
     const auto serial=pending.serial;token=Claim(desired);Check(token==serial,"physical push reaches native command");
     Check(desired.x>=.15f&&desired.x<=1.5f,"physical push respects launch threshold and limit");
     Check(!Claim(desired),"push reserved once before acknowledgement");Step();Check(pending.serial==serial,"unacknowledged push not refreshed or reserialised");
-    FinishSurfaceGrabVelocity(token,true);Check(!Claim(desired),"successful push cannot be replayed");Step();Check(!SurfaceGrabOwnsMotion()&&!pending.serial,"acknowledged push releases ownership");
+    Check(ReadSurfaceGrabCounters().releaseSerial!=token,"reservation alone is not a delivered-release receipt");
+    FinishSurfaceGrabVelocity(token,true);Check(ReadSurfaceGrabCounters().releaseSerial==token,"delivered release serial appears only after native acknowledgement");
+    Check(!Claim(desired),"successful push cannot be replayed");Step();Check(!SurfaceGrabOwnsMotion()&&!pending.serial,"acknowledged push releases ownership");
     for(int gate=0;gate<12;++gate){Reset();Capture();
         switch(gate){case 0:fTracking=false;break;case 1:fGameplay=false;break;case 2:fOptions=true;break;case 3:fHacking=true;break;
         case 4:fReference+=2;break;case 5:++fMenu;break;case 6:++fPose.weaponGeneration;break;case 7:fBase=false;break;

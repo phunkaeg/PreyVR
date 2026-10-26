@@ -88,6 +88,7 @@ bool TwoHandSupportSnap();
 bool TwoHandedAimHeld();
 // The left hand is inside the equipped weapon's foregrip region this frame.
 bool SupportGripNear();
+bool TryGetSupportGripTargetXr(Vec3& target); // read-only placement hint, not acceptance evidence
 std::string TwoHandedAimStatus();
 bool EnsureGameplayPoseObservation();
 bool TryGetGameplayPoseFrame(GameplayPoseFrame& out, bool requireTracking = true);

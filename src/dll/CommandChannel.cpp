@@ -1,4 +1,5 @@
 #include "CommandChannel.h"
+#include "RegressionProbe.h"
 #include "VrMode.h"
 #include "VrOptionsRuntime.h"
 #include "Psychoscope.h"
@@ -637,7 +638,9 @@ void Execute(const std::vector<std::string>& args, std::ostringstream& out)
         ExecuteStereoCommand(args, out) || ExecuteUiInput(args,out)) {
         return;
     }
-    if (verb == "vr.options") {
+    if (verb == "regression.state") {
+        out<<RegressionStateJson(args.size()==2?args[1]:std::string{});
+    } else if (verb == "vr.options") {
         if(args.size()>1)RequestVrOptions(arg(1,0)!=0);
         out << "vr.options" << VrOptionsReport() << PsychoscopeReport() << BodyEquipmentReport();
     } else if (verb == "vr.enable") {
